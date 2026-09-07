@@ -392,6 +392,42 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["shipping_settings"]["Insert"]>;
         Relationships: [];
       };
+      payment_settings: {
+        Row: {
+          store_id: string;
+          provider: "none" | "razorpay" | "other";
+          fee_enabled: boolean;
+          fee_type: "PERCENTAGE" | "FIXED";
+          fee_value: number;
+          fee_basis:
+            | "SUBTOTAL"
+            | "SUBTOTAL_PLUS_SHIPPING"
+            | "ORDER_TOTAL_BEFORE_PAYMENT_FEE";
+          tax_enabled: boolean;
+          tax_type: "PERCENTAGE" | "FIXED";
+          tax_value: number;
+          extra: Json;
+        } & Timestamps;
+        Insert: {
+          store_id: string;
+          provider?: "none" | "razorpay" | "other";
+          fee_enabled?: boolean;
+          fee_type?: "PERCENTAGE" | "FIXED";
+          fee_value?: number;
+          fee_basis?:
+            | "SUBTOTAL"
+            | "SUBTOTAL_PLUS_SHIPPING"
+            | "ORDER_TOTAL_BEFORE_PAYMENT_FEE";
+          tax_enabled?: boolean;
+          tax_type?: "PERCENTAGE" | "FIXED";
+          tax_value?: number;
+          extra?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["payment_settings"]["Insert"]>;
+        Relationships: [];
+      };
       user_profiles: {
         Row: {
           id: string;
@@ -906,6 +942,80 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["media"]["Insert"]>;
+        Relationships: [];
+      };
+      carts: {
+        Row: {
+          id: string;
+          store_id: string;
+          user_id: string | null;
+          guest_token: string | null;
+          expires_at: string | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          user_id?: string | null;
+          guest_token?: string | null;
+          expires_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["carts"]["Insert"]>;
+        Relationships: [];
+      };
+      cart_items: {
+        Row: {
+          id: string;
+          cart_id: string;
+          product_id: string;
+          variant_id: string;
+          quantity: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          cart_id: string;
+          product_id: string;
+          variant_id: string;
+          quantity: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["cart_items"]["Insert"]>;
+        Relationships: [];
+      };
+      wishlists: {
+        Row: {
+          id: string;
+          store_id: string;
+          user_id: string;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          user_id: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wishlists"]["Insert"]>;
+        Relationships: [];
+      };
+      wishlist_items: {
+        Row: {
+          id: string;
+          wishlist_id: string;
+          product_id: string;
+          variant_id: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          wishlist_id: string;
+          product_id: string;
+          variant_id?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wishlist_items"]["Insert"]>;
         Relationships: [];
       };
       contact_inquiries: {

@@ -3,12 +3,14 @@
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import Chip from "@mui/material/Chip";
+import { ProductPurchaseActions } from "@/features/cart/components/ProductPurchaseActions";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
 
 interface ProductDetailClientProps {
   product: StorefrontProductDetail;
   currency: string;
+  isAuthenticated: boolean;
 }
 
 const stockColor: Record<string, "default" | "success" | "warning" | "error"> = {
@@ -20,6 +22,7 @@ const stockColor: Record<string, "default" | "success" | "warning" | "error"> = 
 export function ProductDetailClient({
   product,
   currency,
+  isAuthenticated,
 }: ProductDetailClientProps) {
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [activeImageId, setActiveImageId] = useState(
@@ -202,9 +205,17 @@ export function ProductDetailClient({
           </div>
         </fieldset>
 
-        <p className="text-sm text-[var(--color-muted)]">
-          Cart and checkout arrive in a later phase.
-        </p>
+        <ProductPurchaseActions
+          key={selected.id}
+          productId={product.id}
+          productSlug={product.slug}
+          variantId={selected.id}
+          maxAvailable={
+            selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
+          }
+          outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
+          isAuthenticated={isAuthenticated}
+        />
 
         {product.description ? (
           <section>

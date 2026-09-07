@@ -12,6 +12,19 @@ export async function GET(request: Request) {
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const { mergeGuestCartIntoCustomer } = await import(
+            "@/features/cart/service"
+          );
+          await mergeGuestCartIntoCustomer(user.id);
+        } catch {
+          // Best-effort merge after auth.
+        }
+      }
       return NextResponse.redirect(new URL(next, origin));
     }
   }

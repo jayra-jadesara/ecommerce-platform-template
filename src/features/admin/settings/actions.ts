@@ -12,6 +12,10 @@ import {
 } from "@/features/admin/settings/update-header-footer";
 import { updateSeoSettings } from "@/features/admin/settings/update-seo";
 import { updateNavigationSettings } from "@/features/admin/settings/update-navigation";
+import {
+  updatePaymentSettings,
+  updateShippingSettings,
+} from "@/features/admin/settings/update-shipping-payment";
 
 export async function saveGeneralSettingsAction(input: unknown) {
   return updateGeneralStoreSettings(input);
@@ -42,4 +46,12 @@ export async function saveSeoSettingsAction(input: unknown) {
 
 export async function saveNavigationSettingsAction(input: unknown) {
   return updateNavigationSettings(input);
+}
+
+export async function saveShippingSettingsAction(input: unknown) {
+  return updateShippingSettings(input);
+}
+
+export async function savePaymentSettingsAction(input: unknown) {
+  return updatePaymentSettings(input);
 }

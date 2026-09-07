@@ -121,6 +121,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "seo.view",
     "seo.update",
     "theme.view",
+    "shipping.view",
   ],
   ORDER_MANAGER: [
     "dashboard.view",

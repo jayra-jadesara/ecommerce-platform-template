@@ -54,6 +54,18 @@ const MODULES: Array<{
     description: "Colors, appearance modes, typography, animation",
     permission: "theme.view",
   },
+  {
+    href: "/settings/shipping",
+    title: "Shipping",
+    description: "Flat fees, free-shipping threshold, delivery estimates",
+    permission: "shipping.view",
+  },
+  {
+    href: "/settings/payments",
+    title: "Payments",
+    description: "Gateway fee and tax business settings (no secrets)",
+    permission: "payments.view",
+  },
 ];
 
 const HUB_PERMISSIONS: Permission[] = [
@@ -62,6 +74,8 @@ const HUB_PERMISSIONS: Permission[] = [
   "navigation.view",
   "seo.view",
   "theme.view",
+  "shipping.view",
+  "payments.view",
 ];
 
 export default async function AdminSettingsPage() {

@@ -259,6 +259,30 @@ supabase/
 
 Use allow-listed presets only (`fade`, `fade-up`, `fade-down`, `slide-up`, `slide-down`, `scale`, `none`). Do not execute arbitrary animation code from a database.
 
+### Pricing engine (Phase 11)
+
+Single server-side source of truth for cart subtotals, checkout totals, and (later) order/Razorpay amounts:
+
+```
+subtotal − discount + shipping + paymentFee + tax = grandTotal
+```
+
+| Concern | Behavior |
+| --- | --- |
+| Money | Integer **minor units** internally (`majorToMinor` / `minorToMajor`); percentage fees use half-up `round(base × percent / 100)` |
+| Currency | From `store_settings.currency` — never hardcode symbols in the engine |
+| Shipping | `shipping_settings`: enabled, method (`flat_rate` + free threshold, `free`, `percentage`, `zone` fallback), fees from DB |
+| Payment fee | `payment_settings`: optional PERCENTAGE/FIXED fee; default basis `SUBTOTAL_PLUS_SHIPPING`; **no secrets** in DB |
+| Tax / discount | Engine fields exist; tax off by default; coupons not implemented (`discount = 0`) |
+| Authority | Always re-read catalog prices server-side before calculating |
+
+Admin:
+
+- `/${ADMIN_ROUTE}/settings/shipping` — `shipping.view` / `shipping.update`
+- `/${ADMIN_ROUTE}/settings/payments` — `payments.view` / `payments.update`
+
+Checkout displays the full engine breakdown. Cart shows **subtotal only**, computed with the same minor-unit helpers.
+
 ### Three.js
 
 Import `SceneWrapper` only where a premium 3D section is needed. It dynamically loads the canvas so normal pages stay free of 3D bundle weight.

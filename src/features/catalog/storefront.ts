@@ -71,6 +71,10 @@ export type StorefrontProductCard = {
   stockStatus: StockStatus;
   primaryImageUrl?: string;
   primaryImageAlt?: string;
+  /** Active variants; >1 requires choosing options before add-to-cart. */
+  activeVariantCount: number;
+  /** Set when exactly one active variant exists (safe quick-add). */
+  defaultVariantId: string | null;
 };
 
 type VariantJoin = {
@@ -206,9 +210,8 @@ export async function listStorefrontProducts(rawQuery: unknown): Promise<{
       ? primary.public_url ||
         resolvePublicStorageUrl("products", primary.storage_path)
       : undefined;
-    const activePrices = variants
-      .filter((v) => v.is_active)
-      .map((v) => Number(v.price));
+    const activeVariants = variants.filter((v) => v.is_active);
+    const activePrices = activeVariants.map((v) => Number(v.price));
 
     return {
       id: row.id,
@@ -230,6 +233,9 @@ export async function listStorefrontProducts(rawQuery: unknown): Promise<{
       ),
       primaryImageUrl: primaryUrl,
       primaryImageAlt: primary?.alt_text || row.name,
+      activeVariantCount: activeVariants.length,
+      defaultVariantId:
+        activeVariants.length === 1 ? activeVariants[0]!.id : null,
     };
   });
 

@@ -36,6 +36,20 @@ export async function loginAction(
 
   if (error) return { ok: false, error: mapAuthError(error) };
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) {
+    try {
+      const { mergeGuestCartIntoCustomer } = await import(
+        "@/features/cart/service"
+      );
+      await mergeGuestCartIntoCustomer(user.id);
+    } catch {
+      // Cart merge is best-effort; login must still succeed.
+    }
+  }
+
   redirect(safeInternalPath(nextPath, "/account"));
 }
 

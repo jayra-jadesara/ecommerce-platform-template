@@ -8,6 +8,7 @@ import IconButton from "@mui/material/IconButton";
 import { Container } from "@/components/layout/Container";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { HeaderAuthLinks } from "@/components/common/HeaderAuthLinks";
+import { HeaderCartControl } from "@/features/cart/components/HeaderCartControl";
 import { useThemeMode } from "@/features/theme";
 import { cn } from "@/lib/cn";
 import type {
@@ -70,6 +71,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
   const showNav = header.navVisible;
   const showMobileMenu = header.mobileMenuEnabled;
   const showAccount = header.accountEnabled;
+  const showCart = header.cartEnabled;
 
   return (
     <header
@@ -109,6 +111,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
         ) : null}
 
         <div className="flex items-center gap-1">
+          {showCart ? <HeaderCartControl /> : null}
           {showAccount ? <HeaderAuthLinks /> : null}
           <ThemeToggle />
           {showMobileMenu && showNav ? (

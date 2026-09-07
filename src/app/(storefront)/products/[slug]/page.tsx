@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/features/catalog/components/ProductDetailClient";
 import { getStorefrontProductBySlug } from "@/features/catalog/storefront";
+import { getCurrentUser } from "@/features/auth/session";
 import { getPlatformConfigAsync } from "@/config/site";
 import { buildPageMetadata } from "@/lib/metadata";
 import { Container } from "@/components/layout";
@@ -49,15 +50,20 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [product, config] = await Promise.all([
+  const [product, config, user] = await Promise.all([
     getStorefrontProductBySlug(slug),
     getPlatformConfigAsync(),
+    getCurrentUser(),
   ]);
   if (!product) notFound();
 
   return (
     <Container className="py-10">
-      <ProductDetailClient product={product} currency={config.store.currency} />
+      <ProductDetailClient
+        product={product}
+        currency={config.store.currency}
+        isAuthenticated={Boolean(user)}
+      />
     </Container>
   );
 }

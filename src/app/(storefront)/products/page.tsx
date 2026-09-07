@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { PageShell } from "@/components/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ProductCard } from "@/features/catalog/components/ProductCard";
 import {
-  formatMoney,
   listStorefrontCategories,
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
@@ -92,43 +92,7 @@ export default async function ProductsPage({
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {list.items.map((product) => (
             <li key={product.id}>
-              <Link
-                href={`/products/${product.slug}`}
-                className="block h-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 transition-colors hover:border-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-              >
-                  <div
-                  className="relative mb-3 flex h-36 items-center justify-center overflow-hidden rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-muted)]"
-                >
-                  {product.primaryImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={product.primaryImageUrl}
-                      alt={product.primaryImageAlt || product.name}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <span>No image</span>
-                  )}
-                </div>
-                <p className="font-medium text-[var(--color-foreground)]">
-                  {product.name}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  {product.categoryName ?? "Uncategorized"}
-                  {product.featured ? " · Featured" : ""}
-                </p>
-                <p className="mt-2 text-sm font-semibold">
-                  {product.minPrice == null
-                    ? "Price unavailable"
-                    : product.minPrice === product.maxPrice
-                      ? formatMoney(product.minPrice, config.store.currency)
-                      : `${formatMoney(product.minPrice, config.store.currency)} – ${formatMoney(product.maxPrice!, config.store.currency)}`}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  {product.stockStatus.replaceAll("_", " ")}
-                </p>
-              </Link>
+              <ProductCard product={product} currency={config.store.currency} />
             </li>
           ))}
         </ul>
