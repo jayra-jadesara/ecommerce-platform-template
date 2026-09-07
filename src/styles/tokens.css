@@ -1,0 +1,24 @@
+/**
+ * Semantic design tokens.
+ * Values are injected at runtime from ThemeConfig via CSS custom properties.
+ * Components must consume these tokens — never hardcode brand colors.
+ */
+
+:root {
+  --color-primary: #1a5f4a;
+  --color-secondary: #2c3e50;
+  --color-accent: #c4783a;
+  --color-background: #f7f5f2;
+  --color-foreground: #1a1a1a;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-border: #e2ddd6;
+  --color-muted: #6b6560;
+  --color-success: #2e7d4f;
+  --color-warning: #b7791f;
+  --color-error: #b42318;
+
+  --layout-max-width: 72rem;
+  --layout-header-height: 4rem;
+  --layout-container-padding: 1.25rem;
+}
