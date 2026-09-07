@@ -10,6 +10,7 @@ import {
   updateCartItemQuantity,
 } from "@/features/cart/service";
 import type { CartMutationResult, CartView } from "@/features/cart/types";
+import { emptyCartView } from "@/features/cart/types";
 import {
   addToCartSchema,
   removeCartItemSchema,
@@ -22,7 +23,11 @@ function revalidateCartPaths() {
 }
 
 export async function getCartAction(): Promise<CartView> {
-  return getCurrentCart();
+  try {
+    return await getCurrentCart();
+  } catch {
+    return emptyCartView();
+  }
 }
 
 export async function addToCartAction(

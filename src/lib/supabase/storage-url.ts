@@ -1,4 +1,5 @@
 import { type StorageBucket } from "@/lib/supabase/storage";
+import { normalizeSupabaseUrl } from "@/lib/supabase/env";
 
 /**
  * Build a public object URL for Supabase Storage.
@@ -13,7 +14,7 @@ export function resolvePublicStorageUrl(
   const normalized = path.trim().replace(/^\/+/, "");
   if (/^https?:\/\//i.test(normalized)) return normalized;
 
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "");
+  const base = normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
   if (!base) return undefined;
 
   return `${base}/storage/v1/object/public/${bucket}/${normalized}`;

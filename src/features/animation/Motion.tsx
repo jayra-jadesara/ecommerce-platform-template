@@ -39,8 +39,7 @@ export function Motion({
     <Component
       className={className}
       initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, amount: 0.2 }}
+      animate="visible"
       variants={variants}
       {...rest}
     >

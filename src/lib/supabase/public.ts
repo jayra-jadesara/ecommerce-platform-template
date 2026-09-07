@@ -12,10 +12,14 @@ export function createSupabasePublicClient() {
   const env = getSupabasePublicEnvOptional();
   if (!env) return null;
 
-  return createClient<Database>(env.url, env.anonKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
-  });
+  try {
+    return createClient<Database>(env.url, env.anonKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      },
+    });
+  } catch {
+    return null;
+  }
 }

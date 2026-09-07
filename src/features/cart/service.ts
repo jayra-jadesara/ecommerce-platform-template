@@ -25,6 +25,7 @@ import { calculateSubtotalMinor } from "@/features/pricing/engine";
 import { majorToMinor, minorToMajor } from "@/features/pricing/money";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
 import type { Database } from "@/types/database";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -304,6 +305,9 @@ async function resolveWritableCart(): Promise<{
 }
 
 export async function getCurrentCart(): Promise<CartView> {
+  // Allow local UI without Supabase env (cart stays empty).
+  if (!getSupabasePublicEnvOptional()) return emptyCartView();
+
   const storeId = await requireStoreId();
   if (!storeId) return emptyCartView();
 

@@ -52,8 +52,11 @@ function getSnapshot() {
   return snapshot;
 }
 
+/** Must return a stable cached value — new objects each call cause an infinite loop. */
+const SERVER_SNAPSHOT: AuthSnapshot = { ready: false, email: null };
+
 function getServerSnapshot(): AuthSnapshot {
-  return { ready: false, email: null };
+  return SERVER_SNAPSHOT;
 }
 
 export function HeaderAuthLinks() {

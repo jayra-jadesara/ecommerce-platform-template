@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
 
 function getConfiguredStoreSlug(): string | null {
   const slug =
@@ -13,6 +14,8 @@ function getConfiguredStoreSlug(): string | null {
 export async function resolveActiveStoreId(
   supabase?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<string | null> {
+  if (!supabase && !getSupabasePublicEnvOptional()) return null;
+
   const client = supabase ?? (await createSupabaseServerClient());
   const slug = getConfiguredStoreSlug();
 
@@ -35,6 +38,8 @@ export async function resolveActiveStoreId(
 export async function resolveActiveStore(
   supabase?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
 ): Promise<{ id: string; name: string; legal_name: string | null } | null> {
+  if (!supabase && !getSupabasePublicEnvOptional()) return null;
+
   const client = supabase ?? (await createSupabaseServerClient());
   const slug = getConfiguredStoreSlug();
 

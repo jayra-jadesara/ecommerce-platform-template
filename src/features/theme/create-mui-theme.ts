@@ -64,6 +64,19 @@ export function createAppMuiTheme(
           },
         ],
       },
+      MuiOutlinedInput: {
+        styleOverrides: {
+          root: {
+            // Keep error red on hover/focus (default hover can flash primary)
+            "&.Mui-error:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: tokens.error,
+            },
+            "&.Mui-focused.Mui-error .MuiOutlinedInput-notchedOutline": {
+              borderColor: tokens.error,
+            },
+          },
+        },
+      },
       MuiCssBaseline: {
         styleOverrides: {
           body: {

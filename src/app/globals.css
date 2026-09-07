@@ -40,7 +40,16 @@ body {
   font-family: var(--font-sans), ui-sans-serif, sans-serif;
 }
 
-:focus-visible {
+/* Storefront / custom controls — skip MUI, which draws its own focus ring */
+:focus-visible:not(.MuiInputBase-input):not(.MuiButtonBase-root):not(
+    .MuiSelect-select
+  ):not(.MuiPickersDay-root) {
   outline: 2px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+.MuiInputBase-input:focus-visible,
+.MuiButtonBase-root:focus-visible,
+.MuiSelect-select:focus-visible {
+  outline: none;
 }

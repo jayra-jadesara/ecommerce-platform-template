@@ -70,7 +70,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           <link rel="icon" href={config.brand.faviconUrl} />
         ) : null}
       </head>
-      <body className="flex min-h-full flex-col">
+      <body className="flex min-h-full flex-col" suppressHydrationWarning>
         <AppProviders config={config}>{children}</AppProviders>
       </body>
     </html>
