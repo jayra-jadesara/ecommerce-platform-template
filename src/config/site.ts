@@ -2,11 +2,22 @@ import { defaultPlatformConfig } from "./defaults";
 import type { PlatformConfig } from "@/types";
 
 /**
- * Resolves platform config for the current deployment.
- * Phase 1: static defaults. Later: merge Supabase tenant settings.
+ * Sync fallback for non-async contexts.
+ * Prefer `getPlatformConfigAsync()` / `getStorefrontPlatformConfig()` in App Router.
  */
 export function getPlatformConfig(): PlatformConfig {
   return defaultPlatformConfig;
+}
+
+export async function getPlatformConfigAsync(): Promise<PlatformConfig> {
+  try {
+    const { getStorefrontPlatformConfig } = await import(
+      "@/features/theme/service"
+    );
+    return await getStorefrontPlatformConfig();
+  } catch {
+    return defaultPlatformConfig;
+  }
 }
 
 export function getSiteUrl(): string {

@@ -17,6 +17,12 @@
   --color-success: var(--color-success);
   --color-warning: var(--color-warning);
   --color-error: var(--color-error);
+  --color-header-background: var(--color-header-background);
+  --color-header-foreground: var(--color-header-foreground);
+  --color-footer-background: var(--color-footer-background);
+  --color-footer-foreground: var(--color-footer-foreground);
+  --color-button-background: var(--color-button-background);
+  --color-button-foreground: var(--color-button-foreground);
 
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);

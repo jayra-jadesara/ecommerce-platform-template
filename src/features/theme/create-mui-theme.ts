@@ -3,16 +3,27 @@
 import { createTheme, type Theme } from "@mui/material/styles";
 import type { ColorTokens, TypographyConfig } from "@/types";
 
-/** Builds an MUI theme that reads semantic CSS variables (shared with Tailwind). */
+function parseBorderRadius(value: string | undefined): number {
+  if (!value) return 8;
+  const match = /^(\d+(?:\.\d+)?)px$/.exec(value.trim());
+  if (!match) return 8;
+  return Number(match[1]);
+}
+
+/** Builds an MUI theme from the same semantic tokens used for CSS variables. */
 export function createAppMuiTheme(
   tokens: ColorTokens,
   typography: TypographyConfig,
   mode: "light" | "dark",
+  borderRadius?: string,
 ): Theme {
   return createTheme({
     palette: {
       mode,
-      primary: { main: tokens.primary },
+      primary: {
+        main: tokens.primary,
+        contrastText: tokens.buttonForeground,
+      },
       secondary: { main: tokens.secondary },
       error: { main: tokens.error },
       warning: { main: tokens.warning },
@@ -36,10 +47,22 @@ export function createAppMuiTheme(
       h2: { fontFamily: typography.fontDisplay ?? typography.fontSans },
       h3: { fontFamily: typography.fontDisplay ?? typography.fontSans },
     },
-    shape: { borderRadius: 8 },
+    shape: { borderRadius: parseBorderRadius(borderRadius) },
     components: {
-      MuiButtonBase: {
-        defaultProps: { disableRipple: false },
+      MuiButton: {
+        variants: [
+          {
+            props: { variant: "contained", color: "primary" },
+            style: {
+              backgroundColor: "var(--color-button-background)",
+              color: "var(--color-button-foreground)",
+              "&:hover": {
+                backgroundColor: "var(--color-button-background)",
+                filter: "brightness(0.92)",
+              },
+            },
+          },
+        ],
       },
       MuiCssBaseline: {
         styleOverrides: {

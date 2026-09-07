@@ -29,11 +29,16 @@ export function buildPageMetadata(
       ? { default: title, template: config.titleTemplate }
       : title,
     description,
+    keywords: config.keywords?.length ? config.keywords : undefined,
     metadataBase: new URL(siteUrl),
     alternates: canonical ? { canonical } : undefined,
+    robots: {
+      index: config.robotsIndex ?? true,
+      follow: config.robotsFollow ?? true,
+    },
     openGraph: {
-      title,
-      description,
+      title: options.title ?? config.ogTitle ?? title,
+      description: options.description ?? config.ogDescription ?? description,
       siteName: config.siteName ?? config.title,
       url: canonical,
       images: ogImage ? [{ url: ogImage }] : undefined,
@@ -41,8 +46,8 @@ export function buildPageMetadata(
     },
     twitter: {
       card: ogImage ? "summary_large_image" : "summary",
-      title,
-      description,
+      title: options.title ?? config.ogTitle ?? title,
+      description: options.description ?? config.ogDescription ?? description,
       images: ogImage ? [ogImage] : undefined,
       site: config.twitterHandle,
     },

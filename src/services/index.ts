@@ -8,10 +8,13 @@ export interface ServiceResult<T> {
   error: string | null;
 }
 
-/** Placeholder — replace with Supabase client factory in a later phase. */
+/** Lightweight context for future service modules. */
 export function createServiceContext() {
   return {
     supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
+    hasAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   };
 }
+
+export { STORAGE_BUCKETS } from "@/lib/supabase/storage";

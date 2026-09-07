@@ -1,0 +1,27 @@
+# Supabase local CLI config for this white-label template.
+# Remote project credentials stay in .env.local — never commit secrets.
+
+[project]
+id = "ecommerce-platform-dev"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+major_version = 15
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+
+[storage]
+enabled = true

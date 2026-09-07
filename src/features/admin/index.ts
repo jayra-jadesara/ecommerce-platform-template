@@ -1,2 +1,3 @@
-/** Admin feature foundation — dashboard & settings UI in a later phase. */
-export {};
+/** Admin feature barrel — UI shells and nav helpers. */
+export { AdminShell } from "./components/AdminShell";
+export { getAdminNavForPermissions } from "./nav";

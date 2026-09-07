@@ -11,8 +11,14 @@ import {
 } from "react";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
-import { applyColorTokens } from "@/features/theme/apply-css-vars";
+import { applyColorTokens } from "@/features/theme/css-vars";
 import { createAppMuiTheme } from "@/features/theme/create-mui-theme";
+import {
+  canUserToggleTheme,
+  getAvailableThemeModes,
+  nextThemeMode,
+  sanitizeStoredMode,
+} from "@/features/theme/modes";
 import type {
   PlatformConfig,
   ResolvedThemeMode,
@@ -24,6 +30,7 @@ const STORAGE_KEY = "platform-theme-mode";
 interface ThemeContextValue {
   mode: ThemeMode;
   resolvedMode: ResolvedThemeMode;
+  availableModes: ThemeMode[];
   allowUserToggle: boolean;
   setMode: (mode: ThemeMode) => void;
   cycleMode: () => void;
@@ -38,16 +45,12 @@ function subscribeMode(listener: () => void) {
   return () => modeListeners.delete(listener);
 }
 
-function readStoredMode(fallback: ThemeMode): ThemeMode {
+function readRawStoredMode(): string | null {
   try {
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    if (stored === "light" || stored === "dark" || stored === "system") {
-      return stored;
-    }
+    return window.localStorage.getItem(STORAGE_KEY);
   } catch {
-    /* ignore */
+    return null;
   }
-  return fallback;
 }
 
 function writeStoredMode(mode: ThemeMode) {
@@ -81,12 +84,16 @@ export function PlatformThemeProvider({
   children,
 }: PlatformThemeProviderProps) {
   const { theme: themeConfig, typography } = config;
-  const defaultMode = themeConfig.defaultMode;
+  const availableModes = useMemo(
+    () => getAvailableThemeModes(themeConfig),
+    [themeConfig],
+  );
+  const allowUserToggle = canUserToggleTheme(themeConfig);
 
   const mode = useSyncExternalStore(
     subscribeMode,
-    () => readStoredMode(defaultMode),
-    () => defaultMode,
+    () => sanitizeStoredMode(readRawStoredMode(), themeConfig),
+    () => themeConfig.defaultMode,
   );
 
   const systemMode = useSyncExternalStore(
@@ -95,8 +102,23 @@ export function PlatformThemeProvider({
     (): ResolvedThemeMode => "light",
   );
 
-  const resolvedMode: ResolvedThemeMode =
-    mode === "system" ? systemMode : mode;
+  const resolvedMode: ResolvedThemeMode = useMemo(() => {
+    if (mode === "system") {
+      if (!availableModes.includes("system")) {
+        return themeConfig.defaultMode === "dark" ? "dark" : "light";
+      }
+      const preferred = systemMode;
+      if (preferred === "dark" && availableModes.includes("dark")) return "dark";
+      if (preferred === "light" && availableModes.includes("light")) return "light";
+      if (availableModes.includes("light")) return "light";
+      if (availableModes.includes("dark")) return "dark";
+      return "light";
+    }
+    if (!availableModes.includes(mode)) {
+      return themeConfig.defaultMode === "dark" ? "dark" : "light";
+    }
+    return mode;
+  }, [mode, systemMode, availableModes, themeConfig.defaultMode]);
 
   useEffect(() => {
     const tokens =
@@ -104,39 +126,49 @@ export function PlatformThemeProvider({
     applyColorTokens(tokens);
     document.documentElement.classList.toggle("dark", resolvedMode === "dark");
     document.documentElement.style.colorScheme = resolvedMode;
+    if (themeConfig.borderRadius) {
+      document.documentElement.style.setProperty(
+        "--radius-default",
+        themeConfig.borderRadius,
+      );
+    }
   }, [resolvedMode, themeConfig]);
 
   const setMode = useCallback(
     (next: ThemeMode) => {
-      if (!themeConfig.allowUserToggle && next !== themeConfig.defaultMode) {
-        return;
-      }
+      if (!allowUserToggle) return;
+      if (!availableModes.includes(next)) return;
       writeStoredMode(next);
     },
-    [themeConfig.allowUserToggle, themeConfig.defaultMode],
+    [allowUserToggle, availableModes],
   );
 
   const cycleMode = useCallback(() => {
-    const order: ThemeMode[] = ["light", "dark", "system"];
-    const idx = order.indexOf(mode);
-    setMode(order[(idx + 1) % order.length]);
-  }, [mode, setMode]);
+    if (!allowUserToggle) return;
+    setMode(nextThemeMode(mode, themeConfig));
+  }, [allowUserToggle, mode, setMode, themeConfig]);
 
   const muiTheme = useMemo(() => {
     const tokens =
       resolvedMode === "dark" ? themeConfig.dark : themeConfig.light;
-    return createAppMuiTheme(tokens, typography, resolvedMode);
+    return createAppMuiTheme(
+      tokens,
+      typography,
+      resolvedMode,
+      themeConfig.borderRadius,
+    );
   }, [resolvedMode, themeConfig, typography]);
 
   const value = useMemo<ThemeContextValue>(
     () => ({
       mode,
       resolvedMode,
-      allowUserToggle: themeConfig.allowUserToggle,
+      availableModes,
+      allowUserToggle,
       setMode,
       cycleMode,
     }),
-    [mode, resolvedMode, themeConfig.allowUserToggle, setMode, cycleMode],
+    [mode, resolvedMode, availableModes, allowUserToggle, setMode, cycleMode],
   );
 
   return (

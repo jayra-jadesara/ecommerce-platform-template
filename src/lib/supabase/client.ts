@@ -1,0 +1,11 @@
+"use client";
+
+import { createBrowserClient } from "@supabase/ssr";
+import type { Database } from "@/types/database";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
+
+/** Browser Supabase client (anon key only). */
+export function createSupabaseBrowserClient() {
+  const { url, anonKey } = getSupabasePublicEnv();
+  return createBrowserClient<Database>(url, anonKey);
+}

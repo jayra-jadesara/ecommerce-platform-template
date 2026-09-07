@@ -1,8 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
+import type { Metadata } from "next";
 import { DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
-import { AppLayout } from "@/components/layout";
-import { getPlatformConfig } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site";
 import { buildPageMetadata } from "@/lib/metadata";
+import { colorTokensToCssVars } from "@/features/theme/css-vars";
 import { AppProviders } from "@/providers";
 import "./globals.css";
 
@@ -24,15 +25,36 @@ const fontMono = JetBrains_Mono({
   display: "swap",
 });
 
-export const metadata = buildPageMetadata();
+export async function generateMetadata(): Promise<Metadata> {
+  const config = await getPlatformConfigAsync();
+  const metadata = buildPageMetadata({
+    seo: config.seo,
+    ogImage: config.seo.ogImage ?? config.brand.socialImageUrl,
+  });
 
-export default function RootLayout({ children }: { children: ReactNode }) {
-  const config = getPlatformConfig();
+  return {
+    ...metadata,
+    icons: config.brand.faviconUrl
+      ? { icon: [{ url: config.brand.faviconUrl }] }
+      : undefined,
+  };
+}
+
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const config = await getPlatformConfigAsync();
+
+  // SSR initial tokens from store default (light unless default is dark).
+  const initialTokens =
+    config.theme.defaultMode === "dark" ? config.theme.dark : config.theme.light;
 
   const layoutVars = {
+    ...colorTokensToCssVars(initialTokens),
     "--layout-max-width": config.layout.maxWidth,
     "--layout-header-height": config.layout.headerHeight,
     "--layout-container-padding": config.layout.containerPadding,
+    ...(config.theme.borderRadius
+      ? { "--radius-default": config.theme.borderRadius }
+      : {}),
   } as CSSProperties;
 
   return (
@@ -41,11 +63,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable} h-full antialiased`}
       suppressHydrationWarning
       style={layoutVars}
+      data-theme-default={config.theme.defaultMode}
     >
+      <head>
+        {config.brand.faviconUrl ? (
+          <link rel="icon" href={config.brand.faviconUrl} />
+        ) : null}
+      </head>
       <body className="flex min-h-full flex-col">
-        <AppProviders config={config}>
-          <AppLayout config={config}>{children}</AppLayout>
-        </AppProviders>
+        <AppProviders config={config}>{children}</AppProviders>
       </body>
     </html>
   );

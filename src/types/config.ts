@@ -1,6 +1,6 @@
 /**
  * Central platform configuration contracts.
- * Designed to be populated from Supabase (or other backends) in later phases.
+ * Designed to be populated from Supabase (or other backends).
  * Do not hardcode client-specific brand content into reusable components.
  */
 
@@ -8,8 +8,10 @@ export interface BrandConfig {
   name: string;
   tagline?: string;
   logoUrl?: string;
+  logoDarkUrl?: string;
   logoAlt?: string;
   faviconUrl?: string;
+  socialImageUrl?: string;
 }
 
 export interface ColorTokens {
@@ -25,6 +27,12 @@ export interface ColorTokens {
   success: string;
   warning: string;
   error: string;
+  headerBackground: string;
+  headerForeground: string;
+  footerBackground: string;
+  footerForeground: string;
+  buttonBackground: string;
+  buttonForeground: string;
 }
 
 export type ThemeMode = "light" | "dark" | "system";
@@ -33,10 +41,13 @@ export type ResolvedThemeMode = "light" | "dark";
 export interface ThemeConfig {
   /** Default mode when no user preference is stored. */
   defaultMode: ThemeMode;
-  /** Whether end users may switch themes (admin-controlled later). */
+  /** Whether end users may switch themes (Admin-controlled). */
   allowUserToggle: boolean;
+  /** Admin-enabled modes (light / dark / system). */
+  enabledModes: ThemeMode[];
   light: ColorTokens;
   dark: ColorTokens;
+  borderRadius?: string;
 }
 
 export interface TypographyConfig {
@@ -89,10 +100,15 @@ export interface SeoConfig {
   title: string;
   titleTemplate?: string;
   description: string;
+  keywords?: string[];
   ogImage?: string;
+  ogTitle?: string;
+  ogDescription?: string;
   canonicalUrl?: string;
   siteName?: string;
   twitterHandle?: string;
+  robotsIndex?: boolean;
+  robotsFollow?: boolean;
 }
 
 export interface StoreConfig {
@@ -101,9 +117,64 @@ export interface StoreConfig {
   supportEmail?: string;
   supportPhone?: string;
   timezone?: string;
+  displayName?: string;
+  legalName?: string;
+  registrationEnabled?: boolean;
+  checkoutGuestAllowed?: boolean;
 }
 
-/** Aggregate config — future multi-tenant / Supabase source of truth. */
+export interface ContactConfig {
+  email?: string;
+  phone?: string;
+  phoneSecondary?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  country?: string;
+}
+
+export interface SocialLinksConfig {
+  instagram?: string;
+  facebook?: string;
+  youtube?: string;
+  linkedin?: string;
+  x?: string;
+  whatsapp?: string;
+}
+
+export type LogoSize = "small" | "medium" | "large";
+
+export interface AnnouncementConfig {
+  enabled: boolean;
+  text?: string;
+  url?: string;
+  openInNewTab: boolean;
+}
+
+export interface HeaderChromeConfig {
+  sticky: boolean;
+  searchEnabled: boolean;
+  cartEnabled: boolean;
+  accountEnabled: boolean;
+  mobileMenuEnabled: boolean;
+  navVisible: boolean;
+  logoSize: LogoSize;
+  announcement: AnnouncementConfig;
+}
+
+export interface FooterChromeConfig {
+  enabled: boolean;
+  description?: string;
+  showContact: boolean;
+  showSocial: boolean;
+  showNewsletter: boolean;
+  navVisible: boolean;
+  copyrightText?: string;
+}
+
+/** Aggregate config — populated from Supabase when available. */
 export interface PlatformConfig {
   brand: BrandConfig;
   theme: ThemeConfig;
@@ -113,4 +184,8 @@ export interface PlatformConfig {
   navigation: NavigationConfig;
   seo: SeoConfig;
   store: StoreConfig;
+  contact: ContactConfig;
+  social: SocialLinksConfig;
+  header: HeaderChromeConfig;
+  footer: FooterChromeConfig;
 }

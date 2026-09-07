@@ -14,9 +14,9 @@ const LABELS = {
 } as const;
 
 export function ThemeToggle() {
-  const { mode, allowUserToggle, cycleMode } = useThemeMode();
+  const { mode, allowUserToggle, availableModes, cycleMode } = useThemeMode();
 
-  if (!allowUserToggle) return null;
+  if (!allowUserToggle || availableModes.length <= 1) return null;
 
   const Icon =
     mode === "dark"
@@ -28,7 +28,7 @@ export function ThemeToggle() {
   return (
     <Tooltip title={`Theme: ${LABELS[mode]} (click to change)`}>
       <IconButton
-        aria-label={`Current theme ${LABELS[mode]}. Switch theme.`}
+        aria-label={`Current theme ${LABELS[mode]}. Switch theme. Available: ${availableModes.join(", ")}.`}
         onClick={cycleMode}
         size="small"
       >

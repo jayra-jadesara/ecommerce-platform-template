@@ -1,7 +1,6 @@
 /**
- * Semantic design tokens.
- * Values are injected at runtime from ThemeConfig via CSS custom properties.
- * Components must consume these tokens — never hardcode brand colors.
+ * Semantic design tokens (fallback before JS/runtime theme injection).
+ * Runtime values come from ThemeConfig / Supabase — these are safe defaults only.
  */
 
 :root {
@@ -17,8 +16,15 @@
   --color-success: #2e7d4f;
   --color-warning: #b7791f;
   --color-error: #b42318;
+  --color-header-background: #ffffff;
+  --color-header-foreground: #1a1a1a;
+  --color-footer-background: #ffffff;
+  --color-footer-foreground: #6b6560;
+  --color-button-background: #1a5f4a;
+  --color-button-foreground: #ffffff;
 
   --layout-max-width: 72rem;
   --layout-header-height: 4rem;
   --layout-container-padding: 1.25rem;
+  --radius-default: 8px;
 }

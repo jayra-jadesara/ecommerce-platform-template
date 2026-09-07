@@ -1,0 +1,157 @@
+import type { AdminRoleCode } from "@/types/database";
+
+export const PERMISSIONS = [
+  "dashboard.view",
+  "products.view",
+  "products.create",
+  "products.update",
+  "products.delete",
+  "categories.view",
+  "categories.create",
+  "categories.update",
+  "categories.delete",
+  "inventory.view",
+  "inventory.update",
+  "orders.view",
+  "orders.update",
+  "customers.view",
+  "cms.view",
+  "cms.create",
+  "cms.update",
+  "cms.delete",
+  "media.view",
+  "media.upload",
+  "media.update",
+  "media.delete",
+  "product_images.view",
+  "product_images.upload",
+  "product_images.update",
+  "product_images.delete",
+  "settings.view",
+  "settings.update",
+  "branding.view",
+  "branding.update",
+  "navigation.view",
+  "navigation.update",
+  "seo.view",
+  "seo.update",
+  "theme.view",
+  "theme.update",
+  "shipping.view",
+  "shipping.update",
+  "payments.view",
+  "payments.update",
+  "users.view",
+  "users.manage",
+  "audit.view",
+] as const;
+
+export type Permission = (typeof PERMISSIONS)[number];
+
+const ALL_PERMISSIONS: Permission[] = [...PERMISSIONS];
+
+export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
+  SUPER_ADMIN: ALL_PERMISSIONS,
+  ADMIN: [
+    "dashboard.view",
+    "products.view",
+    "products.create",
+    "products.update",
+    "products.delete",
+    "categories.view",
+    "categories.create",
+    "categories.update",
+    "categories.delete",
+    "inventory.view",
+    "inventory.update",
+    "orders.view",
+    "orders.update",
+    "customers.view",
+    "cms.view",
+    "cms.create",
+    "cms.update",
+    "cms.delete",
+    "media.view",
+    "media.upload",
+    "media.update",
+    "media.delete",
+    "product_images.view",
+    "product_images.upload",
+    "product_images.update",
+    "product_images.delete",
+    "settings.view",
+    "settings.update",
+    "branding.view",
+    "branding.update",
+    "navigation.view",
+    "navigation.update",
+    "seo.view",
+    "seo.update",
+    "theme.view",
+    "theme.update",
+    "shipping.view",
+    "shipping.update",
+    "payments.view",
+    "payments.update",
+  ],
+  EDITOR: [
+    "dashboard.view",
+    "products.view",
+    "products.create",
+    "products.update",
+    "categories.view",
+    "categories.create",
+    "categories.update",
+    "inventory.view",
+    "inventory.update",
+    "cms.view",
+    "cms.create",
+    "cms.update",
+    "cms.delete",
+    "media.view",
+    "media.upload",
+    "media.update",
+    "product_images.view",
+    "product_images.upload",
+    "product_images.update",
+    "branding.view",
+    "branding.update",
+    "navigation.view",
+    "navigation.update",
+    "seo.view",
+    "seo.update",
+    "theme.view",
+  ],
+  ORDER_MANAGER: [
+    "dashboard.view",
+    "orders.view",
+    "orders.update",
+    "customers.view",
+    "payments.view",
+    "inventory.view",
+  ],
+};
+
+export function permissionsForRoles(roles: AdminRoleCode[]): Set<Permission> {
+  const set = new Set<Permission>();
+  for (const role of roles) {
+    const list = ROLE_PERMISSIONS[role];
+    if (!list) continue;
+    for (const permission of list) set.add(permission);
+  }
+  return set;
+}
+
+export function hasPermission(
+  roles: AdminRoleCode[],
+  permission: Permission,
+): boolean {
+  return permissionsForRoles(roles).has(permission);
+}
+
+export function hasAnyRole(
+  roles: AdminRoleCode[],
+  required: AdminRoleCode[],
+): boolean {
+  return required.some((role) => roles.includes(role));
+}
