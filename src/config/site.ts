@@ -1,5 +1,6 @@
 import { defaultPlatformConfig } from "./defaults";
 import type { PlatformConfig } from "@/types";
+import { resolveTrustedSiteUrl } from "@/lib/site-url";
 
 /**
  * Sync fallback for non-async contexts.
@@ -20,9 +21,7 @@ export async function getPlatformConfigAsync(): Promise<PlatformConfig> {
   }
 }
 
+/** Validated white-label site origin — never from request Host. */
 export function getSiteUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "http://localhost:3000"
-  );
+  return resolveTrustedSiteUrl();
 }

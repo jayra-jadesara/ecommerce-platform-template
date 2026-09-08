@@ -9,7 +9,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import {
   archiveCategoryAction,
@@ -25,6 +25,7 @@ import {
   type CategoryFormValues,
 } from "@/features/catalog/validation";
 import { MediaPicker } from "@/features/media/components/MediaPicker";
+import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
 
 function CategoryImagePicker({
   disabled,
@@ -86,6 +87,8 @@ export function CategoryManager({
       imagePath: row.image_path,
       sortOrder: row.sort_order,
       isActive: row.is_active,
+      seoTitle: row.seo_title ?? "",
+      seoDescription: row.seo_description ?? "",
     } satisfies CategoryFormValues;
   }, [editingId, initialCategories]);
 
@@ -94,6 +97,15 @@ export function CategoryManager({
       resolver: zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>,
       values: defaults,
     });
+
+  const watchedSeoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
+  const watchedSeoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
+  const watchedName = useWatch({ control, name: "name" }) ?? "";
+  const watchedSlug = useWatch({ control, name: "slug" }) ?? "";
+  const siteUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : "https://example.com";
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -264,6 +276,41 @@ export function CategoryManager({
                     />
                   </div>
                 )}
+              />
+              <p className="pt-1 text-sm font-medium">SEO</p>
+              <Controller
+                name="seoTitle"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    size="small"
+                    label="SEO title"
+                    fullWidth
+                    disabled={!(editingId ? canUpdate : canCreate)}
+                    helperText="Optional. Falls back to category name."
+                  />
+                )}
+              />
+              <Controller
+                name="seoDescription"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    size="small"
+                    label="SEO description"
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    disabled={!(editingId ? canUpdate : canCreate)}
+                  />
+                )}
+              />
+              <GoogleSeoPreview
+                title={watchedSeoTitle || watchedName}
+                url={`${siteUrl}/categories/${watchedSlug || "category-slug"}`}
+                description={watchedSeoDescription}
               />
             </div>
           </details>

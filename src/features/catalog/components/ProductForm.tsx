@@ -28,6 +28,7 @@ import {
   type ProductFormValues,
 } from "@/features/catalog/validation";
 import { getAdminPath } from "@/config/admin-route";
+import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
 
 function sizeMenuItems(current: string) {
   const options = PRODUCT_SIZE_OPTIONS as readonly string[];
@@ -123,6 +124,11 @@ export function ProductForm({
 
   const variants = useWatch({ control, name: "variants" }) ?? [];
   const productName = useWatch({ control, name: "name" }) ?? "";
+  const seoTitleWatch = useWatch({ control, name: "seoTitle" }) ?? "";
+  const seoDescriptionWatch = useWatch({ control, name: "seoDescription" }) ?? "";
+  const slugWatch = useWatch({ control, name: "slug" }) ?? "";
+  const previewOrigin =
+    typeof window !== "undefined" ? window.location.origin : "https://example.com";
 
   function syncAutoCodesFromName(name: string) {
     if (mode !== "create") return;
@@ -700,7 +706,7 @@ export function ProductForm({
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Search result title"
+                label="SEO title"
                 fullWidth
                 disabled={!fieldsEditable}
                 helperText="Optional title for Google / search engines."
@@ -713,7 +719,7 @@ export function ProductForm({
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Search result description"
+                label="SEO description"
                 fullWidth
                 multiline
                 minRows={2}
@@ -722,6 +728,13 @@ export function ProductForm({
               />
             )}
           />
+          <div className="md:col-span-2">
+            <GoogleSeoPreview
+              title={seoTitleWatch || productName}
+              url={`${previewOrigin}/products/${slugWatch || "product-slug"}`}
+              description={seoDescriptionWatch}
+            />
+          </div>
           {visibleVariants.map(({ field, index }) => {
             const variant = variants[index];
             if (!variant) return null;

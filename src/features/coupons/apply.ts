@@ -22,6 +22,18 @@ export async function applyCouponToPricing(input: {
     return { ok: true, applied: null };
   }
 
+  const { checkRateLimit, RATE_LIMITS } = await import(
+    "@/lib/security/rate-limit"
+  );
+  const limited = checkRateLimit({
+    key: `coupon:${input.storeId}:${input.userId ?? "anon"}:${raw.slice(0, 32).toLowerCase()}`,
+    limit: RATE_LIMITS.coupon.limit,
+    windowMs: RATE_LIMITS.coupon.windowMs,
+  });
+  if (!limited.allowed) {
+    return { ok: false, message: "Too many coupon attempts. Try again shortly." };
+  }
+
   const result = await validateCoupon({
     storeId: input.storeId,
     code: raw,

@@ -4,7 +4,13 @@ import { ProductDetailClient } from "@/features/catalog/components/ProductDetail
 import { getStorefrontProductBySlug } from "@/features/catalog/storefront";
 import { getCurrentUser } from "@/features/auth/session";
 import { getPlatformConfigAsync } from "@/config/site";
-import { buildPageMetadata } from "@/lib/metadata";
+import { metadataFromResolved } from "@/lib/metadata";
+import { resolveProductSeo } from "@/features/seo/resolve";
+import {
+  buildBreadcrumbJsonLd,
+  buildProductJsonLd,
+  JsonLdScript,
+} from "@/features/seo";
 import { Container } from "@/components/layout";
 
 export const dynamic = "force-dynamic";
@@ -20,27 +26,37 @@ export async function generateMetadata({
     getPlatformConfigAsync(),
   ]);
   if (!product) {
-    return buildPageMetadata({
-      title: "Product not found",
-      seo: config.seo,
-    });
+    return metadataFromResolved(
+      {
+        title: "Product not found",
+        description: config.seo.description,
+        canonicalPath: `/products/${slug}`,
+        canonicalUrl: "",
+        ogType: "website",
+        robotsIndex: false,
+        robotsFollow: false,
+      },
+      config.seo,
+    );
   }
 
-  return buildPageMetadata({
-    title: product.seoTitle || product.name,
-    description:
-      product.seoDescription ||
-      product.shortDescription ||
-      config.seo.description,
-    seo: {
-      ...config.seo,
-      title: product.seoTitle || product.name,
-      description:
-        product.seoDescription ||
-        product.shortDescription ||
-        config.seo.description,
+  const primary =
+    product.images.find((image) => image.isPrimary) ?? product.images[0];
+  const resolved = resolveProductSeo({
+    product: {
+      name: product.name,
+      slug: product.slug,
+      seoTitle: product.seoTitle,
+      seoDescription: product.seoDescription,
+      shortDescription: product.shortDescription,
+      primaryImageUrl: primary?.url,
     },
-    canonicalPath: `/products/${product.slug}`,
+    seo: config.seo,
+    brandName: config.brand.name,
+  });
+  return metadataFromResolved(resolved, {
+    ...config.seo,
+    titleTemplate: config.seo.titleTemplate,
   });
 }
 
@@ -57,8 +73,41 @@ export default async function ProductDetailPage({
   ]);
   if (!product) notFound();
 
+  const productLd = buildProductJsonLd({
+    name: product.name,
+    description: product.seoDescription || product.shortDescription || product.description,
+    slug: product.slug,
+    brand: product.brand,
+    images: product.images.map((image) => ({
+      url: image.url,
+      altText: image.altText,
+    })),
+    currency: config.store.currency,
+    variants: product.variants.map((variant) => ({
+      name: variant.name,
+      sku: variant.sku,
+      price: variant.price,
+      stockStatus: variant.stockStatus,
+    })),
+    category: product.category,
+  });
+
+  const crumbs = [
+    { name: "Home", path: "/" },
+    ...(product.category
+      ? [
+          {
+            name: product.category.name,
+            path: `/categories/${product.category.slug}`,
+          },
+        ]
+      : [{ name: "Products", path: "/products" }]),
+    { name: product.name, path: `/products/${product.slug}` },
+  ];
+
   return (
     <Container className="py-10">
+      <JsonLdScript data={[productLd, buildBreadcrumbJsonLd(crumbs)]} />
       <ProductDetailClient
         product={product}
         currency={config.store.currency}

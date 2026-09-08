@@ -589,7 +589,7 @@ export async function updateProduct(
 
   const { data: existing } = await supabase
     .from("products")
-    .select("id, slug")
+    .select("id, slug, seo_title, seo_description")
     .eq("id", id)
     .eq("store_id", storeId)
     .maybeSingle();
@@ -655,6 +655,23 @@ export async function updateProduct(
     entity_id: id,
     metadata: { slug: values.slug, status: values.status, featured: values.featured },
   });
+
+  const seoChanged =
+    (existing.seo_title ?? null) !== emptyToNull(values.seoTitle) ||
+    (existing.seo_description ?? null) !== emptyToNull(values.seoDescription);
+  if (seoChanged) {
+    await supabase.from("audit_logs").insert({
+      store_id: storeId,
+      user_id: admin.user.id,
+      action: "PRODUCT_SEO_UPDATED",
+      entity_type: "products",
+      entity_id: id,
+      metadata: {
+        seo_title: emptyToNull(values.seoTitle),
+        seo_description: emptyToNull(values.seoDescription),
+      },
+    });
+  }
 
   revalidateProducts(id, values.slug);
   if (existing.slug !== values.slug) revalidateProducts(undefined, existing.slug);

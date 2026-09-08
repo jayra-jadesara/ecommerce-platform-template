@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -54,15 +55,20 @@ export function ProductCard({ product, currency }: ProductCardProps) {
       >
         <div className="relative mb-3 aspect-[4/5] overflow-hidden rounded-lg bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)]">
           {product.primaryImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={product.primaryImageUrl}
               alt={product.primaryImageAlt || product.name}
-              className="h-full w-full object-contain p-2"
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 240px"
+              className="object-contain p-2"
               loading="lazy"
             />
           ) : (
-            <span className="absolute inset-0 flex items-center justify-center text-xs text-[var(--color-muted)]">
+            <span
+              className="absolute inset-0 flex items-center justify-center text-xs text-[var(--color-muted)]"
+              role="img"
+              aria-label={`${product.name} placeholder`}
+            >
               No image
             </span>
           )}
@@ -84,7 +90,7 @@ export function ProductCard({ product, currency }: ProductCardProps) {
         {needsOptions ? (
           <Link
             href={`/products/${product.slug}`}
-            className="inline-flex w-full items-center justify-center rounded-md border border-[var(--color-border)] px-3 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--color-border)] px-3 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           >
             Choose options
           </Link>
@@ -102,7 +108,7 @@ export function ProductCard({ product, currency }: ProductCardProps) {
                 quantity: 1,
               });
             }}
-            className="inline-flex w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-3 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-3 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           >
             {product.stockStatus === "OUT_OF_STOCK"
               ? "Out of stock"

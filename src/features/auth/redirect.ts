@@ -7,12 +7,23 @@ export function safeInternalPath(
 ): string {
   if (!candidate) return fallback;
 
-  const path = candidate.trim();
+  let path = candidate.trim();
+  // Decode once to catch encoded //, @, and scheme tricks.
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return fallback;
+  }
+  path = path.trim();
+
   if (!path.startsWith("/")) return fallback;
   if (path.startsWith("//")) return fallback;
   if (path.includes("://")) return fallback;
   if (path.includes("\\")) return fallback;
-  if (/[\s]/.test(path)) return fallback;
+  if (path.includes("@")) return fallback;
+  if (/[\s\0]/.test(path)) return fallback;
+  // Block backslash / control / CRLF smuggling variants
+  if (/[\u0000-\u001f\u007f]/.test(path)) return fallback;
 
   return path;
 }

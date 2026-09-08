@@ -46,6 +46,20 @@ export const categoryFormSchema = z.object({
   ),
   sortOrder: z.coerce.number().int().min(0).max(100_000),
   isActive: z.boolean(),
+  seoTitle: z
+    .string()
+    .trim()
+    .max(120)
+    .optional()
+    .default("")
+    .transform((v) => (v ?? "").trim()),
+  seoDescription: z
+    .string()
+    .trim()
+    .max(320)
+    .optional()
+    .default("")
+    .transform((v) => (v ?? "").trim()),
 });
 
 export type CategoryFormValues = z.infer<typeof categoryFormSchema>;
@@ -209,6 +223,8 @@ export const DEFAULT_CATEGORY_FORM: CategoryFormValues = {
   imagePath: null,
   sortOrder: 0,
   isActive: true,
+  seoTitle: "",
+  seoDescription: "",
 };
 
 export function emptyVariant(clientKey: string): VariantFormValues {

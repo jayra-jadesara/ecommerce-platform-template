@@ -11,7 +11,7 @@ import {
 } from "@/features/cms/section-styles";
 import { formatMoney } from "@/features/catalog/money";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
-import { Hero3DBackdrop } from "@/components/three/Hero3DBackdrop";
+import { Hero3DSlot } from "@/components/three/Hero3DSlot";
 import { defaultPlatformConfig } from "@/config/defaults";
 
 type Props = {
@@ -79,9 +79,9 @@ function SafeLink({
 
 function buttonClass(variant: "primary" | "secondary" = "primary") {
   if (variant === "secondary") {
-    return "inline-flex rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium";
+    return "inline-flex min-h-11 items-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium";
   }
-  return "inline-flex rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]";
+  return "inline-flex min-h-11 items-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]";
 }
 
 export function SectionRenderer({
@@ -111,7 +111,7 @@ export function SectionRenderer({
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)]">
             {hero3dOn ? (
-              <Hero3DBackdrop
+              <Hero3DSlot
                 className="pointer-events-none absolute inset-0 opacity-80"
                 preset={c.scene3dPreset || visualEffects.heroPreset}
                 quality={visualEffects.quality}

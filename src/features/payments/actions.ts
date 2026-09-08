@@ -31,6 +31,18 @@ const cancelSchema = z.object({
 export async function startCheckoutPaymentAction(
   raw: unknown,
 ): Promise<StartCheckoutPaymentResult> {
+  const { enforceRateLimit, rateLimitErrorMessage } = await import(
+    "@/lib/security/server-rate-limit"
+  );
+  const limited = await enforceRateLimit("checkout");
+  if (!limited.allowed) {
+    return {
+      ok: false,
+      error: rateLimitErrorMessage(limited.retryAfterMs),
+      code: "RATE_LIMITED",
+    };
+  }
+
   const parsed = startSchema.safeParse(raw);
   if (!parsed.success) {
     return {

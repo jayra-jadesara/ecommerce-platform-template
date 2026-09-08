@@ -1,11 +1,15 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { Metadata } from "next";
 import { Container } from "@/components/layout/Container";
 import { requireUser } from "@/features/auth/session";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { cn } from "@/lib/cn";
+import { buildPrivatePageMetadata } from "@/features/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPrivatePageMetadata("Account");
 
 const NAV = [
   { href: "/account", label: "Overview" },

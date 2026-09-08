@@ -123,7 +123,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
+    <div className="grid gap-8 pb-24 lg:grid-cols-[1fr_340px] lg:pb-0">
       <div className="space-y-6">
         {summary.issues.length ? (
           <div
@@ -313,7 +313,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
         </section>
       </div>
 
-      <aside className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">
+      <aside className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 lg:sticky lg:top-4">
         <h2 className="font-semibold">Checkout summary</h2>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
           Totals from the server pricing engine.
@@ -473,7 +473,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
               ? "Pay securely"
               : "Select a valid address and resolve cart issues"
           }
-          className="mt-4 flex w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          className="mt-4 hidden min-h-11 w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] lg:flex"
         >
           {paying ? "Processing…" : "Pay Now"}
         </button>
@@ -482,11 +482,36 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
         </p>
         <Link
           href="/cart"
-          className="mt-2 flex w-full items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          className="mt-2 flex min-h-11 w-full items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
         >
           Back to cart
         </Link>
       </aside>
+
+      {/* Mobile sticky Pay Now */}
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_94%,transparent)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
+        <div className="mx-auto flex max-w-lg items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-[var(--color-muted)]">Total</p>
+            <p className="truncate text-base font-semibold">
+              {formatMoney(
+                summary.pricing?.grandTotal.major ?? summary.subtotal,
+                summary.currency,
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={!ready || busy}
+            onClick={() => {
+              void handlePayNow();
+            }}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          >
+            {paying ? "Processing…" : "Pay Now"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

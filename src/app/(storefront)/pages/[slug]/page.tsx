@@ -6,20 +6,36 @@ import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import { metadataFromResolved } from "@/lib/metadata";
+import { resolveCmsPageSeo } from "@/features/seo/resolve";
 
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  if (slug === HOMEPAGE_SLUG) return {};
-  const page = await getPublishedStorefrontPage(slug);
-  if (!page) return {};
+  if (slug === HOMEPAGE_SLUG) {
+    return { robots: { index: false, follow: false } };
+  }
+  const [config, page] = await Promise.all([
+    getPlatformConfigAsync(),
+    getPublishedStorefrontPage(slug),
+  ]);
+  if (!page) {
+    return { robots: { index: false, follow: false } };
+  }
   const og = resolveCmsImageUrl(page.page.ogImagePath);
-  return {
-    title: page.page.seoTitle || page.page.title,
-    description: page.page.seoDescription || undefined,
-    openGraph: og ? { images: [{ url: og }] } : undefined,
-  };
+  const resolved = resolveCmsPageSeo({
+    page: {
+      title: page.page.title,
+      slug: page.page.slug,
+      seoTitle: page.page.seoTitle,
+      seoDescription: page.page.seoDescription,
+      ogImageUrl: og,
+      status: page.page.status,
+    },
+    seo: config.seo,
+  });
+  return metadataFromResolved(resolved, config.seo);
 }
 
 /**

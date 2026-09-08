@@ -27,6 +27,8 @@ export type CategoryRow = {
   slug: string;
   description: string | null;
   image_path: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
   sort_order: number;
   is_active: boolean;
   updated_at: string;
@@ -121,6 +123,8 @@ export async function createCategory(
     image_path: values.imagePath ?? null,
     sort_order: values.sortOrder,
     is_active: values.isActive,
+    seo_title: emptyToNull(values.seoTitle),
+    seo_description: emptyToNull(values.seoDescription),
   };
 
   const { data, error } = await supabase
@@ -201,6 +205,8 @@ export async function updateCategory(
     image_path: values.imagePath ?? null,
     sort_order: values.sortOrder,
     is_active: values.isActive,
+    seo_title: emptyToNull(values.seoTitle),
+    seo_description: emptyToNull(values.seoDescription),
   };
 
   const { error } = await supabase
@@ -221,6 +227,23 @@ export async function updateCategory(
     entity_id: id,
     metadata: { slug: values.slug, is_active: values.isActive },
   });
+
+  const seoChanged =
+    (existing.seo_title ?? null) !== payload.seo_title ||
+    (existing.seo_description ?? null) !== payload.seo_description;
+  if (seoChanged) {
+    await supabase.from("audit_logs").insert({
+      store_id: storeId,
+      user_id: admin.user.id,
+      action: "CATEGORY_SEO_UPDATED",
+      entity_type: "categories",
+      entity_id: id,
+      metadata: {
+        seo_title: payload.seo_title,
+        seo_description: payload.seo_description,
+      },
+    });
+  }
 
   revalidateCatalogCategories(id);
   return { ok: true, message: "Category updated.", id };

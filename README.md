@@ -311,6 +311,89 @@ npx supabase db push
 
 Known limitations: no AI photo→3D; no GLB upload UI in Media Library yet (path paste / storage upload); no paid 3D SaaS; homepage preview lists the selected preset without mounting a live canvas.
 
+### SEO + Google visibility (Phase 17)
+
+Reuses `store_seo_settings` and `buildPageMetadata`. White-label absolute URLs come from validated `NEXT_PUBLIC_SITE_URL` (never request Host).
+
+| Surface | Behavior |
+| --- | --- |
+| Store | Site title, description, OG, robots — **Store Settings → Google & SEO** |
+| Homepage | Store SEO + Organization / WebSite JSON-LD (+ SearchAction → `/products?q=`) |
+| Products | `/products/[slug]` metadata + Product / Offer / BreadcrumbList JSON-LD |
+| Categories | `/categories/[slug]` + optional `seo_title` / `seo_description` |
+| CMS pages | Published only; draft/archived not indexable |
+| Sitemap | `/sitemap.xml` — homepage, products listing, active products/categories, published pages |
+| Robots | `/robots.txt` — disallow account/cart/checkout/payment/auth + `ADMIN_ROUTE` |
+
+Variant pricing: single `Offer` when one price; `AggregateOffer` when prices differ. Currency from store settings.
+
+Audits: `SEO_UPDATED`, `PRODUCT_SEO_UPDATED`, `CATEGORY_SEO_UPDATED`, `PAGE_SEO_UPDATED` (on real saves).
+
+Migration: `20260908180000_category_seo.sql`.
+
+```bash
+npx supabase db push
+```
+
+Deploy: set `NEXT_PUBLIC_SITE_URL=https://your-client-domain.com` per environment. Google indexing is not verified by this repo.
+
+### Performance + PWA (Phase 18)
+
+Storefront-focused load and mobile UX; optional lightweight PWA. No paid CDN/PWA/analytics services.
+
+| Area | Behavior |
+| --- | --- |
+| Images | `next/image` on product cards/gallery; AVIF/WebP; optional Supabase transform via `NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM=true` |
+| Catalog cache | `listStorefrontProducts` uses `unstable_cache` + existing catalog tags (60s) |
+| 3D | Hero via `Hero3DSlot` + dynamic R3F; PDP loads `Product3DViewer` only when a trusted model + admin flags allow |
+| PWA | Branding-driven `/manifest.webmanifest`; minimal `/sw.js`; `/offline` fallback |
+| SW rules | Network-only for cart/checkout/account/payment/auth/API/`ADMIN_ROUTE`; cache-first `/_next/static`; navigations network-first → offline page |
+| Mobile | Sticky cart/checkout/product CTAs; ≥44px tap targets on primary actions |
+| Fonts | `next/font` with `adjustFontFallback` to limit CLS |
+
+**Engineering budgets (targets, not claimed scores):** no Three.js on non-3D pages; no unbounded public catalog fetch; hero LCP text must not wait on WebGL; never cache private responses in the SW.
+
+#### Local verification
+
+```bash
+npm test
+npm run typecheck
+npm run lint
+npm run build
+```
+
+Optional SW in development: `NEXT_PUBLIC_ENABLE_SW_DEV=1`.
+
+#### Lighthouse (manual — do not invent scores)
+
+1. Deploy or run `npm run build && npm run start`.
+2. Chrome DevTools → Lighthouse on Home, a product page, and Cart (mobile + desktop).
+3. Record LCP, CLS, INP, TTFB, and total image weight; compare before/after deploys.
+4. Confirm Application → Manifest installs; Service Workers → `/sw.js` active; Cache Storage has only `storefront-static-*` / `storefront-offline-*`.
+5. DevTools → Network → Offline: public navigations should show `/offline`; cart/checkout must still require network (no fabricated offline checkout).
+
+Known limitations: not a full offline store; SW is intentionally minimal (no Workbox/paid PWA host); Supabase image transforms require a plan that supports them; numeric CWV/Lighthouse scores are environment-specific and must be measured.
+
+### Security hardening (Phase 19)
+
+See [SECURITY.md](./SECURITY.md) for secrets, RLS, payments, headers, and incident basics.
+
+Highlights:
+
+- Dropped customer `orders` / `order_items` insert RLS (payment pipeline / service role only)
+- Media metadata no longer anonymously enumerable
+- Coupon RLS write roles aligned with Admin RBAC
+- Order detail/list service-role queries require user or admin+store scope
+- Production guest cart requires `GUEST_CART_SECRET`
+- Baseline security headers + pragmatic CSP (Razorpay/Supabase compatible)
+- Best-effort in-process rate limits on auth, newsletter, coupons, checkout, webhooks
+
+Migration: `20260908200000_security_hardening.sql`
+
+```bash
+npx supabase db push
+```
+
 ### Pricing engine (Phase 11)
 
 Single server-side source of truth for cart subtotals, checkout totals, and (later) order/Razorpay amounts:

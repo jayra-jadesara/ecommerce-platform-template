@@ -126,6 +126,17 @@ export async function deleteBannerAction(id: string) {
 
 /** Newsletter signup — stores email only; no outbound email. */
 export async function subscribeNewsletterAction(raw: unknown) {
+  const { enforceRateLimit, rateLimitErrorMessage } = await import(
+    "@/lib/security/server-rate-limit"
+  );
+  const limited = await enforceRateLimit("newsletter");
+  if (!limited.allowed) {
+    return {
+      ok: false as const,
+      error: rateLimitErrorMessage(limited.retryAfterMs),
+    };
+  }
+
   const parsed = z
     .object({
       email: z.string().email("Enter a valid email."),

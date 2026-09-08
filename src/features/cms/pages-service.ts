@@ -245,6 +245,24 @@ export async function updateAdminPage(
     metadata: { slug: data.slug, status: data.status },
   });
 
+  const seoChanged =
+    (current.seo_title ?? null) !== (values.seoTitle ?? null) ||
+    (current.seo_description ?? null) !== (values.seoDescription ?? null) ||
+    (current.og_image_path ?? null) !== (values.ogImagePath ?? null);
+  if (seoChanged) {
+    await writeContentAudit({
+      storeId,
+      userId: user?.id ?? null,
+      action: "PAGE_SEO_UPDATED",
+      entityType: isHomepage ? "homepage" : "page",
+      entityId: data.id,
+      metadata: {
+        seo_title: values.seoTitle,
+        seo_description: values.seoDescription,
+      },
+    });
+  }
+
   if (!wasPublished && willPublish) {
     await writeContentAudit({
       storeId,

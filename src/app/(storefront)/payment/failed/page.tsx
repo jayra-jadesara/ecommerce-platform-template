@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/PageShell";
 import { getCurrentUser } from "@/features/auth/session";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { buildPrivatePageMetadata } from "@/features/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = buildPrivatePageMetadata("Payment failed");
 
 export default async function PaymentFailedPage({
   searchParams,

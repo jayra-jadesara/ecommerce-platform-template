@@ -6,6 +6,7 @@ import type { Json } from "@/types/database";
 export type ContentAuditAction =
   | "PAGE_CREATED"
   | "PAGE_UPDATED"
+  | "PAGE_SEO_UPDATED"
   | "PAGE_PUBLISHED"
   | "PAGE_UNPUBLISHED"
   | "PAGE_ARCHIVED"

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { PageShell } from "@/components/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
@@ -7,8 +8,25 @@ import {
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
 import { getPlatformConfigAsync } from "@/config/site";
+import { metadataFromResolved } from "@/lib/metadata";
+import { resolveProductsListingSeo } from "@/features/seo/resolve";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}): Promise<Metadata> {
+  const params = await searchParams;
+  const pageRaw = typeof params.page === "string" ? params.page : "1";
+  const page = Number(pageRaw) || 1;
+  const config = await getPlatformConfigAsync();
+  return metadataFromResolved(
+    resolveProductsListingSeo({ seo: config.seo, page }),
+    config.seo,
+  );
+}
 
 export default async function ProductsPage({
   searchParams,

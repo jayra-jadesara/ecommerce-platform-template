@@ -6,7 +6,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { saveSeoSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
 import {
@@ -14,6 +14,7 @@ import {
   seoSettingsSchema,
   type SeoSettingsFormValues,
 } from "@/features/admin/settings/schemas";
+import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
 
 interface SeoSettingsFormProps {
   initialValues: SeoSettingsFormValues;
@@ -38,6 +39,10 @@ export function SeoSettingsForm({
     resolver: zodResolver(seoSettingsSchema),
     defaultValues: initialValues,
   });
+
+  const siteTitle = useWatch({ control, name: "siteTitle" }) ?? "";
+  const metaDescription = useWatch({ control, name: "metaDescription" }) ?? "";
+  const canonicalUrl = useWatch({ control, name: "canonicalUrl" }) ?? "";
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -80,6 +85,12 @@ export function SeoSettingsForm({
         }}
       />
 
+      <GoogleSeoPreview
+        title={siteTitle}
+        url={canonicalUrl || "https://your-store.example/"}
+        description={metaDescription}
+      />
+
       <section className="grid gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:grid-cols-2">
         <Controller
           name="siteTitle"
@@ -92,7 +103,10 @@ export function SeoSettingsForm({
               required
               disabled={!canUpdate}
               error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message}
+              helperText={
+                fieldState.error?.message ||
+                `${(field.value ?? "").length}/120 characters`
+              }
             />
           )}
         />
@@ -106,7 +120,10 @@ export function SeoSettingsForm({
               fullWidth
               disabled={!canUpdate}
               error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message}
+              helperText={
+                fieldState.error?.message ||
+                "Optional store homepage URL (https). Leave blank to use the deployment site URL."
+              }
             />
           )}
         />
@@ -122,6 +139,7 @@ export function SeoSettingsForm({
                 multiline
                 minRows={3}
                 disabled={!canUpdate}
+                helperText={`${(field.value ?? "").length}/320 characters`}
               />
             )}
           />
@@ -165,6 +183,25 @@ export function SeoSettingsForm({
             />
           )}
         />
+        <div className="md:col-span-2">
+          <Controller
+            name="ogImagePath"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                value={field.value ?? ""}
+                label="Social sharing image path"
+                fullWidth
+                disabled={!canUpdate}
+                helperText="Optional storage path from Media Library (branding). Prefer Branding settings for the default share image."
+                onChange={(event) =>
+                  field.onChange(event.target.value.trim() || null)
+                }
+              />
+            )}
+          />
+        </div>
         <Controller
           name="robotsIndex"
           control={control}

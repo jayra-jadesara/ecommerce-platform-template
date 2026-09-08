@@ -11,12 +11,21 @@ import {
   GUEST_CART_TTL_DAYS_DEFAULT,
 } from "@/features/cart/types";
 
-function guestCartSecret(): string {
-  return (
-    process.env.GUEST_CART_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() ||
-    ""
-  );
+/**
+ * Prefer dedicated GUEST_CART_SECRET.
+ * Production requires it (no service-role fallback) so rotating DB keys
+ * does not invalidate carts and the HMAC key stays purpose-scoped.
+ * Development may fall back to the service role key for local ergonomics.
+ */
+export function guestCartSecret(): string {
+  const dedicated = process.env.GUEST_CART_SECRET?.trim() || "";
+  if (dedicated) return dedicated;
+
+  if (process.env.NODE_ENV === "production") {
+    return "";
+  }
+
+  return process.env.SUPABASE_SERVICE_ROLE_KEY?.trim() || "";
 }
 
 function guestCartTtlDays(): number {

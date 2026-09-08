@@ -125,14 +125,25 @@ export async function getOrderDetail(input: {
   storeId?: string | null;
   asAdmin?: boolean;
 }): Promise<OrderDetail | null> {
+  // Service-role client bypasses RLS — never allow unscoped ID lookups.
+  const asAdmin = Boolean(input.asAdmin);
+  const userId = input.userId?.trim() || null;
+  const storeId = input.storeId?.trim() || null;
+
+  if (asAdmin) {
+    if (!storeId) return null;
+  } else if (!userId) {
+    return null;
+  }
+
   const supabase = createSupabaseServiceClient();
   let query = supabase.from("orders").select("*").eq("id", input.orderId);
 
-  if (!input.asAdmin && input.userId) {
-    query = query.eq("user_id", input.userId);
-  }
-  if (input.storeId) {
-    query = query.eq("store_id", input.storeId);
+  if (asAdmin) {
+    query = query.eq("store_id", storeId!);
+  } else {
+    query = query.eq("user_id", userId!);
+    if (storeId) query = query.eq("store_id", storeId);
   }
 
   const { data: order } = await query.maybeSingle();
@@ -245,6 +256,11 @@ export async function listAdminOrders(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Service-role listing must always be store-scoped.
+  if (!query.storeId?.trim()) {
+    return { items: [], total: 0, page, pageSize };
+  }
+
   const supabase = createSupabaseServiceClient();
   let builder = supabase
     .from("orders")
@@ -252,17 +268,15 @@ export async function listAdminOrders(
       "id, order_number, status, grand_total, currency, created_at, user_id, store_id",
       { count: "exact" },
     )
+    .eq("store_id", query.storeId)
     .order("created_at", { ascending: false });
 
-  if (query.storeId) {
-    builder = builder.eq("store_id", query.storeId);
-  }
   if (query.status && query.status !== "ALL") {
     builder = builder.eq("status", query.status as OrderStatus);
   }
   if (query.search?.trim()) {
-    const q = query.search.trim();
-    builder = builder.ilike("order_number", `%${q}%`);
+    const q = query.search.trim().replace(/[%_,]/g, "");
+    if (q) builder = builder.ilike("order_number", `%${q}%`);
   }
 
   const { data, count, error } = await builder.range(from, to);

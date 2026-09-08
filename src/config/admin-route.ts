@@ -21,6 +21,8 @@ export function getAdminRouteSegment(): string {
     "api",
     "auth",
     "products",
+    "categories",
+    "pages",
     "about",
     "contact",
     "privacy",

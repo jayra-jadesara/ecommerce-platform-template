@@ -93,6 +93,18 @@ export async function updateSeoSettings(
     },
   });
 
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: admin.user.id,
+    action: "SEO_UPDATED",
+    entity_type: "store_seo_settings",
+    entity_id: storeId,
+    metadata: {
+      site_title: values.siteTitle,
+      robots_index: values.robotsIndex,
+    },
+  });
+
   revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
   return { ok: true, message: "SEO settings saved." };
 }

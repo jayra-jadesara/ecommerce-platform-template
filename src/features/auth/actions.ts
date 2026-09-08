@@ -15,15 +15,30 @@ import {
 } from "@/features/auth/validations";
 import { requireUser } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
+import {
+  enforceRateLimit,
+  rateLimitErrorMessage,
+} from "@/lib/security/server-rate-limit";
 
 export type AuthActionResult =
   | { ok: true; message?: string }
   | { ok: false; error: string };
 
+async function guardAuthRate(): Promise<AuthActionResult | null> {
+  const limited = await enforceRateLimit("auth");
+  if (!limited.allowed) {
+    return { ok: false, error: rateLimitErrorMessage(limited.retryAfterMs) };
+  }
+  return null;
+}
+
 export async function loginAction(
   raw: unknown,
   nextPath?: string,
 ): Promise<AuthActionResult> {
+  const blocked = await guardAuthRate();
+  if (blocked) return blocked;
+
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -55,6 +70,9 @@ export async function loginAction(
 }
 
 export async function registerAction(raw: unknown): Promise<AuthActionResult> {
+  const blocked = await guardAuthRate();
+  if (blocked) return blocked;
+
   const parsed = registerSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -91,6 +109,9 @@ export async function logoutAction(redirectTo = "/"): Promise<void> {
 export async function forgotPasswordAction(
   raw: unknown,
 ): Promise<AuthActionResult> {
+  const blocked = await guardAuthRate();
+  if (blocked) return blocked;
+
   const parsed = forgotPasswordSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
@@ -157,6 +178,9 @@ export async function adminLoginAction(
   nextPath?: string,
   adminLoginFallback = getAdminPath("/dashboard"),
 ): Promise<AuthActionResult> {
+  const blocked = await guardAuthRate();
+  if (blocked) return blocked;
+
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };

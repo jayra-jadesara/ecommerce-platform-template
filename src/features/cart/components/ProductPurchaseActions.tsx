@@ -95,7 +95,7 @@ export function ProductPurchaseActions({
             setMessage(null);
             addMutation.mutate({ productId, variantId, quantity });
           }}
-          className="rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
         >
           {outOfStock ? "Out of stock" : "Add to cart"}
         </button>
@@ -106,14 +106,14 @@ export function ProductPurchaseActions({
             disabled={wishlistMutation.isPending}
             aria-pressed={Boolean(wishlistQuery.data)}
             onClick={() => wishlistMutation.mutate()}
-            className="rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           >
             {wishlistQuery.data ? "Remove from wishlist" : "Add to wishlist"}
           </button>
         ) : (
           <a
             href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
-            className="rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium text-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium text-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           >
             Sign in to save
           </a>

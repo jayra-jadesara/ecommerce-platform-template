@@ -6,6 +6,7 @@ import {
   CATALOG_CACHE_TAG,
   CATALOG_CATEGORIES_TAG,
   CATALOG_PRODUCTS_TAG,
+  categoryCacheTag,
   productCacheTag,
 } from "@/features/catalog/cache";
 import {
@@ -56,6 +57,9 @@ export type StorefrontCategory = {
   slug: string;
   description: string | null;
   parent_id: string | null;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  imageUrl?: string;
 };
 
 export type StorefrontProductCard = {
@@ -108,13 +112,33 @@ async function listActiveCategoriesUncached(): Promise<StorefrontCategory[]> {
 
   const { data } = await supabase
     .from("categories")
-    .select("id, name, slug, description, parent_id")
+    .select(
+      "id, name, slug, description, parent_id, image_path, seo_title, seo_description",
+    )
     .eq("store_id", storeId)
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("name", { ascending: true });
 
-  return (data as StorefrontCategory[] | null) ?? [];
+  return ((data as Array<{
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    parent_id: string | null;
+    image_path: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
+  }> | null) ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    parent_id: row.parent_id,
+    seoTitle: row.seo_title,
+    seoDescription: row.seo_description,
+    imageUrl: resolvePublicStorageUrl("categories", row.image_path),
+  }));
 }
 
 export const listStorefrontCategories = unstable_cache(
@@ -122,6 +146,57 @@ export const listStorefrontCategories = unstable_cache(
   ["storefront-categories"],
   { revalidate: 60, tags: [CATALOG_CACHE_TAG, CATALOG_CATEGORIES_TAG] },
 );
+
+async function getCategoryBySlugUncached(
+  slug: string,
+): Promise<StorefrontCategory | null> {
+  const supabase = createSupabasePublicClient();
+  const storeId = await resolveStoreId();
+  if (!supabase || !storeId) return null;
+
+  const { data } = await supabase
+    .from("categories")
+    .select(
+      "id, name, slug, description, parent_id, image_path, seo_title, seo_description",
+    )
+    .eq("store_id", storeId)
+    .eq("slug", slug)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!data) return null;
+  const row = data as {
+    id: string;
+    name: string;
+    slug: string;
+    description: string | null;
+    parent_id: string | null;
+    image_path: string | null;
+    seo_title: string | null;
+    seo_description: string | null;
+  };
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    parent_id: row.parent_id,
+    seoTitle: row.seo_title,
+    seoDescription: row.seo_description,
+    imageUrl: resolvePublicStorageUrl("categories", row.image_path),
+  };
+}
+
+export function getStorefrontCategoryBySlug(slug: string) {
+  return unstable_cache(
+    () => getCategoryBySlugUncached(slug),
+    ["storefront-category", slug],
+    {
+      revalidate: 60,
+      tags: [CATALOG_CACHE_TAG, CATALOG_CATEGORIES_TAG, categoryCacheTag(slug)],
+    },
+  )();
+}
 
 export async function listStorefrontProducts(rawQuery: unknown): Promise<{
   items: StorefrontProductCard[];
@@ -134,6 +209,34 @@ export async function listStorefrontProducts(rawQuery: unknown): Promise<{
     status: "active",
   });
 
+  const cacheKey = [
+    "storefront-products",
+    String(query.page),
+    String(query.pageSize),
+    query.q || "",
+    query.categoryId || "",
+    query.featured || "",
+    query.sort || "newest",
+  ];
+
+  return unstable_cache(
+    () => listStorefrontProductsUncached(query),
+    cacheKey,
+    {
+      revalidate: 60,
+      tags: [CATALOG_CACHE_TAG, CATALOG_PRODUCTS_TAG],
+    },
+  )();
+}
+
+async function listStorefrontProductsUncached(
+  query: ReturnType<typeof productListQuerySchema.parse>,
+): Promise<{
+  items: StorefrontProductCard[];
+  total: number;
+  page: number;
+  pageSize: number;
+}> {
   const supabase = createSupabasePublicClient();
   const storeId = await resolveStoreId();
   if (!supabase || !storeId) {

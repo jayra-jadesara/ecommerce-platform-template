@@ -1,13 +1,19 @@
 "use client";
 
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import Chip from "@mui/material/Chip";
 import { ProductPurchaseActions } from "@/features/cart/components/ProductPurchaseActions";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
-import { Product3DViewer } from "@/components/three/Product3DViewer";
 import type { VisualEffectsConfig, AnimationConfig } from "@/types";
+
+const Product3DViewer = dynamic(
+  () =>
+    import("@/components/three/Product3DViewer").then((m) => m.Product3DViewer),
+  { ssr: false },
+);
 
 interface ProductDetailClientProps {
   product: StorefrontProductDetail;
@@ -89,19 +95,31 @@ export function ProductDetailClient({
     </div>
   );
 
+  const product3dEligible =
+    Boolean(product.modelPath) &&
+    visualEffects.enabled &&
+    visualEffects.productEnabled;
+
+  const galleryShellClass =
+    "relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0";
+
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-12">
+    <div className="grid gap-8 pb-24 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:pb-0 xl:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-12">
       <div className="space-y-3">
-        <Product3DViewer
-          modelPath={product.modelPath}
-          enabled={visualEffects.enabled && visualEffects.productEnabled}
-          mobileEnabled={visualEffects.mobileEnabled}
-          respectReducedMotion={visualEffects.respectReducedMotion}
-          animationStoreEnabled={animation.enabled}
-          quality={visualEffects.quality}
-          className="relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0"
-          fallback={galleryFallback}
-        />
+        {product3dEligible ? (
+          <Product3DViewer
+            modelPath={product.modelPath}
+            enabled
+            mobileEnabled={visualEffects.mobileEnabled}
+            respectReducedMotion={visualEffects.respectReducedMotion}
+            animationStoreEnabled={animation.enabled}
+            quality={visualEffects.quality}
+            className={galleryShellClass}
+            fallback={galleryFallback}
+          />
+        ) : (
+          <div className={galleryShellClass}>{galleryFallback}</div>
+        )}
         {galleryImages.length > 1 ? (
           <ul className="flex flex-wrap gap-2" aria-label="Product gallery">
             {galleryImages.map((image) => {
@@ -222,17 +240,19 @@ export function ProductDetailClient({
           )}
         </fieldset>
 
-        <ProductPurchaseActions
-          key={selected.id}
-          productId={product.id}
-          productSlug={product.slug}
-          variantId={selected.id}
-          maxAvailable={
-            selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
-          }
-          outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
-          isAuthenticated={isAuthenticated}
-        />
+        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_94%,transparent)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:static lg:z-auto lg:border-0 lg:bg-transparent lg:p-0 lg:pb-0 lg:backdrop-blur-none">
+          <ProductPurchaseActions
+            key={selected.id}
+            productId={product.id}
+            productSlug={product.slug}
+            variantId={selected.id}
+            maxAvailable={
+              selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
+            }
+            outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
+            isAuthenticated={isAuthenticated}
+          />
+        </div>
 
         {product.description ? (
           <section>
