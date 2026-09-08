@@ -1,5 +1,6 @@
 import "server-only";
 
+import { applyCouponToPricing } from "@/features/coupons/apply";
 import { calculateOrderPricing } from "@/features/pricing/engine";
 import { loadPricingContext } from "@/features/pricing/config";
 import { majorToMinor } from "@/features/pricing/money";
@@ -20,7 +21,16 @@ export type CalculateOrderPricingParams = {
     productName?: string;
     variantName?: string;
   }>;
-  /** Future coupon integration — defaults to 0. */
+  /**
+   * Optional coupon code from the client. Server validates and resolves discount.
+   * Never trust a client-supplied discount amount as authority.
+   */
+  couponCode?: string | null;
+  userId?: string | null;
+  /**
+   * Advanced: pre-resolved discount minor (tests / internal). Ignored when
+   * couponCode is provided.
+   */
   discountMinor?: number;
   discountCode?: string | null;
   discountLabel?: string | null;
@@ -31,13 +41,18 @@ export type CalculateOrderPricingParams = {
   includeExtras?: boolean;
 };
 
+export type CalculateOrderPricingServiceResult = PricingEngineOutcome & {
+  couponMessage?: string | null;
+  couponId?: string | null;
+};
+
 /**
- * Single source of truth for cart / checkout / future order & Razorpay amounts.
+ * Single source of truth for cart / checkout / order & payment amounts.
  * Always pass server-resolved catalog prices — never browser amounts.
  */
 export async function calculateOrderPricingService(
   params: CalculateOrderPricingParams,
-): Promise<PricingEngineOutcome> {
+): Promise<CalculateOrderPricingServiceResult> {
   const includeExtras = params.includeExtras !== false;
   const context = await loadPricingContext(params.storeId);
 
@@ -50,7 +65,39 @@ export async function calculateOrderPricingService(
     variantName: line.variantName,
   }));
 
-  return calculateOrderPricing({
+  const subtotalMinor = lines.reduce(
+    (sum, line) => sum + line.unitPriceMinor * line.quantity,
+    0,
+  );
+
+  let discountMinor = params.discountMinor ?? 0;
+  let discountCode = params.discountCode ?? null;
+  let discountLabel = params.discountLabel ?? null;
+  let couponMessage: string | null = null;
+  let couponId: string | null = null;
+
+  if (params.couponCode?.trim() && params.storeId) {
+    const applied = await applyCouponToPricing({
+      storeId: params.storeId,
+      code: params.couponCode,
+      subtotalMinor,
+      currency: context.currency,
+      userId: params.userId,
+    });
+    if (!applied.ok) {
+      couponMessage = applied.message;
+      discountMinor = 0;
+      discountCode = null;
+      discountLabel = null;
+    } else if (applied.applied) {
+      discountMinor = applied.applied.discountMinor;
+      discountCode = applied.applied.code;
+      discountLabel = applied.applied.label;
+      couponId = applied.applied.couponId;
+    }
+  }
+
+  const outcome = calculateOrderPricing({
     currency: context.currency,
     lines,
     shipping: includeExtras
@@ -74,11 +121,17 @@ export async function calculateOrderPricingService(
       ? context.tax
       : { enabled: false, taxType: "PERCENTAGE", taxValue: 0 },
     discount: {
-      amountMinor: params.discountMinor ?? 0,
-      code: params.discountCode ?? null,
-      label: params.discountLabel ?? null,
+      amountMinor: discountMinor,
+      code: discountCode,
+      label: discountLabel,
     },
   });
+
+  if (!outcome.ok) {
+    return { ...outcome, couponMessage, couponId };
+  }
+
+  return { ...outcome, couponMessage, couponId };
 }
 
 export type { PricingResult };

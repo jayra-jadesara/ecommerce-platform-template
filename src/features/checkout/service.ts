@@ -52,6 +52,8 @@ function emptySummary(
     itemCount: 0,
     subtotal: 0,
     pricing: null,
+    couponCode: null,
+    couponMessage: null,
     issues,
     canProceed: false,
     addresses,
@@ -244,6 +246,7 @@ async function validateLine(
 
 export async function getCheckoutSummary(input?: {
   selectedAddressId?: string | null;
+  couponCode?: string | null;
 }): Promise<CheckoutSummary> {
   const user = await getCurrentUser();
   if (!user) {
@@ -290,11 +293,15 @@ export async function getCheckoutSummary(input?: {
   );
   let pricing = null as CheckoutSummary["pricing"];
   let subtotal = 0;
+  let couponCode: string | null = null;
+  let couponMessage: string | null = null;
   const pricingIssues = [...issues];
 
-  if (availableLines.length > 0) {
+  if (availableLines.length > 0 && storeId) {
     const priced = await calculateOrderPricingService({
       storeId,
+      userId: user.id,
+      couponCode: input?.couponCode ?? null,
       lines: availableLines.map((line) => ({
         productId: line.productId,
         variantId: line.variantId,
@@ -308,12 +315,20 @@ export async function getCheckoutSummary(input?: {
     if (priced.ok) {
       pricing = priced.pricing;
       subtotal = priced.pricing.subtotal.major;
+      if (priced.pricing.discountInfo.code) {
+        couponCode = priced.pricing.discountInfo.code;
+      }
+      if (priced.couponMessage) {
+        couponMessage = priced.couponMessage;
+      }
     } else {
       pricingIssues.push({
         code: "PRICING_FAILED",
         message: priced.error,
       });
     }
+  } else if (input?.couponCode?.trim()) {
+    couponMessage = "Add items to your cart before applying a coupon.";
   }
 
   const finalBlocking = pricingIssues.some((issue) =>
@@ -332,6 +347,8 @@ export async function getCheckoutSummary(input?: {
     itemCount: cartItemCount(lines),
     subtotal,
     pricing,
+    couponCode,
+    couponMessage,
     issues: pricingIssues,
     canProceed: finalCanProceed,
     addresses,
@@ -346,7 +363,8 @@ export async function getCheckoutSummary(input?: {
 
 export async function removeCheckoutIssueItem(
   cartItemId: string,
+  couponCode?: string | null,
 ): Promise<CheckoutSummary> {
   await removeFromCart(cartItemId);
-  return getCheckoutSummary();
+  return getCheckoutSummary({ couponCode });
 }

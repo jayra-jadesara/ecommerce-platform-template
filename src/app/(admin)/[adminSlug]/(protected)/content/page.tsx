@@ -1,19 +1,20 @@
 import Link from "next/link";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { requirePermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+
+export const dynamic = "force-dynamic";
 
 const SECTIONS = [
   {
     href: "/content/homepage",
     title: "Homepage",
-    description: "Hero banner, featured products, and homepage sections.",
+    description: "Hero, products, categories, and other homepage sections.",
   },
   {
     href: "/content/pages",
     title: "Pages",
-    description: "About, contact, and other store pages.",
+    description: "About, policies, and other store pages.",
   },
   {
     href: "/content/banners",
@@ -28,7 +29,7 @@ const SECTIONS = [
 ] as const;
 
 export default async function AdminContentHubPage() {
-  await requirePermission("cms.view");
+  await requirePermission("content.view");
 
   return (
     <div>
@@ -52,12 +53,6 @@ export default async function AdminContentHubPage() {
           </li>
         ))}
       </ul>
-      <div className="mt-8">
-        <EmptyState
-          title="Content editor is expanding"
-          description="Homepage, pages and banners will open into a full visual editor in a later update. Images & Files is ready to use now."
-        />
-      </div>
     </div>
   );
 }

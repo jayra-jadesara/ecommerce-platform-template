@@ -10,6 +10,8 @@ import {
 import { AddressForm } from "@/features/addresses/components/AddressForm";
 import type { CustomerAddress } from "@/features/addresses/types";
 import {
+  applyCheckoutCouponAction,
+  removeCheckoutCouponAction,
   removeCheckoutItemAction,
   selectCheckoutAddressAction,
 } from "@/features/checkout/actions";
@@ -41,6 +43,9 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
   const router = useRouter();
   const { openCheckout } = useRazorpayCheckout();
   const [summary, setSummary] = useState(initialSummary);
+  const [couponInput, setCouponInput] = useState(
+    initialSummary.couponCode ?? "",
+  );
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
@@ -73,6 +78,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
     try {
       const started = await startCheckoutPaymentAction({
         addressId: summary.selectedAddressId,
+        couponCode: summary.couponCode,
       });
       if (!started.ok) {
         setError(started.error);
@@ -141,6 +147,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
                           startTransition(async () => {
                             const next = await removeCheckoutItemAction({
                               cartItemId: issue.cartItemId!,
+                              couponCode: summary.couponCode,
                             });
                             setSummary(next);
                           });
@@ -240,6 +247,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
                   }
                   const next = await selectCheckoutAddressAction({
                     addressId: result.address.id,
+                    couponCode: summary.couponCode,
                   });
                   setSummary(next);
                   setShowNewAddress(false);
@@ -277,6 +285,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
                             setError(null);
                             const next = await selectCheckoutAddressAction({
                               addressId: address.id,
+                              couponCode: summary.couponCode,
                             });
                             setSummary(next);
                           });
@@ -307,8 +316,76 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
       <aside className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5">
         <h2 className="font-semibold">Checkout summary</h2>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Totals from the server pricing engine. Coupons are not applied yet.
+          Totals from the server pricing engine.
         </p>
+
+        <div className="mt-4 space-y-2">
+          <label htmlFor="checkout-coupon" className="text-sm font-medium">
+            Coupon code
+          </label>
+          {summary.couponCode ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm">
+              <span>
+                Applied: <strong>{summary.couponCode}</strong>
+              </span>
+              <button
+                type="button"
+                disabled={busy}
+                className="underline disabled:opacity-50"
+                onClick={() => {
+                  startTransition(async () => {
+                    setError(null);
+                    const next = await removeCheckoutCouponAction({
+                      selectedAddressId: summary.selectedAddressId,
+                    });
+                    setSummary(next);
+                    setCouponInput("");
+                  });
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <input
+                id="checkout-coupon"
+                value={couponInput}
+                onChange={(e) => setCouponInput(e.target.value)}
+                disabled={busy || summary.lines.length === 0}
+                placeholder="Enter code"
+                className="min-w-0 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm uppercase focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                disabled={busy || !couponInput.trim() || summary.lines.length === 0}
+                className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm font-medium disabled:opacity-50"
+                onClick={() => {
+                  startTransition(async () => {
+                    setError(null);
+                    const next = await applyCheckoutCouponAction({
+                      code: couponInput,
+                      selectedAddressId: summary.selectedAddressId,
+                    });
+                    setSummary(next);
+                    if (next.couponCode) {
+                      setCouponInput(next.couponCode);
+                    }
+                  });
+                }}
+              >
+                Apply
+              </button>
+            </div>
+          )}
+          {summary.couponMessage ? (
+            <p className="text-xs text-red-700" role="status">
+              {summary.couponMessage}
+            </p>
+          ) : null}
+        </div>
+
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <dt>Items</dt>
@@ -324,8 +401,13 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
             </dd>
           </div>
           <div className="flex justify-between">
-            <dt>Discount</dt>
+            <dt>
+              {summary.couponCode
+                ? `Coupon (${summary.couponCode})`
+                : "Discount"}
+            </dt>
             <dd>
+              −
               {formatMoney(summary.pricing?.discount.major ?? 0, summary.currency)}
             </dd>
           </div>

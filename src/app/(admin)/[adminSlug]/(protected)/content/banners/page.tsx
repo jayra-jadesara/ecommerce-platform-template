@@ -1,24 +1,30 @@
-import { EmptyState } from "@/components/ui/EmptyState";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { requirePermission } from "@/features/auth/session";
+import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { BannersManager } from "@/features/cms/components/BannersManager";
+import { listAdminBanners } from "@/features/cms/banners-service";
+
+export const dynamic = "force-dynamic";
 
 export default async function AdminContentBannersPage() {
-  await requirePermission("cms.view");
+  const admin = await requirePermission("content.view");
+  const banners = await listAdminBanners();
 
   return (
-    <div>
+    <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="Banners"
-        description="Promotional banners and seasonal announcements for your store."
+        description="Promotional banners shown across your store."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Banners" },
         ]}
       />
-      <EmptyState
-        title="No banners yet"
-        description="Banner management will be available in a later update."
+      <BannersManager
+        initialBanners={banners}
+        canCreate={hasPermission(admin, "content.create")}
+        canUpdate={hasPermission(admin, "content.update")}
+        canDelete={hasPermission(admin, "content.delete")}
       />
     </div>
   );

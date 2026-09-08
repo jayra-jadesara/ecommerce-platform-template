@@ -58,7 +58,7 @@ export type TaxConfigInput = {
 };
 
 export type DiscountInput = {
-  /** Minor units. Coupons not implemented — use 0. */
+  /** Minor units. Resolved server-side from a validated coupon (or 0). */
   amountMinor: number;
   code?: string | null;
   label?: string | null;

@@ -14,6 +14,7 @@ import { markPaymentFailed } from "@/features/payments/fulfillment";
 
 const startSchema = z.object({
   addressId: z.string().uuid("Select a valid address."),
+  couponCode: z.string().max(64).optional().nullable(),
 });
 
 const verifySchema = z.object({

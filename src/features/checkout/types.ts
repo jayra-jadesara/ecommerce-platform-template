@@ -48,6 +48,10 @@ export type CheckoutSummary = {
   subtotal: number;
   /** Full centralized pricing result when lines are priceable. */
   pricing: PricingResult | null;
+  /** Applied coupon code (normalized) when valid. */
+  couponCode: string | null;
+  /** Friendly message when apply failed or coupon was cleared. */
+  couponMessage: string | null;
   issues: CheckoutIssue[];
   /** True when cart has lines and no blocking availability issues. */
   canProceed: boolean;

@@ -1,44 +1,51 @@
-import { EmptyState } from "@/components/ui/EmptyState";
-import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { requirePermission } from "@/features/auth/session";
+import Alert from "@mui/material/Alert";
+import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { HomepageBuilder } from "@/features/cms/components/HomepageBuilder";
+import { getOrCreateHomepagePage } from "@/features/cms/pages-service";
+import { listPageSections } from "@/features/cms/sections-service";
 
-const HOMEPAGE_SECTIONS = [
-  "Hero Banner",
-  "Featured Products",
-  "Categories",
-  "About",
-  "Why Choose Us",
-  "Testimonials",
-  "Call to Action",
-];
+export const dynamic = "force-dynamic";
 
 export default async function AdminContentHomepagePage() {
-  await requirePermission("cms.view");
+  const admin = await requirePermission("content.view");
+  const page = await getOrCreateHomepagePage();
+
+  if (!page) {
+    return (
+      <div>
+        <AdminPageHeader
+          title="Homepage"
+          breadcrumbs={[
+            { label: "Content", href: getAdminPath("/content") },
+            { label: "Homepage" },
+          ]}
+        />
+        <Alert severity="error">Unable to load the homepage for this store.</Alert>
+      </div>
+    );
+  }
+
+  const sections = await listPageSections(page.id);
 
   return (
-    <div>
+    <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="Homepage"
-        description="Edit the sections customers see first when they visit your store."
+        description="Arrange and edit the sections customers see first."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Homepage" },
         ]}
       />
-      <ul className="mb-8 grid gap-2 sm:grid-cols-2">
-        {HOMEPAGE_SECTIONS.map((name) => (
-          <li
-            key={name}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm"
-          >
-            {name}
-          </li>
-        ))}
-      </ul>
-      <EmptyState
-        title="Homepage editor coming soon"
-        description="You'll be able to rearrange and edit these sections without code."
+      <HomepageBuilder
+        page={page}
+        initialSections={sections}
+        canCreate={hasPermission(admin, "content.create")}
+        canUpdate={hasPermission(admin, "content.update")}
+        canDelete={hasPermission(admin, "content.delete")}
+        canPublish={hasPermission(admin, "content.publish")}
       />
     </div>
   );

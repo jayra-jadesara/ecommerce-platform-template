@@ -1,13 +1,27 @@
 import { PageShell } from "@/components/layout";
 import { getPlatformConfigAsync } from "@/config/site";
+import { HomepageSections } from "@/features/cms/components/SectionRenderer";
+import { getPublishedHomepage } from "@/features/cms/storefront";
 import { HomeView } from "./home-view";
 
 export default async function HomePage() {
-  const config = await getPlatformConfigAsync();
+  const [config, homepage] = await Promise.all([
+    getPlatformConfigAsync(),
+    getPublishedHomepage(),
+  ]);
+
+  const hasSections = (homepage?.sections.length ?? 0) > 0;
 
   return (
     <PageShell>
-      <HomeView config={config} />
+      {hasSections && homepage ? (
+        <HomepageSections
+          sections={homepage.sections}
+          animation={config.animation}
+        />
+      ) : (
+        <HomeView config={config} />
+      )}
     </PageShell>
   );
 }

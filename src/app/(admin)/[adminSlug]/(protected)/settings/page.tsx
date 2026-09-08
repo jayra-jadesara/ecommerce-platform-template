@@ -50,6 +50,12 @@ const MODULES: Array<{
     permission: "payments.view",
   },
   {
+    href: "/settings/coupons",
+    title: "Coupons",
+    description: "Create discount codes for checkout.",
+    permission: "coupons.view",
+  },
+  {
     href: "/settings/seo",
     title: "Google & SEO",
     description: "Control how your store appears in Google and when shared online.",
@@ -77,6 +83,7 @@ const HUB_PERMISSIONS: Permission[] = [
   "theme.view",
   "shipping.view",
   "payments.view",
+  "coupons.view",
 ];
 
 export default async function AdminSettingsPage() {

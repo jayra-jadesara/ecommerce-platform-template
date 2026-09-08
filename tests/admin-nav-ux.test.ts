@@ -68,6 +68,7 @@ describe("admin navigation structure", () => {
     expect(labels).toContain("Appearance");
     expect(labels).toContain("Menu & Navigation");
     expect(labels).toContain("Google & SEO");
+    expect(labels).toContain("Coupons");
     expect(labels).not.toContain("CMS");
     expect(labels).not.toContain("Theme");
     expect(labels).not.toContain("Media");
@@ -89,6 +90,7 @@ describe("permission-based admin nav visibility", () => {
     expect(links).toContain("Images & Files");
     expect(links).toContain("Shipping");
     expect(links).toContain("Payments");
+    expect(links).toContain("Coupons");
   });
 
   it("hides orders and customers for EDITOR", () => {

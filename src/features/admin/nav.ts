@@ -96,21 +96,21 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         id: "content-homepage",
         label: "Homepage",
         href: p("/content/homepage"),
-        permissions: ["cms.view"],
+        permissions: ["content.view", "cms.view"],
       },
       {
         kind: "link",
         id: "content-pages",
         label: "Pages",
         href: p("/content/pages"),
-        permissions: ["cms.view"],
+        permissions: ["content.view", "cms.view"],
       },
       {
         kind: "link",
         id: "content-banners",
         label: "Banners",
         href: p("/content/banners"),
-        permissions: ["cms.view"],
+        permissions: ["content.view", "cms.view"],
       },
       {
         kind: "link",
@@ -140,6 +140,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
           "theme.view",
           "shipping.view",
           "payments.view",
+          "coupons.view",
         ],
       },
       {
@@ -183,6 +184,13 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Payments",
         href: p("/settings/payments"),
         permissions: ["payments.view"],
+      },
+      {
+        kind: "link",
+        id: "settings-coupons",
+        label: "Coupons",
+        href: p("/settings/coupons"),
+        permissions: ["coupons.view"],
       },
       {
         kind: "link",
@@ -276,5 +284,6 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   navigation: "Menu & Navigation",
   shipping: "Shipping",
   payments: "Payments",
+  coupons: "Coupons",
   seo: "Google & SEO",
 };

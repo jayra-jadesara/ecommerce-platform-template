@@ -28,6 +28,7 @@ function buildReceipt(): string {
  */
 export async function createCheckoutPaymentSession(input: {
   addressId: string;
+  couponCode?: string | null;
 }): Promise<StartCheckoutPaymentResult> {
   const user = await getCurrentUser();
   if (!user) {
@@ -45,7 +46,16 @@ export async function createCheckoutPaymentSession(input: {
 
   const summary = await getCheckoutSummary({
     selectedAddressId: input.addressId,
+    couponCode: input.couponCode,
   });
+
+  if (input.couponCode?.trim() && summary.couponMessage && !summary.couponCode) {
+    return {
+      ok: false,
+      error: summary.couponMessage,
+      code: "COUPON_INVALID",
+    };
+  }
 
   if (summary.step !== "READY_FOR_PAYMENT" || !summary.canProceed) {
     return {

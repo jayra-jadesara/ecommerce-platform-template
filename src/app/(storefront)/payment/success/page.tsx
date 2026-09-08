@@ -27,7 +27,7 @@ export default async function PaymentSuccessPage({
   const { data: payment } = await supabase
     .from("payments")
     .select(
-      "id, status, amount, currency, order_id, user_id, orders!inner(order_number, status)",
+      "id, status, amount, currency, order_id, user_id, orders!inner(order_number, status, inventory_finalized_at)",
     )
     .eq("id", paymentId)
     .maybeSingle();
@@ -39,6 +39,7 @@ export default async function PaymentSuccessPage({
   const order = payment.orders as unknown as {
     order_number: string;
     status: string;
+    inventory_finalized_at: string | null;
   };
 
   const confirmed =
@@ -52,7 +53,10 @@ export default async function PaymentSuccessPage({
     <PageShell title="Payment successful">
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
         <p className="text-sm text-[var(--color-muted)]">
-          Your payment was verified on the server.
+          Your payment was verified on the server
+          {order.inventory_finalized_at
+            ? " and your order is confirmed."
+            : ". Your order is being finalized."}
         </p>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between gap-4">
@@ -69,13 +73,17 @@ export default async function PaymentSuccessPage({
             <dt>Payment status</dt>
             <dd className="font-medium">{payment.status}</dd>
           </div>
+          <div className="flex justify-between gap-4">
+            <dt>Order status</dt>
+            <dd className="font-medium">{order.status}</dd>
+          </div>
         </dl>
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
-            href="/account/orders"
+            href={`/account/orders/${payment.order_id}`}
             className="inline-flex rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)]"
           >
-            View orders
+            View order
           </Link>
           <Link
             href="/products"

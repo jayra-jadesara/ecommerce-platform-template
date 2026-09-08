@@ -5,24 +5,9 @@ import {
   assertPaymentTransition,
   canTransitionPaymentStatus,
 } from "@/features/payments/state-machine";
+import { finalizePaidOrder } from "@/features/orders/finalize";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { PaymentStatus } from "@/types/database";
-
-async function clearCustomerCartForStore(input: {
-  userId: string;
-  storeId: string;
-}): Promise<void> {
-  const supabase = createSupabaseServiceClient();
-  const { data: carts } = await supabase
-    .from("carts")
-    .select("id")
-    .eq("user_id", input.userId)
-    .eq("store_id", input.storeId);
-
-  for (const cart of carts ?? []) {
-    await supabase.from("cart_items").delete().eq("cart_id", cart.id);
-  }
-}
 
 export async function markPaymentFailed(input: {
   paymentId: string;
@@ -80,7 +65,15 @@ export async function fulfillVerifiedPayment(input: {
     return { ok: false, error: "Payment not found." };
   }
 
+  // Idempotent path: still ensure order inventory finalization ran.
   if (payment.status === "CAPTURED") {
+    await finalizePaidOrder({
+      paymentId: input.paymentId,
+      orderId: input.orderId,
+      storeId: input.storeId,
+      userId: input.userId,
+      clearCart: input.clearCustomerCart !== false,
+    });
     return { ok: true, status: "CAPTURED" };
   }
 
@@ -118,27 +111,17 @@ export async function fulfillVerifiedPayment(input: {
     return { ok: false, error: "Unable to update payment." };
   }
 
-  if (input.targetStatus === "CAPTURED" || input.targetStatus === "AUTHORIZED") {
-    await supabase
-      .from("orders")
-      .update({ status: "CONFIRMED" })
-      .eq("id", input.orderId)
-      .in("status", ["PENDING"]);
-  }
+  const finalized = await finalizePaidOrder({
+    paymentId: input.paymentId,
+    orderId: input.orderId,
+    storeId: input.storeId,
+    userId: input.userId,
+    clearCart:
+      input.clearCustomerCart !== false && input.targetStatus === "CAPTURED",
+  });
 
-  if (
-    input.clearCustomerCart !== false &&
-    input.targetStatus === "CAPTURED" &&
-    input.userId
-  ) {
-    try {
-      await clearCustomerCartForStore({
-        userId: input.userId,
-        storeId: input.storeId,
-      });
-    } catch {
-      // Best-effort.
-    }
+  if (!finalized.ok) {
+    return { ok: false, error: finalized.error };
   }
 
   await writePaymentAudit({
@@ -150,6 +133,7 @@ export async function fulfillVerifiedPayment(input: {
     metadata: {
       status: input.targetStatus,
       orderId: input.orderId,
+      inventoryShortages: finalized.inventoryShortages,
     },
   });
 

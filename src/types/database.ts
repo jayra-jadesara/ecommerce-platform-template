@@ -58,6 +58,11 @@ export type PageSectionType =
   | "testimonials"
   | "faq"
   | "cta"
+  | "about"
+  | "features"
+  | "statistics"
+  | "text_image"
+  | "newsletter"
   | "custom";
 
 type Timestamps = {
@@ -688,6 +693,13 @@ export type Database = {
           billing_address: Json;
           notes: string | null;
           coupon_code: string | null;
+          shipping_provider: string | null;
+          tracking_number: string | null;
+          shipped_at: string | null;
+          delivered_at: string | null;
+          cancelled_at: string | null;
+          inventory_finalized_at: string | null;
+          inventory_restored_at: string | null;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -706,6 +718,13 @@ export type Database = {
           billing_address?: Json;
           notes?: string | null;
           coupon_code?: string | null;
+          shipping_provider?: string | null;
+          tracking_number?: string | null;
+          shipped_at?: string | null;
+          delivered_at?: string | null;
+          cancelled_at?: string | null;
+          inventory_finalized_at?: string | null;
+          inventory_restored_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -886,6 +905,8 @@ export type Database = {
           status: PageStatus;
           seo_title: string | null;
           seo_description: string | null;
+          featured_image_path: string | null;
+          og_image_path: string | null;
           published_at: string | null;
         } & Timestamps;
         Insert: {
@@ -897,6 +918,8 @@ export type Database = {
           status?: PageStatus;
           seo_title?: string | null;
           seo_description?: string | null;
+          featured_image_path?: string | null;
+          og_image_path?: string | null;
           published_at?: string | null;
           created_at?: string;
           updated_at?: string;
@@ -926,6 +949,56 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["page_sections"]["Insert"]>;
+        Relationships: [];
+      };
+      banners: {
+        Row: {
+          id: string;
+          store_id: string;
+          title: string;
+          description: string | null;
+          image_path: string | null;
+          link_url: string | null;
+          button_text: string | null;
+          is_active: boolean;
+          starts_at: string | null;
+          ends_at: string | null;
+          sort_order: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          title: string;
+          description?: string | null;
+          image_path?: string | null;
+          link_url?: string | null;
+          button_text?: string | null;
+          is_active?: boolean;
+          starts_at?: string | null;
+          ends_at?: string | null;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["banners"]["Insert"]>;
+        Relationships: [];
+      };
+      newsletter_subscribers: {
+        Row: {
+          id: string;
+          store_id: string;
+          email: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          email: string;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["newsletter_subscribers"]["Insert"]
+        >;
         Relationships: [];
       };
       navigation_items: {
@@ -1140,12 +1213,87 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Insert"]>;
         Relationships: [];
       };
+      inventory_movements: {
+        Row: {
+          id: string;
+          store_id: string;
+          variant_id: string;
+          order_id: string | null;
+          order_item_id: string | null;
+          movement_type: "SALE" | "RESTOCK" | "REVERSAL" | "ADJUSTMENT";
+          quantity_delta: number;
+          quantity_after: number | null;
+          reason: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          variant_id: string;
+          order_id?: string | null;
+          order_item_id?: string | null;
+          movement_type: "SALE" | "RESTOCK" | "REVERSAL" | "ADJUSTMENT";
+          quantity_delta: number;
+          quantity_after?: number | null;
+          reason?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["inventory_movements"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      order_activities: {
+        Row: {
+          id: string;
+          order_id: string;
+          store_id: string;
+          actor_user_id: string | null;
+          event_type: string;
+          message: string | null;
+          metadata: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          order_id: string;
+          store_id: string;
+          actor_user_id?: string | null;
+          event_type: string;
+          message?: string | null;
+          metadata?: Json;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["order_activities"]["Insert"]
+        >;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: {
       is_active_admin: { Args: Record<string, never>; Returns: boolean };
       has_admin_role: { Args: { required_roles: string[] }; Returns: boolean };
       is_store_admin: { Args: { target_store_id: string }; Returns: boolean };
+      finalize_order_inventory: {
+        Args: { p_order_id: string };
+        Returns: Json;
+      };
+      restore_order_inventory: {
+        Args: { p_order_id: string };
+        Returns: Json;
+      };
+      redeem_coupon_for_order: {
+        Args: {
+          p_order_id: string;
+          p_coupon_id: string;
+          p_user_id: string | null;
+          p_discount_amount: number;
+        };
+        Returns: Json;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -10,10 +10,22 @@ import { z } from "zod";
 
 const selectAddressSchema = z.object({
   addressId: z.string().uuid("Invalid address."),
+  couponCode: z.string().max(64).optional().nullable(),
 });
 
 const removeItemSchema = z.object({
   cartItemId: z.string().uuid("Invalid cart item."),
+  couponCode: z.string().max(64).optional().nullable(),
+});
+
+const couponSchema = z.object({
+  code: z.string().max(64),
+  selectedAddressId: z.string().uuid().optional().nullable(),
+});
+
+const refreshSchema = z.object({
+  selectedAddressId: z.string().uuid().optional().nullable(),
+  couponCode: z.string().max(64).optional().nullable(),
 });
 
 function revalidateCheckoutPaths() {
@@ -22,9 +34,15 @@ function revalidateCheckoutPaths() {
 }
 
 export async function getCheckoutSummaryAction(
-  selectedAddressId?: string | null,
+  input?: {
+    selectedAddressId?: string | null;
+    couponCode?: string | null;
+  },
 ): Promise<CheckoutSummary> {
-  return getCheckoutSummary({ selectedAddressId });
+  return getCheckoutSummary({
+    selectedAddressId: input?.selectedAddressId,
+    couponCode: input?.couponCode,
+  });
 }
 
 export async function selectCheckoutAddressAction(
@@ -34,7 +52,10 @@ export async function selectCheckoutAddressAction(
   if (!parsed.success) {
     return getCheckoutSummary({ selectedAddressId: null });
   }
-  return getCheckoutSummary({ selectedAddressId: parsed.data.addressId });
+  return getCheckoutSummary({
+    selectedAddressId: parsed.data.addressId,
+    couponCode: parsed.data.couponCode,
+  });
 }
 
 export async function removeCheckoutItemAction(
@@ -44,7 +65,37 @@ export async function removeCheckoutItemAction(
   if (!parsed.success) {
     return getCheckoutSummary();
   }
-  const summary = await removeCheckoutIssueItem(parsed.data.cartItemId);
+  const summary = await removeCheckoutIssueItem(
+    parsed.data.cartItemId,
+    parsed.data.couponCode,
+  );
   revalidateCheckoutPaths();
   return summary;
+}
+
+/** Validate + apply coupon for checkout preview (does not redeem). */
+export async function applyCheckoutCouponAction(
+  raw: unknown,
+): Promise<CheckoutSummary> {
+  const parsed = couponSchema.safeParse(raw);
+  if (!parsed.success) {
+    return getCheckoutSummary();
+  }
+  return getCheckoutSummary({
+    selectedAddressId: parsed.data.selectedAddressId,
+    couponCode: parsed.data.code,
+  });
+}
+
+export async function removeCheckoutCouponAction(
+  raw: unknown,
+): Promise<CheckoutSummary> {
+  const parsed = refreshSchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    return getCheckoutSummary({ couponCode: null });
+  }
+  return getCheckoutSummary({
+    selectedAddressId: parsed.data.selectedAddressId,
+    couponCode: null,
+  });
 }

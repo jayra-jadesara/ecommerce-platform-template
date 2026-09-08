@@ -260,6 +260,33 @@ supabase/
 
 Use allow-listed presets only (`fade`, `fade-up`, `fade-down`, `slide-up`, `slide-down`, `scale`, `none`). Do not execute arbitrary animation code from a database.
 
+### Content builder (Phase 15)
+
+Client-friendly homepage and page management under **Content** (not “CMS”):
+
+| Area | Route / behavior |
+| --- | --- |
+| Homepage | `/${ADMIN_ROUTE}/content/homepage` — section list, add/edit/enable, move up/down, draft/publish |
+| Pages | `/${ADMIN_ROUTE}/content/pages` — CRUD + SEO; live at `/pages/{slug}` when published |
+| Banners | `/${ADMIN_ROUTE}/content/banners` — promotional banners with schedule |
+| Images | `/${ADMIN_ROUTE}/media` — MediaPicker (`folder=cms`) |
+
+Section types (allow-listed): hero, categories, products, banner, text_image, about, features, statistics, testimonials, faq, cta, newsletter, text, image. Unknown/`custom` configs are rejected and not rendered.
+
+Publishing: `pages.status` = `draft` \| `published` \| `archived`. Storefront loads only **published** pages and **active** sections. Homepage slug is reserved as `home`.
+
+Permissions: `content.view|create|update|delete|publish` (EDITOR includes publish; ORDER_MANAGER has none). Legacy `cms.*` remains for compatibility.
+
+Cache tags: `storefront-homepage`, `storefront-pages`, `storefront-banners`, `storefront-page:{slug}` — revalidated on admin writes only.
+
+Migration: `20260908160000_content_builder.sql` (section types, page image paths, `banners`, `newsletter_subscribers` + RLS).
+
+```bash
+npx supabase db push
+```
+
+Known limitations: static routes (`/about`, `/privacy`, …) still override CMS pages with the same slug; rich text is plain text (no HTML); newsletter stores emails only (no sending); product/category pickers use IDs in advanced fields for v1.
+
 ### Pricing engine (Phase 11)
 
 Single server-side source of truth for cart subtotals, checkout totals, and (later) order/Razorpay amounts:
@@ -274,15 +301,44 @@ subtotal − discount + shipping + paymentFee + tax = grandTotal
 | Currency | From `store_settings.currency` — never hardcode symbols in the engine |
 | Shipping | `shipping_settings`: enabled, method (`flat_rate` + free threshold, `free`, `percentage`, `zone` fallback), fees from DB |
 | Payment fee | `payment_settings`: optional PERCENTAGE/FIXED fee; default basis `SUBTOTAL_PLUS_SHIPPING`; **no secrets** in DB |
-| Tax / discount | Engine fields exist; tax off by default; coupons not implemented (`discount = 0`) |
+| Tax / discount | Engine fields exist; tax off by default; **coupons** resolve discount via `validateCoupon` → minor units into the engine |
 | Authority | Always re-read catalog prices server-side before calculating |
 
 Admin:
 
 - `/${ADMIN_ROUTE}/settings/shipping` — `shipping.view` / `shipping.update`
 - `/${ADMIN_ROUTE}/settings/payments` — `payments.view` / `payments.update`
+- `/${ADMIN_ROUTE}/settings/coupons` — `coupons.view` / `create` / `update` / `delete`
 
-Checkout displays the full engine breakdown. Cart shows **subtotal only**, computed with the same minor-unit helpers.
+Checkout displays the full engine breakdown (including coupon discount). Cart shows **subtotal only**, computed with the same minor-unit helpers.
+
+### Coupons + discounts (Phase 14)
+
+Reusable store-scoped coupons on existing `coupons` / `coupon_redemptions` tables. The pricing engine remains the single source of truth for money math.
+
+| Concern | Behavior |
+| --- | --- |
+| Types | `percentage` and `fixed` (store currency / minor units) |
+| Codes | Normalized uppercase; unique per store on `lower(code)`; customer entry is case-insensitive |
+| Validation | Active, date window, usage / per-user limits, **minimum order vs subtotal**, discount caps — server-side only |
+| Pricing | Client sends **code only**; server loads coupon and passes `discountMinor` into `calculateOrderPricing` |
+| Apply vs redeem | Apply on checkout preview does **not** write redemptions |
+| Redemption | After payment AUTHORIZED/CAPTURED inside `finalizePaidOrder`; race-safe via `redeem_coupon_for_order` RPC |
+| Idempotency | Unique `(order_id)` on `coupon_redemptions` + RPC `already_redeemed` on retries |
+| Order snapshot | `orders.coupon_code` + `orders.discount_amount` frozen at checkout session create |
+| Admin | Store Settings → Coupons; EDITOR / ORDER_MANAGER view-only |
+| Audit | `COUPON_CREATED`, `COUPON_UPDATED`, `COUPON_DISABLED`, `COUPON_DELETED`, `COUPON_REDEEMED` |
+| RLS | No public coupon list; validation uses service role; redemptions readable by owner/admin |
+
+Manual Supabase step (if not already applied):
+
+```bash
+npx supabase db push
+```
+
+Applies `20260908150000_coupon_redemption_rpc.sql` (index + redeem RPC). Do not edit older migrations.
+
+Known limitations: product/category targeting is not enforced yet (hooks reserved); last-coupon races can leave a paid order without a redemption row if the limit is hit at finalize (activity logged).
 
 ### Razorpay payments (Phase 12)
 
@@ -296,6 +352,19 @@ Provider-agnostic payment layer with **Razorpay Standard Checkout** as the first
 | Authority | Amounts from pricing engine minor units; signature verified with **server-stored** `provider_order_id`; webhook is source of truth for sync |
 | Webhook | `POST /api/webhooks/razorpay` — raw body + `X-Razorpay-Signature`; idempotent via `payment_webhook_events` |
 | Results | `/payment/success`, `/payment/failed` load server-confirmed state (not query-param trust alone) |
+
+### Orders + inventory finalization (Phase 13)
+
+| Concern | Behavior |
+| --- | --- |
+| Lifecycle | PENDING → CONFIRMED → PROCESSING → SHIPPED → DELIVERED (CANCELLED / REFUNDED where allowed) |
+| Finalization | `finalizePaidOrder` after verified AUTHORIZED/CAPTURED — confirms order, decrements stock once, clears cart |
+| Inventory | Postgres `finalize_order_inventory` / `restore_order_inventory` RPCs; `inventory_movements` unique per `(order_item_id, SALE\|REVERSAL)` |
+| Idempotency | Safe under Checkout handler + webhook retries (`inventory_finalized_at` + movement uniqueness) |
+| Customer | `/account/orders`, `/account/orders/[id]`, `/account/payments` — own records only |
+| Admin | `/${ADMIN_ROUTE}/orders` list + detail — status actions, tracking, local refund mark |
+| Refunds | Local status + inventory restore only in this phase — **no automatic Razorpay Refund API call** |
+| Tracking | Provider-neutral `shipping_provider` + `tracking_number` on orders |
 
 #### Test-mode setup (manual)
 
