@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Motion } from "@/features/animation";
-import type { AnimationConfig } from "@/types";
+import type { AnimationConfig, VisualEffectsConfig } from "@/types";
 import type { StorefrontSection } from "@/features/cms/storefront";
 import type { SectionConfigMap, SupportedSectionType } from "@/features/cms/schemas";
 import {
@@ -11,10 +11,13 @@ import {
 } from "@/features/cms/section-styles";
 import { formatMoney } from "@/features/catalog/money";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
+import { Hero3DBackdrop } from "@/components/three/Hero3DBackdrop";
+import { defaultPlatformConfig } from "@/config/defaults";
 
 type Props = {
   section: StorefrontSection;
   animation: AnimationConfig;
+  visualEffects?: VisualEffectsConfig;
 };
 
 function SectionMotion({
@@ -81,7 +84,11 @@ function buttonClass(variant: "primary" | "secondary" = "primary") {
   return "inline-flex rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]";
 }
 
-export function SectionRenderer({ section, animation }: Props) {
+export function SectionRenderer({
+  section,
+  animation,
+  visualEffects = defaultPlatformConfig.visualEffects,
+}: Props) {
   const cfg = section.config;
   const shell = sectionShellClassName(cfg as SectionConfigMap["hero"]);
 
@@ -96,9 +103,38 @@ export function SectionRenderer({ section, animation }: Props) {
           : c.alignment === "right"
             ? "text-right items-end"
             : "text-left items-start";
+      const hero3dOn =
+        Boolean(c.enable3d) &&
+        visualEffects.enabled &&
+        visualEffects.heroEnabled;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)]">
+            {hero3dOn ? (
+              <Hero3DBackdrop
+                className="pointer-events-none absolute inset-0 opacity-80"
+                preset={c.scene3dPreset || visualEffects.heroPreset}
+                quality={visualEffects.quality}
+                enabled={hero3dOn}
+                mobileEnabled={visualEffects.mobileEnabled}
+                respectReducedMotion={visualEffects.respectReducedMotion}
+                animationStoreEnabled={animation.enabled}
+                rotationSpeed={c.scene3dRotationSpeed}
+                cameraDistance={c.scene3dCameraDistance}
+                fallback={
+                  bg ? null : (
+                    <div
+                      className="pointer-events-none absolute inset-0 opacity-90"
+                      aria-hidden
+                      style={{
+                        background:
+                          "radial-gradient(ellipse 70% 55% at 0% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%)",
+                      }}
+                    />
+                  )
+                }
+              />
+            ) : null}
             {bg ? (
               <Image
                 src={bg}
@@ -108,7 +144,7 @@ export function SectionRenderer({ section, animation }: Props) {
                 sizes="100vw"
                 priority
               />
-            ) : (
+            ) : !hero3dOn ? (
               <div
                 className="pointer-events-none absolute inset-0 opacity-90"
                 aria-hidden
@@ -117,7 +153,7 @@ export function SectionRenderer({ section, animation }: Props) {
                     "radial-gradient(ellipse 70% 55% at 0% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%)",
                 }}
               />
-            )}
+            ) : null}
             <div className={`relative flex flex-col gap-4 px-4 py-12 md:px-8 md:py-16 ${align}`}>
               {c.subtitle ? (
                 <p className="text-sm font-medium text-[var(--color-muted)]">
@@ -508,14 +544,21 @@ export function SectionRenderer({ section, animation }: Props) {
 export function HomepageSections({
   sections,
   animation,
+  visualEffects = defaultPlatformConfig.visualEffects,
 }: {
   sections: StorefrontSection[];
   animation: AnimationConfig;
+  visualEffects?: VisualEffectsConfig;
 }) {
   return (
     <div className="space-y-2">
       {sections.map((section) => (
-        <SectionRenderer key={section.id} section={section} animation={animation} />
+        <SectionRenderer
+          key={section.id}
+          section={section}
+          animation={animation}
+          visualEffects={visualEffects}
+        />
       ))}
     </div>
   );

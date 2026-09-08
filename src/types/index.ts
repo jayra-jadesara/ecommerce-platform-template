@@ -20,6 +20,9 @@ export type {
   ThemeConfig,
   ThemeMode,
   TypographyConfig,
+  VisualEffectsConfig,
+  Visual3dPresetId,
+  Visual3dQualityId,
 } from "./config";
 
 export type {

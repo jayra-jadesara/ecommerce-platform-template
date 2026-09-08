@@ -287,6 +287,30 @@ npx supabase db push
 
 Known limitations: static routes (`/about`, `/privacy`, …) still override CMS pages with the same slug; rich text is plain text (no HTML); newsletter stores emails only (no sending); product/category pickers use IDs in advanced fields for v1.
 
+### Premium 3D storefront (Phase 16)
+
+Optional Three.js / React Three Fiber experiences. **2D always works** without WebGL.
+
+| Area | Behavior |
+| --- | --- |
+| Admin | Store Settings → Appearance → **3D & Visual Effects** |
+| Config | `store_visual_effects_settings` (enabled, hero/product toggles, quality LOW/MEDIUM/HIGH, hero preset allow-list, mobile 3D, respect reduced motion) |
+| Hero | Homepage hero section: optional decorative backdrop; presets `NONE` \| `FLOATING_SHAPES` \| `PRODUCT_ORBIT` \| `ABSTRACT_PARTICLES` \| `SOFT_GEOMETRY` |
+| Product | Optional `products.model_path` — trusted path only: `products/{storeId}/3d/{file}.glb\|gltf` |
+| Fallback | Disabled / no WebGL / reduced motion / mobile off → static 2D; `ThreeErrorBoundary` isolates failures |
+| Theme | Scene colors from CSS vars (`--color-primary`, …) — no hard-coded brand colors |
+| Loading | Dynamic import of R3F; not on ordinary pages |
+
+Audit: `VISUAL_EFFECTS_UPDATED` when 3D settings change (not on preview).
+
+Migration: `20260908170000_visual_effects_3d.sql` (table + RLS + `products.model_path` + products-bucket MIME for glTF).
+
+```bash
+npx supabase db push
+```
+
+Known limitations: no AI photo→3D; no GLB upload UI in Media Library yet (path paste / storage upload); no paid 3D SaaS; homepage preview lists the selected preset without mounting a live canvas.
+
 ### Pricing engine (Phase 11)
 
 Single server-side source of truth for cart subtotals, checkout totals, and (later) order/Razorpay amounts:

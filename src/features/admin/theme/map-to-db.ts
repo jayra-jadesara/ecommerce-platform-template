@@ -111,6 +111,18 @@ export function formValuesToAnimationDbRow(values: ThemeEditorFormValues) {
   };
 }
 
+export function formValuesToVisualEffectsDbRow(values: ThemeEditorFormValues) {
+  return {
+    enabled: values.visual3dEnabled,
+    hero_enabled: values.visual3dHeroEnabled,
+    product_enabled: values.visual3dProductEnabled,
+    quality: values.visual3dQuality,
+    hero_preset: values.visual3dHeroPreset,
+    mobile_enabled: values.visual3dMobileEnabled,
+    respect_reduced_motion: values.visual3dRespectReducedMotion,
+  };
+}
+
 export function diffThemeKeys(
   before: Record<string, unknown>,
   after: Record<string, unknown>,

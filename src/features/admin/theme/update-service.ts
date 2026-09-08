@@ -11,6 +11,7 @@ import {
   diffThemeKeys,
   formValuesToAnimationDbRow,
   formValuesToThemeDbRow,
+  formValuesToVisualEffectsDbRow,
 } from "@/features/admin/theme/map-to-db";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 
@@ -51,7 +52,7 @@ async function resolveActiveStoreId(
 }
 
 /**
- * Validates + persists theme/animation settings.
+ * Validates + persists theme/animation/visual-effects settings.
  * Authorization: theme.update (SUPER_ADMIN / ADMIN via permissions + RLS).
  */
 export async function updateStoreThemeSettings(
@@ -81,6 +82,7 @@ export async function updateStoreThemeSettings(
 
   const themePayload = formValuesToThemeDbRow(values);
   const animationPayload = formValuesToAnimationDbRow(values);
+  const visualEffectsPayload = formValuesToVisualEffectsDbRow(values);
 
   const { data: existingTheme } = await supabase
     .from("store_theme_settings")
@@ -90,6 +92,12 @@ export async function updateStoreThemeSettings(
 
   const { data: existingAnimation } = await supabase
     .from("store_animation_settings")
+    .select("*")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  const { data: existingVisualEffects } = await supabase
+    .from("store_visual_effects_settings")
     .select("*")
     .eq("store_id", storeId)
     .maybeSingle();
@@ -128,6 +136,24 @@ export async function updateStoreThemeSettings(
     };
   }
 
+  const visualEffectsWrite = existingVisualEffects
+    ? await supabase
+        .from("store_visual_effects_settings")
+        .update(visualEffectsPayload)
+        .eq("store_id", storeId)
+    : await supabase.from("store_visual_effects_settings").insert({
+        store_id: storeId,
+        ...visualEffectsPayload,
+      });
+
+  if (visualEffectsWrite.error) {
+    return {
+      ok: false,
+      error:
+        "Theme saved, but 3D & visual effects settings could not be updated.",
+    };
+  }
+
   const changedFields = [
     ...diffThemeKeys(
       (existingTheme as Record<string, unknown> | null) ?? {},
@@ -137,6 +163,10 @@ export async function updateStoreThemeSettings(
       (existingAnimation as Record<string, unknown> | null) ?? {},
       animationPayload as Record<string, unknown>,
     ).map((key) => `animation.${key}`),
+    ...diffThemeKeys(
+      (existingVisualEffects as Record<string, unknown> | null) ?? {},
+      visualEffectsPayload as Record<string, unknown>,
+    ).map((key) => `visualEffects.${key}`),
   ];
 
   await supabase.from("audit_logs").insert({
@@ -151,6 +181,27 @@ export async function updateStoreThemeSettings(
       enabled_modes: values.enabledModes,
     },
   });
+
+  const visualChanged = changedFields.some((key) =>
+    key.startsWith("visualEffects."),
+  );
+  if (visualChanged) {
+    await supabase.from("audit_logs").insert({
+      store_id: storeId,
+      user_id: admin.user.id,
+      action: "VISUAL_EFFECTS_UPDATED",
+      entity_type: "store_visual_effects_settings",
+      entity_id: storeId,
+      metadata: {
+        changed_fields: changedFields.filter((key) =>
+          key.startsWith("visualEffects."),
+        ),
+        enabled: values.visual3dEnabled,
+        hero_preset: values.visual3dHeroPreset,
+        quality: values.visual3dQuality,
+      },
+    });
+  }
 
   revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
 

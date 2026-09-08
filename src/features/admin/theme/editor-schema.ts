@@ -4,7 +4,15 @@ import {
   colorTokensSchema,
   themeModeSchema,
 } from "@/features/theme/validation";
-import type { AnimationConfig, ThemeConfig } from "@/types";
+import {
+  VISUAL_3D_PRESETS,
+  VISUAL_3D_QUALITY,
+} from "@/features/visual-effects/schemas";
+import type {
+  AnimationConfig,
+  ThemeConfig,
+  VisualEffectsConfig,
+} from "@/types";
 
 export const BORDER_RADIUS_PRESETS = {
   none: "0px",
@@ -86,6 +94,14 @@ export const themeEditorFormSchema = z
     animationEnabled: z.boolean(),
     animationIntensity: z.enum(["none", "subtle", "medium", "high"]),
     animationPreset: animationPresetSchema,
+    // 3D & Visual Effects (business-facing; allow-listed values only)
+    visual3dEnabled: z.boolean(),
+    visual3dHeroEnabled: z.boolean(),
+    visual3dProductEnabled: z.boolean(),
+    visual3dQuality: z.enum(VISUAL_3D_QUALITY),
+    visual3dHeroPreset: z.enum(VISUAL_3D_PRESETS),
+    visual3dMobileEnabled: z.boolean(),
+    visual3dRespectReducedMotion: z.boolean(),
   })
   .superRefine((value, ctx) => {
     if (!value.enabledModes.includes(value.defaultMode)) {
@@ -124,12 +140,23 @@ export function themeConfigToFormValues(
   theme: ThemeConfig,
   animation: AnimationConfig,
   fonts?: { fontSans?: string; fontDisplay?: string },
+  visualEffects?: VisualEffectsConfig,
 ): ThemeEditorFormValues {
   const intensityUi: AnimationIntensityUi = !animation.enabled
     ? "none"
     : animation.intensity === "strong"
       ? "high"
       : animation.intensity;
+
+  const ve = visualEffects ?? {
+    enabled: false,
+    heroEnabled: false,
+    productEnabled: false,
+    quality: "MEDIUM" as const,
+    heroPreset: "NONE" as const,
+    mobileEnabled: false,
+    respectReducedMotion: true,
+  };
 
   return {
     defaultMode: theme.defaultMode,
@@ -143,6 +170,13 @@ export function themeConfigToFormValues(
     animationEnabled: animation.enabled && intensityUi !== "none",
     animationIntensity: intensityUi,
     animationPreset: animation.defaultPreset,
+    visual3dEnabled: ve.enabled,
+    visual3dHeroEnabled: ve.heroEnabled,
+    visual3dProductEnabled: ve.productEnabled,
+    visual3dQuality: ve.quality,
+    visual3dHeroPreset: ve.heroPreset,
+    visual3dMobileEnabled: ve.mobileEnabled,
+    visual3dRespectReducedMotion: ve.respectReducedMotion,
   };
 }
 
@@ -177,6 +211,20 @@ export function formValuesToAnimationConfig(
         ? "strong"
         : values.animationIntensity,
     defaultPreset: values.animationPreset,
+  };
+}
+
+export function formValuesToVisualEffectsConfig(
+  values: ThemeEditorFormValues,
+): VisualEffectsConfig {
+  return {
+    enabled: values.visual3dEnabled,
+    heroEnabled: values.visual3dHeroEnabled,
+    productEnabled: values.visual3dProductEnabled,
+    quality: values.visual3dQuality,
+    heroPreset: values.visual3dHeroPreset,
+    mobileEnabled: values.visual3dMobileEnabled,
+    respectReducedMotion: values.visual3dRespectReducedMotion,
   };
 }
 

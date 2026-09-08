@@ -84,6 +84,25 @@ export interface AnimationConfig {
   defaultPreset: AnimationPreset;
 }
 
+export type Visual3dPresetId =
+  | "NONE"
+  | "FLOATING_SHAPES"
+  | "PRODUCT_ORBIT"
+  | "ABSTRACT_PARTICLES"
+  | "SOFT_GEOMETRY";
+
+export type Visual3dQualityId = "LOW" | "MEDIUM" | "HIGH";
+
+export interface VisualEffectsConfig {
+  enabled: boolean;
+  heroEnabled: boolean;
+  productEnabled: boolean;
+  quality: Visual3dQualityId;
+  heroPreset: Visual3dPresetId;
+  mobileEnabled: boolean;
+  respectReducedMotion: boolean;
+}
+
 export interface NavItem {
   label: string;
   href: string;
@@ -181,6 +200,7 @@ export interface PlatformConfig {
   typography: TypographyConfig;
   layout: LayoutConfig;
   animation: AnimationConfig;
+  visualEffects: VisualEffectsConfig;
   navigation: NavigationConfig;
   seo: SeoConfig;
   store: StoreConfig;

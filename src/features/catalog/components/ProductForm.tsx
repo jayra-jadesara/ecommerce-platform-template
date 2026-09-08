@@ -593,6 +593,39 @@ export function ProductForm({
         </div>
       </StepCard>
 
+      <StepCard
+        step={4}
+        title="Visual presentation"
+        description="2D gallery is the default. Optional 3D uses a trusted GLB/GLTF storage path only."
+      >
+        <p className="mb-3 text-sm text-[var(--color-muted)]">
+          Product photos are managed in the media panel after save. Leave the 3D
+          path empty for a normal image gallery. Path format:{" "}
+          <code className="text-xs">products/&#123;storeId&#125;/3d/file.glb</code>
+        </p>
+        <Controller
+          name="modelPath"
+          control={control}
+          render={({ field, fieldState }) => (
+            <TextField
+              label="Optional 3D model path"
+              fullWidth
+              disabled={!fieldsEditable}
+              value={field.value ?? ""}
+              onChange={(event) =>
+                field.onChange(event.target.value.trim() || null)
+              }
+              error={Boolean(fieldState.error)}
+              helperText={
+                fieldState.error?.message ||
+                "No remote URLs. Upload a .glb/.gltf under your store’s products/…/3d/ folder, then paste the path."
+              }
+              placeholder="products/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/3d/model.glb"
+            />
+          )}
+        />
+      </StepCard>
+
       {mode === "create" ? (
         <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
           After you save, you can upload product photos on the next screen.

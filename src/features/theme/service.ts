@@ -14,7 +14,9 @@ import {
   mapSettingsRowToSocial,
   mapSettingsRowToStore,
   mapThemeRowToConfig,
+  mapVisualEffectsRowToConfig,
   type AnimationRow,
+  type VisualEffectsRow,
   type BrandingRow,
   type NavRow,
   type SeoRow,
@@ -77,6 +79,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
     brandingResult,
     themeResult,
     animationResult,
+    visualEffectsResult,
     seoResult,
     settingsResult,
     navResult,
@@ -89,6 +92,11 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
       .maybeSingle(),
     supabase
       .from("store_animation_settings")
+      .select("*")
+      .eq("store_id", storeId)
+      .maybeSingle(),
+    supabase
+      .from("store_visual_effects_settings")
       .select("*")
       .eq("store_id", storeId)
       .maybeSingle(),
@@ -116,6 +124,9 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
   const animation = mapAnimationRowToConfig(
     animationResult.data as AnimationRow | null,
   );
+  const visualEffects = mapVisualEffectsRowToConfig(
+    visualEffectsResult.data as VisualEffectsRow | null,
+  );
   const seo = mapSeoRowToConfig(seoResult.data as SeoRow | null, brand.name);
   const navigation = mapNavigationRowsToConfig(
     (navResult.data as NavRow[] | null) ?? null,
@@ -135,6 +146,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
     brand,
     theme,
     animation,
+    visualEffects,
     navigation,
     seo: {
       ...seo,

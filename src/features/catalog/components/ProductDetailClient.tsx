@@ -6,11 +6,15 @@ import Chip from "@mui/material/Chip";
 import { ProductPurchaseActions } from "@/features/cart/components/ProductPurchaseActions";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
+import { Product3DViewer } from "@/components/three/Product3DViewer";
+import type { VisualEffectsConfig, AnimationConfig } from "@/types";
 
 interface ProductDetailClientProps {
   product: StorefrontProductDetail;
   currency: string;
   isAuthenticated: boolean;
+  visualEffects: VisualEffectsConfig;
+  animation: AnimationConfig;
 }
 
 const stockColor: Record<string, "default" | "success" | "warning" | "error"> = {
@@ -23,6 +27,8 @@ export function ProductDetailClient({
   product,
   currency,
   isAuthenticated,
+  visualEffects,
+  animation,
 }: ProductDetailClientProps) {
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [activeImageId, setActiveImageId] = useState(
@@ -60,29 +66,42 @@ export function ProductDetailClient({
     );
   }
 
+  const galleryFallback = (
+    <div className="relative h-full w-full">
+      {activeImage ? (
+        <Image
+          src={activeImage.url}
+          alt={activeImage.altText || product.name}
+          fill
+          priority
+          className="object-contain p-5"
+          sizes="(max-width: 1024px) 100vw, 480px"
+        />
+      ) : (
+        <p
+          className="absolute inset-0 flex items-center justify-center text-sm text-[var(--color-muted)]"
+          role="img"
+          aria-label="Product image placeholder"
+        >
+          No product image available
+        </p>
+      )}
+    </div>
+  );
+
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-12">
       <div className="space-y-3">
-        <div className="relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0">
-          {activeImage ? (
-            <Image
-              src={activeImage.url}
-              alt={activeImage.altText || product.name}
-              fill
-              priority
-              className="object-contain p-5"
-              sizes="(max-width: 1024px) 100vw, 480px"
-            />
-          ) : (
-            <p
-              className="absolute inset-0 flex items-center justify-center text-sm text-[var(--color-muted)]"
-              role="img"
-              aria-label="Product image placeholder"
-            >
-              No product image available
-            </p>
-          )}
-        </div>
+        <Product3DViewer
+          modelPath={product.modelPath}
+          enabled={visualEffects.enabled && visualEffects.productEnabled}
+          mobileEnabled={visualEffects.mobileEnabled}
+          respectReducedMotion={visualEffects.respectReducedMotion}
+          animationStoreEnabled={animation.enabled}
+          quality={visualEffects.quality}
+          className="relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0"
+          fallback={galleryFallback}
+        />
         {galleryImages.length > 1 ? (
           <ul className="flex flex-wrap gap-2" aria-label="Product gallery">
             {galleryImages.map((image) => {

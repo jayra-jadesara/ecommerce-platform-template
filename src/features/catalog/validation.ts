@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { isValidSlug, slugify } from "@/features/catalog/slug";
+import { safeModelPathSchema } from "@/features/visual-effects/schemas";
 
 export const slugSchema = z
   .string()
@@ -139,6 +140,8 @@ export const productFormSchema = z.object({
     .trim()
     .max(320)
     .transform((v) => v.trim()),
+  /** Optional trusted path: products/{storeId}/3d/{file}.glb|gltf */
+  modelPath: safeModelPathSchema.optional().default(null),
   variants: z.array(variantFormSchema).min(1, "Add at least one variant").max(50),
 });
 
@@ -274,5 +277,6 @@ export const DEFAULT_PRODUCT_FORM: ProductFormValues = {
   featured: false,
   seoTitle: "",
   seoDescription: "",
+  modelPath: null,
   variants: [emptyVariant("variant-1")],
 };

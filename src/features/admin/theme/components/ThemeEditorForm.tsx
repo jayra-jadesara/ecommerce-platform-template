@@ -32,6 +32,7 @@ import {
   themeEditorFormSchema,
   type ThemeEditorFormValues,
 } from "@/features/admin/theme/editor-schema";
+import { VISUAL_3D_PRESET_LABELS } from "@/features/visual-effects/schemas";
 import { defaultPlatformConfig } from "@/config/defaults";
 import { getAdminPath } from "@/config/admin-route";
 import type {
@@ -40,6 +41,7 @@ import type {
   ResolvedThemeMode,
   ThemeConfig,
   ThemeMode,
+  VisualEffectsConfig,
 } from "@/types";
 
 const COLOR_FIELDS: Array<{
@@ -75,6 +77,7 @@ const CHROME_FIELDS: Array<{
 interface ThemeEditorFormProps {
   initialTheme: ThemeConfig;
   initialAnimation: AnimationConfig;
+  initialVisualEffects: VisualEffectsConfig;
   brand: BrandConfig;
   fonts?: { fontSans?: string; fontDisplay?: string };
   canUpdate: boolean;
@@ -83,6 +86,7 @@ interface ThemeEditorFormProps {
 export function ThemeEditorForm({
   initialTheme,
   initialAnimation,
+  initialVisualEffects,
   brand,
   fonts,
   canUpdate,
@@ -98,8 +102,14 @@ export function ThemeEditorForm({
   const [pending, startTransition] = useTransition();
 
   const defaults = useMemo(
-    () => themeConfigToFormValues(initialTheme, initialAnimation, fonts),
-    [initialTheme, initialAnimation, fonts],
+    () =>
+      themeConfigToFormValues(
+        initialTheme,
+        initialAnimation,
+        fonts,
+        initialVisualEffects,
+      ),
+    [initialTheme, initialAnimation, fonts, initialVisualEffects],
   );
 
   const {
@@ -238,6 +248,7 @@ export function ThemeEditorForm({
             <Tab label="Header / Footer" />
             <Tab label="Typography" />
             <Tab label="Animation" />
+            <Tab label="3D & Visual Effects" />
             <Tab label="Branding" />
           </Tabs>
 
@@ -597,6 +608,155 @@ export function ThemeEditorForm({
             ) : null}
 
             {tab === 5 ? (
+              <section
+                className="space-y-4"
+                aria-labelledby="visual-effects-heading"
+              >
+                <h2 id="visual-effects-heading" className="text-lg font-semibold">
+                  3D & Visual Effects
+                </h2>
+                <p className="text-sm text-[var(--color-muted)]">
+                  Optional decorative 3D for heroes and products. The storefront
+                  always works without WebGL. Colors come from your theme.
+                </p>
+                <Controller
+                  control={control}
+                  name="visual3dEnabled"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          disabled={!canUpdate || pending}
+                        />
+                      }
+                      label="3D effects enabled"
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dHeroEnabled"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          disabled={!canUpdate || pending}
+                        />
+                      }
+                      label="Hero 3D enabled"
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dProductEnabled"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          disabled={!canUpdate || pending}
+                        />
+                      }
+                      label="Product 3D enabled"
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dQuality"
+                  render={({ field }) => (
+                    <TextField
+                      select
+                      label="3D quality"
+                      fullWidth
+                      disabled={!canUpdate || pending}
+                      value={field.value}
+                      onChange={field.onChange}
+                      helperText="Affects detail and performance. Prefer Low on slower devices."
+                    >
+                      <MenuItem value="LOW">Low</MenuItem>
+                      <MenuItem value="MEDIUM">Medium</MenuItem>
+                      <MenuItem value="HIGH">High</MenuItem>
+                    </TextField>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dHeroPreset"
+                  render={({ field }) => (
+                    <TextField
+                      select
+                      label="Default hero scene"
+                      fullWidth
+                      disabled={!canUpdate || pending}
+                      value={field.value}
+                      onChange={field.onChange}
+                      helperText="Homepage hero sections can override this. Unknown values fall back to None."
+                    >
+                      {(
+                        Object.keys(VISUAL_3D_PRESET_LABELS) as Array<
+                          keyof typeof VISUAL_3D_PRESET_LABELS
+                        >
+                      ).map((preset) => (
+                        <MenuItem key={preset} value={preset}>
+                          {VISUAL_3D_PRESET_LABELS[preset]}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dMobileEnabled"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          disabled={!canUpdate || pending}
+                        />
+                      }
+                      label="Mobile 3D (off recommended)"
+                    />
+                  )}
+                />
+                <Controller
+                  control={control}
+                  name="visual3dRespectReducedMotion"
+                  render={({ field }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={field.value}
+                          onChange={(event) =>
+                            field.onChange(event.target.checked)
+                          }
+                          disabled={!canUpdate || pending}
+                        />
+                      }
+                      label="Respect reduced motion"
+                    />
+                  )}
+                />
+              </section>
+            ) : null}
+
+            {tab === 6 ? (
               <section className="space-y-4" aria-labelledby="branding-heading">
                 <h2 id="branding-heading" className="text-lg font-semibold">
                   Branding preview

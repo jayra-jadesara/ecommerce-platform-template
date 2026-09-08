@@ -53,6 +53,7 @@ export default async function CmsContentPage({ params }: Props) {
         <HomepageSections
           sections={payload.sections}
           animation={config.animation}
+          visualEffects={config.visualEffects}
         />
       ) : null}
     </PageShell>

@@ -20,6 +20,7 @@ import type {
   StorefrontProductImage,
 } from "@/features/catalog/types";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { isSafeModelStoragePath } from "@/features/visual-effects/schemas";
 
 export { formatMoney };
 export type { StorefrontProductDetail };
@@ -259,7 +260,7 @@ async function getProductBySlugUncached(
     .select(
       `
       id, name, slug, short_description, description, brand, ingredients,
-      usage_instructions, featured, seo_title, seo_description,
+      usage_instructions, featured, seo_title, seo_description, model_path,
       categories ( id, name, slug ),
       product_variants (
         id, name, sku, price, compare_at_price, weight, unit,
@@ -351,6 +352,10 @@ async function getProductBySlugUncached(
     featured: data.featured,
     seoTitle: data.seo_title,
     seoDescription: data.seo_description,
+    modelPath: (() => {
+      const raw = (data as { model_path?: string | null }).model_path ?? null;
+      return isSafeModelStoragePath(raw) ? raw!.trim() : null;
+    })(),
     category: category
       ? { id: category.id, name: category.name, slug: category.slug }
       : null,

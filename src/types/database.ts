@@ -337,6 +337,44 @@ export type Database = {
         >;
         Relationships: [];
       };
+      store_visual_effects_settings: {
+        Row: {
+          store_id: string;
+          enabled: boolean;
+          hero_enabled: boolean;
+          product_enabled: boolean;
+          quality: "LOW" | "MEDIUM" | "HIGH";
+          hero_preset:
+            | "NONE"
+            | "FLOATING_SHAPES"
+            | "PRODUCT_ORBIT"
+            | "ABSTRACT_PARTICLES"
+            | "SOFT_GEOMETRY";
+          mobile_enabled: boolean;
+          respect_reduced_motion: boolean;
+        } & Timestamps;
+        Insert: {
+          store_id: string;
+          enabled?: boolean;
+          hero_enabled?: boolean;
+          product_enabled?: boolean;
+          quality?: "LOW" | "MEDIUM" | "HIGH";
+          hero_preset?:
+            | "NONE"
+            | "FLOATING_SHAPES"
+            | "PRODUCT_ORBIT"
+            | "ABSTRACT_PARTICLES"
+            | "SOFT_GEOMETRY";
+          mobile_enabled?: boolean;
+          respect_reduced_motion?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["store_visual_effects_settings"]["Insert"]
+        >;
+        Relationships: [];
+      };
       store_seo_settings: {
         Row: {
           store_id: string;
@@ -577,6 +615,7 @@ export type Database = {
           featured: boolean;
           seo_title: string | null;
           seo_description: string | null;
+          model_path: string | null;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -593,6 +632,7 @@ export type Database = {
           featured?: boolean;
           seo_title?: string | null;
           seo_description?: string | null;
+          model_path?: string | null;
           created_at?: string;
           updated_at?: string;
         };

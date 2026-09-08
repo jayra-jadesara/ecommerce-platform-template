@@ -24,6 +24,8 @@ import {
 } from "@/features/theme/validation";
 import { defaultPlatformConfig } from "@/config/defaults";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { parseVisualEffectsConfig } from "@/features/visual-effects/schemas";
+import type { VisualEffectsConfig } from "@/types";
 
 export type ThemeRow = {
   default_mode: string;
@@ -81,6 +83,16 @@ export type AnimationRow = {
   enabled: boolean;
   preset: string;
   intensity: string;
+};
+
+export type VisualEffectsRow = {
+  enabled: boolean;
+  hero_enabled: boolean;
+  product_enabled: boolean;
+  quality: string;
+  hero_preset: string;
+  mobile_enabled: boolean;
+  respect_reduced_motion: boolean;
 };
 
 export type SeoRow = {
@@ -263,6 +275,21 @@ export function mapAnimationRowToConfig(
   };
 
   return parseAnimationConfig(candidate) ?? defaultPlatformConfig.animation;
+}
+
+export function mapVisualEffectsRowToConfig(
+  row: VisualEffectsRow | null | undefined,
+): VisualEffectsConfig {
+  if (!row) return parseVisualEffectsConfig({});
+  return parseVisualEffectsConfig({
+    enabled: row.enabled,
+    heroEnabled: row.hero_enabled,
+    productEnabled: row.product_enabled,
+    quality: row.quality,
+    heroPreset: row.hero_preset,
+    mobileEnabled: row.mobile_enabled,
+    respectReducedMotion: row.respect_reduced_motion,
+  });
 }
 
 export function mapSeoRowToConfig(

@@ -624,6 +624,30 @@ function SectionConfigFields({
             <MenuItem value="center">Center</MenuItem>
             <MenuItem value="right">Right</MenuItem>
           </TextField>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={Boolean(config.enable3d)}
+                onChange={(e) => setField("enable3d", e.target.checked)}
+              />
+            }
+            label="Enable decorative 3D backdrop"
+          />
+          <TextField
+            select
+            label="3D scene preset"
+            fullWidth
+            disabled={!config.enable3d}
+            value={String(config.scene3dPreset ?? "NONE")}
+            onChange={(e) => setField("scene3dPreset", e.target.value)}
+            helperText="Only predefined scenes. Store Appearance → 3D settings must also be on."
+          >
+            <MenuItem value="NONE">None (2D only)</MenuItem>
+            <MenuItem value="FLOATING_SHAPES">Floating shapes</MenuItem>
+            <MenuItem value="PRODUCT_ORBIT">Soft orbit</MenuItem>
+            <MenuItem value="ABSTRACT_PARTICLES">Soft particles</MenuItem>
+            <MenuItem value="SOFT_GEOMETRY">Soft geometry</MenuItem>
+          </TextField>
         </>
       ) : null}
 

@@ -63,6 +63,8 @@ export default async function ProductDetailPage({
         product={product}
         currency={config.store.currency}
         isAuthenticated={Boolean(user)}
+        visualEffects={config.visualEffects}
+        animation={config.animation}
       />
     </Container>
   );

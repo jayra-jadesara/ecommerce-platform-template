@@ -151,6 +151,19 @@ export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   secondaryButtonText: z.string().max(80).optional().default(""),
   secondaryButtonLink: optionalSafeUrlSchema.optional().default(null),
   alignment: z.enum(["left", "center", "right"]).default("left"),
+  /** Optional decorative 3D — allow-listed preset only; never arbitrary code. */
+  enable3d: z.boolean().default(false),
+  scene3dPreset: z
+    .enum([
+      "NONE",
+      "FLOATING_SHAPES",
+      "PRODUCT_ORBIT",
+      "ABSTRACT_PARTICLES",
+      "SOFT_GEOMETRY",
+    ])
+    .default("NONE"),
+  scene3dRotationSpeed: z.number().min(0).max(2).default(0.25),
+  scene3dCameraDistance: z.number().min(2).max(12).default(4.5),
 });
 
 export const categoriesSectionConfigSchema = sectionCommonSettingsSchema.extend({

@@ -45,6 +45,7 @@ export default async function AdminThemeSettingsPage() {
       <ThemeEditorForm
         initialTheme={config.theme}
         initialAnimation={config.animation}
+        initialVisualEffects={config.visualEffects}
         brand={config.brand}
         fonts={{
           fontSans: config.typography.fontSans,

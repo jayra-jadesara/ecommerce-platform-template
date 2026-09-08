@@ -24,6 +24,7 @@ import {
 } from "@/features/catalog/validation";
 import type { CatalogResult } from "@/features/catalog/categories-service";
 import type { ProductStatus } from "@/types/database";
+import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
 
 export type AdminProductListItem = {
   id: string;
@@ -55,6 +56,7 @@ export type AdminProductDetail = {
     featured: boolean;
     seo_title: string | null;
     seo_description: string | null;
+    model_path: string | null;
   };
   variants: Array<{
     id: string;
@@ -352,6 +354,7 @@ export async function getAdminProduct(
       `
       id, name, slug, category_id, brand, short_description, description,
       ingredients, usage_instructions, status, featured, seo_title, seo_description,
+      model_path,
       product_variants (
         id, name, sku, price, compare_at_price, cost_price, weight, unit,
         track_inventory, is_active,
@@ -400,6 +403,7 @@ export async function getAdminProduct(
       featured: data.featured,
       seo_title: data.seo_title,
       seo_description: data.seo_description,
+      model_path: (data as { model_path?: string | null }).model_path ?? null,
     },
     variants,
   };
@@ -505,6 +509,15 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
   const skuConflict = await assertUniqueSkus(values.variants);
   if (skuConflict) return { ok: false, error: skuConflict };
 
+  const modelPath = values.modelPath?.trim() || null;
+  if (modelPath && !isStoreScopedModelPath(modelPath, storeId)) {
+    return {
+      ok: false,
+      error:
+        "3D model path must be a trusted store path like products/{storeId}/3d/file.glb",
+    };
+  }
+
   const { data: product, error } = await supabase
     .from("products")
     .insert({
@@ -521,6 +534,7 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
       featured: values.featured,
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
+      model_path: modelPath,
     })
     .select("id, slug")
     .single();
@@ -597,6 +611,15 @@ export async function updateProduct(
   const skuConflict = await assertUniqueSkus(values.variants);
   if (skuConflict) return { ok: false, error: skuConflict };
 
+  const modelPath = values.modelPath?.trim() || null;
+  if (modelPath && !isStoreScopedModelPath(modelPath, storeId)) {
+    return {
+      ok: false,
+      error:
+        "3D model path must be a trusted store path like products/{storeId}/3d/file.glb",
+    };
+  }
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -612,6 +635,7 @@ export async function updateProduct(
       featured: values.featured,
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
+      model_path: modelPath,
     })
     .eq("id", id)
     .eq("store_id", storeId);
@@ -805,6 +829,7 @@ export function toProductFormValues(
     featured: detail.product.featured,
     seoTitle: detail.product.seo_title ?? "",
     seoDescription: detail.product.seo_description ?? "",
+    modelPath: detail.product.model_path,
     variants: detail.variants.map((variant) => ({
       id: variant.id,
       clientKey: variant.id,

@@ -93,6 +93,15 @@ export const defaultPlatformConfig: PlatformConfig = {
     intensity: "medium",
     defaultPreset: "fade-up",
   },
+  visualEffects: {
+    enabled: false,
+    heroEnabled: false,
+    productEnabled: false,
+    quality: "MEDIUM",
+    heroPreset: "NONE",
+    mobileEnabled: false,
+    respectReducedMotion: true,
+  },
   navigation: {
     primary: [
       { label: "Home", href: "/" },

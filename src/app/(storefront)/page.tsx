@@ -18,6 +18,7 @@ export default async function HomePage() {
         <HomepageSections
           sections={homepage.sections}
           animation={config.animation}
+          visualEffects={config.visualEffects}
         />
       ) : (
         <HomeView config={config} />

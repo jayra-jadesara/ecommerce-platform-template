@@ -68,9 +68,22 @@ export function HomepagePreview({
                     </p>
                   ) : null}
                   {parsed.ok && section.sectionType === "hero" ? (
-                    <p className="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]">
-                      {(parsed.config as { description?: string }).description}
-                    </p>
+                    <>
+                      <p className="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]">
+                        {(parsed.config as { description?: string }).description}
+                      </p>
+                      {(parsed.config as { enable3d?: boolean }).enable3d ? (
+                        <p className="mt-1 text-xs text-[var(--color-muted)]">
+                          3D scene:{" "}
+                          {String(
+                            (parsed.config as { scene3dPreset?: string })
+                              .scene3dPreset ?? "NONE",
+                          )}{" "}
+                          (preview only — live store needs Appearance → 3D
+                          enabled)
+                        </p>
+                      ) : null}
+                    </>
                   ) : null}
                 </li>
               );
