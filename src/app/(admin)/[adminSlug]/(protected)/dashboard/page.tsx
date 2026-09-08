@@ -3,6 +3,9 @@ import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
+import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
+import { APP_VERSION } from "@/config/version";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -14,6 +17,7 @@ export default async function AdminDashboardPage() {
   const admin = await requirePermission("dashboard.view");
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
+  const setup = await getStoreSetupChecklist();
 
   const canProducts = hasPermission(admin, "products.create");
   const canOrders = hasPermission(admin, "orders.view");
@@ -54,11 +58,18 @@ export default async function AdminDashboardPage() {
         breadcrumbs={[{ label: "Dashboard" }]}
       />
 
-      <div className="flex flex-wrap gap-2">
+      {setup.show && hasPermission(admin, "settings.view") ? (
+        <AdminSetupChecklist
+          items={setup.items}
+          completedCount={setup.completedCount}
+        />
+      ) : null}
+
+      <div className="mt-8 flex flex-wrap gap-2">
         {canProducts ? (
           <Link
             href={getAdminPath("/catalog/products?panel=new")}
-            className="inline-flex items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]"
+            className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]"
           >
             + Add Product
           </Link>
@@ -66,7 +77,7 @@ export default async function AdminDashboardPage() {
         {canOrders ? (
           <Link
             href={getAdminPath("/orders")}
-            className="inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
           >
             View Orders
           </Link>
@@ -74,7 +85,7 @@ export default async function AdminDashboardPage() {
         {canCms ? (
           <Link
             href={getAdminPath("/content/homepage")}
-            className="inline-flex items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
+            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
           >
             Edit Homepage
           </Link>
@@ -157,6 +168,10 @@ export default async function AdminDashboardPage() {
           </ul>
         </section>
       )}
+
+      <p className="mt-10 text-xs text-[var(--color-muted)]">
+        Platform template v{APP_VERSION}
+      </p>
     </div>
   );
 }

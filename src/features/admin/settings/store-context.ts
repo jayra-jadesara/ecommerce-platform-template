@@ -3,6 +3,12 @@ import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
 import { slugify } from "@/features/catalog/slug";
+import {
+  DEFAULT_FRESH_STORE_NAME,
+  DEFAULT_FRESH_STORE_TAGLINE,
+  buildDefaultSeoInsert,
+  buildDefaultThemeInsert,
+} from "@/features/admin/settings/store-defaults";
 
 function getConfiguredStoreSlug(): string | null {
   const slug =
@@ -74,7 +80,7 @@ export async function ensureActiveStore(
   const existing = await resolveActiveStore(supabase);
   if (existing) return existing;
 
-  const preferredName = options?.name?.trim() || "My Store";
+  const preferredName = options?.name?.trim() || DEFAULT_FRESH_STORE_NAME;
   const preferredLegal = options?.legalName?.trim() || null;
   const configuredSlug = getConfiguredStoreSlug();
   const baseSlug = configuredSlug || slugify(preferredName) || "main-store";
@@ -185,7 +191,73 @@ async function ensureStoreSettingsStub(
     await supabase.from("store_branding").insert({
       store_id: storeId,
       brand_name: brandName,
-      tagline: "Your store, your brand.",
+      tagline: DEFAULT_FRESH_STORE_TAGLINE,
+    });
+  }
+
+  const { data: theme } = await supabase
+    .from("store_theme_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!theme) {
+    await supabase
+      .from("store_theme_settings")
+      .insert(buildDefaultThemeInsert(storeId));
+  }
+
+  const { data: animation } = await supabase
+    .from("store_animation_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!animation) {
+    await supabase.from("store_animation_settings").insert({ store_id: storeId });
+  }
+
+  const { data: visual } = await supabase
+    .from("store_visual_effects_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!visual) {
+    await supabase.from("store_visual_effects_settings").insert({
+      store_id: storeId,
+      enabled: false,
+      hero_enabled: false,
+      product_enabled: false,
+    });
+  }
+
+  const { data: seo } = await supabase
+    .from("store_seo_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!seo) {
+    await supabase
+      .from("store_seo_settings")
+      .insert(buildDefaultSeoInsert(storeId, brandName));
+  }
+
+  const { data: shipping } = await supabase
+    .from("shipping_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!shipping) {
+    await supabase.from("shipping_settings").insert({ store_id: storeId });
+  }
+
+  const { data: payment } = await supabase
+    .from("payment_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!payment) {
+    await supabase.from("payment_settings").insert({
+      store_id: storeId,
+      provider: "none",
     });
   }
 }

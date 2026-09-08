@@ -1,6 +1,95 @@
 # White-Label E-Commerce Platform Template
 
-Reusable, production-oriented foundation for multi-client storefronts. Deploy a new client with a new repository, Supabase project, domain, brand, and catalog — without rewriting core architecture.
+Reusable Next.js + Supabase storefront you can **clone per client** — branding, catalog, theme, payments, and domain are configuration, not code forks.
+
+**Version:** see `package.json` (platform template `1.0.0`).
+
+## What you get
+
+- Storefront (catalog, cart, checkout, account, CMS, SEO, PWA)
+- Admin (catalog, orders, content, media, store settings, theme, coupons)
+- Supabase Auth + RBAC + RLS
+- Razorpay payments (optional until configured)
+- Optional 3D visuals (off by default)
+- Security hardening — [SECURITY.md](./SECURITY.md)
+
+**Not in the master template:** real client credentials, production domains, customer/order data, or mandatory demo brands.
+
+## One-client deployment model
+
+| Layer | Per client |
+| --- | --- |
+| Git | Separate repository |
+| Supabase | Separate project (DB, Auth, Storage) |
+| Hosting | Separate project (e.g. Vercel) |
+| Domain | `NEXT_PUBLIC_SITE_URL` |
+| Payments | Client Razorpay keys |
+
+## Quick start (local)
+
+```bash
+npm install
+cp .env.example .env.local
+# fill NEXT_PUBLIC_SUPABASE_* , SITE_URL, SERVICE_ROLE, GUEST_CART_SECRET
+
+npx supabase db push          # link + push to your project
+npm run init:store            # generic "My Store" + settings stubs
+npm run bootstrap:admin       # first SUPER_ADMIN (CLI only)
+npm run dev
+```
+
+Admin: `http://localhost:3000/manage-store/login` (or your `ADMIN_ROUTE`).
+
+## Clone a new client
+
+1. Template → new Git repo  
+2. New Supabase project  
+3. Configure env (`.env.example`)  
+4. `npx supabase db push`  
+5. `npm run init:store`  
+6. `npm run bootstrap:admin`  
+7. Configure branding / theme / products / shipping / payments / SEO in Admin  
+8. Deploy + domain + Razorpay webhook  
+
+Guides: [docs/CLIENT-ONBOARDING.md](./docs/CLIENT-ONBOARDING.md) · [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) · [docs/SETUP-CHECKLIST.md](./docs/SETUP-CHECKLIST.md)
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Development |
+| `npm run build` / `start` | Production build / serve |
+| `npm test` / `typecheck` / `lint` | Quality gates |
+| `npm run init:store` | Create/ensure generic store + stubs |
+| `npm run bootstrap:admin` | First admin (not public self-service) |
+| `npm run scan:secrets` | Tracked-file secret / leakage scan |
+| `npm run verify:production` | Env + scan + test + typecheck + lint + build |
+
+## Environment
+
+Public vs server vs payments: `.env.example`. Validation: `src/config/env-schema.ts`. Razorpay is optional until enabled.
+
+## Database
+
+- Migrations: `supabase/migrations/` (apply in order)  
+- **System seed:** `supabase/seed.sql` (roles only)  
+- **Demo seed (optional):** `supabase/seed-demo.sql` — **DEMO ONLY**  
+
+Storage buckets: `branding`, `products`, `categories`, `cms`, `media`.
+
+## Updating clients from this master
+
+Cherry-pick / merge carefully. Never auto-overwrite client secrets or data. Do not `npm audit --force` blindly.
+
+## Stack
+
+Next.js 16, React 19, TypeScript, Tailwind + MUI, TanStack Query, Zod, Framer Motion, Three.js (lazy), Supabase, Razorpay.
+
+---
+
+# Maintainer notes (historical phases)
+
+The sections below retain older phase documentation. Prefer `docs/` for new client work.
 
 **Phase 1** delivers the application shell: config-driven theme, layout, design tokens, providers, and feature folder structure.
 
@@ -10,7 +99,7 @@ Reusable, production-oriented foundation for multi-client storefronts. Deploy a 
 
 **Phase 4** connects storefront theme, branding, animation, SEO, and navigation to Supabase (`store_theme_settings`, `store_branding`, etc.). The Admin Theme Editor UI is Phase 5.
 
-## Stack
+## Stack (detail)
 
 - Next.js (App Router) + React + TypeScript
 - Tailwind CSS + Material UI (coexistence via CSS layers)
@@ -21,7 +110,7 @@ Reusable, production-oriented foundation for multi-client storefronts. Deploy a 
 
 Prepared for later: Supabase (Auth, DB, Storage, Edge Functions), Razorpay.
 
-## Getting started
+## Getting started (legacy)
 
 ### Prerequisites
 
@@ -43,7 +132,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-### Scripts
+### Scripts (legacy table)
 
 | Command | Description |
 | --- | --- |
@@ -52,23 +141,11 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run start` | Serve production build |
 | `npm run lint` | ESLint |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
-| `npm test` | Unit tests (permissions / auth helpers) |
+| `npm test` | Unit tests |
 
 ## Environment variables
 
-See `.env.example`:
-
-| Variable | Purpose |
-| --- | --- |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon (public) key |
-| `NEXT_PUBLIC_SITE_URL` | Canonical site URL (auth redirects, SEO) |
-| `ADMIN_ROUTE` | Admin URL segment (default `manage-store`) — **not a security boundary** |
-| `STORE_SLUG` / `NEXT_PUBLIC_STORE_SLUG` | Active `stores.slug` for this deployment (optional if one active store) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only privileged key (never expose to the browser) |
-| `RAZORPAY_KEY_ID` | Razorpay key id (server; returned to Checkout.js only via server action) |
-| `RAZORPAY_KEY_SECRET` | Razorpay secret (server-only) |
-| `RAZORPAY_WEBHOOK_SECRET` | Webhook HMAC secret (server-only) |
+See `.env.example` (authoritative). Also: `GUEST_CART_SECRET` required in production.
 
 Never commit `.env` or `.env.local`.
 

@@ -1,50 +1,20 @@
 /**
- * One-shot local bootstrap: create default SUPER_ADMIN in Supabase Auth + RBAC tables.
- * Usage: node scripts/create-default-admin.mjs
- * Requires .env.local with NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ * First-admin bootstrap (deliberate, not public self-service).
+ *
+ * Usage:
+ *   node scripts/create-default-admin.mjs
+ *   ADMIN_EMAIL=you@client.com node scripts/create-default-admin.mjs
+ *
+ * Requires .env.local: NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ * Optional: ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_ROUTE
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "node:crypto";
-import { readFileSync, existsSync } from "node:fs";
-import { resolve } from "node:path";
-
-function loadEnvLocal() {
-  const path = resolve(process.cwd(), ".env.local");
-  if (!existsSync(path)) {
-    throw new Error("Missing .env.local");
-  }
-  const env = {};
-  for (const line of readFileSync(path, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const eq = trimmed.indexOf("=");
-    if (eq <= 0) continue;
-    const key = trimmed.slice(0, eq).trim();
-    let value = trimmed.slice(eq + 1).trim();
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1);
-    }
-    env[key] = value;
-  }
-  return env;
-}
-
-function normalizeUrl(raw) {
-  let url = (raw || "").trim();
-  if (!url) return "";
-  if (!/^https?:\/\//i.test(url)) {
-    if (/^[a-z0-9-]+$/i.test(url)) url = `https://${url}.supabase.co`;
-    else if (/^[a-z0-9-]+\.supabase\.co$/i.test(url)) url = `https://${url}`;
-  }
-  return url.replace(/\/$/, "");
-}
+import { loadEnvFiles, normalizeSupabaseUrl } from "./lib/env.mjs";
 
 async function main() {
-  const env = loadEnvLocal();
-  const url = normalizeUrl(env.NEXT_PUBLIC_SUPABASE_URL);
+  const env = loadEnvFiles();
+  const url = normalizeSupabaseUrl(env.NEXT_PUBLIC_SUPABASE_URL);
   const serviceKey = (env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
 
   if (!url || !url.includes("supabase.co")) {
@@ -55,19 +25,21 @@ async function main() {
   }
   if (!serviceKey) {
     console.error(
-      "Missing SUPABASE_SERVICE_ROLE_KEY in .env.local (Supabase → Settings → API → Secret key).",
+      "Missing SUPABASE_SERVICE_ROLE_KEY in .env.local (Supabase → Settings → API).",
     );
     process.exit(1);
   }
 
-  const email = "admin@example.com";
-  const password = `Admin-${randomBytes(6).toString("base64url")}!`;
+  const email = (env.ADMIN_EMAIL || "admin@example.com").trim().toLowerCase();
+  const password =
+    (env.ADMIN_PASSWORD || "").trim() ||
+    `Admin-${randomBytes(6).toString("base64url")}!`;
+  const adminRoute = (env.ADMIN_ROUTE || "manage-store").replace(/^\/+|\/+$/g, "");
 
   const admin = createClient(url, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Ensure roles exist
   const { error: rolesError } = await admin.from("roles").upsert(
     [
       {
@@ -101,7 +73,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Create or find auth user
   let userId = null;
   const created = await admin.auth.admin.createUser({
     email,
@@ -111,7 +82,6 @@ async function main() {
   });
 
   if (created.error) {
-    // If already exists, list and update password
     const listed = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
     const existing = listed.data?.users?.find(
       (u) => u.email?.toLowerCase() === email,
@@ -126,7 +96,10 @@ async function main() {
       email_confirm: true,
     });
     if (updated.error) {
-      console.error("Failed to reset existing admin password:", updated.error.message);
+      console.error(
+        "Failed to reset existing admin password:",
+        updated.error.message,
+      );
       process.exit(1);
     }
   } else {
@@ -157,7 +130,6 @@ async function main() {
     { onConflict: "user_id,role_id" },
   );
   if (linkError) {
-    // Some schemas use no composite unique — try insert ignore style
     const { error: insertError } = await admin.from("admin_user_roles").insert({
       user_id: userId,
       role_id: roleRow.id,
@@ -169,12 +141,18 @@ async function main() {
   }
 
   console.log("");
-  console.log("Default admin ready.");
-  console.log("URL:      /manage-store/login");
+  console.log("First admin ready (change password after login).");
+  console.log(`URL:      /${adminRoute}/login`);
   console.log(`Email:    ${email}`);
-  console.log(`Password: ${password}`);
+  if (!env.ADMIN_PASSWORD?.trim()) {
+    console.log(`Password: ${password}`);
+  } else {
+    console.log("Password: (from ADMIN_PASSWORD)");
+  }
   console.log("");
-  console.log("Change this password after first login.");
+  console.log(
+    "This script is intentional bootstrap only — customers cannot self-promote to admin.",
+  );
 }
 
 main().catch((err) => {

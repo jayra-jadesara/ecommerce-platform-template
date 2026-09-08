@@ -1,6 +1,6 @@
 {
   "name": "ecommerce-platform-template",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "init:store": "node scripts/init-store.mjs",
+    "bootstrap:admin": "node scripts/create-default-admin.mjs",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
+    "verify:production": "node scripts/verify-production.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",
