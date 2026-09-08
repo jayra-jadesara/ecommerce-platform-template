@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
@@ -10,6 +11,7 @@ import type { AdminProductListItem } from "@/features/catalog/products-service";
 import type { CategoryRow } from "@/features/catalog/categories-service";
 import type { ProductListQuery } from "@/features/catalog/validation";
 import { PRODUCT_SORT_OPTIONS } from "@/features/catalog/validation";
+import { deleteProductAction } from "@/features/catalog/actions";
 import { getAdminPath } from "@/config/admin-route";
 
 interface ProductListTableProps {
@@ -18,6 +20,8 @@ interface ProductListTableProps {
   query: ProductListQuery;
   categories: CategoryRow[];
   canCreate: boolean;
+  canUpdate: boolean;
+  canDelete: boolean;
 }
 
 function buildHref(next: Partial<ProductListQuery>, current: ProductListQuery) {
@@ -37,10 +41,34 @@ function buildHref(next: Partial<ProductListQuery>, current: ProductListQuery) {
   return `${getAdminPath("/catalog/products")}${qs ? `?${qs}` : ""}`;
 }
 
+function panelHref(panel: "new" | "edit" | "view", id?: string) {
+  const params = new URLSearchParams();
+  params.set("panel", panel);
+  if (id) params.set("id", id);
+  return `${getAdminPath("/catalog/products")}?${params.toString()}`;
+}
+
+const stockLabel: Record<string, string> = {
+  IN_STOCK: "In stock",
+  LOW_STOCK: "Low stock",
+  OUT_OF_STOCK: "Out of stock",
+};
+
 const stockColor: Record<string, "default" | "success" | "warning" | "error"> = {
   IN_STOCK: "success",
   LOW_STOCK: "warning",
   OUT_OF_STOCK: "error",
+};
+
+const sortLabels: Record<string, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  name: "Name A–Z",
+  name_desc: "Name Z–A",
+  price: "Price: low to high",
+  price_desc: "Price: high to low",
+  stock: "Stock",
+  featured: "Featured first",
 };
 
 export function ProductListTable({
@@ -49,171 +77,272 @@ export function ProductListTable({
   query,
   categories,
   canCreate,
+  canUpdate,
+  canDelete,
 }: ProductListTableProps) {
   const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const emptyFilters =
+    !query.q &&
+    !query.categoryId &&
+    query.status === "all" &&
+    query.featured === "all" &&
+    query.stock === "all";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <TextField
-          label="Search"
-          size="small"
-          defaultValue={query.q}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              const value = (event.target as HTMLInputElement).value;
-              router.push(buildHref({ q: value, page: 1 }, query));
+    <div className="flex flex-1 flex-col space-y-4">
+      <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <TextField
+            label="Search products..."
+            size="small"
+            fullWidth
+            defaultValue={query.q}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                const value = (event.target as HTMLInputElement).value;
+                router.push(buildHref({ q: value, page: 1 }, query));
+              }
+            }}
+          />
+          <TextField
+            select
+            label="Category"
+            size="small"
+            fullWidth
+            value={query.categoryId ?? ""}
+            onChange={(event) =>
+              router.push(
+                buildHref(
+                  { categoryId: event.target.value || undefined, page: 1 },
+                  query,
+                ),
+              )
             }
-          }}
-        />
-        <TextField
-          select
-          label="Category"
-          size="small"
-          value={query.categoryId ?? ""}
-          onChange={(event) =>
-            router.push(
-              buildHref(
-                { categoryId: event.target.value || undefined, page: 1 },
-                query,
-              ),
-            )
-          }
-          className="min-w-40"
-        >
-          <MenuItem value="">All</MenuItem>
-          {categories.map((category) => (
-            <MenuItem key={category.id} value={category.id}>
-              {category.name}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Status"
-          size="small"
-          value={query.status}
-          onChange={(event) =>
-            router.push(
-              buildHref(
-                {
-                  status: event.target.value as ProductListQuery["status"],
-                  page: 1,
-                },
-                query,
-              ),
-            )
-          }
-          className="min-w-32"
-        >
-          <MenuItem value="all">All</MenuItem>
-          <MenuItem value="draft">Draft</MenuItem>
-          <MenuItem value="active">Active</MenuItem>
-          <MenuItem value="archived">Archived</MenuItem>
-        </TextField>
-        <TextField
-          select
-          label="Featured"
-          size="small"
-          value={query.featured}
-          onChange={(event) =>
-            router.push(
-              buildHref(
-                {
-                  featured: event.target.value as ProductListQuery["featured"],
-                  page: 1,
-                },
-                query,
-              ),
-            )
-          }
-          className="min-w-32"
-        >
-          <MenuItem value="all">All</MenuItem>
-          <MenuItem value="true">Featured</MenuItem>
-          <MenuItem value="false">Not featured</MenuItem>
-        </TextField>
-        <TextField
-          select
-          label="Stock"
-          size="small"
-          value={query.stock}
-          onChange={(event) =>
-            router.push(
-              buildHref(
-                {
-                  stock: event.target.value as ProductListQuery["stock"],
-                  page: 1,
-                },
-                query,
-              ),
-            )
-          }
-          className="min-w-36"
-        >
-          <MenuItem value="all">All</MenuItem>
-          <MenuItem value="IN_STOCK">In stock</MenuItem>
-          <MenuItem value="LOW_STOCK">Low stock</MenuItem>
-          <MenuItem value="OUT_OF_STOCK">Out of stock</MenuItem>
-        </TextField>
-        <TextField
-          select
-          label="Sort"
-          size="small"
-          value={query.sort}
-          onChange={(event) =>
-            router.push(
-              buildHref(
-                {
-                  sort: event.target.value as ProductListQuery["sort"],
-                  page: 1,
-                },
-                query,
-              ),
-            )
-          }
-          className="min-w-36"
-        >
-          {PRODUCT_SORT_OPTIONS.map((option) => (
-            <MenuItem key={option} value={option}>
-              {option}
-            </MenuItem>
-          ))}
-        </TextField>
-        <div className="ml-auto">
+          >
+            <MenuItem value="">All categories</MenuItem>
+            {categories.map((category) => (
+              <MenuItem key={category.id} value={category.id}>
+                {category.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Status"
+            size="small"
+            fullWidth
+            value={query.status}
+            onChange={(event) =>
+              router.push(
+                buildHref(
+                  {
+                    status: event.target.value as ProductListQuery["status"],
+                    page: 1,
+                  },
+                  query,
+                ),
+              )
+            }
+          >
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="draft">Draft</MenuItem>
+            <MenuItem value="active">Active</MenuItem>
+            <MenuItem value="archived">Archived</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Stock"
+            size="small"
+            fullWidth
+            value={query.stock}
+            onChange={(event) =>
+              router.push(
+                buildHref(
+                  {
+                    stock: event.target.value as ProductListQuery["stock"],
+                    page: 1,
+                  },
+                  query,
+                ),
+              )
+            }
+          >
+            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="IN_STOCK">In stock</MenuItem>
+            <MenuItem value="LOW_STOCK">Low stock</MenuItem>
+            <MenuItem value="OUT_OF_STOCK">Out of stock</MenuItem>
+          </TextField>
+          <TextField
+            select
+            label="Sort"
+            size="small"
+            fullWidth
+            value={query.sort}
+            onChange={(event) =>
+              router.push(
+                buildHref(
+                  {
+                    sort: event.target.value as ProductListQuery["sort"],
+                    page: 1,
+                  },
+                  query,
+                ),
+              )
+            }
+          >
+            {PRODUCT_SORT_OPTIONS.map((option) => (
+              <MenuItem key={option} value={option}>
+                {sortLabels[option] ?? option}
+              </MenuItem>
+            ))}
+          </TextField>
           <Button
             variant="contained"
             disabled={!canCreate}
-            href={getAdminPath("/catalog/products/new")}
+            href={panelHref("new")}
+            className="!h-[40px] sm:!self-end"
+            fullWidth
           >
-            New product
+            + Add Product
           </Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+      {/* Mobile cards */}
+      <div className="flex flex-1 flex-col gap-3 md:hidden">
+        {items.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
+            {emptyFilters ? (
+              <div className="space-y-3">
+                <p className="font-medium">No products yet.</p>
+                <p className="text-sm text-[var(--color-muted)]">
+                  Add your first product to start selling.
+                </p>
+                {canCreate ? (
+                  <Button variant="contained" href={panelHref("new")}>
+                    Add Your First Product
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-[var(--color-muted)]">
+                No products match these filters.
+              </p>
+            )}
+          </div>
+        ) : (
+          items.map((item) => (
+            <article
+              key={item.id}
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    href={panelHref("view", item.id)}
+                    className="font-medium hover:underline"
+                  >
+                    {item.name}
+                  </Link>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">
+                    {item.categoryName ?? "No category"}
+                    {" · "}
+                    {item.minPrice == null
+                      ? "—"
+                      : item.minPrice === item.maxPrice
+                        ? item.minPrice.toFixed(2)
+                        : `${item.minPrice.toFixed(2)} – ${item.maxPrice?.toFixed(2)}`}
+                  </p>
+                </div>
+                <Chip
+                  size="small"
+                  label={
+                    item.status.charAt(0).toUpperCase() + item.status.slice(1)
+                  }
+                  variant="outlined"
+                />
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <Chip
+                  size="small"
+                  label={stockLabel[item.stockStatus] ?? item.stockStatus}
+                  color={stockColor[item.stockStatus]}
+                />
+                <div className="ml-auto flex flex-wrap gap-1">
+                  <Button size="small" href={panelHref("view", item.id)}>
+                    View
+                  </Button>
+                  <Button
+                    size="small"
+                    disabled={!canUpdate}
+                    href={panelHref("edit", item.id)}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="small"
+                    color="error"
+                    disabled={!canDelete || pending}
+                    onClick={() => {
+                      if (
+                        !window.confirm(
+                          `Delete “${item.name}”? This cannot be undone.`,
+                        )
+                      ) {
+                        return;
+                      }
+                      startTransition(async () => {
+                        const result = await deleteProductAction(item.id);
+                        if (result.ok) router.refresh();
+                        else window.alert(result.error);
+                      });
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </div>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      {/* Desktop / tablet table */}
+      <div className="hidden min-h-[16rem] flex-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] md:block">
         <table className="min-w-full text-left text-sm">
           <thead className="border-b border-[var(--color-border)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
             <tr>
               <th className="px-3 py-3">Product</th>
               <th className="px-3 py-3">Category</th>
-              <th className="px-3 py-3">Variants</th>
               <th className="px-3 py-3">Price</th>
               <th className="px-3 py-3">Stock</th>
               <th className="px-3 py-3">Status</th>
-              <th className="px-3 py-3">Updated</th>
               <th className="px-3 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td
-                  colSpan={8}
-                  className="px-3 py-10 text-center text-[var(--color-muted)]"
-                >
-                  No products match these filters.
+                <td colSpan={6} className="px-3 py-16 text-center">
+                  {emptyFilters ? (
+                    <div className="space-y-3">
+                      <p className="font-medium">No products yet.</p>
+                      <p className="text-sm text-[var(--color-muted)]">
+                        Add your first product to start selling.
+                      </p>
+                      {canCreate ? (
+                        <Button variant="contained" href={panelHref("new")}>
+                          Add Your First Product
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-[var(--color-muted)]">
+                      No products match these filters.
+                    </p>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -232,20 +361,20 @@ export function ProductListTable({
                       </div>
                       <div>
                         <Link
-                          href={getAdminPath(`/catalog/products/${item.id}`)}
+                          href={panelHref("view", item.id)}
                           className="font-medium text-[var(--color-foreground)] hover:underline"
                         >
                           {item.name}
                         </Link>
-                        <p className="text-xs text-[var(--color-muted)]">
-                          /{item.slug}
-                          {item.featured ? " · featured" : ""}
-                        </p>
+                        {item.featured ? (
+                          <p className="text-xs text-[var(--color-muted)]">
+                            Featured
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </td>
                   <td className="px-3 py-3">{item.categoryName ?? "—"}</td>
-                  <td className="px-3 py-3">{item.variantCount}</td>
                   <td className="px-3 py-3">
                     {item.minPrice == null
                       ? "—"
@@ -256,23 +385,53 @@ export function ProductListTable({
                   <td className="px-3 py-3">
                     <Chip
                       size="small"
-                      label={item.stockStatus.replaceAll("_", " ")}
+                      label={stockLabel[item.stockStatus] ?? item.stockStatus}
                       color={stockColor[item.stockStatus]}
                     />
                   </td>
                   <td className="px-3 py-3">
-                    <Chip size="small" label={item.status} variant="outlined" />
-                  </td>
-                  <td className="px-3 py-3 text-xs text-[var(--color-muted)]">
-                    {new Date(item.updatedAt).toLocaleDateString()}
+                    <Chip
+                      size="small"
+                      label={
+                        item.status.charAt(0).toUpperCase() + item.status.slice(1)
+                      }
+                      variant="outlined"
+                    />
                   </td>
                   <td className="px-3 py-3">
-                    <Button
-                      size="small"
-                      href={getAdminPath(`/catalog/products/${item.id}`)}
-                    >
-                      Edit
-                    </Button>
+                    <div className="flex flex-wrap gap-1">
+                      <Button size="small" href={panelHref("view", item.id)}>
+                        View
+                      </Button>
+                      <Button
+                        size="small"
+                        disabled={!canUpdate}
+                        href={panelHref("edit", item.id)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        size="small"
+                        color="error"
+                        disabled={!canDelete || pending}
+                        onClick={() => {
+                          if (
+                            !window.confirm(
+                              `Delete “${item.name}”? This cannot be undone.`,
+                            )
+                          ) {
+                            return;
+                          }
+                          startTransition(async () => {
+                            const result = await deleteProductAction(item.id);
+                            if (result.ok) router.refresh();
+                            else window.alert(result.error);
+                          });
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))

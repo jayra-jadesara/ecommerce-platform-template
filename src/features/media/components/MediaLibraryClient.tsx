@@ -100,6 +100,7 @@ export function MediaLibraryClient({
           select
           label="Upload folder"
           value={uploadFolder}
+          required
           disabled={!canUpload}
           onChange={(event) =>
             setUploadFolder(event.target.value as MediaFolder)

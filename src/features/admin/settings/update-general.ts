@@ -8,7 +8,7 @@ import {
   type GeneralSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import {
-  resolveActiveStore,
+  ensureActiveStore,
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
 import { diffChangedKeys } from "@/features/admin/settings/validation";
@@ -40,10 +40,14 @@ export async function updateGeneralStoreSettings(
 
   const values: GeneralSettingsFormValues = parsed.data;
   const supabase = await createSupabaseServerClient();
-  const store = await resolveActiveStore(supabase);
-  if (!store) {
-    return { ok: false, error: "No active store found." };
+  const ensured = await ensureActiveStore(supabase, {
+    name: values.displayName,
+    legalName: emptyToNull(values.legalName),
+  });
+  if ("error" in ensured) {
+    return { ok: false, error: ensured.error };
   }
+  const store = ensured;
 
   const settingsPayload = {
     contact_email: emptyToNull(values.contactEmail),

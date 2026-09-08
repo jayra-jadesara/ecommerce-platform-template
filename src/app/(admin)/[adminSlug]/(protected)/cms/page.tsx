@@ -1,19 +1,9 @@
-import { EmptyState } from "@/components/ui/EmptyState";
+import { redirect } from "next/navigation";
+import { getAdminPath } from "@/config/admin-route";
 import { requirePermission } from "@/features/auth/session";
 
+/** Legacy /cms route — keep for bookmarks; send users to the Content hub. */
 export default async function AdminCmsPage() {
   await requirePermission("cms.view");
-  return (
-    <div>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        CMS
-      </h1>
-      <div className="mt-6">
-        <EmptyState
-          title="CMS editor coming soon"
-          description="Page and section editing will arrive in a later phase."
-        />
-      </div>
-    </div>
-  );
+  redirect(getAdminPath("/content"));
 }

@@ -160,42 +160,44 @@ export function ShippingSettingsForm({
                 disabled={!canUpdate || pending}
               />
             }
-            label="Shipping enabled"
+            label="Offer delivery"
           />
         )}
       />
 
       <TextField
         select
-        label="Shipping method"
+        label="How shipping is calculated"
         fullWidth
+        required
         disabled={!canUpdate || pending}
         error={Boolean(errors.method)}
         helperText={errors.method?.message}
         {...register("method")}
       >
-        <MenuItem value="flat_rate">Flat rate (+ free threshold)</MenuItem>
-        <MenuItem value="free">Always free</MenuItem>
-        <MenuItem value="percentage">Percentage of subtotal</MenuItem>
-        <MenuItem value="zone">Zone (uses flat fee until zone rules exist)</MenuItem>
+        <MenuItem value="flat_rate">Flat delivery charge (+ free above amount)</MenuItem>
+        <MenuItem value="free">Always free delivery</MenuItem>
+        <MenuItem value="percentage">Percentage of order subtotal</MenuItem>
+        <MenuItem value="zone">By delivery zone (uses flat charge for now)</MenuItem>
       </TextField>
 
       <TextField
-        label="Default shipping fee"
+        label="Delivery charge"
         type="number"
         fullWidth
+        required
         slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
         disabled={!canUpdate || pending}
         error={Boolean(errors.defaultShippingFee)}
         helperText={
           errors.defaultShippingFee?.message ||
-          `Major units in ${currency}`
+          `Amount charged for delivery (${currency}) when free delivery does not apply.`
         }
         {...register("defaultShippingFee")}
       />
 
       <TextField
-        label="Free shipping threshold"
+        label="Free delivery above"
         type="number"
         fullWidth
         slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
@@ -203,7 +205,7 @@ export function ShippingSettingsForm({
         error={Boolean(errors.freeShippingThreshold)}
         helperText={
           errors.freeShippingThreshold?.message ||
-          `Subtotal at or above this amount ships free (when shipping is enabled). Currency: ${currency}`
+          `Customers get free delivery when their order reaches this amount (${currency}).`
         }
         {...register("freeShippingThreshold")}
       />
@@ -214,20 +216,20 @@ export function ShippingSettingsForm({
         fullWidth
         slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
         disabled={!canUpdate || pending || watched.method !== "percentage"}
-        helperText="Used when method is percentage"
+        helperText="Only used when shipping is calculated as a percentage"
         {...register("percentageRate")}
       />
 
       <div className="grid gap-3 sm:grid-cols-2">
         <TextField
-          label="Est. delivery min days"
+          label="Delivery time (min days)"
           type="number"
           fullWidth
           disabled={!canUpdate || pending}
           {...register("estimatedDeliveryMinDays")}
         />
         <TextField
-          label="Est. delivery max days"
+          label="Delivery time (max days)"
           type="number"
           fullWidth
           disabled={!canUpdate || pending}
@@ -236,16 +238,16 @@ export function ShippingSettingsForm({
       </div>
 
       <TextField
-        label="Delivery label"
+        label="Delivery note shown to customers"
         fullWidth
         disabled={!canUpdate || pending}
         {...register("estimatedDeliveryLabel")}
       />
 
       <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-        <h3 className="font-semibold">Live preview</h3>
+        <h3 className="font-semibold">Example checkout</h3>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Preview only — customer checkout uses the server pricing engine.
+          Approximate delivery charge for sample order amounts.
         </p>
         <ul className="mt-3 space-y-2 text-sm">
           <li>

@@ -11,7 +11,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ config, children }: AppLayoutProps) {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
+    <div className="flex min-h-dvh flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
       <AnnouncementBar announcement={config.header.announcement} />
       <Header
         brand={config.brand}

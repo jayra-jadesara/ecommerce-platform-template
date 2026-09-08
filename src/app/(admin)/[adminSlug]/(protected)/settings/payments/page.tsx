@@ -6,6 +6,7 @@ import {
   loadPaymentSettingsForm,
   loadShippingSettingsForm,
 } from "@/features/admin/settings/update-shipping-payment";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -22,24 +23,22 @@ export default async function AdminPaymentSettingsPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Payments
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Business gateway fee and tax settings. Provider secrets stay in
-        environment variables — never stored here. Razorpay checkout executes in
-        a later phase.
-      </p>
-      <div className="mt-6 max-w-2xl">
-        <PaymentSettingsForm
-          initialValues={values}
-          currency={currency}
-          canUpdate={canUpdate}
-          sampleShippingFee={
-            shipping.values.enabled ? shipping.values.defaultShippingFee : 0
-          }
-        />
-      </div>
+      <AdminPageHeader
+        title="Payments"
+        description="Choose your payment provider and any fees added at checkout."
+        breadcrumbs={[
+          { label: "Store Settings", href: getAdminPath("/settings") },
+          { label: "Payments" },
+        ]}
+      />
+      <PaymentSettingsForm
+        initialValues={values}
+        currency={currency}
+        canUpdate={canUpdate}
+        sampleShippingFee={
+          shipping.values.enabled ? shipping.values.defaultShippingFee : 0
+        }
+      />
     </div>
   );
 }

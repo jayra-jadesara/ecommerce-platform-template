@@ -9,7 +9,7 @@ import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { adminLoginAction } from "@/features/auth/actions";
 import { loginSchema, type LoginInput } from "@/features/auth/validations";
-import { safeInternalPath } from "@/features/auth/redirect";
+import { safeAdminNextPath } from "@/features/auth/redirect";
 import { getAdminPath } from "@/config/admin-route";
 
 export function AdminLoginForm() {
@@ -18,6 +18,7 @@ export function AdminLoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const dashboard = getAdminPath("/dashboard");
+  const adminBase = getAdminPath();
 
   const {
     register,
@@ -30,7 +31,11 @@ export function AdminLoginForm() {
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
-    const next = safeInternalPath(searchParams.get("next"), dashboard);
+    const next = safeAdminNextPath(
+      searchParams.get("next"),
+      adminBase,
+      dashboard,
+    );
     startTransition(async () => {
       const result = await adminLoginAction(values, next, dashboard);
       if (result && !result.ok) {
@@ -49,6 +54,7 @@ export function AdminLoginForm() {
         type="email"
         autoComplete="email"
         fullWidth
+        required
         disabled={pending}
         error={Boolean(errors.email)}
         helperText={errors.email?.message}
@@ -59,6 +65,7 @@ export function AdminLoginForm() {
         type="password"
         autoComplete="current-password"
         fullWidth
+        required
         disabled={pending}
         error={Boolean(errors.password)}
         helperText={errors.password?.message}

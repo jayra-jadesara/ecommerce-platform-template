@@ -90,6 +90,7 @@ export function GeneralSettingsForm({
               {...field}
               label="Display name"
               fullWidth
+              required
               disabled={!canUpdate}
               error={Boolean(fieldState.error)}
               helperText={fieldState.error?.message}
@@ -116,6 +117,7 @@ export function GeneralSettingsForm({
               {...field}
               label="Currency (ISO)"
               fullWidth
+              required
               disabled={!canUpdate}
               error={Boolean(fieldState.error)}
               helperText={fieldState.error?.message}
@@ -130,6 +132,7 @@ export function GeneralSettingsForm({
               {...field}
               label="Timezone"
               fullWidth
+              required
               disabled={!canUpdate}
             />
           )}
@@ -142,6 +145,7 @@ export function GeneralSettingsForm({
               {...field}
               label="Default locale"
               fullWidth
+              required
               disabled={!canUpdate}
             />
           )}

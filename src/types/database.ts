@@ -751,11 +751,15 @@ export type Database = {
           provider_payment_id: string | null;
           provider_order_id: string | null;
           amount: number;
+          amount_minor: number;
           currency: string;
           status: PaymentStatus;
           payment_method: string | null;
           paid_at: string | null;
           failure_reason: string | null;
+          pricing_version: string | null;
+          receipt: string | null;
+          metadata: Json;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -765,15 +769,53 @@ export type Database = {
           provider_payment_id?: string | null;
           provider_order_id?: string | null;
           amount: number;
+          amount_minor: number;
           currency: string;
           status?: PaymentStatus;
           payment_method?: string | null;
           paid_at?: string | null;
           failure_reason?: string | null;
+          pricing_version?: string | null;
+          receipt?: string | null;
+          metadata?: Json;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["payments"]["Insert"]>;
+        Relationships: [];
+      };
+      payment_webhook_events: {
+        Row: {
+          id: string;
+          provider: string;
+          event_id: string;
+          event_name: string;
+          status: "RECEIVED" | "PROCESSED" | "IGNORED" | "FAILED";
+          payment_id: string | null;
+          order_id: string | null;
+          payload_digest: string | null;
+          error_message: string | null;
+          received_at: string;
+          processed_at: string | null;
+          metadata: Json;
+        };
+        Insert: {
+          id?: string;
+          provider: string;
+          event_id: string;
+          event_name: string;
+          status?: "RECEIVED" | "PROCESSED" | "IGNORED" | "FAILED";
+          payment_id?: string | null;
+          order_id?: string | null;
+          payload_digest?: string | null;
+          error_message?: string | null;
+          received_at?: string;
+          processed_at?: string | null;
+          metadata?: Json;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["payment_webhook_events"]["Insert"]
+        >;
         Relationships: [];
       };
       coupons: {

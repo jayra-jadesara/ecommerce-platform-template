@@ -180,6 +180,7 @@ export function NavigationSettingsForm({
                     {...f}
                     label="Label"
                     fullWidth
+                    required
                     disabled={!canUpdate}
                     error={Boolean(fieldState.error)}
                     helperText={fieldState.error?.message}
@@ -194,6 +195,7 @@ export function NavigationSettingsForm({
                     {...f}
                     label="URL"
                     fullWidth
+                    required
                     disabled={!canUpdate}
                     error={Boolean(fieldState.error)}
                     helperText={fieldState.error?.message}
@@ -209,6 +211,7 @@ export function NavigationSettingsForm({
                     select
                     label="Location"
                     fullWidth
+                    required
                     disabled={!canUpdate}
                   >
                     <MenuItem value="header">Header</MenuItem>

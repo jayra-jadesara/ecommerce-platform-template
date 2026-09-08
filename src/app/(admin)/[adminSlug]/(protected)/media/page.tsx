@@ -2,6 +2,8 @@ import { MediaLibraryClient } from "@/features/media/components/MediaLibraryClie
 import { listMedia } from "@/features/media/media-service";
 import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
 import { requirePermission, hasPermission } from "@/features/auth/session";
+import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +27,14 @@ export default async function AdminMediaPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Media library
-      </h1>
-      <p className="text-sm text-[var(--color-muted)]">
-        Upload and manage store media. Product images also appear here when
-        uploaded from the product editor.
-      </p>
+      <AdminPageHeader
+        title="Images & Files"
+        description="Upload and manage images used across your store."
+        breadcrumbs={[
+          { label: "Content", href: getAdminPath("/content") },
+          { label: "Images & Files" },
+        ]}
+      />
       <MediaLibraryClient
         initialItems={list.items}
         total={list.total}

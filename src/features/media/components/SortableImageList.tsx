@@ -45,42 +45,48 @@ export function SortableImageList({
   }
 
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
       {items.map((item, index) => (
         <li
           key={item.id}
-          className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]"
+          className="flex flex-col overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]"
         >
-          <div className="relative aspect-square bg-[var(--color-surface)]">
-            <Image
-              src={item.url}
-              alt={item.altText || "Product image"}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 50vw, 220px"
-            />
+          <div className="relative h-36 bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] sm:h-40">
+            {item.url ? (
+              <Image
+                src={item.url}
+                alt={item.altText || "Product image"}
+                fill
+                className="object-contain p-2"
+                sizes="(max-width: 640px) 50vw, 160px"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-xs text-[var(--color-muted)]">
+                No preview
+              </div>
+            )}
             {item.isPrimary ? (
               <Chip
                 size="small"
                 color="primary"
                 label="Primary"
-                className="!absolute left-2 top-2"
+                className="!absolute left-1.5 top-1.5 !h-5 !text-[10px] !shadow-sm"
               />
             ) : null}
           </div>
-          <div className="space-y-2 p-3">
+          <div className="flex flex-1 flex-col gap-1.5 border-t border-[var(--color-border)] p-2">
             {onAltChange ? (
-              <label className="block text-xs text-[var(--color-muted)]">
+              <label className="block text-[11px] text-[var(--color-muted)]">
                 Alt text
                 <input
-                  className="mt-1 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-2 py-1 text-sm"
+                  className="mt-0.5 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-1.5 py-1 text-xs"
                   defaultValue={item.altText}
                   disabled={!canUpdate}
                   onBlur={(event) => onAltChange(item.id, event.target.value)}
                 />
               </label>
             ) : null}
-            <div className="flex flex-wrap gap-1">
+            <div className="mt-auto flex flex-wrap gap-0.5">
               <Tooltip title="Move up">
                 <span>
                   <IconButton

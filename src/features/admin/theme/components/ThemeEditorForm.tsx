@@ -22,6 +22,10 @@ import { saveThemeSettingsAction } from "@/features/admin/theme/actions";
 import { ColorField } from "@/features/admin/theme/components/ColorField";
 import { ThemeEditorPreviewCanvas } from "@/features/admin/theme/components/ThemeEditorPreviewCanvas";
 import {
+  THEME_COLOR_PACKS,
+  findMatchingThemePackId,
+} from "@/features/admin/theme/color-packs";
+import {
   SAFE_FONT_OPTIONS,
   formValuesToThemeConfig,
   themeConfigToFormValues,
@@ -200,15 +204,9 @@ export function ThemeEditorForm({
   return (
     <form onSubmit={onSave} className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-            Theme editor
-          </h1>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Configure storefront appearance. Preview updates instantly; Save
-            persists to the database.
-          </p>
-        </div>
+        <p className="text-sm text-[var(--color-muted)]">
+          Preview updates as you edit. Click Save to apply changes to your store.
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           {isDirty ? (
             <span className="rounded-full border border-[var(--color-warning)] px-3 py-1 text-xs font-medium text-[var(--color-warning)]">
@@ -216,7 +214,7 @@ export function ThemeEditorForm({
             </span>
           ) : null}
           {!canUpdate ? (
-            <Tooltip title="Your role can view theme settings but cannot save changes.">
+            <Tooltip title="You can view appearance settings but cannot save changes.">
               <span className="text-xs text-[var(--color-muted)]">View only</span>
             </Tooltip>
           ) : null}
@@ -233,7 +231,7 @@ export function ThemeEditorForm({
             onChange={(_, value: number) => setTab(value)}
             variant="scrollable"
             scrollButtons="auto"
-            aria-label="Theme editor sections"
+            aria-label="Appearance sections"
           >
             <Tab label="Appearance" />
             <Tab label="Colors" />
@@ -257,6 +255,7 @@ export function ThemeEditorForm({
                       select
                       label="Default mode"
                       fullWidth
+                      required
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}
@@ -272,10 +271,13 @@ export function ThemeEditorForm({
 
                 <FormControl
                   component="fieldset"
+                  required
                   error={Boolean(errors.enabledModes)}
                   disabled={!canUpdate || pending}
                 >
-                  <FormLabel component="legend">Enabled modes</FormLabel>
+                  <FormLabel component="legend" required>
+                    Enabled modes
+                  </FormLabel>
                   <FormGroup row>
                     {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
                       <FormControlLabel
@@ -341,36 +343,99 @@ export function ThemeEditorForm({
             ) : null}
 
             {tab === 1 ? (
-              <section className="space-y-4" aria-labelledby="colors-heading">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+              <section className="space-y-5" aria-labelledby="colors-heading">
+                <div>
                   <h2 id="colors-heading" className="text-lg font-semibold">
-                    Colors
+                    Choose a look
                   </h2>
-                  <TextField
-                    select
-                    size="small"
-                    label="Palette"
-                    value={paletteSide}
-                    onChange={(event) =>
-                      setPaletteSide(event.target.value as "light" | "dark")
-                    }
-                    sx={{ minWidth: 140 }}
-                  >
-                    <MenuItem value="light">Light</MenuItem>
-                    <MenuItem value="dark">Dark</MenuItem>
-                  </TextField>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">
+                    Pick a ready-made color set. You can fine-tune individual
+                    colors below if you want.
+                  </p>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {COLOR_FIELDS.map((item) => (
-                    <ColorField
-                      key={`${paletteSide}-${item.key}`}
-                      control={control}
-                      name={`${paletteSide}.${item.key}`}
-                      label={item.label}
-                      disabled={!canUpdate || pending}
-                    />
-                  ))}
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {THEME_COLOR_PACKS.map((pack) => {
+                    const selected =
+                      findMatchingThemePackId(
+                        (watched.light as ThemeEditorFormValues["light"]) ??
+                          defaults.light,
+                        (watched.dark as ThemeEditorFormValues["dark"]) ??
+                          defaults.dark,
+                      ) === pack.id;
+                    return (
+                      <button
+                        key={pack.id}
+                        type="button"
+                        disabled={!canUpdate || pending}
+                        onClick={() => {
+                          setValue("light", pack.light, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                          setValue("dark", pack.dark, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                        className={`rounded-xl border p-3 text-left transition-colors ${
+                          selected
+                            ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
+                            : "border-[var(--color-border)] hover:border-[var(--color-primary)]"
+                        }`}
+                      >
+                        <div className="mb-3 flex h-10 overflow-hidden rounded-md border border-[var(--color-border)]">
+                          {pack.preview.map((color) => (
+                            <span
+                              key={`${pack.id}-${color}`}
+                              className="flex-1"
+                              style={{ backgroundColor: color }}
+                              aria-hidden
+                            />
+                          ))}
+                        </div>
+                        <p className="text-sm font-semibold">{pack.name}</p>
+                        <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+                          {pack.description}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                <details className="rounded-xl border border-[var(--color-border)] p-4">
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Advanced: edit individual colors
+                  </summary>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-[var(--color-muted)]">
+                      Only needed if you want custom hex values.
+                    </p>
+                    <TextField
+                      select
+                      size="small"
+                      label="Edit palette"
+                      value={paletteSide}
+                      onChange={(event) =>
+                        setPaletteSide(event.target.value as "light" | "dark")
+                      }
+                      sx={{ minWidth: 140 }}
+                    >
+                      <MenuItem value="light">Light</MenuItem>
+                      <MenuItem value="dark">Dark</MenuItem>
+                    </TextField>
+                  </div>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {COLOR_FIELDS.map((item) => (
+                      <ColorField
+                        key={`${paletteSide}-${item.key}`}
+                        control={control}
+                        name={`${paletteSide}.${item.key}`}
+                        label={item.label}
+                        disabled={!canUpdate || pending}
+                      />
+                    ))}
+                  </div>
+                </details>
               </section>
             ) : null}
 
@@ -421,6 +486,7 @@ export function ThemeEditorForm({
                       select
                       label="Heading font"
                       fullWidth
+                      required
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}
@@ -441,6 +507,7 @@ export function ThemeEditorForm({
                       select
                       label="Body font"
                       fullWidth
+                      required
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}
@@ -491,6 +558,7 @@ export function ThemeEditorForm({
                       select
                       label="Intensity"
                       fullWidth
+                      required
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}
@@ -510,6 +578,7 @@ export function ThemeEditorForm({
                       select
                       label="Default preset"
                       fullWidth
+                      required
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}

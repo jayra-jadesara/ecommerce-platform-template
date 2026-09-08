@@ -82,10 +82,10 @@ export const defaultPlatformConfig: PlatformConfig = {
     bodyWeight: 400,
   },
   layout: {
-    maxWidth: "72rem",
+    maxWidth: "100%",
     headerHeight: "4rem",
     footerVariant: "simple",
-    containerPadding: "1.25rem",
+    containerPadding: "0.75rem",
     stickyHeader: true,
   },
   animation: {

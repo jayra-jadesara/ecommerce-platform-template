@@ -1,31 +1,38 @@
-import Link from "next/link";
+import Alert from "@mui/material/Alert";
 import { GeneralSettingsForm } from "@/features/admin/settings/components/GeneralSettingsForm";
 import { loadGeneralSettingsForm } from "@/features/admin/settings/load-forms";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminGeneralSettingsPage() {
   const admin = await requirePermission("settings.view");
-  const { values } = await loadGeneralSettingsForm();
+  const [{ values }, storeId] = await Promise.all([
+    loadGeneralSettingsForm(),
+    resolveActiveStoreId(),
+  ]);
   const canUpdate = hasPermission(admin, "settings.update");
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[var(--color-muted)]">
-        <Link
-          href={getAdminPath("/settings")}
-          className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-        >
-          Settings
-        </Link>
-        <span aria-hidden> / </span>
-        General
-      </p>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        General store settings
-      </h1>
+      <AdminPageHeader
+        title="Store Information"
+        description="Store name, contact details, currency and social links."
+        breadcrumbs={[
+          { label: "Store Settings", href: getAdminPath("/settings") },
+          { label: "Store Information" },
+        ]}
+      />
+      {!storeId && canUpdate ? (
+        <Alert severity="info">
+          No store is set up yet. Fill in the form and click{" "}
+          <strong>Save changes</strong> — we&apos;ll create your store
+          automatically.
+        </Alert>
+      ) : null}
       <GeneralSettingsForm initialValues={values} canUpdate={canUpdate} />
     </div>
   );

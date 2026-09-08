@@ -8,7 +8,11 @@ import type { PricingResult } from "@/features/pricing/types";
 export type CheckoutStep =
   | "CART_REVIEW"
   | "ADDRESS_SELECTION"
-  | "READY_FOR_PAYMENT";
+  | "READY_FOR_PAYMENT"
+  | "PAYMENT"
+  | "PROCESSING"
+  | "SUCCESS"
+  | "FAILED";
 
 export type CheckoutIssueCode =
   | "EMPTY_CART"

@@ -66,8 +66,9 @@ See `.env.example`:
 | `ADMIN_ROUTE` | Admin URL segment (default `manage-store`) — **not a security boundary** |
 | `STORE_SLUG` / `NEXT_PUBLIC_STORE_SLUG` | Active `stores.slug` for this deployment (optional if one active store) |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only privileged key (never expose to the browser) |
-| `RAZORPAY_KEY_ID` | Razorpay key id (server, later) |
-| `RAZORPAY_KEY_SECRET` | Razorpay secret (server, later) |
+| `RAZORPAY_KEY_ID` | Razorpay key id (server; returned to Checkout.js only via server action) |
+| `RAZORPAY_KEY_SECRET` | Razorpay secret (server-only) |
+| `RAZORPAY_WEBHOOK_SECRET` | Webhook HMAC secret (server-only) |
 
 Never commit `.env` or `.env.local`.
 
@@ -282,6 +283,44 @@ Admin:
 - `/${ADMIN_ROUTE}/settings/payments` — `payments.view` / `payments.update`
 
 Checkout displays the full engine breakdown. Cart shows **subtotal only**, computed with the same minor-unit helpers.
+
+### Razorpay payments (Phase 12)
+
+Provider-agnostic payment layer with **Razorpay Standard Checkout** as the first provider.
+
+| Concern | Behavior |
+| --- | --- |
+| Secrets | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` — server-only (never in DB / never `NEXT_PUBLIC_`) |
+| Admin | `/${ADMIN_ROUTE}/settings/payments` — set provider to **Razorpay** + fee/tax; no secret fields |
+| Checkout | `/checkout` → **Pay Now** creates pending order + payment, creates Razorpay Order server-side, opens Checkout.js |
+| Authority | Amounts from pricing engine minor units; signature verified with **server-stored** `provider_order_id`; webhook is source of truth for sync |
+| Webhook | `POST /api/webhooks/razorpay` — raw body + `X-Razorpay-Signature`; idempotent via `payment_webhook_events` |
+| Results | `/payment/success`, `/payment/failed` load server-confirmed state (not query-param trust alone) |
+
+#### Test-mode setup (manual)
+
+1. Apply migration `20260908120000_payments_razorpay.sql`.
+2. In Razorpay Dashboard (Test Mode), create API keys.
+3. Set in `.env.local` (no real values in git):
+
+```bash
+RAZORPAY_KEY_ID=rzp_test_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+```
+
+4. Admin → Store Settings → Payments → Provider **Razorpay** → Save.
+5. Expose your app (ngrok / staging) and register webhook URL:
+
+`https://YOUR_HOST/api/webhooks/razorpay`
+
+Enable at least: `payment.authorized`, `payment.captured`, `payment.failed`, `order.paid`.
+
+6. Place a test order as a signed-in customer with a saved address.
+
+Automated tests mock signatures/amounts — they do **not** call live Razorpay.
+
+Local webhook tip: use a tunnel so Razorpay can reach your machine; **do not** disable signature validation for localhost.
 
 ### Three.js
 

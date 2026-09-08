@@ -18,22 +18,72 @@ import {
   updateProductAction,
 } from "@/features/catalog/actions";
 import type { CategoryRow } from "@/features/catalog/categories-service";
-import { slugify } from "@/features/catalog/slug";
+import { autoSkuFromSlug, slugify } from "@/features/catalog/slug";
 import {
   DEFAULT_PRODUCT_FORM,
   emptyVariant,
+  PRODUCT_SIZE_OPTIONS,
+  PRODUCT_UNIT_OPTIONS,
   productFormSchema,
   type ProductFormValues,
 } from "@/features/catalog/validation";
 import { getAdminPath } from "@/config/admin-route";
 
+function sizeMenuItems(current: string) {
+  const options = PRODUCT_SIZE_OPTIONS as readonly string[];
+  if (current && !options.includes(current)) {
+    return [current, ...options];
+  }
+  return [...options];
+}
+
 interface ProductFormProps {
-  mode: "create" | "edit";
+  mode: "create" | "edit" | "view";
   productId?: string;
   initialValues?: ProductFormValues;
   categories: CategoryRow[];
   canUpdate: boolean;
   canDelete: boolean;
+}
+
+function friendlyError(message: string) {
+  if (/no active store/i.test(message)) {
+    return "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.";
+  }
+  if (/permission/i.test(message)) {
+    return "You don't have permission to perform this action.";
+  }
+  return message;
+}
+
+function StepCard({
+  step,
+  title,
+  description,
+  children,
+}: {
+  step: number;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:p-5">
+      <div className="mb-4 flex gap-3">
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-sm font-semibold text-[var(--color-button-foreground)]"
+          aria-hidden
+        >
+          {step}
+        </span>
+        <div>
+          <h2 className="text-base font-semibold">{title}</h2>
+          <p className="text-sm text-[var(--color-muted)]">{description}</p>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
 }
 
 export function ProductForm({
@@ -48,11 +98,17 @@ export function ProductForm({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  const listHref = getAdminPath("/catalog/products");
+  const isView = mode === "view";
+  const fieldsEditable = canUpdate && !isView;
 
   const {
     control,
     handleSubmit,
     setValue,
+    getValues,
     formState: { isDirty },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
@@ -66,25 +122,62 @@ export function ProductForm({
   });
 
   const variants = useWatch({ control, name: "variants" }) ?? [];
+  const productName = useWatch({ control, name: "name" }) ?? "";
+
+  function syncAutoCodesFromName(name: string) {
+    if (mode !== "create") return;
+    const nextSlug = slugify(name);
+    setValue("slug", nextSlug, { shouldValidate: true, shouldDirty: true });
+    const current = getValues("variants") ?? [];
+    let visibleIndex = 0;
+    current.forEach((variant, index) => {
+      if (variant._delete) return;
+      setValue(
+        `variants.${index}.sku`,
+        autoSkuFromSlug(nextSlug, visibleIndex),
+        { shouldValidate: true, shouldDirty: true },
+      );
+      visibleIndex += 1;
+    });
+  }
 
   const onSubmit = handleSubmit((values) => {
+    if (isView) return;
     setError(null);
     setSuccess(null);
+
+    let payload = values;
+    if (mode === "create") {
+      const slug = slugify(values.name);
+      let visibleIndex = 0;
+      payload = {
+        ...values,
+        slug,
+        variants: values.variants.map((variant) => {
+          if (variant._delete) return variant;
+          const sku = autoSkuFromSlug(slug, visibleIndex);
+          visibleIndex += 1;
+          return { ...variant, sku };
+        }),
+      };
+    }
+
     startTransition(async () => {
       const result =
         mode === "create"
-          ? await createProductAction(values)
-          : await updateProductAction(productId!, values);
+          ? await createProductAction(payload)
+          : await updateProductAction(productId!, payload);
       if (!result.ok) {
-        setError(result.error);
+        setError(friendlyError(result.error));
         return;
       }
-      setSuccess(result.message);
       if (mode === "create" && result.id) {
-        router.push(getAdminPath(`/catalog/products/${result.id}`));
+        // Stay on edit so photos can be added, then return to list after next save.
+        router.push(`${listHref}?panel=edit&id=${result.id}`);
         router.refresh();
         return;
       }
+      router.push(listHref);
       router.refresh();
     });
   });
@@ -95,483 +188,671 @@ export function ProductForm({
 
   return (
     <form
-      className="space-y-6"
+      className="space-y-5 pb-24"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
     >
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-[var(--color-border)] bg-[var(--color-background)]/95 py-3 backdrop-blur">
-        {isDirty ? (
-          <span className="text-sm text-amber-700">Unsaved changes</span>
-        ) : null}
-        <div className="ml-auto flex flex-wrap gap-2">
-          {mode === "edit" ? (
-            <>
-              <Button
-                type="button"
-                disabled={!canUpdate || pending}
-                onClick={() => {
-                  startTransition(async () => {
-                    const result = await archiveProductAction(productId!);
-                    if (!result.ok) setError(result.error);
-                    else {
-                      setSuccess(result.message);
-                      router.refresh();
-                    }
-                  });
-                }}
-              >
-                Archive
-              </Button>
-              <Button
-                type="button"
-                color="error"
-                disabled={!canDelete || pending}
-                onClick={() => {
-                  if (!window.confirm("Delete this product permanently?")) return;
-                  startTransition(async () => {
-                    const result = await deleteProductAction(productId!);
-                    if (!result.ok) setError(result.error);
-                    else router.push(getAdminPath("/catalog/products"));
-                  });
-                }}
-              >
-                Delete
-              </Button>
-            </>
-          ) : null}
-          <Button
-            type="submit"
-            variant="contained"
-            disabled={!canUpdate || pending}
-          >
-            {pending ? "Saving…" : mode === "create" ? "Create product" : "Save changes"}
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-primary)_8%)] px-2 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-3 lg:left-60 xl:left-64">
+        <div className="flex w-full flex-wrap items-center gap-2">
+          <Button type="button" href={listHref} size="small">
+            ← Back to list
           </Button>
+          {mode === "create" ? (
+            <p className="text-sm text-[var(--color-muted)]">
+              Save to continue with photos.
+            </p>
+          ) : isView ? (
+            <p className="text-sm text-[var(--color-muted)]">View only</p>
+          ) : isDirty ? (
+            <span className="text-sm text-amber-700 dark:text-amber-400">
+              Unsaved changes
+            </span>
+          ) : null}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {mode === "edit" ? (
+              <>
+                <Button
+                  type="button"
+                  size="small"
+                  disabled={!canUpdate || pending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await archiveProductAction(productId!);
+                      if (!result.ok) setError(friendlyError(result.error));
+                      else {
+                        setSuccess("Product archived.");
+                        router.push(listHref);
+                        router.refresh();
+                      }
+                    });
+                  }}
+                >
+                  Archive
+                </Button>
+                <Button
+                  type="button"
+                  size="small"
+                  color="error"
+                  disabled={!canDelete || pending}
+                  onClick={() => {
+                    if (
+                      !window.confirm(
+                        "Delete this product?\n\nThis action cannot be undone.",
+                      )
+                    ) {
+                      return;
+                    }
+                    startTransition(async () => {
+                      const result = await deleteProductAction(productId!);
+                      if (!result.ok) setError(friendlyError(result.error));
+                      else router.push(listHref);
+                    });
+                  }}
+                >
+                  Delete
+                </Button>
+              </>
+            ) : null}
+            {isView ? (
+              canUpdate ? (
+                <Button
+                  type="button"
+                  size="small"
+                  variant="contained"
+                  href={`${listHref}?panel=edit&id=${productId}`}
+                >
+                  Edit
+                </Button>
+              ) : null
+            ) : (
+              <Button
+                type="submit"
+                size="small"
+                variant="contained"
+                disabled={!fieldsEditable || pending}
+              >
+                {pending
+                  ? "Saving…"
+                  : mode === "create"
+                    ? "Save product"
+                    : "Save product"}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <section className="grid gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:grid-cols-2">
-        <h2 className="md:col-span-2 font-semibold">Basic information</h2>
-        <Controller
-          name="name"
-          control={control}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Name"
-              fullWidth
-              disabled={!canUpdate}
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message}
-              onChange={(event) => {
-                field.onChange(event);
-                if (mode === "create") {
-                  setValue("slug", slugify(event.target.value), {
-                    shouldValidate: true,
-                    shouldDirty: true,
-                  });
-                }
-              }}
-            />
-          )}
-        />
-        <Controller
-          name="slug"
-          control={control}
-          render={({ field, fieldState }) => (
-            <TextField
-              {...field}
-              label="Slug"
-              fullWidth
-              disabled={!canUpdate}
-              error={Boolean(fieldState.error)}
-              helperText={fieldState.error?.message}
-            />
-          )}
-        />
-        <Controller
-          name="brand"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} label="Brand" fullWidth disabled={!canUpdate} />
-          )}
-        />
-        <Controller
-          name="categoryId"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              select
-              label="Category"
-              fullWidth
-              disabled={!canUpdate}
-              value={field.value ?? ""}
-              onChange={(event) => field.onChange(event.target.value || null)}
-            >
-              <MenuItem value="">Uncategorized</MenuItem>
-              {categories.map((category) => (
-                <MenuItem key={category.id} value={category.id}>
-                  {category.name}
-                </MenuItem>
-              ))}
-            </TextField>
-          )}
-        />
-        <Controller
-          name="status"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} select label="Status" fullWidth disabled={!canUpdate}>
-              <MenuItem value="draft">Draft</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="archived">Archived</MenuItem>
-            </TextField>
-          )}
-        />
-        <Controller
-          name="featured"
-          control={control}
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={field.value}
-                  onChange={(_, checked) => field.onChange(checked)}
-                  disabled={!canUpdate}
+      {mode === "create" ? (
+        <ol className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
+          <li>1. Name the product and add a short description</li>
+          <li>2. Set the price and stock</li>
+          <li>3. Choose Draft or Active</li>
+          <li>4. Save — then add photos</li>
+        </ol>
+      ) : null}
+
+      <StepCard
+        step={1}
+        title="What are you selling?"
+        description="Name, category, and what customers should know."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Controller
+            name="name"
+            control={control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Product name"
+                placeholder="e.g. Garam Masala"
+                fullWidth
+                required
+                disabled={!fieldsEditable}
+                error={Boolean(fieldState.error)}
+                helperText={fieldState.error?.message}
+                onChange={(event) => {
+                  field.onChange(event);
+                  syncAutoCodesFromName(event.target.value);
+                }}
+              />
+            )}
+          />
+          <Controller
+            name="categoryId"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                select
+                label="Category (product group)"
+                fullWidth
+                disabled={!fieldsEditable}
+                value={field.value ?? ""}
+                onChange={(event) => field.onChange(event.target.value || null)}
+                helperText="Optional. Groups this product for shopping (e.g. Spices, Snacks). Add groups under Products → Categories."
+              >
+                <MenuItem value="">No category</MenuItem>
+                {categories.map((category) => (
+                  <MenuItem key={category.id} value={category.id}>
+                    {category.name}
+                  </MenuItem>
+                ))}
+              </TextField>
+            )}
+          />
+          <div className="md:col-span-2">
+            <Controller
+              name="shortDescription"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Short description"
+                  placeholder="One or two lines for product cards"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  disabled={!fieldsEditable}
                 />
-              }
-              label="Featured"
+              )}
             />
-          )}
-        />
-      </section>
+          </div>
+          <div className="md:col-span-2">
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Full description"
+                  placeholder="Tell customers about this product"
+                  fullWidth
+                  multiline
+                  minRows={4}
+                  disabled={!fieldsEditable}
+                />
+              )}
+            />
+          </div>
+        </div>
+      </StepCard>
 
-      <section className="grid gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <h2 className="font-semibold">Descriptions</h2>
-        <Controller
-          name="shortDescription"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Short description"
-              fullWidth
-              multiline
-              minRows={2}
-              disabled={!canUpdate}
-            />
-          )}
-        />
-        <Controller
-          name="description"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Full description"
-              fullWidth
-              multiline
-              minRows={5}
-              disabled={!canUpdate}
-              helperText="Plain text only. Safe rich text arrives with CMS tooling."
-            />
-          )}
-        />
-        <Controller
-          name="ingredients"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Ingredients"
-              fullWidth
-              multiline
-              minRows={3}
-              disabled={!canUpdate}
-            />
-          )}
-        />
-        <Controller
-          name="usageInstructions"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="Usage instructions"
-              fullWidth
-              multiline
-              minRows={3}
-              disabled={!canUpdate}
-            />
-          )}
-        />
-      </section>
-
-      <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold">Variants & inventory</h2>
+      <StepCard
+        step={2}
+        title="Price & stock"
+        description={
+          productName
+            ? `Add sizes or packs for “${productName}”.`
+            : "Add sizes or packs with their own price and stock."
+        }
+      >
+        <div className="mb-3 flex justify-end">
           <Button
             type="button"
-            disabled={!canUpdate}
-            onClick={() =>
-              append(
-                emptyVariant(`variant-${Math.random().toString(36).slice(2, 8)}`),
-              )
-            }
+            variant="outlined"
+            disabled={!fieldsEditable}
+            onClick={() => {
+              const slug = getValues("slug") || slugify(getValues("name") || "");
+              const nextIndex = visibleVariants.length;
+              append({
+                ...emptyVariant(
+                  `variant-${Math.random().toString(36).slice(2, 8)}`,
+                ),
+                sku: autoSkuFromSlug(slug, nextIndex),
+              });
+            }}
           >
-            Add variant
+            + Add size / pack
           </Button>
         </div>
-        {visibleVariants.map(({ field, index }) => {
-          const variant = variants[index];
-          if (!variant) return null;
-          return (
-            <div
-              key={field.fieldId}
-              className="grid gap-3 rounded-lg border border-[var(--color-border)] p-3 md:grid-cols-3"
-            >
-              <Controller
-                name={`variants.${index}.name`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    {...f}
-                    label="Variant name"
-                    fullWidth
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.sku`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    {...f}
-                    label="SKU"
-                    fullWidth
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.price`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    {...f}
-                    type="number"
-                    label="Price"
-                    fullWidth
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                    onChange={(event) =>
-                      f.onChange(Number(event.target.value))
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.compareAtPrice`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    type="number"
-                    label="Compare-at price"
-                    fullWidth
-                    disabled={!canUpdate}
-                    value={f.value ?? ""}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                    onChange={(event) =>
-                      f.onChange(
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                      )
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.costPrice`}
-                control={control}
-                render={({ field: f }) => (
-                  <TextField
-                    type="number"
-                    label="Cost price"
-                    fullWidth
-                    disabled={!canUpdate}
-                    value={f.value ?? ""}
-                    onChange={(event) =>
-                      f.onChange(
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                      )
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.weight`}
-                control={control}
-                render={({ field: f }) => (
-                  <TextField
-                    type="number"
-                    label="Weight"
-                    fullWidth
-                    disabled={!canUpdate}
-                    value={f.value ?? ""}
-                    onChange={(event) =>
-                      f.onChange(
-                        event.target.value === ""
-                          ? null
-                          : Number(event.target.value),
-                      )
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.unit`}
-                control={control}
-                render={({ field: f }) => (
-                  <TextField {...f} label="Unit" fullWidth disabled={!canUpdate} />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.quantity`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    {...f}
-                    type="number"
-                    label="Quantity"
-                    fullWidth
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                    onChange={(event) =>
-                      f.onChange(Number(event.target.value) || 0)
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.reservedQuantity`}
-                control={control}
-                render={({ field: f, fieldState }) => (
-                  <TextField
-                    {...f}
-                    type="number"
-                    label="Reserved"
-                    fullWidth
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                    onChange={(event) =>
-                      f.onChange(Number(event.target.value) || 0)
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.lowStockThreshold`}
-                control={control}
-                render={({ field: f }) => (
-                  <TextField
-                    {...f}
-                    type="number"
-                    label="Low stock threshold"
-                    fullWidth
-                    disabled={!canUpdate}
-                    onChange={(event) =>
-                      f.onChange(Number(event.target.value) || 0)
-                    }
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.trackInventory`}
-                control={control}
-                render={({ field: f }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={f.value}
-                        onChange={(_, checked) => f.onChange(checked)}
-                        disabled={!canUpdate}
-                      />
-                    }
-                    label="Track inventory"
-                  />
-                )}
-              />
-              <Controller
-                name={`variants.${index}.isActive`}
-                control={control}
-                render={({ field: f }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={f.value}
-                        onChange={(_, checked) => f.onChange(checked)}
-                        disabled={!canUpdate}
-                      />
-                    }
-                    label="Active"
-                  />
-                )}
-              />
-              <div>
-                <Button
-                  type="button"
-                  color="error"
-                  disabled={!canUpdate || visibleVariants.length <= 1}
-                  onClick={() => update(index, { ...variant, _delete: true })}
-                >
-                  Remove variant
-                </Button>
-              </div>
-            </div>
-          );
-        })}
-      </section>
 
-      <section className="grid gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:grid-cols-2">
-        <h2 className="md:col-span-2 font-semibold">SEO</h2>
-        <Controller
-          name="seoTitle"
-          control={control}
-          render={({ field }) => (
-            <TextField {...field} label="SEO title" fullWidth disabled={!canUpdate} />
-          )}
-        />
-        <Controller
-          name="seoDescription"
-          control={control}
-          render={({ field }) => (
-            <TextField
-              {...field}
-              label="SEO description"
-              fullWidth
-              multiline
-              minRows={2}
-              disabled={!canUpdate}
+        <div className="overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-[var(--color-border)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              <tr>
+                <th className="px-2 py-2">Size / pack</th>
+                <th className="px-2 py-2">Price</th>
+                <th className="px-2 py-2">Stock</th>
+                <th className="px-2 py-2">On sale</th>
+                <th className="px-2 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {visibleVariants.map(({ field, index }) => {
+                const variant = variants[index];
+                if (!variant) return null;
+                return (
+                  <tr
+                    key={field.fieldId}
+                    className="border-b border-[var(--color-border)] align-top last:border-0"
+                  >
+                    <td className="px-2 py-3 min-w-[10rem]">
+                      <Controller
+                        name={`variants.${index}.name`}
+                        control={control}
+                        render={({ field: f, fieldState }) => (
+                          <TextField
+                            {...f}
+                            select
+                            size="small"
+                            label="Size / pack"
+                            fullWidth
+                            required
+                            disabled={!fieldsEditable}
+                            error={Boolean(fieldState.error)}
+                            helperText={
+                              fieldState.error?.message ??
+                              "What customers pick at checkout"
+                            }
+                          >
+                            {sizeMenuItems(f.value).map((option) => (
+                              <MenuItem key={option} value={option}>
+                                {option}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                        )}
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Controller
+                        name={`variants.${index}.price`}
+                        control={control}
+                        render={({ field: f, fieldState }) => (
+                          <TextField
+                            {...f}
+                            size="small"
+                            type="number"
+                            label="Price"
+                            fullWidth
+                            required
+                            disabled={!fieldsEditable}
+                            error={Boolean(fieldState.error)}
+                            helperText={fieldState.error?.message}
+                            onChange={(event) =>
+                              f.onChange(Number(event.target.value))
+                            }
+                          />
+                        )}
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Controller
+                        name={`variants.${index}.quantity`}
+                        control={control}
+                        render={({ field: f, fieldState }) => (
+                          <TextField
+                            {...f}
+                            size="small"
+                            type="number"
+                            label="How many in stock"
+                            fullWidth
+                            required
+                            disabled={!fieldsEditable}
+                            error={Boolean(fieldState.error)}
+                            helperText={fieldState.error?.message}
+                            onChange={(event) =>
+                              f.onChange(Number(event.target.value) || 0)
+                            }
+                          />
+                        )}
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Controller
+                        name={`variants.${index}.isActive`}
+                        control={control}
+                        render={({ field: f }) => (
+                          <FormControlLabel
+                            control={
+                              <Switch
+                                checked={f.value}
+                                onChange={(_, checked) => f.onChange(checked)}
+                                disabled={!fieldsEditable}
+                                size="small"
+                              />
+                            }
+                            label={f.value ? "Yes" : "No"}
+                          />
+                        )}
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <Button
+                        type="button"
+                        color="error"
+                        size="small"
+                        disabled={!fieldsEditable || visibleVariants.length <= 1}
+                        onClick={() =>
+                          update(index, { ...variant, _delete: true })
+                        }
+                      >
+                        Remove
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </StepCard>
+
+      <StepCard
+        step={3}
+        title="Show on your store?"
+        description="Draft stays private. Active means customers can buy it."
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                select
+                label="Status"
+                fullWidth
+                required
+                disabled={!fieldsEditable}
+              >
+                <MenuItem value="draft">Draft — not visible yet</MenuItem>
+                <MenuItem value="active">Active — for sale</MenuItem>
+                <MenuItem value="archived">Archived — hidden</MenuItem>
+              </TextField>
+            )}
+          />
+          <Controller
+            name="featured"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                className="items-start rounded-lg border border-[var(--color-border)] px-3 py-2"
+                control={
+                  <Switch
+                    checked={field.value}
+                    onChange={(_, checked) => field.onChange(checked)}
+                    disabled={!fieldsEditable}
+                  />
+                }
+                label={
+                  <span>
+                    <span className="block font-medium">Featured product</span>
+                    <span className="text-sm text-[var(--color-muted)]">
+                      Show it in featured sections on the homepage.
+                    </span>
+                  </span>
+                }
+              />
+            )}
+          />
+        </div>
+      </StepCard>
+
+      {mode === "create" ? (
+        <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
+          After you save, you can upload product photos on the next screen.
+        </p>
+      ) : null}
+
+      <details
+        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+        open={showAdvanced}
+        onToggle={(event) =>
+          setShowAdvanced((event.target as HTMLDetailsElement).open)
+        }
+      >
+        <summary className="cursor-pointer text-sm font-medium">
+          Extra details (optional)
+        </summary>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
+          Brand, ingredients, shipping weight, and search listing text.
+        </p>
+        <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <Controller
+            name="brand"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Brand (who makes it)"
+                placeholder="e.g. your brand name"
+                fullWidth
+                disabled={!fieldsEditable}
+                helperText="Shown on the product page when filled in."
+              />
+            )}
+          />
+          <div className="md:col-span-2">
+            <Controller
+              name="ingredients"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="What's inside (ingredients)"
+                  placeholder="List ingredients if this is food or cosmetics"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  disabled={!fieldsEditable}
+                />
+              )}
             />
-          )}
-        />
-      </section>
+          </div>
+          <div className="md:col-span-2">
+            <Controller
+              name="usageInstructions"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="How customers should use it"
+                  placeholder="Short tips or instructions"
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  disabled={!fieldsEditable}
+                />
+              )}
+            />
+          </div>
+          <Controller
+            name="seoTitle"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Search result title"
+                fullWidth
+                disabled={!fieldsEditable}
+                helperText="Optional title for Google / search engines."
+              />
+            )}
+          />
+          <Controller
+            name="seoDescription"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                {...field}
+                label="Search result description"
+                fullWidth
+                multiline
+                minRows={2}
+                disabled={!fieldsEditable}
+                helperText="Optional short blurb under the search title."
+              />
+            )}
+          />
+          {visibleVariants.map(({ field, index }) => {
+            const variant = variants[index];
+            if (!variant) return null;
+            return (
+              <div
+                key={`extra-${field.fieldId}`}
+                className="md:col-span-2 grid gap-3 rounded-lg border border-[var(--color-border)] p-3 md:grid-cols-3"
+              >
+                <p className="md:col-span-3 text-sm font-medium">
+                  Pricing &amp; shipping — {variant.name || "pack"}
+                </p>
+                <Controller
+                  name={`variants.${index}.compareAtPrice`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <TextField
+                      type="number"
+                      label="Was price (strikethrough)"
+                      size="small"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      value={f.value ?? ""}
+                      helperText="Old price to show a discount"
+                      onChange={(event) =>
+                        f.onChange(
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                        )
+                      }
+                    />
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.costPrice`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <TextField
+                      type="number"
+                      label="Your cost (private)"
+                      size="small"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      value={f.value ?? ""}
+                      helperText="Only for your records"
+                      onChange={(event) =>
+                        f.onChange(
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                        )
+                      }
+                    />
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.weight`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <TextField
+                      type="number"
+                      label="Shipping weight"
+                      size="small"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      value={f.value ?? ""}
+                      helperText="Used for shipping rates"
+                      onChange={(event) =>
+                        f.onChange(
+                          event.target.value === ""
+                            ? null
+                            : Number(event.target.value),
+                        )
+                      }
+                    />
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.unit`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <TextField
+                      {...f}
+                      select
+                      size="small"
+                      label="Weight unit"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                    >
+                      <MenuItem value="">Not set</MenuItem>
+                      {PRODUCT_UNIT_OPTIONS.filter(Boolean).map((unit) => (
+                        <MenuItem key={unit} value={unit}>
+                          {unit}
+                        </MenuItem>
+                      ))}
+                      {f.value &&
+                      !(PRODUCT_UNIT_OPTIONS as readonly string[]).includes(
+                        f.value,
+                      ) ? (
+                        <MenuItem value={f.value}>{f.value}</MenuItem>
+                      ) : null}
+                    </TextField>
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.lowStockThreshold`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <TextField
+                      {...f}
+                      size="small"
+                      type="number"
+                      label="Warn when stock falls below"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      onChange={(event) =>
+                        f.onChange(Number(event.target.value) || 0)
+                      }
+                    />
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.trackInventory`}
+                  control={control}
+                  render={({ field: f }) => (
+                    <FormControlLabel
+                      control={
+                        <Switch
+                          checked={f.value}
+                          onChange={(_, checked) => f.onChange(checked)}
+                          disabled={!fieldsEditable}
+                          size="small"
+                        />
+                      }
+                      label="Track stock for this size"
+                    />
+                  )}
+                />
+                <Controller
+                  name={`variants.${index}.reservedQuantity`}
+                  control={control}
+                  render={({ field: f, fieldState }) => (
+                    <TextField
+                      {...f}
+                      type="number"
+                      label="Held for open orders"
+                      size="small"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        fieldState.error?.message ?? "Usually leave at 0"
+                      }
+                      onChange={(event) =>
+                        f.onChange(Number(event.target.value) || 0)
+                      }
+                    />
+                  )}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </details>
     </form>
   );
 }

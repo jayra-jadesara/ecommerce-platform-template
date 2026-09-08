@@ -29,3 +29,9 @@ export function ensureUniqueSlugCandidate(
   while (existing.has(`${normalized}-${i}`)) i += 1;
   return `${normalized}-${i}`;
 }
+
+/** Auto stock code from product slug (1st pack = slug, then slug-2…). */
+export function autoSkuFromSlug(slug: string, variantIndex: number): string {
+  const base = (slugify(slug) || "item").slice(0, 48);
+  return variantIndex <= 0 ? base : `${base}-${variantIndex + 1}`;
+}

@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { HeaderSettingsForm } from "@/features/admin/settings/components/HeaderSettingsForm";
 import { loadHeaderSettingsForm } from "@/features/admin/settings/load-forms";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getStoreBranding } from "@/features/theme/service";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -17,19 +17,15 @@ export default async function AdminHeaderSettingsPage() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-[var(--color-muted)]">
-        <Link
-          href={getAdminPath("/settings")}
-          className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-        >
-          Settings
-        </Link>
-        <span aria-hidden> / </span>
-        Header
-      </p>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Header settings
-      </h1>
+      <AdminPageHeader
+        title="Header layout"
+        description="Announcement bar, sticky header and logo size."
+        breadcrumbs={[
+          { label: "Store Settings", href: getAdminPath("/settings") },
+          { label: "Appearance", href: getAdminPath("/settings/theme") },
+          { label: "Header" },
+        ]}
+      />
       <HeaderSettingsForm
         initialValues={values}
         brand={brand}

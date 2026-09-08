@@ -61,21 +61,21 @@ export function ProductDetailClient({
   }
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_1.1fr]">
+    <div className="grid gap-8 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] xl:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-12">
       <div className="space-y-3">
-        <div className="relative flex min-h-72 items-center justify-center overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0">
           {activeImage ? (
             <Image
               src={activeImage.url}
               alt={activeImage.altText || product.name}
               fill
               priority
-              className="object-contain p-2"
-              sizes="(max-width: 1024px) 100vw, 50vw"
+              className="object-contain p-5"
+              sizes="(max-width: 1024px) 100vw, 480px"
             />
           ) : (
             <p
-              className="text-sm text-[var(--color-muted)]"
+              className="absolute inset-0 flex items-center justify-center text-sm text-[var(--color-muted)]"
               role="img"
               aria-label="Product image placeholder"
             >
@@ -104,7 +104,7 @@ export function ProductDetailClient({
                       src={image.url}
                       alt=""
                       fill
-                      className="object-cover"
+                      className="object-contain p-1"
                       sizes="64px"
                       loading="lazy"
                     />
@@ -171,38 +171,36 @@ export function ProductDetailClient({
         </div>
 
         <fieldset>
-          <legend className="mb-2 text-sm font-medium">Options</legend>
-          <div className="flex flex-wrap gap-2">
-            {product.variants.map((variant) => {
-              const active = variant.id === selected.id;
-              return (
-                <button
-                  key={variant.id}
-                  type="button"
-                  onClick={() => {
-                    setVariantId(variant.id);
-                    const nextImages = product.images.filter(
-                      (image) =>
-                        image.variantId === variant.id || !image.variantId,
-                    );
-                    const preferred =
-                      nextImages.find((image) => image.variantId === variant.id) ??
-                      nextImages.find((image) => image.isPrimary) ??
-                      nextImages[0];
-                    if (preferred) setActiveImageId(preferred.id);
-                  }}
-                  className={`rounded-md border px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
-                    active
-                      ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
-                      : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)]"
-                  }`}
-                  aria-pressed={active}
-                >
-                  {variant.name}
-                </button>
-              );
-            })}
-          </div>
+          <legend className="mb-2 text-sm font-medium">
+            {product.variants.length > 1 ? "Choose size / pack" : "Size / pack"}
+          </legend>
+          {product.variants.length > 1 ? (
+            <select
+              className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
+              value={selected.id}
+              onChange={(event) => {
+                const id = event.target.value;
+                setVariantId(id);
+                const nextImages = product.images.filter(
+                  (image) => image.variantId === id || !image.variantId,
+                );
+                const preferred =
+                  nextImages.find((image) => image.variantId === id) ??
+                  nextImages.find((image) => image.isPrimary) ??
+                  nextImages[0];
+                if (preferred) setActiveImageId(preferred.id);
+              }}
+              aria-label="Choose size or pack"
+            >
+              {product.variants.map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {variant.name} — {formatMoney(variant.price, currency)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-sm text-[var(--color-muted)]">{selected.name}</p>
+          )}
         </fieldset>
 
         <ProductPurchaseActions

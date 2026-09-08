@@ -5,7 +5,7 @@ import {
   permissionsForRoles,
   ROLE_PERMISSIONS,
 } from "@/features/auth/permissions";
-import { safeInternalPath } from "@/features/auth/redirect";
+import { safeAdminNextPath, safeInternalPath } from "@/features/auth/redirect";
 import { mapAuthError } from "@/features/auth/errors";
 
 describe("permissionsForRoles", () => {
@@ -62,6 +62,25 @@ describe("safeInternalPath", () => {
 
   it("uses fallback when empty", () => {
     expect(safeInternalPath(null, "/login")).toBe("/login");
+  });
+});
+
+describe("safeAdminNextPath", () => {
+  it("rejects admin login as the post-login destination", () => {
+    expect(
+      safeAdminNextPath(
+        "/manage-store/login",
+        "/manage-store",
+        "/manage-store/dashboard",
+      ),
+    ).toBe("/manage-store/dashboard");
+    expect(
+      safeAdminNextPath(
+        "/manage-store/catalog/products",
+        "/manage-store",
+        "/manage-store/dashboard",
+      ),
+    ).toBe("/manage-store/catalog/products");
   });
 });
 

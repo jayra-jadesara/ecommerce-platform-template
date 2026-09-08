@@ -4,14 +4,15 @@
  */
 
 :root {
+  color-scheme: light;
   --color-primary: #1a5f4a;
   --color-secondary: #2c3e50;
   --color-accent: #c4783a;
-  --color-background: #f7f5f2;
+  --color-background: #f3f1ec;
   --color-foreground: #1a1a1a;
   --color-surface: #ffffff;
   --color-card: #ffffff;
-  --color-border: #e2ddd6;
+  --color-border: #ddd6cc;
   --color-muted: #6b6560;
   --color-success: #2e7d4f;
   --color-warning: #b7791f;
@@ -23,8 +24,31 @@
   --color-button-background: #1a5f4a;
   --color-button-foreground: #ffffff;
 
-  --layout-max-width: 72rem;
+  --layout-max-width: 100%;
   --layout-header-height: 4rem;
-  --layout-container-padding: 1.25rem;
+  --layout-container-padding: clamp(0.5rem, 1vw, 0.75rem);
   --radius-default: 8px;
+}
+
+/* Applied by theme boot script before React — prevents white flash in dark mode */
+html.dark {
+  color-scheme: dark;
+  --color-primary: #4fd1a5;
+  --color-secondary: #94a3b8;
+  --color-accent: #e8a05c;
+  --color-background: #0f1412;
+  --color-foreground: #f2f0eb;
+  --color-surface: #1a211e;
+  --color-card: #222a26;
+  --color-border: #2f3a35;
+  --color-muted: #9ca89f;
+  --color-success: #4ade80;
+  --color-warning: #fbbf24;
+  --color-error: #f87171;
+  --color-header-background: #1a211e;
+  --color-header-foreground: #f2f0eb;
+  --color-footer-background: #1a211e;
+  --color-footer-foreground: #9ca89f;
+  --color-button-background: #4fd1a5;
+  --color-button-foreground: #0f1412;
 }

@@ -4,6 +4,7 @@ import { DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { getPlatformConfigAsync } from "@/config/site";
 import { buildPageMetadata } from "@/lib/metadata";
 import { colorTokensToCssVars } from "@/features/theme/css-vars";
+import { buildThemeBootScript } from "@/features/theme/theme-boot-script";
 import { AppProviders } from "@/providers";
 import "./globals.css";
 
@@ -43,7 +44,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const config = await getPlatformConfigAsync();
 
-  // SSR initial tokens from store default (light unless default is dark).
   const initialTokens =
     config.theme.defaultMode === "dark" ? config.theme.dark : config.theme.light;
 
@@ -57,20 +57,27 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       : {}),
   } as CSSProperties;
 
+  const themeBoot = buildThemeBootScript(config);
+  const defaultIsDark = config.theme.defaultMode === "dark";
+
   return (
     <html
       lang={config.store.locale.split("-")[0] ?? "en"}
-      className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable} h-full antialiased`}
+      className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable} h-full antialiased${defaultIsDark ? " dark" : ""}`}
       suppressHydrationWarning
       style={layoutVars}
       data-theme-default={config.theme.defaultMode}
     >
       <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
         {config.brand.faviconUrl ? (
           <link rel="icon" href={config.brand.faviconUrl} />
         ) : null}
       </head>
-      <body className="flex min-h-full flex-col" suppressHydrationWarning>
+      <body
+        className="flex min-h-full min-h-dvh flex-col bg-[var(--color-background)] text-[var(--color-foreground)]"
+        suppressHydrationWarning
+      >
         <AppProviders config={config}>{children}</AppProviders>
       </body>
     </html>

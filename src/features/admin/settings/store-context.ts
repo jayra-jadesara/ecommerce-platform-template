@@ -2,6 +2,7 @@ import "server-only";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
+import { slugify } from "@/features/catalog/slug";
 
 function getConfiguredStoreSlug(): string | null {
   const slug =
@@ -11,36 +12,35 @@ function getConfiguredStoreSlug(): string | null {
   return slug || null;
 }
 
+export type ActiveStore = {
+  id: string;
+  name: string;
+  legal_name: string | null;
+};
+
+type SupabaseServer = Awaited<ReturnType<typeof createSupabaseServerClient>>;
+
+async function getClient(
+  supabase?: SupabaseServer,
+): Promise<SupabaseServer | null> {
+  if (supabase) return supabase;
+  if (!getSupabasePublicEnvOptional()) return null;
+  return createSupabaseServerClient();
+}
+
 export async function resolveActiveStoreId(
-  supabase?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  supabase?: SupabaseServer,
 ): Promise<string | null> {
-  if (!supabase && !getSupabasePublicEnvOptional()) return null;
-
-  const client = supabase ?? (await createSupabaseServerClient());
-  const slug = getConfiguredStoreSlug();
-
-  let query = client.from("stores").select("id").eq("status", "active").limit(1);
-
-  if (slug) {
-    query = client
-      .from("stores")
-      .select("id")
-      .eq("status", "active")
-      .eq("slug", slug)
-      .limit(1);
-  }
-
-  const { data, error } = await query;
-  if (error || !data?.[0]) return null;
-  return data[0].id;
+  const store = await resolveActiveStore(supabase);
+  return store?.id ?? null;
 }
 
 export async function resolveActiveStore(
-  supabase?: Awaited<ReturnType<typeof createSupabaseServerClient>>,
-): Promise<{ id: string; name: string; legal_name: string | null } | null> {
-  if (!supabase && !getSupabasePublicEnvOptional()) return null;
+  supabase?: SupabaseServer,
+): Promise<ActiveStore | null> {
+  const client = await getClient(supabase);
+  if (!client) return null;
 
-  const client = supabase ?? (await createSupabaseServerClient());
   const slug = getConfiguredStoreSlug();
 
   let query = client
@@ -61,6 +61,133 @@ export async function resolveActiveStore(
   const { data, error } = await query;
   if (error || !data?.[0]) return null;
   return data[0];
+}
+
+/**
+ * Resolves an active store, or creates/activates one for SUPER_ADMIN/ADMIN
+ * so first-time setup can save Store Information without a seed script.
+ */
+export async function ensureActiveStore(
+  supabase: SupabaseServer,
+  options?: { name?: string; legalName?: string | null },
+): Promise<ActiveStore | { error: string }> {
+  const existing = await resolveActiveStore(supabase);
+  if (existing) return existing;
+
+  const preferredName = options?.name?.trim() || "My Store";
+  const preferredLegal = options?.legalName?.trim() || null;
+  const configuredSlug = getConfiguredStoreSlug();
+  const baseSlug = configuredSlug || slugify(preferredName) || "main-store";
+
+  // Prefer activating an existing non-active store (draft / suspended).
+  let inactiveQuery = supabase
+    .from("stores")
+    .select("id, name, legal_name, slug, status")
+    .neq("status", "active")
+    .order("created_at", { ascending: true })
+    .limit(1);
+
+  if (configuredSlug) {
+    inactiveQuery = supabase
+      .from("stores")
+      .select("id, name, legal_name, slug, status")
+      .eq("slug", configuredSlug)
+      .limit(1);
+  }
+
+  const { data: inactiveRows } = await inactiveQuery;
+  const inactive = inactiveRows?.[0];
+
+  if (inactive) {
+    const { data: activated, error: activateError } = await supabase
+      .from("stores")
+      .update({
+        status: "active",
+        name: preferredName,
+        legal_name: preferredLegal,
+      })
+      .eq("id", inactive.id)
+      .select("id, name, legal_name")
+      .maybeSingle();
+
+    if (activateError || !activated) {
+      return {
+        error:
+          activateError?.message ||
+          "Could not activate your store. Check admin permissions and try again.",
+      };
+    }
+
+    await ensureStoreSettingsStub(supabase, activated.id, preferredName);
+    return activated;
+  }
+
+  // Create a new active store.
+  let slug = baseSlug;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const candidate = attempt === 0 ? slug : `${baseSlug}-${attempt + 1}`;
+    const { data: created, error: createError } = await supabase
+      .from("stores")
+      .insert({
+        name: preferredName,
+        slug: candidate,
+        legal_name: preferredLegal,
+        status: "active",
+      })
+      .select("id, name, legal_name")
+      .maybeSingle();
+
+    if (!createError && created) {
+      await ensureStoreSettingsStub(supabase, created.id, preferredName);
+      return created;
+    }
+
+    // Unique slug conflict — try next candidate
+    if (createError && /duplicate|unique/i.test(createError.message)) {
+      slug = candidate;
+      continue;
+    }
+
+    return {
+      error:
+        createError?.message ||
+        "Could not create your store. Make sure migrations are applied and you have admin access.",
+    };
+  }
+
+  return {
+    error: "Could not create a unique store slug. Try a different store name.",
+  };
+}
+
+async function ensureStoreSettingsStub(
+  supabase: SupabaseServer,
+  storeId: string,
+  brandName: string,
+) {
+  const { data: settings } = await supabase
+    .from("store_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (!settings) {
+    await supabase.from("store_settings").insert({ store_id: storeId });
+  }
+
+  const { data: branding } = await supabase
+    .from("store_branding")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (!branding) {
+    await supabase.from("store_branding").insert({
+      store_id: storeId,
+      brand_name: brandName,
+      tagline: "Your store, your brand.",
+    });
+  }
 }
 
 export type SettingsUpdateResult =

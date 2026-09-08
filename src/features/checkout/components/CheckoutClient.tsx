@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
   createAddressAction,
@@ -14,6 +15,12 @@ import {
 } from "@/features/checkout/actions";
 import type { CheckoutSummary } from "@/features/checkout/types";
 import { formatMoney } from "@/features/catalog/money";
+import {
+  cancelCheckoutPaymentAction,
+  startCheckoutPaymentAction,
+  verifyCheckoutPaymentAction,
+} from "@/features/payments/actions";
+import { useRazorpayCheckout } from "@/features/payments/components/useRazorpayCheckout";
 
 interface CheckoutClientProps {
   initialSummary: CheckoutSummary;
@@ -31,9 +38,12 @@ function formatAddress(address: CustomerAddress): string {
 }
 
 export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
+  const router = useRouter();
+  const { openCheckout } = useRazorpayCheckout();
   const [summary, setSummary] = useState(initialSummary);
   const [showNewAddress, setShowNewAddress] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
   const [pending, startTransition] = useTransition();
 
   if (!summary.canProceed && summary.lines.length === 0) {
@@ -54,6 +64,57 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
   }
 
   const ready = summary.step === "READY_FOR_PAYMENT";
+  const busy = pending || paying;
+
+  async function handlePayNow() {
+    if (!ready || busy || !summary.selectedAddressId) return;
+    setError(null);
+    setPaying(true);
+    try {
+      const started = await startCheckoutPaymentAction({
+        addressId: summary.selectedAddressId,
+      });
+      if (!started.ok) {
+        setError(started.error);
+        setPaying(false);
+        return;
+      }
+
+      const session = started.session;
+      await openCheckout({
+        session,
+        onSuccess: (payload) => {
+          startTransition(async () => {
+            const verified = await verifyCheckoutPaymentAction({
+              paymentId: session.paymentId,
+              razorpayPaymentId: payload.razorpay_payment_id,
+              razorpayOrderId: payload.razorpay_order_id,
+              razorpaySignature: payload.razorpay_signature,
+            });
+            setPaying(false);
+            if (!verified.ok) {
+              setError(verified.error);
+              router.push(
+                `/payment/failed?paymentId=${encodeURIComponent(session.paymentId)}`,
+              );
+              return;
+            }
+            router.push(
+              `/payment/success?paymentId=${encodeURIComponent(session.paymentId)}&order=${encodeURIComponent(verified.orderNumber)}`,
+            );
+          });
+        },
+        onDismiss: () => {
+          void cancelCheckoutPaymentAction({ paymentId: session.paymentId });
+          setPaying(false);
+          setError("Payment was cancelled. You can try again.");
+        },
+      });
+    } catch {
+      setPaying(false);
+      setError("Unable to open payment. Please try again.");
+    }
+  }
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -314,23 +375,28 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
             ? "Review cart"
             : summary.step === "ADDRESS_SELECTION"
               ? "Select address"
-              : "Ready for payment"}
+              : paying
+                ? "Processing payment"
+                : "Ready for payment"}
         </p>
 
         <button
           type="button"
-          disabled={!ready || pending}
+          disabled={!ready || busy}
+          onClick={() => {
+            void handlePayNow();
+          }}
           title={
             ready
-              ? "Payment will be available in a later phase"
+              ? "Pay securely"
               : "Select a valid address and resolve cart issues"
           }
           className="mt-4 flex w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
         >
-          Continue to payment
+          {paying ? "Processing…" : "Pay Now"}
         </button>
         <p className="mt-2 text-center text-xs text-[var(--color-muted)]">
-          Payment (Razorpay) arrives in a later phase.
+          You will complete payment in a secure checkout window.
         </p>
         <Link
           href="/cart"

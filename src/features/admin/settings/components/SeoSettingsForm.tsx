@@ -89,6 +89,7 @@ export function SeoSettingsForm({
               {...field}
               label="Site title"
               fullWidth
+              required
               disabled={!canUpdate}
               error={Boolean(fieldState.error)}
               helperText={fieldState.error?.message}

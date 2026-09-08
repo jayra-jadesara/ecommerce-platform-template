@@ -18,33 +18,29 @@ export function HomeView({ config }: HomeViewProps) {
         className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]"
       >
         <div
-          className="pointer-events-none absolute inset-0 opacity-80"
+          className="pointer-events-none absolute inset-0 opacity-90"
           aria-hidden
           style={{
             background:
-              "radial-gradient(ellipse 80% 60% at 10% 0%, color-mix(in srgb, var(--color-primary) 18%, transparent), transparent 55%), radial-gradient(ellipse 60% 50% at 90% 100%, color-mix(in srgb, var(--color-accent) 16%, transparent), transparent 50%)",
+              "radial-gradient(ellipse 70% 55% at 0% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%), radial-gradient(ellipse 55% 45% at 100% 100%, color-mix(in srgb, var(--color-accent) 18%, transparent), transparent 50%)",
           }}
         />
 
-        <div className="relative px-6 py-16 md:px-12 md:py-24">
-          <p className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-5xl">
+        <div className="relative px-4 py-12 md:px-6 md:py-16 lg:px-8">
+          <p className="font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-5xl lg:text-6xl">
             {config.brand.name}
           </p>
           {config.brand.tagline ? (
-            <p className="mt-4 max-w-xl text-lg text-[var(--color-muted)]">
+            <p className="mt-4 max-w-2xl text-lg text-[var(--color-muted)] md:text-xl">
               {config.brand.tagline}
             </p>
           ) : null}
-          <p className="mt-3 max-w-xl text-sm text-[var(--color-muted)]">
-            White-label storefront foundation — theme, layout, and content are
-            configuration-driven for each client deployment.
-          </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <LinkButton href="/products" variant="contained" color="primary">
-              Browse products
+              Shop now
             </LinkButton>
             <LinkButton href="/about" variant="outlined" color="primary">
-              Learn more
+              About us
             </LinkButton>
           </div>
         </div>
@@ -54,27 +50,27 @@ export function HomeView({ config }: HomeViewProps) {
         as="section"
         animation={config.animation}
         preset="fade-up"
-        className="mt-12 grid gap-6 md:grid-cols-3"
+        className="mt-10 grid gap-4 sm:grid-cols-3 sm:gap-6"
       >
         {[
           {
-            title: "Semantic theme",
-            body: "Colors flow through CSS tokens and MUI — swap brands without rewriting components.",
+            title: "Quality products",
+            body: "Browse a curated catalog built for everyday shopping.",
           },
           {
-            title: "Safe motion",
-            body: "Framer Motion presets are allow-listed so admins can tune intensity without arbitrary code.",
+            title: "Secure checkout",
+            body: "Cart and payments are ready when you are.",
           },
           {
-            title: "Ready for data",
-            body: "Feature folders and services are structured for Supabase, auth, cart, and checkout next.",
+            title: "Your brand",
+            body: "Colors, logo, and content are fully customizable.",
           },
         ].map((item) => (
           <article
             key={item.title}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6"
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-5 md:p-6"
           >
-            <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-foreground)]">
+            <h2 className="text-base font-semibold text-[var(--color-foreground)] md:text-lg">
               {item.title}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">

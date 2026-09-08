@@ -481,7 +481,13 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
   const values = parsed.data;
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
+  if (!storeId) {
+    return {
+      ok: false,
+      error:
+        "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.",
+    };
+  }
 
   if (values.categoryId) {
     const { data: category } = await supabase
@@ -559,7 +565,13 @@ export async function updateProduct(
   const values = parsed.data;
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
+  if (!storeId) {
+    return {
+      ok: false,
+      error:
+        "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.",
+    };
+  }
 
   const { data: existing } = await supabase
     .from("products")
@@ -633,7 +645,13 @@ export async function archiveProduct(id: string): Promise<CatalogResult> {
 
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
+  if (!storeId) {
+    return {
+      ok: false,
+      error:
+        "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.",
+    };
+  }
 
   const { data, error } = await supabase
     .from("products")
@@ -666,7 +684,13 @@ export async function deleteProduct(id: string): Promise<CatalogResult> {
 
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
+  if (!storeId) {
+    return {
+      ok: false,
+      error:
+        "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.",
+    };
+  }
 
   const { data: existing } = await supabase
     .from("products")
@@ -713,7 +737,13 @@ export async function updateInventory(
   const values = parsed.data;
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
+  if (!storeId) {
+    return {
+      ok: false,
+      error:
+        "Your store isn't ready yet. Open Store Settings and finish setup, then try saving again.",
+    };
+  }
 
   const { data: variant } = await supabase
     .from("product_variants")

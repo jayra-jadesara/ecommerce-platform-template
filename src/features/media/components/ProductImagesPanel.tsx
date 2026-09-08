@@ -77,12 +77,12 @@ export function ProductImagesPanel({
   );
 
   return (
-    <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+    <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:p-5">
       <div>
         <h2 className="font-semibold">Product images</h2>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Upload JPEG/PNG/WEBP files. The first image becomes primary unless you
-          choose another.
+          Photos are shown in full (no stretch or crop). The primary image is
+          used on product cards and the product page.
         </p>
       </div>
 

@@ -139,13 +139,14 @@ export function PaymentSettingsForm({
         select
         label="Payment provider"
         fullWidth
+        required
         disabled={!canUpdate || pending}
-        helperText="Execution (e.g. Razorpay) is configured later. Secrets stay in environment variables."
+        helperText="Secrets stay in server environment variables — never enter API secrets here. Choose Razorpay to enable Pay Now at checkout."
         {...register("provider")}
       >
-        <MenuItem value="none">None</MenuItem>
+        <MenuItem value="none">None (disabled)</MenuItem>
         <MenuItem value="razorpay">Razorpay</MenuItem>
-        <MenuItem value="other">Other</MenuItem>
+        <MenuItem value="other">Other (not wired yet)</MenuItem>
       </TextField>
 
       <Controller
@@ -160,15 +161,16 @@ export function PaymentSettingsForm({
                 disabled={!canUpdate || pending}
               />
             }
-            label="Gateway / payment fee enabled"
+            label="Add a payment fee at checkout"
           />
         )}
       />
 
       <TextField
         select
-        label="Fee type"
+        label="Payment fee type"
         fullWidth
+        required
         disabled={!canUpdate || pending}
         {...register("feeType")}
       >
@@ -177,27 +179,29 @@ export function PaymentSettingsForm({
       </TextField>
 
       <TextField
-        label="Fee value"
+        label="Payment fee"
         type="number"
         fullWidth
+        required
         slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
         disabled={!canUpdate || pending}
         error={Boolean(errors.feeValue)}
         helperText={
           errors.feeValue?.message ||
           (watched.feeType === "PERCENTAGE"
-            ? "Percentage 0–100"
-            : `Fixed amount in ${currency}`)
+            ? "This fee is added to the customer's payable amount (0–100%)."
+            : `Fixed fee in ${currency} added to the customer's payable amount.`)
         }
         {...register("feeValue")}
       />
 
       <TextField
         select
-        label="Fee basis"
+        label="Calculate fee on"
         fullWidth
+        required
         disabled={!canUpdate || pending}
-        helperText="Default: subtotal − discount + shipping (before payment fee)."
+        helperText="Usually product total plus delivery (before this payment fee)."
         {...register("feeBasis")}
       >
         <MenuItem value="SUBTOTAL">Subtotal (after discount)</MenuItem>
@@ -230,6 +234,7 @@ export function PaymentSettingsForm({
         select
         label="Tax type"
         fullWidth
+        required
         disabled={!canUpdate || pending}
         {...register("taxType")}
       >
@@ -241,6 +246,7 @@ export function PaymentSettingsForm({
         label="Tax value"
         type="number"
         fullWidth
+        required
         slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
         disabled={!canUpdate || pending}
         error={Boolean(errors.taxValue)}

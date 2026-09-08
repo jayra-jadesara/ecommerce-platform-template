@@ -2,6 +2,10 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { getAdminRouteSegment } from "@/config/admin-route";
 
+export function generateStaticParams() {
+  return [{ adminSlug: getAdminRouteSegment() }];
+}
+
 export default async function AdminSlugLayout({
   children,
   params,

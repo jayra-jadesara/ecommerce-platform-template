@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/config/site";
 import { mapAuthError } from "@/features/auth/errors";
-import { safeInternalPath } from "@/features/auth/redirect";
+import { safeAdminNextPath, safeInternalPath } from "@/features/auth/redirect";
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -14,6 +14,7 @@ import {
   resetPasswordSchema,
 } from "@/features/auth/validations";
 import { requireUser } from "@/features/auth/session";
+import { getAdminPath } from "@/config/admin-route";
 
 export type AuthActionResult =
   | { ok: true; message?: string }
@@ -154,7 +155,7 @@ export async function updateProfileAction(
 export async function adminLoginAction(
   raw: unknown,
   nextPath?: string,
-  adminLoginFallback = "/manage-store/dashboard",
+  adminLoginFallback = getAdminPath("/dashboard"),
 ): Promise<AuthActionResult> {
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
@@ -185,5 +186,10 @@ export async function adminLoginAction(
     };
   }
 
-  redirect(safeInternalPath(nextPath, adminLoginFallback));
+  const dest = safeAdminNextPath(
+    nextPath,
+    getAdminPath(),
+    adminLoginFallback,
+  );
+  redirect(dest);
 }

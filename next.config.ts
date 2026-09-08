@@ -19,11 +19,17 @@ const supabaseHost = supabaseHostname();
 
 const nextConfig: NextConfig = {
   // Allow LAN device access to Turbopack HMR during local development.
-  allowedDevOrigins: ["192.168.31.106", "localhost"],
+  allowedDevOrigins: ["192.168.31.106", "localhost", "127.0.0.1"],
   // Makes ADMIN_ROUTE available to client bundles for link building only.
   // This is not a security boundary — RBAC still runs on the server.
   env: {
     ADMIN_ROUTE: adminRoute,
+  },
+  // Product / media uploads (UI allows up to 10 MB per file).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "12mb",
+    },
   },
   images: {
     remotePatterns: supabaseHost

@@ -16,3 +16,20 @@ export function safeInternalPath(
 
   return path;
 }
+
+/**
+ * Admin post-login destination. Rejects the login URL itself so we never
+ * bounce back to /login after a successful sign-in.
+ */
+export function safeAdminNextPath(
+  candidate: string | null | undefined,
+  adminBase: string,
+  fallback: string,
+): string {
+  const next = safeInternalPath(candidate, fallback);
+  const loginPath = `${adminBase.replace(/\/$/, "")}/login`;
+  if (next === loginPath || next.startsWith(`${loginPath}?`)) {
+    return fallback;
+  }
+  return next;
+}

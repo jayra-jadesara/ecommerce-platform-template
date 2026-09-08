@@ -134,6 +134,7 @@ export function HeaderSettingsForm({
                 select
                 label="Logo size"
                 fullWidth
+                required
                 disabled={!canUpdate}
               >
                 {LOGO_SIZE_OPTIONS.map((size) => (

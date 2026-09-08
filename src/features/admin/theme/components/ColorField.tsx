@@ -56,10 +56,7 @@ export function ColorField({
               onChange={(event) => field.onChange(event.target.value)}
               onBlur={field.onBlur}
               error={Boolean(fieldState.error)}
-              helperText={
-                fieldState.error?.message ??
-                "HEX, RGB(A), or HSL(A) — no arbitrary CSS"
-              }
+              helperText={fieldState.error?.message ?? "e.g. #1a5f4a"}
               slotProps={{
                 htmlInput: { "aria-label": `${label} color value` },
               }}

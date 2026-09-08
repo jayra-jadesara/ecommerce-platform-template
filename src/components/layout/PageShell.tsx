@@ -17,16 +17,16 @@ export function PageShell({
   description,
 }: PageShellProps) {
   return (
-    <Container as="main" className={cn("flex-1 py-8 md:py-12", className)}>
+    <Container as="main" className={cn("flex-1 py-4 md:py-6", className)}>
       {(title || description) && (
-        <header className="mb-8 max-w-2xl">
+        <header className="mb-4 md:mb-6">
           {title ? (
-            <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-4xl">
+            <h1 className="text-2xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-3xl">
               {title}
             </h1>
           ) : null}
           {description ? (
-            <p className="mt-3 text-base text-[var(--color-muted)]">
+            <p className="mt-2 text-sm text-[var(--color-muted)] md:text-base">
               {description}
             </p>
           ) : null}

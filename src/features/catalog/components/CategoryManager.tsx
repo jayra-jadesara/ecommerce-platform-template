@@ -9,7 +9,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import {
   archiveCategoryAction,
@@ -54,6 +54,7 @@ function CategoryImagePicker({
     </>
   );
 }
+
 interface CategoryManagerProps {
   initialCategories: CategoryRow[];
   canCreate: boolean;
@@ -94,8 +95,6 @@ export function CategoryManager({
       values: defaults,
     });
 
-  const nameValue = useWatch({ control, name: "name" }) ?? "";
-
   const onSubmit = handleSubmit((values) => {
     setError(null);
     setSuccess(null);
@@ -119,9 +118,9 @@ export function CategoryManager({
   );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_1.1fr]">
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <div className="mb-4 flex items-center justify-between gap-2">
+    <div className="grid w-full min-w-0 gap-3 lg:grid-cols-2 lg:gap-4">
+      <section className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-2">
           <h2 className="font-semibold">
             {editingId ? "Edit category" : "Create category"}
           </h2>
@@ -149,7 +148,7 @@ export function CategoryManager({
           </Alert>
         ) : null}
         <form
-          className="space-y-3"
+          className="space-y-2.5"
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit();
@@ -161,8 +160,10 @@ export function CategoryManager({
             render={({ field, fieldState }) => (
               <TextField
                 {...field}
+                size="small"
                 label="Name"
                 fullWidth
+                required
                 disabled={!(editingId ? canUpdate : canCreate)}
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message}
@@ -178,100 +179,94 @@ export function CategoryManager({
             )}
           />
           <Controller
-            name="slug"
-            control={control}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Slug"
-                fullWidth
-                disabled={!(editingId ? canUpdate : canCreate)}
-                error={Boolean(fieldState.error)}
-                helperText={
-                  fieldState.error?.message ||
-                  (nameValue ? `Suggested: ${slugify(nameValue)}` : "URL-safe identifier")
-                }
-              />
-            )}
-          />
-          <Controller
             name="description"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
+                size="small"
                 label="Description"
                 fullWidth
                 multiline
-                minRows={3}
+                minRows={2}
                 disabled={!(editingId ? canUpdate : canCreate)}
               />
             )}
           />
-          <Controller
-            name="parentId"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                select
-                label="Parent category"
-                fullWidth
-                disabled={!(editingId ? canUpdate : canCreate)}
-                value={field.value ?? ""}
-                onChange={(event) =>
-                  field.onChange(event.target.value || null)
-                }
-              >
-                <MenuItem value="">None (top level)</MenuItem>
-                {parentOptions.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
-                  </MenuItem>
-                ))}
-              </TextField>
-            )}
-          />
-          <Controller
-            name="sortOrder"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                type="number"
-                label="Sort order"
-                fullWidth
-                disabled={!(editingId ? canUpdate : canCreate)}
-                onChange={(event) =>
-                  field.onChange(Number(event.target.value) || 0)
-                }
+          <details className="rounded-lg border border-[var(--color-border)] p-3">
+            <summary className="cursor-pointer text-sm font-medium">
+              More options
+            </summary>
+            <div className="mt-3 space-y-2.5">
+              <Controller
+                name="parentId"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    select
+                    size="small"
+                    label="Parent category"
+                    fullWidth
+                    disabled={!(editingId ? canUpdate : canCreate)}
+                    value={field.value ?? ""}
+                    onChange={(event) =>
+                      field.onChange(event.target.value || null)
+                    }
+                  >
+                    <MenuItem value="">None (top level)</MenuItem>
+                    {parentOptions.map((category) => (
+                      <MenuItem key={category.id} value={category.id}>
+                        {category.name}
+                      </MenuItem>
+                    ))}
+                  </TextField>
+                )}
               />
-            )}
-          />
-        <Controller
-          name="imagePath"
-          control={control}
-          render={({ field }) => (
-            <div className="space-y-2">
-              <TextField
-                {...field}
-                value={field.value ?? ""}
-                label="Image path (optional)"
-                fullWidth
-                disabled={!(editingId ? canUpdate : canCreate)}
-                helperText="Storage path reference, or pick from Media Library."
-                onChange={(event) =>
-                  field.onChange(event.target.value || null)
-                }
+              <Controller
+                name="sortOrder"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    size="small"
+                    type="number"
+                    label="Sort order"
+                    fullWidth
+                    disabled={!(editingId ? canUpdate : canCreate)}
+                    onChange={(event) =>
+                      field.onChange(Number(event.target.value) || 0)
+                    }
+                  />
+                )}
               />
-              <CategoryImagePicker
-                disabled={!(editingId ? canUpdate : canCreate)}
-                onPick={(path) =>
-                  setValue("imagePath", path, { shouldDirty: true })
-                }
+              <Controller
+                name="imagePath"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <TextField
+                      {...field}
+                      size="small"
+                      value={field.value ?? ""}
+                      label="Image (optional)"
+                      fullWidth
+                      disabled={!(editingId ? canUpdate : canCreate)}
+                      helperText="Pick from Media Library or leave empty."
+                      onChange={(event) =>
+                        field.onChange(event.target.value || null)
+                      }
+                    />
+                    <CategoryImagePicker
+                      disabled={!(editingId ? canUpdate : canCreate)}
+                      onPick={(path) =>
+                        setValue("imagePath", path, { shouldDirty: true })
+                      }
+                    />
+                  </div>
+                )}
               />
             </div>
-          )}
-        />
+          </details>
           <Controller
             name="isActive"
             control={control}
@@ -298,8 +293,8 @@ export function CategoryManager({
         </form>
       </section>
 
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-        <h2 className="mb-4 font-semibold">Categories</h2>
+      <section className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
+        <h2 className="mb-3 font-semibold">Categories</h2>
         {initialCategories.length === 0 ? (
           <p className="text-sm text-[var(--color-muted)]">
             No categories yet. Create the first one to organize products.
@@ -342,7 +337,9 @@ export function CategoryManager({
                       disabled={!canUpdate || !category.is_active}
                       onClick={() => {
                         startTransition(async () => {
-                          const result = await archiveCategoryAction(category.id);
+                          const result = await archiveCategoryAction(
+                            category.id,
+                          );
                           if (!result.ok) setError(result.error);
                           else {
                             setSuccess(result.message);
@@ -366,7 +363,9 @@ export function CategoryManager({
                           return;
                         }
                         startTransition(async () => {
-                          const result = await deleteCategoryAction(category.id);
+                          const result = await deleteCategoryAction(
+                            category.id,
+                          );
                           if (!result.ok) setError(result.error);
                           else {
                             setSuccess(result.message);

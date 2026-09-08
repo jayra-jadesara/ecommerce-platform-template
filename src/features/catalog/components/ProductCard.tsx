@@ -52,17 +52,19 @@ export function ProductCard({ product, currency }: ProductCardProps) {
         href={`/products/${product.slug}`}
         className="block focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
       >
-        <div className="relative mb-3 flex h-36 items-center justify-center overflow-hidden rounded-md border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
+        <div className="relative mb-3 aspect-[4/5] overflow-hidden rounded-lg bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)]">
           {product.primaryImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={product.primaryImageUrl}
               alt={product.primaryImageAlt || product.name}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-contain p-2"
               loading="lazy"
             />
           ) : (
-            <span>No image</span>
+            <span className="absolute inset-0 flex items-center justify-center text-xs text-[var(--color-muted)]">
+              No image
+            </span>
           )}
         </div>
         <p className="font-medium text-[var(--color-foreground)]">

@@ -3,6 +3,7 @@ import { requireAdmin, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import type { Permission } from "@/features/auth/permissions";
 import { redirect } from "next/navigation";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -14,57 +15,57 @@ const MODULES: Array<{
 }> = [
   {
     href: "/settings/general",
-    title: "General",
-    description: "Store identity, contact, currency, social links",
+    title: "Store Information",
+    description: "Store name, contact details, currency and social links.",
     permission: "settings.view",
   },
   {
     href: "/settings/branding",
-    title: "Branding",
-    description: "Brand name, logos, favicon, social image",
+    title: "Logo & Branding",
+    description: "Manage your logo, favicon and brand identity.",
     permission: "branding.view",
   },
   {
-    href: "/settings/header",
-    title: "Header",
-    description: "Sticky header, announcement bar, logo size",
-    permission: "settings.view",
-  },
-  {
-    href: "/settings/footer",
-    title: "Footer",
-    description: "Footer content, contact and social visibility",
-    permission: "settings.view",
+    href: "/settings/theme",
+    title: "Appearance",
+    description: "Change your store colors, light/dark mode and visual style.",
+    permission: "theme.view",
   },
   {
     href: "/settings/navigation",
-    title: "Navigation",
-    description: "Header and footer menus",
+    title: "Menu & Navigation",
+    description: "Choose which pages appear in your store menu.",
     permission: "navigation.view",
-  },
-  {
-    href: "/settings/seo",
-    title: "SEO",
-    description: "Titles, descriptions, robots, Open Graph",
-    permission: "seo.view",
-  },
-  {
-    href: "/settings/theme",
-    title: "Theme",
-    description: "Colors, appearance modes, typography, animation",
-    permission: "theme.view",
   },
   {
     href: "/settings/shipping",
     title: "Shipping",
-    description: "Flat fees, free-shipping threshold, delivery estimates",
+    description: "Set delivery charges and free-shipping rules.",
     permission: "shipping.view",
   },
   {
     href: "/settings/payments",
     title: "Payments",
-    description: "Gateway fee and tax business settings (no secrets)",
+    description: "Configure how customers pay and any checkout fees.",
     permission: "payments.view",
+  },
+  {
+    href: "/settings/seo",
+    title: "Google & SEO",
+    description: "Control how your store appears in Google and when shared online.",
+    permission: "seo.view",
+  },
+  {
+    href: "/settings/header",
+    title: "Header layout",
+    description: "Announcement bar, sticky header and logo size.",
+    permission: "settings.view",
+  },
+  {
+    href: "/settings/footer",
+    title: "Footer layout",
+    description: "Footer text and which contact details to show.",
+    permission: "settings.view",
   },
 ];
 
@@ -91,19 +92,19 @@ export default async function AdminSettingsPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Settings
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Configure store identity, chrome, navigation, SEO, and theme without
-        code changes.
-      </p>
-      <ul className="mt-8 grid gap-3 sm:grid-cols-2">
+      <AdminPageHeader
+        title="Store Settings"
+        description="Manage your store information, appearance, delivery and payment options."
+        breadcrumbs={[
+          { label: "Store Settings" },
+        ]}
+      />
+      <ul className="grid gap-3 sm:grid-cols-2">
         {visible.map((mod) => (
           <li key={mod.href}>
             <Link
               href={getAdminPath(mod.href)}
-              className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-5 hover:border-[var(--color-primary)]"
+              className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-5 transition-colors hover:border-[var(--color-primary)]"
             >
               <p className="font-medium">{mod.title}</p>
               <p className="mt-1 text-sm text-[var(--color-muted)]">

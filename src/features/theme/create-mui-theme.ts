@@ -77,6 +77,13 @@ export function createAppMuiTheme(
           },
         },
       },
+      MuiFormLabel: {
+        styleOverrides: {
+          asterisk: {
+            color: tokens.error,
+          },
+        },
+      },
       MuiCssBaseline: {
         styleOverrides: {
           body: {

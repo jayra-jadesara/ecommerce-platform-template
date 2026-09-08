@@ -20,7 +20,10 @@ export function LogoutButton({
       type="button"
       variant={variant}
       color="inherit"
+      size="small"
+      fullWidth={variant === "outlined"}
       disabled={pending}
+      className="!min-w-0 !px-2 sm:!px-3"
       onClick={() => {
         startTransition(async () => {
           await logoutAction(redirectTo);

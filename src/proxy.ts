@@ -21,7 +21,9 @@ export async function proxy(request: NextRequest) {
   const adminBase = `/${adminSegment}`;
   const isAdminArea =
     pathname === adminBase || pathname.startsWith(`${adminBase}/`);
-  const isAdminLogin = pathname === `${adminBase}/login`;
+  const isAdminLogin =
+    pathname === `${adminBase}/login` ||
+    pathname.startsWith(`${adminBase}/login/`);
   const isAccountArea =
     pathname === "/account" || pathname.startsWith("/account/");
 
@@ -38,13 +40,13 @@ export async function proxy(request: NextRequest) {
   if (isAdminArea && !isAdminLogin && !user) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = `${adminBase}/login`;
-    loginUrl.searchParams.set(
-      "next",
-      safeInternalPath(
-        `${pathname}${request.nextUrl.search}`,
-        `${adminBase}/dashboard`,
-      ),
-    );
+    const requested = `${pathname}${request.nextUrl.search}`;
+    const nextTarget =
+      pathname === `${adminBase}/login` ||
+      pathname.startsWith(`${adminBase}/login/`)
+        ? `${adminBase}/dashboard`
+        : safeInternalPath(requested, `${adminBase}/dashboard`);
+    loginUrl.searchParams.set("next", nextTarget);
     return NextResponse.redirect(loginUrl);
   }
 

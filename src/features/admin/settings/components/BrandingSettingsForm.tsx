@@ -163,6 +163,7 @@ export function BrandingSettingsForm({
                 {...field}
                 label="Brand name"
                 fullWidth
+                required
                 disabled={!canUpdate}
                 error={Boolean(fieldState.error)}
                 helperText={fieldState.error?.message}

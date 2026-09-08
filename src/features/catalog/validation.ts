@@ -212,7 +212,7 @@ export function emptyVariant(clientKey: string): VariantFormValues {
   return {
     id: null,
     clientKey,
-    name: "Default",
+    name: "One size",
     sku: "",
     price: 0,
     compareAtPrice: null,
@@ -227,6 +227,39 @@ export function emptyVariant(clientKey: string): VariantFormValues {
     _delete: false,
   };
 }
+
+/** Common pack sizes shoppers understand (spices, grocery, apparel, packs). */
+export const PRODUCT_SIZE_OPTIONS = [
+  "One size",
+  "Small",
+  "Medium",
+  "Large",
+  "XL",
+  "XXL",
+  "50 g",
+  "100 g",
+  "250 g",
+  "500 g",
+  "1 kg",
+  "250 ml",
+  "500 ml",
+  "1 L",
+  "Pack of 1",
+  "Pack of 2",
+  "Pack of 4",
+  "Pack of 6",
+  "Pack of 12",
+] as const;
+
+export const PRODUCT_UNIT_OPTIONS = [
+  "",
+  "g",
+  "kg",
+  "ml",
+  "L",
+  "piece",
+  "pack",
+] as const;
 
 export const DEFAULT_PRODUCT_FORM: ProductFormValues = {
   name: "",

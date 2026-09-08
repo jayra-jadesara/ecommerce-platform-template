@@ -5,17 +5,25 @@ interface ContainerProps {
   children: ReactNode;
   className?: string;
   as?: "div" | "section" | "main" | "article";
+  /** When true, skip horizontal padding (edge-to-edge sections). */
+  flush?: boolean;
 }
 
+/**
+ * Full-width page container. Side padding only — no artificial max-width
+ * that leaves empty left/right gutters on wide screens.
+ */
 export function Container({
   children,
   className,
   as: Tag = "div",
+  flush = false,
 }: ContainerProps) {
   return (
     <Tag
       className={cn(
-        "mx-auto w-full max-w-[var(--layout-max-width)] px-[var(--layout-container-padding)]",
+        "w-full",
+        !flush && "px-[var(--layout-container-padding)]",
         className,
       )}
     >

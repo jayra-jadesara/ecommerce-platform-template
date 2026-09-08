@@ -100,7 +100,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
 
         {showNav ? (
           <nav
-            className="hidden items-center gap-6 md:flex"
+            className="hidden items-center gap-5 lg:flex xl:gap-6"
             aria-label="Primary"
           >
             <NavLinks
@@ -116,7 +116,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
           <ThemeToggle />
           {showMobileMenu && showNav ? (
             <IconButton
-              className="md:!hidden"
+              className="lg:!hidden"
               aria-label={open ? "Close menu" : "Open menu"}
               aria-expanded={open}
               aria-controls="mobile-nav"
@@ -136,7 +136,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
       {open && showMobileMenu && showNav ? (
         <nav
           id="mobile-nav"
-          className="border-t border-[var(--color-border)] bg-[var(--color-header-background)] md:hidden"
+          className="border-t border-[var(--color-border)] bg-[var(--color-header-background)] lg:hidden"
           aria-label="Mobile"
         >
           <Container className="flex flex-col gap-1 py-3">

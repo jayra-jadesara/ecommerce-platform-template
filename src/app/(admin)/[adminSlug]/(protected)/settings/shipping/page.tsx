@@ -3,6 +3,7 @@ import { getAdminPath } from "@/config/admin-route";
 import { redirect } from "next/navigation";
 import { ShippingSettingsForm } from "@/features/admin/settings/components/ShippingSettingsForm";
 import { loadShippingSettingsForm } from "@/features/admin/settings/update-shipping-payment";
+import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +17,19 @@ export default async function AdminShippingSettingsPage() {
 
   return (
     <div>
-      <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Shipping
-      </h1>
-      <p className="mt-2 text-sm text-[var(--color-muted)]">
-        Configure flat shipping fees and free-shipping thresholds. Checkout
-        totals use the centralized pricing engine.
-      </p>
-      <div className="mt-6 max-w-2xl">
-        <ShippingSettingsForm
-          initialValues={values}
-          currency={currency}
-          canUpdate={canUpdate}
-        />
-      </div>
+      <AdminPageHeader
+        title="Shipping"
+        description="Set your delivery charges and free-shipping rules."
+        breadcrumbs={[
+          { label: "Store Settings", href: getAdminPath("/settings") },
+          { label: "Shipping" },
+        ]}
+      />
+      <ShippingSettingsForm
+        initialValues={values}
+        currency={currency}
+        canUpdate={canUpdate}
+      />
     </div>
   );
 }
