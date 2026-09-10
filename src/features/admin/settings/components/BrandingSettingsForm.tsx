@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -17,6 +16,17 @@ import {
   type BrandingSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import type { BrandingUploadKind } from "@/features/admin/settings/update-branding";
+import { AdminSection } from "@/features/admin/ui/AdminCard";
+import {
+  adminBtn,
+  adminFormGrid,
+  adminFormStack,
+} from "@/features/admin/ui/admin-classes";
+import {
+  LogoThemeSuggest,
+  suggestThemeFromLogoFile,
+} from "@/features/admin/theme/components/LogoThemeSuggest";
+import { cn } from "@/lib/cn";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 
 interface BrandingSettingsFormProps {
@@ -37,14 +47,38 @@ const IMAGE_FIELDS: Array<{
   >;
   kind: BrandingUploadKind;
   label: string;
+  hint: string;
+  previewKey: "logoUrl" | "logoDarkUrl" | "faviconUrl" | "socialImageUrl";
+  tall?: boolean;
 }> = [
-  { pathKey: "logoPath", kind: "logo", label: "Logo" },
-  { pathKey: "logoDarkPath", kind: "dark-logo", label: "Dark mode logo" },
-  { pathKey: "faviconPath", kind: "favicon", label: "Favicon" },
+  {
+    pathKey: "logoPath",
+    kind: "logo",
+    label: "Logo",
+    hint: "JPEG, PNG, or WebP. Shown in the storefront header.",
+    previewKey: "logoUrl",
+  },
+  {
+    pathKey: "logoDarkPath",
+    kind: "dark-logo",
+    label: "Dark mode logo",
+    hint: "Optional logo for dark backgrounds.",
+    previewKey: "logoDarkUrl",
+  },
+  {
+    pathKey: "faviconPath",
+    kind: "favicon",
+    label: "Favicon",
+    hint: "Small square icon for browser tabs.",
+    previewKey: "faviconUrl",
+  },
   {
     pathKey: "socialSharingImagePath",
     kind: "social-image",
     label: "Social sharing image",
+    hint: "Used when links are shared on social networks.",
+    previewKey: "socialImageUrl",
+    tall: true,
   },
 ];
 
@@ -124,6 +158,15 @@ export function BrandingSettingsForm({
     if (result.path) {
       setValue(pathKey, result.path, { shouldDirty: true });
       setSuccess("Image uploaded. Save to publish.");
+      if (kind === "logo" && file) {
+        void suggestThemeFromLogoFile(file).then((theme) => {
+          if (theme) {
+            setSuccess(
+              "Image uploaded. Brand theme suggested from your logo — review it below, then open Appearance to apply.",
+            );
+          }
+        });
+      }
     }
   }
 
@@ -133,7 +176,7 @@ export function BrandingSettingsForm({
         event.preventDefault();
         onSubmit();
       }}
-      className="space-y-6"
+      className="space-y-5"
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -153,128 +196,180 @@ export function BrandingSettingsForm({
         }}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <Controller
-            name="brandName"
-            control={control}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Brand name"
-                fullWidth
-                required
-                disabled={!canUpdate}
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-          <Controller
-            name="tagline"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Tagline"
-                fullWidth
-                disabled={!canUpdate}
-              />
-            )}
-          />
-
-          {IMAGE_FIELDS.map(({ pathKey, kind, label }) => (
-            <div
-              key={pathKey}
-              className="rounded-lg border border-[var(--color-border)] p-3"
-            >
-              <p className="mb-2 text-sm font-medium">{label}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  component="label"
-                  variant="outlined"
-                  disabled={!canUpdate || uploadPending === kind}
-                >
-                  {uploadPending === kind ? "Uploading…" : "Upload"}
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(event) => {
-                      const file = event.target.files?.[0] ?? null;
-                      void handleUpload(kind, pathKey, file);
-                      event.target.value = "";
-                    }}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
+        <div className="space-y-5">
+          <AdminSection
+            title="Brand identity"
+            description="Name and tagline shown across your storefront."
+          >
+            <div className={adminFormGrid()}>
+              <Controller
+                name="brandName"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <TextField
+                    {...field}
+                    label="Brand name"
+                    fullWidth
+                    required
+                    disabled={!canUpdate}
+                    error={Boolean(fieldState.error)}
+                    helperText={fieldState.error?.message}
                   />
-                </Button>
-                <Button
-                  type="button"
-                  variant="text"
-                  color="inherit"
-                  disabled={!canUpdate || !watched[pathKey]}
-                  onClick={() =>
-                    setValue(pathKey, null, { shouldDirty: true })
-                  }
-                >
-                  Remove
-                </Button>
-                <span className="text-xs text-[var(--color-muted)]">
-                  {watched[pathKey] || "No image"}
-                </span>
-              </div>
+                )}
+              />
+              <Controller
+                name="tagline"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    label="Tagline"
+                    fullWidth
+                    disabled={!canUpdate}
+                  />
+                )}
+              />
             </div>
-          ))}
+          </AdminSection>
+
+          <AdminSection
+            title="Brand images"
+            description="Upload logos and icons. Changes apply after you save."
+          >
+            <div className={adminFormStack()}>
+              {IMAGE_FIELDS.map(
+                ({ pathKey, kind, label, hint, previewKey, tall }) => {
+                  const url = preview[previewKey];
+                  return (
+                    <div
+                      key={pathKey}
+                      className="overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-surface)]"
+                    >
+                      <div
+                        className={`flex items-center justify-center bg-[color-mix(in_srgb,var(--color-background)_80%,var(--color-primary)_8%)] ${
+                          tall ? "min-h-48 p-5" : "min-h-36 p-8"
+                        } ${previewKey === "logoDarkUrl" ? "bg-[var(--color-foreground)]" : ""}`}
+                      >
+                        {url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={url}
+                            alt={`${label} preview`}
+                            className={
+                              tall
+                                ? "max-h-40 w-full object-contain"
+                                : previewKey === "faviconUrl"
+                                  ? "h-14 w-14 object-contain"
+                                  : "max-h-24 w-auto max-w-full object-contain"
+                            }
+                          />
+                        ) : (
+                          <p className="text-sm text-[var(--color-muted)]">
+                            No image yet
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-3 p-4">
+                        <div>
+                          <p className="text-sm font-semibold">{label}</p>
+                          <p className="mt-1 text-xs text-[var(--color-muted)]">
+                            {hint}
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <label
+                            className={cn(
+                              adminBtn("primary"),
+                              "cursor-pointer",
+                              (!canUpdate || uploadPending === kind) &&
+                                "pointer-events-none opacity-50",
+                            )}
+                          >
+                            {uploadPending === kind
+                              ? "Uploading…"
+                              : url
+                                ? "Replace"
+                                : "Upload"}
+                            <input
+                              hidden
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              disabled={!canUpdate || uploadPending === kind}
+                              onChange={(event) => {
+                                const file = event.target.files?.[0] ?? null;
+                                void handleUpload(kind, pathKey, file);
+                                event.target.value = "";
+                              }}
+                            />
+                          </label>
+                          <button
+                            type="button"
+                            className={adminBtn("outline")}
+                            disabled={!canUpdate || !watched[pathKey]}
+                            onClick={() =>
+                              setValue(pathKey, null, { shouldDirty: true })
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        {watched[pathKey] ? (
+                          <details className="text-xs text-[var(--color-muted)]">
+                            <summary className="cursor-pointer">
+                              File details
+                            </summary>
+                            <p className="mt-1 break-all">{watched[pathKey]}</p>
+                          </details>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                },
+              )}
+            </div>
+          </AdminSection>
+
+          <LogoThemeSuggest logoUrl={preview.logoUrl} mode="branding" />
         </div>
 
-        <aside className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-          <p className="text-sm font-semibold">Live preview</p>
-          <p className="mt-1 text-xs text-[var(--color-muted)]">
-            Unsaved until you click Save.
-          </p>
-          <div className="mt-4 space-y-4">
-            <div>
-              <p className="font-[family-name:var(--font-display)] text-xl font-semibold">
-                {watched.brandName || "Brand Name"}
-              </p>
-              <p className="text-sm text-[var(--color-muted)]">
-                {watched.tagline || "Tagline"}
-              </p>
-            </div>
-            {preview.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={preview.logoUrl}
-                alt="Logo preview"
-                className="h-10 w-auto"
-              />
-            ) : null}
-            {preview.logoDarkUrl ? (
-              <div className="rounded-md bg-[#111] p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={preview.logoDarkUrl}
-                  alt="Dark logo preview"
-                  className="h-10 w-auto"
-                />
+        <aside className="h-fit xl:sticky xl:top-20">
+          <AdminSection
+            title="Live preview"
+            description="How your brand may appear in the storefront header."
+          >
+            <div className="overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)]">
+              <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-header-background)] px-4 py-4">
+                {preview.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={preview.logoUrl}
+                    alt=""
+                    className="h-10 w-auto max-w-[10rem] object-contain"
+                  />
+                ) : (
+                  <span className="font-[family-name:var(--font-display)] text-lg font-semibold">
+                    {watched.brandName || "Brand Name"}
+                  </span>
+                )}
+                <div className="ml-auto hidden gap-3 text-xs text-[var(--color-muted)] sm:flex">
+                  <span>Shop</span>
+                  <span>About</span>
+                </div>
               </div>
-            ) : null}
-            {preview.faviconUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={preview.faviconUrl}
-                alt="Favicon preview"
-                className="h-8 w-8"
-              />
-            ) : null}
-            {preview.socialImageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={preview.socialImageUrl}
-                alt="Social image preview"
-                className="max-h-40 w-full rounded-md object-cover"
-              />
-            ) : null}
-          </div>
+              <div className="space-y-2 bg-[var(--color-background)] p-4">
+                <p className="font-[family-name:var(--font-display)] text-xl font-semibold">
+                  {watched.brandName || "Brand Name"}
+                </p>
+                <p className="text-sm text-[var(--color-muted)]">
+                  {watched.tagline?.trim() &&
+                  watched.tagline !== "Your store, your brand."
+                    ? watched.tagline
+                    : "Explore our collection"}
+                </p>
+              </div>
+            </div>
+          </AdminSection>
         </aside>
       </div>
     </form>

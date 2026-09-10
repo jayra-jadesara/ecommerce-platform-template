@@ -38,7 +38,7 @@ export default async function AdminOrdersPage({
     <div>
       <AdminPageHeader
         title="Orders"
-        description="Track payments, fulfill shipments, and help customers."
+        description="Track and manage customer purchases."
         breadcrumbs={[{ label: "Orders" }]}
       />
       <AdminOrderListClient

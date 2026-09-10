@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -8,7 +7,7 @@ import {
   getStorefrontCategoryBySlug,
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveCategorySeo } from "@/features/seo/resolve";
 import {
@@ -78,18 +77,14 @@ export default async function CategoryPage({ params }: Props) {
     <PageShell
       title={category.name}
       description={category.description ?? undefined}
+      backHref="/products"
+      backLabel="Back to products"
     >
       <JsonLdScript data={breadcrumbs} />
       <p className="mb-4 text-sm text-[var(--color-muted)]">
-        <Link href="/" className="underline-offset-2 hover:underline">
-          Home
-        </Link>
-        {" / "}
-        <Link href="/products" className="underline-offset-2 hover:underline">
-          Products
-        </Link>
-        {" / "}
-        <span>{category.name}</span>
+        {list.total === 0
+          ? "No products in this collection yet."
+          : `${list.total} ${list.total === 1 ? "product" : "products"}`}
       </p>
       {list.items.length === 0 ? (
         <EmptyState
@@ -97,9 +92,9 @@ export default async function CategoryPage({ params }: Props) {
           description="Check back later or browse all products."
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {list.items.map((product) => (
-            <li key={product.id}>
+            <li key={product.id} className="min-w-0">
               <ProductCard product={product} currency={config.store.currency} />
             </li>
           ))}

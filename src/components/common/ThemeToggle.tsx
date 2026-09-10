@@ -6,6 +6,7 @@ import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightne
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import { useThemeMode } from "@/features/theme";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 
 const LABELS = {
   light: "Light mode",
@@ -14,14 +15,18 @@ const LABELS = {
 } as const;
 
 export function ThemeToggle() {
+  const hydrated = useHasHydrated();
   const { mode, allowUserToggle, availableModes, cycleMode } = useThemeMode();
 
   if (!allowUserToggle || availableModes.length <= 1) return null;
 
+  // Until hydrated, show the SSR-safe default icon so markup matches the server.
+  const displayMode = hydrated ? mode : "light";
+
   const Icon =
-    mode === "dark"
+    displayMode === "dark"
       ? DarkModeOutlinedIcon
-      : mode === "system"
+      : displayMode === "system"
         ? SettingsBrightnessOutlinedIcon
         : LightModeOutlinedIcon;
 

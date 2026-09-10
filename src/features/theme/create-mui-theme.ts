@@ -50,6 +50,16 @@ export function createAppMuiTheme(
     shape: { borderRadius: parseBorderRadius(borderRadius) },
     components: {
       MuiButton: {
+        defaultProps: {
+          disableElevation: true,
+        },
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            fontWeight: 600,
+            minHeight: 40,
+          },
+        },
         variants: [
           {
             props: { variant: "contained", color: "primary" },
@@ -64,10 +74,21 @@ export function createAppMuiTheme(
           },
         ],
       },
+      MuiTextField: {
+        defaultProps: {
+          size: "medium",
+          margin: "none",
+        },
+      },
+      MuiFormControl: {
+        defaultProps: {
+          margin: "none",
+        },
+      },
       MuiOutlinedInput: {
         styleOverrides: {
           root: {
-            // Keep error red on hover/focus (default hover can flash primary)
+            backgroundColor: "var(--color-card)",
             "&.Mui-error:hover .MuiOutlinedInput-notchedOutline": {
               borderColor: tokens.error,
             },
@@ -75,12 +96,44 @@ export function createAppMuiTheme(
               borderColor: tokens.error,
             },
           },
+          input: {
+            paddingTop: 12,
+            paddingBottom: 12,
+          },
         },
       },
       MuiFormLabel: {
         styleOverrides: {
           asterisk: {
             color: tokens.error,
+          },
+        },
+      },
+      MuiTabs: {
+        styleOverrides: {
+          root: {
+            minHeight: 48,
+          },
+          indicator: {
+            height: 3,
+            borderRadius: 3,
+          },
+        },
+      },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+            fontWeight: 600,
+            minHeight: 48,
+            paddingInline: 16,
+          },
+        },
+      },
+      MuiDialog: {
+        styleOverrides: {
+          paper: {
+            borderRadius: parseBorderRadius(borderRadius) + 4,
           },
         },
       },

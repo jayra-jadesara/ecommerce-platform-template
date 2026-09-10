@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
@@ -11,6 +12,8 @@ import {
   toggleWishlistAction,
 } from "@/features/wishlist/actions";
 import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import { sfBtn } from "@/components/ui/storefront-classes";
+import { cn } from "@/lib/cn";
 
 interface ProductPurchaseActionsProps {
   productId: string;
@@ -29,10 +32,12 @@ export function ProductPurchaseActions({
   outOfStock,
   isAuthenticated,
 }: ProductPurchaseActionsProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [quantity, setQuantity] = useState(1);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [buyPending, setBuyPending] = useState(false);
 
   const maxQty = Math.min(
     CART_MAX_QUANTITY,
@@ -77,27 +82,60 @@ export function ProductPurchaseActions({
     },
   });
 
+  async function buyNow() {
+    setError(null);
+    setMessage(null);
+    setBuyPending(true);
+    try {
+      const result = await addToCartAction({ productId, variantId, quantity });
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      queryClient.setQueryData(cartQueryKey, result.cart);
+      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      router.push("/checkout");
+    } catch {
+      setError("Could not start checkout.");
+    } finally {
+      setBuyPending(false);
+    }
+  }
+
+  const busy = addMutation.isPending || buyPending;
+
   return (
     <div className="space-y-3">
-      <QuantityStepper
-        value={quantity}
-        max={maxQty}
-        disabled={outOfStock}
-        onChange={setQuantity}
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <QuantityStepper
+          value={quantity}
+          max={maxQty}
+          disabled={outOfStock}
+          onChange={setQuantity}
+        />
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          disabled={outOfStock || addMutation.isPending}
+          disabled={outOfStock || busy}
           onClick={() => {
             setError(null);
             setMessage(null);
             addMutation.mutate({ productId, variantId, quantity });
           }}
-          className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          className={cn(sfBtn("primary"), "min-w-[9rem] flex-1 sm:flex-none")}
         >
           {outOfStock ? "Out of stock" : "Add to cart"}
+        </button>
+
+        <button
+          type="button"
+          disabled={outOfStock || busy}
+          onClick={() => void buyNow()}
+          className={cn(sfBtn("outline"), "min-w-[9rem] flex-1 sm:flex-none")}
+        >
+          {buyPending ? "Starting…" : "Buy now"}
         </button>
 
         {isAuthenticated ? (
@@ -106,14 +144,14 @@ export function ProductPurchaseActions({
             disabled={wishlistMutation.isPending}
             aria-pressed={Boolean(wishlistQuery.data)}
             onClick={() => wishlistMutation.mutate()}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className={sfBtn("ghost")}
           >
-            {wishlistQuery.data ? "Remove from wishlist" : "Add to wishlist"}
+            {wishlistQuery.data ? "Saved" : "Wishlist"}
           </button>
         ) : (
           <a
             href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium text-[var(--color-muted)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className={sfBtn("ghost")}
           >
             Sign in to save
           </a>
@@ -121,12 +159,12 @@ export function ProductPurchaseActions({
       </div>
 
       {message ? (
-        <p className="text-sm text-green-700" role="status">
+        <p className="text-sm text-[var(--color-success)]" role="status">
           {message}
         </p>
       ) : null}
       {error ? (
-        <p className="text-sm text-red-700" role="alert">
+        <p className="text-sm text-[var(--color-error)]" role="alert">
           {error}
         </p>
       ) : null}

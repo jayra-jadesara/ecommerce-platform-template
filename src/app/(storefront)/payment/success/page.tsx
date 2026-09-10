@@ -54,7 +54,7 @@ export default async function PaymentSuccessPage({
   }
 
   return (
-    <PageShell title="Payment successful">
+    <PageShell title="Payment successful" backHref="/account/orders" backLabel="Back to orders">
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
         <p className="text-sm text-[var(--color-muted)]">
           Your payment was verified on the server

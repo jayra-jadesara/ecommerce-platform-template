@@ -233,3 +233,63 @@ describe("completeColorTokens", () => {
     expect(tokens?.buttonForeground).toBe("#ffffff");
   });
 });
+
+describe("normalizeColorTokensForMode", () => {
+  it("replaces near-white dark-mode buttons with primary", async () => {
+    const { normalizeColorTokensForMode } = await import(
+      "@/features/theme/css-vars"
+    );
+    const normalized = normalizeColorTokensForMode(
+      {
+        primary: "#4fd1a5",
+        secondary: "#94a3b8",
+        accent: "#e8a05c",
+        background: "#0f1412",
+        foreground: "#f2f0eb",
+        surface: "#1a211e",
+        card: "#222a26",
+        border: "#2f3a35",
+        muted: "#9ca89f",
+        success: "#4ade80",
+        warning: "#fbbf24",
+        error: "#f87171",
+        headerBackground: "#1a211e",
+        headerForeground: "#f2f0eb",
+        footerBackground: "#1a211e",
+        footerForeground: "#9ca89f",
+        buttonBackground: "#ffffff",
+        buttonForeground: "#000000",
+      },
+      "dark",
+    );
+    expect(normalized.buttonBackground).toBe("#4fd1a5");
+    expect(normalized.buttonForeground).toBe("#0f1412");
+  });
+
+  it("leaves light-mode tokens unchanged", async () => {
+    const { normalizeColorTokensForMode } = await import(
+      "@/features/theme/css-vars"
+    );
+    const light = {
+      primary: "#1a5f4a",
+      secondary: "#2c3e50",
+      accent: "#c4783a",
+      background: "#f7f5f2",
+      foreground: "#1a1a1a",
+      surface: "#ffffff",
+      card: "#ffffff",
+      border: "#e2ddd6",
+      muted: "#6b6560",
+      success: "#2e7d4f",
+      warning: "#b7791f",
+      error: "#b42318",
+      headerBackground: "#ffffff",
+      headerForeground: "#1a1a1a",
+      footerBackground: "#ffffff",
+      footerForeground: "#6b6560",
+      buttonBackground: "#ffffff",
+      buttonForeground: "#111111",
+    };
+    expect(normalizeColorTokensForMode(light, "light")).toEqual(light);
+  });
+});

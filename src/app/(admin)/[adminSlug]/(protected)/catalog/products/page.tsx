@@ -171,7 +171,7 @@ export default async function AdminCatalogProductsPage({
     <div className="flex flex-1 flex-col space-y-4">
       <AdminPageHeader
         title="Products"
-        description="View, add, edit, or delete products from one place."
+        description="Everything you sell — search, filter, and keep stock up to date."
         breadcrumbs={[
           { label: "Products", href: listHref },
           { label: "All Products" },

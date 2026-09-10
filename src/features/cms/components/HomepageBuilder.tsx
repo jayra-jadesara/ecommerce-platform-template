@@ -22,18 +22,33 @@ import {
 } from "@/features/cms/actions";
 import {
   defaultConfigForType,
+  HERO_LAYOUT_PRESETS,
+  HERO_LAYOUT_PRESET_LABELS,
   SECTION_ANIMATION_PRESETS,
   SECTION_BACKGROUND_STYLES,
   SECTION_SPACING_PRESETS,
   SECTION_TYPE_DESCRIPTIONS,
   SECTION_TYPE_LABELS,
   SUPPORTED_SECTION_TYPES,
+  type HeroLayoutPreset,
   type SectionConfigMap,
   type SupportedSectionType,
 } from "@/features/cms/schemas";
 import type { ContentPage, ContentSection } from "@/features/cms/types";
 import { MediaPicker } from "@/features/media";
 import { HomepagePreview } from "@/features/cms/components/HomepagePreview";
+import { resolveCmsImageUrl } from "@/features/cms/section-styles";
+import { SectionEditorPreview } from "@/features/cms/components/SectionEditorPreview";
+import {
+  pageOptionLabel,
+  StorePageLinkField,
+} from "@/features/admin/ui/StorePageLinkField";
+import {
+  adminFieldGroup,
+  adminFieldsGrid,
+  adminFormStack,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
 
 type Props = {
   page: ContentPage;
@@ -84,8 +99,17 @@ export function HomepageBuilder({
         : "text",
     );
     setEditId(section.id);
-    setEditTitle(section.title ?? "");
-    setEditConfig({ ...defaults, ...section.config });
+    setEditTitle(
+      section.title?.trim() ||
+        SECTION_TYPE_LABELS[section.sectionType as SupportedSectionType] ||
+        "",
+    );
+    setEditConfig({
+      ...defaults,
+      ...section.config,
+      enable3d: false,
+      scene3dPreset: "NONE",
+    });
   }
 
   return (
@@ -190,7 +214,7 @@ export function HomepageBuilder({
           No sections yet. Add a Hero Banner to get started.
         </p>
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-3">
           {sections.map((section, index) => {
             const label =
               SECTION_TYPE_LABELS[section.sectionType as SupportedSectionType] ??
@@ -202,7 +226,7 @@ export function HomepageBuilder({
             return (
               <li
                 key={section.id}
-                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3"
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
@@ -418,7 +442,7 @@ export function HomepageBuilder({
         open={Boolean(editing)}
         onClose={() => setEditId(null)}
         fullWidth
-        maxWidth="md"
+        maxWidth="lg"
       >
         <DialogTitle>
           Edit{" "}
@@ -427,16 +451,26 @@ export function HomepageBuilder({
               "section"
             : "section"}
         </DialogTitle>
-        <DialogContent dividers className="space-y-3">
+        <DialogContent dividers className="!pt-4">
           {editing ? (
-            <SectionConfigFields
-              sectionType={editing.sectionType as SupportedSectionType}
-              config={editConfig}
-              title={editTitle}
-              onTitleChange={setEditTitle}
-              onChange={setEditConfig}
-              onPickMedia={(field) => setMediaField(field)}
-            />
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
+              <div className="order-1 lg:order-2 lg:sticky lg:top-0">
+                <SectionEditorPreview
+                  sectionType={editing.sectionType as SupportedSectionType}
+                  config={editConfig}
+                />
+              </div>
+              <div className="order-2 lg:order-1">
+                <SectionConfigFields
+                  sectionType={editing.sectionType as SupportedSectionType}
+                  config={editConfig}
+                  title={editTitle}
+                  onTitleChange={setEditTitle}
+                  onChange={setEditConfig}
+                  onPickMedia={(field) => setMediaField(field)}
+                />
+              </div>
+            </div>
           ) : null}
         </DialogContent>
         <DialogActions>
@@ -453,8 +487,18 @@ export function HomepageBuilder({
                 startTransition(async () => {
                   const result = await updateSectionAction({
                     sectionId: editing.id,
-                    title: editTitle || null,
-                    config: editConfig,
+                    title:
+                      editTitle.trim() ||
+                      SECTION_TYPE_LABELS[
+                        editing.sectionType as SupportedSectionType
+                      ] ||
+                      null,
+                    config: {
+                      ...editConfig,
+                      // Decorative WebGL backdrop disabled — CSS glow is automatic.
+                      enable3d: false,
+                      scene3dPreset: "NONE",
+                    },
                   });
                   if (!result.ok) {
                     setError(result.error);
@@ -465,8 +509,17 @@ export function HomepageBuilder({
                       s.id === editing.id
                         ? {
                             ...s,
-                            title: editTitle || null,
-                            config: editConfig,
+                            title:
+                              editTitle.trim() ||
+                              SECTION_TYPE_LABELS[
+                                editing.sectionType as SupportedSectionType
+                              ] ||
+                              null,
+                            config: {
+                              ...editConfig,
+                              enable3d: false,
+                              scene3dPreset: "NONE",
+                            },
                           }
                         : s,
                     ),
@@ -509,8 +562,8 @@ export function HomepageBuilder({
 function SectionConfigFields({
   sectionType,
   config,
-  title,
-  onTitleChange,
+  title: _title,
+  onTitleChange: _onTitleChange,
   onChange,
   onPickMedia,
 }: {
@@ -521,186 +574,290 @@ function SectionConfigFields({
   onChange: (value: EditableConfig) => void;
   onPickMedia: (field: string) => void;
 }) {
+  void _onTitleChange;
   function setField(key: string, value: unknown) {
     onChange({ ...config, [key]: value });
   }
 
+  const typeLabel = SECTION_TYPE_LABELS[sectionType];
+  const listLabel = _title.trim() || typeLabel;
+
+  const showSharedTitle =
+    sectionType !== "hero" &&
+    sectionType !== "about" &&
+    sectionType !== "cta" &&
+    sectionType !== "text_image" &&
+    (sectionType === "categories" ||
+      sectionType === "products" ||
+      sectionType === "banner" ||
+      sectionType === "features" ||
+      sectionType === "statistics" ||
+      sectionType === "testimonials" ||
+      sectionType === "faq" ||
+      sectionType === "newsletter" ||
+      sectionType === "text");
+
   return (
-    <div className="space-y-4">
+    <div className={adminFormStack()} style={adminStackStyle}>
       <TextField
-        label="Section label (admin only)"
+        label="Section name (in admin list)"
         fullWidth
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        helperText="Shown in the builder list"
+        value={listLabel}
+        disabled
+        helperText="Auto-filled from the section type. Shoppers never see this."
       />
 
-      {(sectionType === "hero" ||
-        sectionType === "categories" ||
-        sectionType === "products" ||
-        sectionType === "banner" ||
-        sectionType === "features" ||
-        sectionType === "statistics" ||
-        sectionType === "testimonials" ||
-        sectionType === "faq" ||
-        sectionType === "newsletter" ||
-        sectionType === "text") && (
-        <TextField
-          label="Title / heading"
-          fullWidth
-          value={String(config.title ?? config.heading ?? "")}
-          onChange={(e) => {
-            if (sectionType === "text") {
-              setField("heading", e.target.value);
-            } else {
-              setField("title", e.target.value);
-            }
-          }}
-        />
-      )}
+      {showSharedTitle ? (
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">Section heading</p>
+          <p className="admin-field-group__hint">
+            Shown on the live storefront above this block. Watch the preview.
+          </p>
+          <TextField
+            label="Heading customers see"
+            fullWidth
+            value={String(config.title ?? config.heading ?? "")}
+            onChange={(e) => {
+              if (sectionType === "text") {
+                setField("heading", e.target.value);
+              } else {
+                setField("title", e.target.value);
+              }
+            }}
+            helperText="Example: Featured products"
+          />
+        </div>
+      ) : null}
 
       {sectionType === "hero" ? (
         <>
-          <TextField
-            label="Title"
-            fullWidth
-            value={String(config.title ?? "")}
-            onChange={(e) => setField("title", e.target.value)}
-          />
-          <TextField
-            label="Subtitle"
-            fullWidth
-            value={String(config.subtitle ?? "")}
-            onChange={(e) => setField("subtitle", e.target.value)}
-          />
-          <TextField
-            label="Description"
-            fullWidth
-            multiline
-            minRows={3}
-            value={String(config.description ?? "")}
-            onChange={(e) => setField("description", e.target.value)}
-          />
-          <ImageField
-            label="Background image"
-            value={config.backgroundImagePath as string | null}
-            onPick={() => onPickMedia("backgroundImagePath")}
-            onClear={() => setField("backgroundImagePath", null)}
-          />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">1. Hero text</p>
+            <p className="admin-field-group__hint">
+              Write what shoppers read first — preview updates instantly.
+            </p>
             <TextField
-              label="Primary button text"
+              label="Main headline"
               fullWidth
-              value={String(config.primaryButtonText ?? "")}
-              onChange={(e) => setField("primaryButtonText", e.target.value)}
+              value={String(config.title ?? "")}
+              onChange={(e) => setField("title", e.target.value)}
+              helperText="Big title — keep it short (about 6–10 words)."
             />
             <TextField
-              label="Primary button link"
+              label="Small line above headline (optional)"
               fullWidth
-              value={String(config.primaryButtonLink ?? "")}
-              onChange={(e) => setField("primaryButtonLink", e.target.value || null)}
+              value={String(config.subtitle ?? "")}
+              onChange={(e) => setField("subtitle", e.target.value)}
+              helperText="Example: LEADING MANUFACTURER OF SEASONING SPICES"
             />
             <TextField
-              label="Secondary button text"
+              label="Short supporting text"
               fullWidth
-              value={String(config.secondaryButtonText ?? "")}
-              onChange={(e) => setField("secondaryButtonText", e.target.value)}
-            />
-            <TextField
-              label="Secondary button link"
-              fullWidth
-              value={String(config.secondaryButtonLink ?? "")}
-              onChange={(e) => setField("secondaryButtonLink", e.target.value || null)}
+              multiline
+              minRows={3}
+              value={String(config.description ?? "")}
+              onChange={(e) => setField("description", e.target.value)}
+              helperText="1–2 sentences under the headline."
             />
           </div>
-          <TextField
-            select
-            label="Alignment"
-            fullWidth
-            value={String(config.alignment ?? "left")}
-            onChange={(e) => setField("alignment", e.target.value)}
-          >
-            <MenuItem value="left">Left</MenuItem>
-            <MenuItem value="center">Center</MenuItem>
-            <MenuItem value="right">Right</MenuItem>
-          </TextField>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(config.enable3d)}
-                onChange={(e) => setField("enable3d", e.target.checked)}
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">2. Buttons</p>
+            <p className="admin-field-group__hint">
+              Choose button text and which store page opens. See destinations in
+              the preview.
+            </p>
+
+            <div
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              <p className="text-xs font-semibold text-[var(--color-foreground)]">
+                Main button (primary)
+              </p>
+              <TextField
+                label="Button text shoppers see"
+                fullWidth
+                value={String(config.primaryButtonText ?? "")}
+                onChange={(e) => setField("primaryButtonText", e.target.value)}
+                placeholder="Shop products"
+                helperText="Leave blank to hide this button"
               />
-            }
-            label="Enable decorative 3D backdrop"
-          />
-          <TextField
-            select
-            label="3D scene preset"
-            fullWidth
-            disabled={!config.enable3d}
-            value={String(config.scene3dPreset ?? "NONE")}
-            onChange={(e) => setField("scene3dPreset", e.target.value)}
-            helperText="Only predefined scenes. Store Appearance → 3D settings must also be on."
-          >
-            <MenuItem value="NONE">None (2D only)</MenuItem>
-            <MenuItem value="FLOATING_SHAPES">Floating shapes</MenuItem>
-            <MenuItem value="PRODUCT_ORBIT">Soft orbit</MenuItem>
-            <MenuItem value="ABSTRACT_PARTICLES">Soft particles</MenuItem>
-            <MenuItem value="SOFT_GEOMETRY">Soft geometry</MenuItem>
-          </TextField>
+              <StorePageLinkField
+                value={config.primaryButtonLink as string | null}
+                fallback="/products"
+                onChange={(v) => setField("primaryButtonLink", v)}
+                helperText={
+                  config.primaryButtonText
+                    ? `“${String(config.primaryButtonText)}” opens ${pageOptionLabel(String(config.primaryButtonLink ?? "/products"))}`
+                    : "Pick where the button should send shoppers"
+                }
+              />
+            </div>
+
+            <div
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+            >
+              <p className="text-xs font-semibold text-[var(--color-foreground)]">
+                Second button (optional)
+              </p>
+              <TextField
+                label="Button text shoppers see"
+                fullWidth
+                value={String(config.secondaryButtonText ?? "")}
+                onChange={(e) => setField("secondaryButtonText", e.target.value)}
+                placeholder="About us"
+                helperText="Optional — leave blank to hide"
+              />
+              <StorePageLinkField
+                value={config.secondaryButtonLink as string | null}
+                fallback="/about"
+                onChange={(v) => setField("secondaryButtonLink", v)}
+                helperText={
+                  config.secondaryButtonText
+                    ? `“${String(config.secondaryButtonText)}” opens ${pageOptionLabel(String(config.secondaryButtonLink ?? "/about"))}`
+                    : "Only used when second button text is set"
+                }
+              />
+            </div>
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">3. Images (optional)</p>
+            <p className="admin-field-group__hint">
+              Background fills the hero. Side image is optional — both show in preview.
+            </p>
+            <ImageField
+              label="Background image"
+              value={config.backgroundImagePath as string | null}
+              onPick={() => onPickMedia("backgroundImagePath")}
+              onClear={() => setField("backgroundImagePath", null)}
+            />
+            <ImageField
+              label="Product / side image (optional)"
+              value={config.foregroundImagePath as string | null}
+              onPick={() => onPickMedia("foregroundImagePath")}
+              onClear={() => setField("foregroundImagePath", null)}
+            />
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">4. Layout</p>
+            <p className="admin-field-group__hint">
+              Full-bleed overlay is recommended for brand heroes.
+            </p>
+            <div className={adminFieldsGrid(2)}>
+              <TextField
+                select
+                label="Layout style"
+                fullWidth
+                value={String(config.layoutPreset ?? "FULL_BLEED")}
+                onChange={(e) =>
+                  setField("layoutPreset", e.target.value as HeroLayoutPreset)
+                }
+              >
+                {HERO_LAYOUT_PRESETS.map((preset) => (
+                  <MenuItem key={preset} value={preset}>
+                    {HERO_LAYOUT_PRESET_LABELS[preset]}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Text alignment"
+                fullWidth
+                value={String(config.alignment ?? "left")}
+                onChange={(e) => setField("alignment", e.target.value)}
+              >
+                <MenuItem value="left">Left</MenuItem>
+                <MenuItem value="center">Center</MenuItem>
+                <MenuItem value="right">Right</MenuItem>
+              </TextField>
+            </div>
+            <TextField
+              label="Decorative backdrop"
+              fullWidth
+              value="Soft brand glow (automatic)"
+              disabled
+              helperText="Handled by the theme — no setup needed."
+            />
+          </div>
         </>
       ) : null}
 
       {sectionType === "about" || sectionType === "cta" || sectionType === "text_image" ? (
         <>
-          <TextField
-            label="Heading"
-            fullWidth
-            value={String(config.heading ?? "")}
-            onChange={(e) => setField("heading", e.target.value)}
-          />
-          <TextField
-            label="Description"
-            fullWidth
-            multiline
-            minRows={4}
-            value={String(config.description ?? "")}
-            onChange={(e) => setField("description", e.target.value)}
-          />
-          {sectionType !== "cta" ? (
-            <ImageField
-              label="Image"
-              value={config.imagePath as string | null}
-              onPick={() => onPickMedia("imagePath")}
-              onClear={() => setField("imagePath", null)}
-            />
-          ) : null}
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">1. Content</p>
+            <p className="admin-field-group__hint">
+              Heading and story shoppers read — preview updates as you type.
+            </p>
             <TextField
-              label="Button text"
+              label="Heading"
               fullWidth
-              value={String(config.buttonText ?? "")}
-              onChange={(e) => setField("buttonText", e.target.value)}
+              value={String(config.heading ?? "")}
+              onChange={(e) => setField("heading", e.target.value)}
             />
             <TextField
-              label="Button link"
+              label="Description"
               fullWidth
-              value={String(config.buttonLink ?? "")}
-              onChange={(e) => setField("buttonLink", e.target.value || null)}
+              multiline
+              minRows={4}
+              value={String(config.description ?? "")}
+              onChange={(e) => setField("description", e.target.value)}
             />
+            {sectionType !== "cta" ? (
+              <ImageField
+                label="Image"
+                value={config.imagePath as string | null}
+                onPick={() => onPickMedia("imagePath")}
+                onClear={() => setField("imagePath", null)}
+              />
+            ) : null}
+            {sectionType === "text_image" ? (
+              <TextField
+                select
+                label="Image position"
+                fullWidth
+                value={String(config.imagePosition ?? "right")}
+                onChange={(e) => setField("imagePosition", e.target.value)}
+              >
+                <MenuItem value="left">Left</MenuItem>
+                <MenuItem value="right">Right</MenuItem>
+              </TextField>
+            ) : null}
           </div>
-          {sectionType === "text_image" ? (
-            <TextField
-              select
-              label="Image position"
-              fullWidth
-              value={String(config.imagePosition ?? "right")}
-              onChange={(e) => setField("imagePosition", e.target.value)}
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">2. Button</p>
+            <p className="admin-field-group__hint">
+              Choose the label and which store page opens. Destination shows in
+              the preview.
+            </p>
+            <div
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
             >
-              <MenuItem value="left">Left</MenuItem>
-              <MenuItem value="right">Right</MenuItem>
-            </TextField>
-          ) : null}
+              <TextField
+                label="Button text shoppers see"
+                fullWidth
+                value={String(config.buttonText ?? "")}
+                onChange={(e) => setField("buttonText", e.target.value)}
+                helperText="Leave blank to hide the button"
+              />
+              <StorePageLinkField
+                value={config.buttonLink as string | null}
+                fallback={sectionType === "about" ? "/contact" : "/products"}
+                onChange={(v) => setField("buttonLink", v)}
+                helperText={
+                  config.buttonText
+                    ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.buttonLink ?? (sectionType === "about" ? "/contact" : "/products")))}`
+                    : "Pick where the button should send shoppers"
+                }
+              />
+            </div>
+          </div>
         </>
       ) : null}
 
@@ -723,8 +880,9 @@ function SectionConfigFields({
             fullWidth
             value={String(config.source ?? "FEATURED_PRODUCTS")}
             onChange={(e) => setField("source", e.target.value)}
+            helperText="Featured = products marked Featured in Catalog → Products"
           >
-            <MenuItem value="FEATURED_PRODUCTS">Featured products</MenuItem>
+            <MenuItem value="FEATURED_PRODUCTS">Featured products (recommended)</MenuItem>
             <MenuItem value="LATEST_PRODUCTS">Latest products</MenuItem>
             <MenuItem value="CATEGORY_PRODUCTS">Products in a category</MenuItem>
             <MenuItem value="SELECTED_PRODUCTS">Selected products</MenuItem>
@@ -802,28 +960,40 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "banner" ? (
-        <>
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">Banner &amp; button</p>
+          <p className="admin-field-group__hint">
+            Image plus optional CTA — pick a store page from the list.
+          </p>
           <ImageField
             label="Banner image"
             value={config.imagePath as string | null}
             onPick={() => onPickMedia("imagePath")}
             onClear={() => setField("imagePath", null)}
           />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
             <TextField
-              label="Button text"
+              label="Button text shoppers see"
               fullWidth
               value={String(config.buttonText ?? "")}
               onChange={(e) => setField("buttonText", e.target.value)}
+              helperText="Leave blank to hide the button"
             />
-            <TextField
-              label="Link"
-              fullWidth
-              value={String(config.link ?? "")}
-              onChange={(e) => setField("link", e.target.value || null)}
+            <StorePageLinkField
+              value={config.link as string | null}
+              fallback="/products"
+              onChange={(v) => setField("link", v)}
+              helperText={
+                config.buttonText
+                  ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.link ?? "/products"))}`
+                  : "Pick where the button should send shoppers"
+              }
             />
           </div>
-        </>
+        </div>
       ) : null}
 
       {sectionType === "features" ? (
@@ -933,9 +1103,14 @@ function SectionConfigFields({
         />
       ) : null}
 
-      <details className="rounded-lg border border-[var(--color-border)] p-3">
-        <summary className="cursor-pointer text-sm font-medium">Advanced</summary>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <details className="admin-field-group">
+        <summary className="cursor-pointer text-sm font-medium">
+          Advanced (optional)
+        </summary>
+        <p className="admin-field-group__hint mt-2">
+          Defaults work for most stores — change only if needed.
+        </p>
+        <div className={`mt-3 ${adminFieldsGrid(2)}`}>
           <TextField
             select
             label="Background"
@@ -982,14 +1157,13 @@ function SectionConfigFields({
                 onChange={(_, checked) => setField("animationEnabled", checked)}
               />
             }
-            label="Animation enabled"
+            label="Play entrance animation"
           />
         </div>
       </details>
     </div>
   );
 }
-
 function ImageField({
   label,
   value,
@@ -1001,27 +1175,48 @@ function ImageField({
   onPick: () => void;
   onClear: () => void;
 }) {
+  const previewUrl = resolveCmsImageUrl(value);
+
   return (
-    <div className="rounded-lg border border-[var(--color-border)] p-3">
-      <p className="text-sm font-medium">{label}</p>
-      <p className="mt-1 truncate text-xs text-[var(--color-muted)]">
-        {value || "No image selected"}
-      </p>
-      <div className="mt-2 flex gap-2">
+    <div
+      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+    >
+      <p className="text-sm font-semibold text-[var(--color-foreground)]">{label}</p>
+      {value ? (
+        <div className="flex items-center gap-3">
+          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-[10px] text-[var(--color-muted)]">
+                Set
+              </div>
+            )}
+          </div>
+          <p className="min-w-0 flex-1 truncate text-xs text-[var(--color-muted)]">
+            {value}
+          </p>
+        </div>
+      ) : (
+        <p className="text-xs text-[var(--color-muted)]">No image selected yet</p>
+      )}
+      <div className="flex flex-wrap gap-2">
         <button
           type="button"
           onClick={onPick}
-          className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
+          className="rounded-md border border-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-[var(--color-primary)]"
         >
-          Choose image
+          {value ? "Change image" : "Choose image"}
         </button>
         {value ? (
           <button
             type="button"
             onClick={onClear}
-            className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
+            className="rounded-md px-3 py-1.5 text-sm text-[var(--color-muted)]"
           >
-            Clear
+            Remove
           </button>
         ) : null}
       </div>

@@ -25,7 +25,7 @@ export default async function AdminPaymentSettingsPage() {
     <div>
       <AdminPageHeader
         title="Payments"
-        description="Choose your payment provider and any fees added at checkout."
+        description="Set how customers pay, plus optional checkout fees and tax."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Payments" },

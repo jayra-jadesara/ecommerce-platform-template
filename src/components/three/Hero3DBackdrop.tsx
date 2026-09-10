@@ -1,29 +1,8 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { Suspense, useMemo, useSyncExternalStore } from "react";
-import { ThreeErrorBoundary } from "@/components/three/ThreeErrorBoundary";
+import { useEffect, useState } from "react";
 import type { Visual3dQuality } from "@/features/visual-effects/schemas";
-import { qualityRenderHints, resolveHeroPreset } from "@/features/visual-effects/schemas";
-import {
-  readThemeColors,
-  useHasWebGL,
-  useIsMobileViewport,
-  usePrefersReducedMotion,
-} from "@/features/visual-effects/hooks";
-import { LoadingState } from "@/components/ui/LoadingState";
-
-const SceneWrapper = dynamic(
-  () =>
-    import("@/components/three/SceneWrapper").then((m) => m.SceneWrapper),
-  { ssr: false, loading: () => <LoadingState label="Loading visuals…" /> },
-);
-
-const PresetScene = dynamic(
-  () =>
-    import("@/components/three/presets/PresetScene").then((m) => m.PresetScene),
-  { ssr: false },
-);
+import { resolveHeroPreset } from "@/features/visual-effects/schemas";
 
 type Hero3DProps = {
   preset: string;
@@ -35,81 +14,77 @@ type Hero3DProps = {
   rotationSpeed?: number;
   cameraDistance?: number;
   className?: string;
-  /** Accessible description; canvas is decorative. */
   fallback?: React.ReactNode;
 };
 
+function computeAllowMotion(input: {
+  enabled: boolean;
+  resolvedPreset: string;
+  animationStoreEnabled: boolean;
+  respectReducedMotion: boolean;
+  mobileEnabled: boolean;
+}): boolean {
+  if (!input.enabled || input.resolvedPreset === "NONE" || !input.animationStoreEnabled) {
+    return false;
+  }
+  if (typeof window === "undefined") return false;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mobile = window.matchMedia("(max-width: 767px)").matches;
+  if (input.respectReducedMotion && reduced) return false;
+  if (mobile && !input.mobileEnabled) return false;
+  return true;
+}
+
 /**
- * Decorative hero 3D layer. Important copy must remain in HTML siblings.
+ * Decorative hero backdrop (CSS only).
+ *
+ * React Three Fiber was removed from this path: its internal
+ * useSyncExternalStore was throwing getSnapshot / max-update-depth
+ * loops under React 19 + Next on the storefront homepage.
  */
 export function Hero3DBackdrop({
   preset,
-  quality,
   enabled,
   mobileEnabled,
   respectReducedMotion,
   animationStoreEnabled,
-  rotationSpeed = 0.25,
-  cameraDistance = 4.5,
   className,
   fallback = null,
 }: Hero3DProps) {
   const resolvedPreset = resolveHeroPreset(preset);
-  const reducedMotion = usePrefersReducedMotion(respectReducedMotion);
-  const isMobile = useIsMobileViewport();
-  const webgl = useHasWebGL();
-  const colors = useSyncExternalStore(
-    () => () => {},
-    readThemeColors,
-    () => readThemeColors(),
-  );
+  const [allowMotion, setAllowMotion] = useState(false);
 
-  const shouldRender = useMemo(() => {
-    if (!enabled) return false;
-    if (resolvedPreset === "NONE") return false;
-    if (!webgl) return false;
-    if (isMobile && !mobileEnabled) return false;
-    if (respectReducedMotion && reducedMotion) return false;
-    if (!animationStoreEnabled) return false;
-    return true;
+  useEffect(() => {
+    const next = computeAllowMotion({
+      enabled,
+      resolvedPreset,
+      animationStoreEnabled,
+      respectReducedMotion,
+      mobileEnabled,
+    });
+    setAllowMotion((prev) => (prev === next ? prev : next));
   }, [
     enabled,
     resolvedPreset,
-    webgl,
-    isMobile,
-    mobileEnabled,
-    respectReducedMotion,
-    reducedMotion,
     animationStoreEnabled,
+    respectReducedMotion,
+    mobileEnabled,
   ]);
 
-  if (!shouldRender) {
+  if (!enabled || resolvedPreset === "NONE") {
     return <>{fallback}</>;
   }
 
-  const hints = qualityRenderHints(quality);
-
   return (
-    <ThreeErrorBoundary fallback={fallback}>
-      <div className={className} aria-hidden>
-        <Suspense fallback={<LoadingState label="Loading visuals…" />}>
-          <SceneWrapper
-            className="h-full w-full"
-            aria-label="Decorative 3D background"
-            dpr={[1, hints.dprMax]}
-            camera={{ position: [0, 0.2, cameraDistance], fov: 45 }}
-            gl={{ antialias: quality !== "LOW", alpha: true, powerPreference: "default" }}
-          >
-            <PresetScene
-              preset={resolvedPreset}
-              quality={quality}
-              colors={colors}
-              reducedMotion={reducedMotion || !animationStoreEnabled}
-              rotationSpeed={rotationSpeed}
-            />
-          </SceneWrapper>
-        </Suspense>
-      </div>
-    </ThreeErrorBoundary>
+    <div className={className} aria-hidden>
+      <div
+        className={
+          allowMotion
+            ? "hero-3d-css-backdrop hero-3d-css-backdrop--motion absolute inset-0"
+            : "hero-3d-css-backdrop absolute inset-0"
+        }
+      />
+      {fallback}
+    </div>
   );
 }

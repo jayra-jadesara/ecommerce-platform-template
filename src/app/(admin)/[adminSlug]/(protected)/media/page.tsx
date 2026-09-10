@@ -29,7 +29,7 @@ export default async function AdminMediaPage({
     <div className="space-y-4">
       <AdminPageHeader
         title="Images & Files"
-        description="Upload and manage images used across your store."
+        description="Upload images for products, banners, and pages. Prefer Homepage & pages for storefront visuals."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Images & Files" },

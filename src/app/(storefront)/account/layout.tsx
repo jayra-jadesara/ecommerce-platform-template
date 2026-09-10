@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { Metadata } from "next";
+import { BackLink } from "@/components/layout/BackLink";
 import { Container } from "@/components/layout/Container";
 import { requireUser } from "@/features/auth/session";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
@@ -30,6 +31,9 @@ export default async function AccountLayout({
   return (
     <Container className="flex flex-1 flex-col gap-8 py-8 md:flex-row md:py-12">
       <aside className="w-full shrink-0 md:w-56">
+        <div className="mb-3">
+          <BackLink href="/" label="Back to store" />
+        </div>
         <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold">
           My account
         </h1>

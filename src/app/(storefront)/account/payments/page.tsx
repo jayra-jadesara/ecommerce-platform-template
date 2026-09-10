@@ -4,6 +4,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { getCurrentUser } from "@/features/auth/session";
 import { formatMoney } from "@/features/catalog/money";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import { formatDateTime } from "@/lib/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ export default async function AccountPaymentsPage() {
                     <p className="font-medium">{order.order_number}</p>
                     <p className="text-xs text-[var(--color-muted)]">
                       {payment.provider} · {payment.status} ·{" "}
-                      {new Date(payment.created_at).toLocaleString()}
+                      {formatDateTime(payment.created_at)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3">

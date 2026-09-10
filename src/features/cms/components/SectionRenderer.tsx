@@ -4,20 +4,31 @@ import Image from "next/image";
 import { Motion } from "@/features/animation";
 import type { AnimationConfig, VisualEffectsConfig } from "@/types";
 import type { StorefrontSection } from "@/features/cms/storefront";
-import type { SectionConfigMap, SupportedSectionType } from "@/features/cms/schemas";
+import type {
+  HeroLayoutPreset,
+  SectionConfigMap,
+  SupportedSectionType,
+} from "@/features/cms/schemas";
 import {
   resolveCmsImageUrl,
   sectionShellClassName,
 } from "@/features/cms/section-styles";
-import { formatMoney } from "@/features/catalog/money";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
 import { Hero3DSlot } from "@/components/three/Hero3DSlot";
 import { defaultPlatformConfig } from "@/config/defaults";
+import {
+  sfBtn,
+  sfDisplay,
+  sfEyebrow,
+  sfSectionInner,
+} from "@/components/ui/storefront-classes";
+import { ProductCard } from "@/features/catalog/components/ProductCard";
 
 type Props = {
   section: StorefrontSection;
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
+  currency?: string;
 };
 
 function SectionMotion({
@@ -78,16 +89,139 @@ function SafeLink({
 }
 
 function buttonClass(variant: "primary" | "secondary" = "primary") {
-  if (variant === "secondary") {
-    return "inline-flex min-h-11 items-center rounded-md border border-[var(--color-border)] px-4 py-2.5 text-sm font-medium";
-  }
-  return "inline-flex min-h-11 items-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]";
+  return sfBtn(variant === "secondary" ? "outline" : "primary");
+}
+
+function themeHeroBackdrop() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-0"
+      aria-hidden
+      style={{
+        background:
+          "radial-gradient(ellipse 70% 55% at 8% 12%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 55%), radial-gradient(ellipse 55% 50% at 92% 88%, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent 50%), linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 70%, transparent), transparent)",
+      }}
+    />
+  );
+}
+
+function HeroCopy({
+  c,
+  alignClass,
+  justifyClass,
+  centered,
+}: {
+  c: SectionConfigMap["hero"];
+  alignClass: string;
+  justifyClass: string;
+  centered?: boolean;
+}) {
+  return (
+    <div
+      className={`relative z-10 flex flex-col gap-4 ${alignClass} ${centered ? "mx-auto max-w-3xl" : "max-w-xl"}`}
+    >
+      {c.subtitle ? <p className={sfEyebrow()}>{c.subtitle}</p> : null}
+      {c.title ? (
+        <h1
+          className={`${sfDisplay()} text-4xl leading-[1.08] md:text-5xl lg:text-[3.25rem]`}
+        >
+          {c.title}
+        </h1>
+      ) : null}
+      {c.description ? (
+        <p className="max-w-xl text-base leading-relaxed text-[var(--color-muted)] md:text-lg">
+          {c.description}
+        </p>
+      ) : null}
+      <div className={`mt-2 flex flex-wrap gap-3 ${justifyClass}`}>
+        {c.primaryButtonText && c.primaryButtonLink ? (
+          <SafeLink href={c.primaryButtonLink} className={buttonClass("primary")}>
+            {c.primaryButtonText}
+          </SafeLink>
+        ) : null}
+        {c.secondaryButtonText && c.secondaryButtonLink ? (
+          <SafeLink
+            href={c.secondaryButtonLink}
+            className={buttonClass("secondary")}
+          >
+            {c.secondaryButtonText}
+          </SafeLink>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function HeroVisual({
+  fg,
+  hero3dOn,
+  c,
+  visualEffects,
+  animation,
+}: {
+  fg: string | null;
+  hero3dOn: boolean;
+  c: SectionConfigMap["hero"];
+  visualEffects: VisualEffectsConfig;
+  animation: AnimationConfig;
+}) {
+  return (
+    <div className="relative z-10 mx-auto min-h-[12rem] w-full max-w-md overflow-hidden rounded-[var(--radius-default,1rem)] md:mx-0 md:min-h-[16rem]">
+      {hero3dOn ? (
+        <Hero3DSlot
+          className="absolute inset-0"
+          preset={c.scene3dPreset || visualEffects.heroPreset}
+          quality={visualEffects.quality}
+          enabled={hero3dOn}
+          mobileEnabled={visualEffects.mobileEnabled}
+          respectReducedMotion={visualEffects.respectReducedMotion}
+          animationStoreEnabled={animation.enabled}
+          rotationSpeed={c.scene3dRotationSpeed}
+          cameraDistance={c.scene3dCameraDistance}
+          fallback={
+            fg ? null : (
+              <div
+                className="absolute inset-0"
+                aria-hidden
+                style={{
+                  background:
+                    "radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--color-primary) 35%, transparent), transparent 60%)",
+                }}
+              />
+            )
+          }
+        />
+      ) : null}
+      {fg ? (
+        <div className="relative aspect-[4/3] w-full md:min-h-[16rem]">
+          <Image
+            src={fg}
+            alt=""
+            fill
+            className="object-contain p-3 md:p-4"
+            sizes="(max-width: 768px) 100vw, 360px"
+            priority
+          />
+        </div>
+      ) : !hero3dOn ? (
+        <div
+          className="absolute inset-0"
+          aria-hidden
+          style={{
+            background:
+              "radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 58%), radial-gradient(circle at 75% 70%, color-mix(in srgb, var(--color-accent) 24%, transparent), transparent 50%)",
+          }}
+        />
+      ) : null}
+    </div>
+  );
 }
 
 export function SectionRenderer({
   section,
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
+  currency = defaultPlatformConfig.store.currency,
 }: Props) {
   const cfg = section.config;
   const shell = sectionShellClassName(cfg as SectionConfigMap["hero"]);
@@ -97,96 +231,121 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["hero"];
       const bg = resolveCmsImageUrl(c.backgroundImagePath);
       const fg = resolveCmsImageUrl(c.foregroundImagePath);
-      const align =
+      const preset = (c.layoutPreset ?? "SPLIT") as HeroLayoutPreset;
+      const alignClass =
         c.alignment === "center"
           ? "text-center items-center"
           : c.alignment === "right"
             ? "text-right items-end"
             : "text-left items-start";
+      const justifyClass =
+        c.alignment === "center"
+          ? "justify-center"
+          : c.alignment === "right"
+            ? "justify-end"
+            : "justify-start";
       const hero3dOn =
         Boolean(c.enable3d) &&
         visualEffects.enabled &&
         visualEffects.heroEnabled;
+
+      const isFullBleed = preset === "FULL_BLEED" || preset === "CENTERED";
+      const imageLeft = preset === "IMAGE_LEFT";
+      const splitLike =
+        preset === "SPLIT" ||
+        preset === "IMAGE_RIGHT" ||
+        preset === "IMAGE_LEFT";
+
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="relative overflow-hidden rounded-2xl border border-[var(--color-border)]">
-            {hero3dOn ? (
-              <Hero3DSlot
-                className="pointer-events-none absolute inset-0 opacity-80"
-                preset={c.scene3dPreset || visualEffects.heroPreset}
-                quality={visualEffects.quality}
-                enabled={hero3dOn}
-                mobileEnabled={visualEffects.mobileEnabled}
-                respectReducedMotion={visualEffects.respectReducedMotion}
-                animationStoreEnabled={animation.enabled}
-                rotationSpeed={c.scene3dRotationSpeed}
-                cameraDistance={c.scene3dCameraDistance}
-                fallback={
-                  bg ? null : (
-                    <div
-                      className="pointer-events-none absolute inset-0 opacity-90"
-                      aria-hidden
-                      style={{
-                        background:
-                          "radial-gradient(ellipse 70% 55% at 0% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%)",
-                      }}
-                    />
-                  )
-                }
-              />
-            ) : null}
-            {bg ? (
-              <Image
-                src={bg}
-                alt=""
-                fill
-                className="object-cover opacity-40"
-                sizes="100vw"
-                priority
-              />
-            ) : !hero3dOn ? (
-              <div
-                className="pointer-events-none absolute inset-0 opacity-90"
-                aria-hidden
-                style={{
-                  background:
-                    "radial-gradient(ellipse 70% 55% at 0% 0%, color-mix(in srgb, var(--color-primary) 22%, transparent), transparent 55%)",
-                }}
-              />
-            ) : null}
-            <div className={`relative flex flex-col gap-4 px-4 py-12 md:px-8 md:py-16 ${align}`}>
-              {c.subtitle ? (
-                <p className="text-sm font-medium text-[var(--color-muted)]">
-                  {c.subtitle}
-                </p>
+          <div
+            className={
+              isFullBleed
+                ? "relative overflow-hidden"
+                : `${sfSectionInner()} relative`
+            }
+          >
+            <div
+              className={`relative overflow-hidden ${
+                isFullBleed
+                  ? "min-h-[22rem] md:min-h-[26rem]"
+                  : "rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[var(--color-card)]"
+              }`}
+            >
+              {bg ? (
+                <Image
+                  src={bg}
+                  alt=""
+                  fill
+                  className={`object-cover ${isFullBleed ? "opacity-50" : "opacity-35"}`}
+                  sizes="100vw"
+                  priority
+                />
+              ) : (
+                themeHeroBackdrop()
+              )}
+
+              {isFullBleed && hero3dOn ? (
+                <Hero3DSlot
+                  className="pointer-events-none absolute inset-0 opacity-70"
+                  preset={c.scene3dPreset || visualEffects.heroPreset}
+                  quality={visualEffects.quality}
+                  enabled={hero3dOn}
+                  mobileEnabled={visualEffects.mobileEnabled}
+                  respectReducedMotion={visualEffects.respectReducedMotion}
+                  animationStoreEnabled={animation.enabled}
+                  rotationSpeed={c.scene3dRotationSpeed}
+                  cameraDistance={c.scene3dCameraDistance}
+                  fallback={null}
+                />
               ) : null}
-              {c.title ? (
-                <h1 className="max-w-3xl font-[family-name:var(--font-display)] text-4xl font-semibold tracking-tight md:text-5xl">
-                  {c.title}
-                </h1>
-              ) : null}
-              {c.description ? (
-                <p className="max-w-2xl text-lg text-[var(--color-muted)]">
-                  {c.description}
-                </p>
-              ) : null}
-              <div className={`mt-2 flex flex-wrap gap-3 ${c.alignment === "center" ? "justify-center" : c.alignment === "right" ? "justify-end" : ""}`}>
-                {c.primaryButtonText && c.primaryButtonLink ? (
-                  <SafeLink href={c.primaryButtonLink} className={buttonClass("primary")}>
-                    {c.primaryButtonText}
-                  </SafeLink>
-                ) : null}
-                {c.secondaryButtonText && c.secondaryButtonLink ? (
-                  <SafeLink href={c.secondaryButtonLink} className={buttonClass("secondary")}>
-                    {c.secondaryButtonText}
-                  </SafeLink>
-                ) : null}
-              </div>
-              {fg ? (
-                <div className="relative mt-6 h-48 w-full max-w-md md:h-64">
-                  <Image src={fg} alt="" fill className="object-contain" sizes="400px" />
+
+              {isFullBleed ? (
+                <div
+                  className={`${sfSectionInner()} relative flex min-h-[20rem] flex-col justify-center py-12 md:min-h-[24rem] md:py-16`}
+                >
+                  <HeroCopy
+                    c={c}
+                    alignClass={alignClass}
+                    justifyClass={justifyClass}
+                    centered={preset === "CENTERED" || c.alignment === "center"}
+                  />
+                  {fg && preset === "FULL_BLEED" ? (
+                    <div className="relative mt-8 h-40 w-full max-w-md md:h-52">
+                      <Image
+                        src={fg}
+                        alt=""
+                        fill
+                        className="object-contain"
+                        sizes="400px"
+                      />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              ) : (
+                <div
+                  className={`relative grid items-center gap-8 px-5 py-10 md:gap-10 md:px-10 md:py-14 ${
+                    splitLike ? "md:grid-cols-2" : ""
+                  }`}
+                >
+                  <div className={imageLeft ? "md:order-2" : undefined}>
+                    <HeroCopy
+                      c={c}
+                      alignClass={alignClass}
+                      justifyClass={justifyClass}
+                    />
+                  </div>
+                  <div className={imageLeft ? "md:order-1" : undefined}>
+                    <HeroVisual
+                      fg={fg}
+                      hero3dOn={hero3dOn}
+                      c={c}
+                      visualEffects={visualEffects}
+                      animation={animation}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </SectionMotion>
@@ -199,32 +358,63 @@ export function SectionRenderer({
       if (cats.length === 0) return null;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-6xl px-4">
-            {c.title ? <h2 className="text-2xl font-semibold">{c.title}</h2> : null}
+          <div className={sfSectionInner()}>
+            {c.title ? (
+              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
+            ) : null}
             {c.description ? (
-              <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
+              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+                {c.description}
+              </p>
             ) : null}
             <ul
-              className={`mt-6 grid gap-4 ${
+              className={`mt-8 grid gap-4 ${
                 c.columns === 2
                   ? "sm:grid-cols-2"
                   : c.columns === 4
-                    ? "sm:grid-cols-2 lg:grid-cols-4"
-                    : "sm:grid-cols-2 lg:grid-cols-3"
+                    ? "grid-cols-2 lg:grid-cols-4"
+                    : "grid-cols-2 lg:grid-cols-3"
               }`}
             >
               {cats.map((cat) => (
                 <li key={cat.id}>
                   <Link
-                    href={`/products?category=${encodeURIComponent(cat.slug)}`}
-                    className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-primary)]"
+                    href={`/categories/${encodeURIComponent(cat.slug)}`}
+                    className="group block overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)] transition-[box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--color-foreground)_10%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                   >
-                    <p className="font-medium">{cat.name}</p>
-                    {cat.description ? (
-                      <p className="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]">
-                        {cat.description}
+                    <div className="relative aspect-[5/4] overflow-hidden bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-primary)_10%)]">
+                      {cat.imageUrl ? (
+                        <Image
+                          src={cat.imageUrl}
+                          alt=""
+                          fill
+                          className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                        />
+                      ) : (
+                        <div
+                          className="absolute inset-0"
+                          aria-hidden
+                          style={{
+                            background:
+                              "radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 60%)",
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <p className="font-semibold text-[var(--color-foreground)]">
+                        {cat.name}
                       </p>
-                    ) : null}
+                      {cat.description ? (
+                        <p className="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]">
+                          {cat.description}
+                        </p>
+                      ) : null}
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                        Shop collection
+                      </p>
+                    </div>
                   </Link>
                 </li>
               ))}
@@ -240,38 +430,19 @@ export function SectionRenderer({
       if (products.length === 0) return null;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-6xl px-4">
-            {c.title ? <h2 className="text-2xl font-semibold">{c.title}</h2> : null}
-            {c.description ? (
-              <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
+          <div className={sfSectionInner()}>
+            {c.title ? (
+              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
             ) : null}
-            <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {c.description ? (
+              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+                {c.description}
+              </p>
+            ) : null}
+            <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
               {products.map((product) => (
-                <li key={product.id}>
-                  <Link
-                    href={`/products/${product.slug}`}
-                    className="block overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]"
-                  >
-                    <div className="relative aspect-square bg-[var(--color-surface)]">
-                      {product.primaryImageUrl ? (
-                        <Image
-                          src={product.primaryImageUrl}
-                          alt={product.primaryImageAlt || product.name}
-                          fill
-                          className="object-cover"
-                          sizes="240px"
-                        />
-                      ) : null}
-                    </div>
-                    <div className="p-3">
-                      <p className="font-medium">{product.name}</p>
-                      {product.minPrice != null ? (
-                        <p className="mt-1 text-sm text-[var(--color-muted)]">
-                          {formatMoney(product.minPrice)}
-                        </p>
-                      ) : null}
-                    </div>
-                  </Link>
+                <li key={product.id} className="min-w-0">
+                  <ProductCard product={product} currency={currency} />
                 </li>
               ))}
             </ul>
@@ -290,18 +461,33 @@ export function SectionRenderer({
       const banner = c as SectionConfigMap["banner"];
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="relative mx-auto max-w-6xl overflow-hidden rounded-2xl px-4">
-            <div className="relative min-h-[200px] overflow-hidden rounded-2xl border border-[var(--color-border)]">
+          <div className={sfSectionInner()}>
+            <div className="relative min-h-[14rem] overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] md:min-h-[18rem]">
               {url ? (
-                <Image src={url} alt={"altText" in c ? c.altText || "" : ""} fill className="object-cover" sizes="100vw" />
-              ) : null}
+                <Image
+                  src={url}
+                  alt={"altText" in c ? c.altText || "" : ""}
+                  fill
+                  className="object-cover"
+                  sizes="100vw"
+                />
+              ) : (
+                <div
+                  className="absolute inset-0"
+                  aria-hidden
+                  style={{
+                    background:
+                      "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 35%, var(--color-surface)), color-mix(in srgb, var(--color-accent) 25%, var(--color-card)))",
+                  }}
+                />
+              )}
               {section.sectionType === "banner" ? (
                 <div
-                  className={`relative z-10 flex flex-col gap-3 p-8 md:p-12 ${
+                  className={`relative z-10 flex min-h-[14rem] flex-col justify-end gap-3 p-6 md:min-h-[18rem] md:p-10 ${
                     banner.overlayStyle === "strong"
-                      ? "bg-black/50 text-white"
+                      ? "bg-gradient-to-t from-black/65 via-black/35 to-transparent text-white"
                       : banner.overlayStyle === "soft"
-                        ? "bg-black/25 text-white"
+                        ? "bg-gradient-to-t from-black/45 via-black/20 to-transparent text-white"
                         : ""
                   } ${
                     banner.alignment === "center"
@@ -311,8 +497,16 @@ export function SectionRenderer({
                         : "items-start"
                   }`}
                 >
-                  {banner.title ? <h2 className="text-2xl font-semibold">{banner.title}</h2> : null}
-                  {banner.description ? <p className="max-w-xl opacity-90">{banner.description}</p> : null}
+                  {banner.title ? (
+                    <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>
+                      {banner.title}
+                    </h2>
+                  ) : null}
+                  {banner.description ? (
+                    <p className="max-w-xl text-sm opacity-90 md:text-base">
+                      {banner.description}
+                    </p>
+                  ) : null}
                   {banner.buttonText && banner.link ? (
                     <SafeLink href={banner.link} className={buttonClass("primary")}>
                       {banner.buttonText}
@@ -373,23 +567,29 @@ export function SectionRenderer({
       if (c.items.length === 0) return null;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-6xl px-4">
-            {c.title ? <h2 className="text-2xl font-semibold">{c.title}</h2> : null}
-            {c.description ? (
-              <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
+          <div className={sfSectionInner()}>
+            {c.title ? (
+              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
             ) : null}
-            <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {c.description ? (
+              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+                {c.description}
+              </p>
+            ) : null}
+            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {c.items.map((item, index) => (
                 <li
                   key={`${item.title}-${index}`}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+                  className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]"
                 >
-                  <p className="text-xs uppercase tracking-wide text-[var(--color-muted)]">
-                    {item.icon}
-                  </p>
-                  <h3 className="mt-2 font-semibold">{item.title}</h3>
+                  {item.icon ? (
+                    <p className={sfEyebrow()}>{item.icon}</p>
+                  ) : null}
+                  <h3 className="mt-2 font-semibold text-[var(--color-foreground)]">
+                    {item.title}
+                  </h3>
                   {item.description ? (
-                    <p className="mt-2 text-sm text-[var(--color-muted)]">
+                    <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
                       {item.description}
                     </p>
                   ) : null}
@@ -487,18 +687,36 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["cta"];
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-3xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-6 py-10 text-center">
-            {c.heading ? <h2 className="text-2xl font-semibold">{c.heading}</h2> : null}
-            {c.description ? (
-              <p className="mt-3 text-[var(--color-muted)]">{c.description}</p>
-            ) : null}
-            {c.buttonText && c.buttonLink ? (
-              <div className="mt-6">
-                <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
-                  {c.buttonText}
-                </SafeLink>
+          <div className={sfSectionInner()}>
+            <div className="relative overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-6 py-12 text-center md:px-10 md:py-14">
+              <div
+                className="pointer-events-none absolute inset-0 opacity-90"
+                aria-hidden
+                style={{
+                  background:
+                    "radial-gradient(ellipse 70% 60% at 50% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 70%)",
+                }}
+              />
+              <div className="relative">
+                {c.heading ? (
+                  <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>
+                    {c.heading}
+                  </h2>
+                ) : null}
+                {c.description ? (
+                  <p className="mx-auto mt-3 max-w-xl text-[var(--color-muted)]">
+                    {c.description}
+                  </p>
+                ) : null}
+                {c.buttonText && c.buttonLink ? (
+                  <div className="mt-6">
+                    <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
+                      {c.buttonText}
+                    </SafeLink>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         </SectionMotion>
       );
@@ -545,19 +763,22 @@ export function HomepageSections({
   sections,
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
+  currency = defaultPlatformConfig.store.currency,
 }: {
   sections: StorefrontSection[];
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
+  currency?: string;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-0">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}
           section={section}
           animation={animation}
           visualEffects={visualEffects}
+          currency={currency}
         />
       ))}
     </div>

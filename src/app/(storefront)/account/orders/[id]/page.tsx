@@ -4,7 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { getCurrentUser } from "@/features/auth/session";
 import { formatMoney } from "@/features/catalog/money";
 import { getOrderDetail } from "@/features/orders/queries";
+import { OrderStatusTimeline } from "@/features/orders/components/OrderStatusTimeline";
 import { orderStatusLabel } from "@/features/orders/state-machine";
+import { formatDateTime } from "@/lib/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +36,15 @@ export default async function AccountOrderDetailPage({
             {order.orderNumber}
           </h2>
           <p className="mt-1 text-sm text-[var(--color-muted)]">
-            {new Date(order.createdAt).toLocaleString()} ·{" "}
+            {formatDateTime(order.createdAt)} ·{" "}
             {orderStatusLabel(order.status)}
           </p>
         </div>
       </div>
 
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+      <OrderStatusTimeline status={order.status} />
+
+      <section className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]">
         <h3 className="font-semibold">Items</h3>
         <ul className="mt-3 divide-y divide-[var(--color-border)]">
           {order.items.map((item) => (

@@ -25,6 +25,7 @@ import {
 import type { CatalogResult } from "@/features/catalog/categories-service";
 import type { ProductStatus } from "@/types/database";
 import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
+import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 
 export type AdminProductListItem = {
   id: string;
@@ -39,6 +40,8 @@ export type AdminProductListItem = {
   maxPrice: number | null;
   stockStatus: StockStatus;
   updatedAt: string;
+  imagePath: string | null;
+  imageUrl: string | null;
 };
 
 export type AdminProductDetail = {
@@ -183,6 +186,9 @@ function mapListItem(
     updated_at: string;
     categories?: { name: string } | { name: string }[] | null;
     product_variants?: VariantJoin[] | null;
+    product_images?:
+      | { storage_path: string; public_url: string | null; is_primary: boolean; sort_order: number }[]
+      | null;
   },
 ): AdminProductListItem {
   const category = Array.isArray(row.categories)
@@ -193,6 +199,17 @@ function mapListItem(
     .filter((v) => v.is_active)
     .map((v) => Number(v.price))
     .filter((n) => Number.isFinite(n));
+
+  const images = [...(row.product_images ?? [])].sort((a, b) => {
+    if (a.is_primary !== b.is_primary) return a.is_primary ? -1 : 1;
+    return a.sort_order - b.sort_order;
+  });
+  const primaryImage = images[0] ?? null;
+  const imagePath = primaryImage?.storage_path ?? null;
+  const imageUrl =
+    primaryImage?.public_url ||
+    resolvePublicStorageUrl("products", imagePath) ||
+    null;
 
   return {
     id: row.id,
@@ -213,6 +230,8 @@ function mapListItem(
       })),
     ),
     updatedAt: row.updated_at,
+    imagePath,
+    imageUrl,
   };
 }
 
@@ -255,7 +274,8 @@ export async function listAdminProducts(
         id, name, sku, price, compare_at_price, cost_price, weight, unit,
         track_inventory, is_active,
         inventory ( quantity, reserved_quantity, low_stock_threshold )
-      )
+      ),
+      product_images ( storage_path, public_url, is_primary, sort_order )
     `,
       { count: "exact" },
     )

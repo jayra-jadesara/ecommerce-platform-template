@@ -2,10 +2,13 @@ import Link from "next/link";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
+import { AdminCard } from "@/features/admin/ui/AdminCard";
+import { adminBtn, adminPageStack } from "@/features/admin/ui/admin-classes";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
 import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
 import { APP_VERSION } from "@/config/version";
+import { cn } from "@/lib/cn";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -13,163 +16,186 @@ function greetingForHour(hour: number) {
   return "Good evening";
 }
 
+function displayName(email: string | null | undefined) {
+  if (!email) return "Admin";
+  const local = email.split("@")[0] ?? "Admin";
+  return local.charAt(0).toUpperCase() + local.slice(1);
+}
+
 export default async function AdminDashboardPage() {
   const admin = await requirePermission("dashboard.view");
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
   const setup = await getStoreSetupChecklist();
+  const name = displayName(admin.user.email);
 
   const canProducts = hasPermission(admin, "products.create");
   const canOrders = hasPermission(admin, "orders.view");
   const canCms = hasPermission(admin, "cms.view");
+  const canTheme = hasPermission(admin, "theme.view");
 
-  const summary = [
+  const stats = [
     {
-      title: "Products",
-      body: "Manage your catalog",
+      label: "Revenue",
+      value: "—",
+      hint: "Available when sales reporting is enabled",
+    },
+    {
+      label: "Orders",
+      value: "—",
+      hint: "Track purchases as they come in",
+      href: canOrders ? getAdminPath("/orders") : null,
+    },
+    {
+      label: "Products",
+      value: "—",
+      hint: "Manage everything you sell",
       href: hasPermission(admin, "products.view")
         ? getAdminPath("/catalog/products")
         : null,
     },
     {
-      title: "Orders",
-      body: "Track customer orders",
-      href: canOrders ? getAdminPath("/orders") : null,
-    },
-    {
-      title: "Customers",
-      body: "View your buyers",
+      label: "Customers",
+      value: "—",
+      hint: "People who shop your store",
       href: hasPermission(admin, "customers.view")
         ? getAdminPath("/customers")
         : null,
     },
-    {
-      title: "Sales",
-      body: "Coming soon",
-      href: null,
-    },
   ];
 
+  const quickActions = [
+    canProducts
+      ? {
+          title: "Add Product",
+          body: "Create a new item for your catalog.",
+          href: getAdminPath("/catalog/products?panel=new"),
+        }
+      : null,
+    canOrders
+      ? {
+          title: "Manage Orders",
+          body: "Review and fulfill customer purchases.",
+          href: getAdminPath("/orders"),
+        }
+      : null,
+    canCms
+      ? {
+          title: "Edit Homepage",
+          body: "Update the sections shoppers see first.",
+          href: getAdminPath("/content/homepage"),
+        }
+      : null,
+    canTheme
+      ? {
+          title: "Customize Store",
+          body: "Colors, typography, and visual style.",
+          href: getAdminPath("/settings/theme"),
+        }
+      : null,
+  ].filter(Boolean) as Array<{ title: string; body: string; href: string }>;
+
   return (
-    <div>
+    <div className={adminPageStack()}>
       <AdminPageHeader
-        title={greeting}
-        description="Manage your store from one place."
+        title={`${greeting}, ${name}`}
+        description="Here's what's happening in your store."
         breadcrumbs={[{ label: "Dashboard" }]}
       />
 
-      {setup.show && hasPermission(admin, "settings.view") ? (
-        <AdminSetupChecklist
-          items={setup.items}
-          completedCount={setup.completedCount}
-        />
+      {quickActions.length > 0 ? (
+        <section aria-label="Quick actions">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {quickActions.map((action) => (
+              <Link key={action.href} href={action.href} className="group block">
+                <AdminCard interactive className="h-full">
+                  <p className="text-sm font-semibold text-[var(--color-foreground)] group-hover:text-[var(--color-primary)]">
+                    {action.title}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">
+                    {action.body}
+                  </p>
+                </AdminCard>
+              </Link>
+            ))}
+          </div>
+        </section>
       ) : null}
 
-      <div className="mt-8 flex flex-wrap gap-2">
-        {canProducts ? (
-          <Link
-            href={getAdminPath("/catalog/products?panel=new")}
-            className="inline-flex min-h-11 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)]"
-          >
-            + Add Product
-          </Link>
-        ) : null}
-        {canOrders ? (
-          <Link
-            href={getAdminPath("/orders")}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
-          >
-            View Orders
-          </Link>
-        ) : null}
-        {canCms ? (
-          <Link
-            href={getAdminPath("/content/homepage")}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-2.5 text-sm font-medium"
-          >
-            Edit Homepage
-          </Link>
-        ) : null}
-      </div>
+      <section aria-label="Store overview">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {stats.map((stat) => {
+            const inner = (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  {stat.label}
+                </p>
+                <p className="mt-2 text-2xl font-semibold tracking-tight">
+                  {stat.value}
+                </p>
+                <p className="mt-1 text-xs text-[var(--color-muted)]">
+                  {stat.hint}
+                </p>
+              </>
+            );
+            return stat.href ? (
+              <Link key={stat.label} href={stat.href} className="block">
+                <AdminCard interactive className="h-full">
+                  {inner}
+                </AdminCard>
+              </Link>
+            ) : (
+              <AdminCard key={stat.label}>{inner}</AdminCard>
+            );
+          })}
+        </div>
+      </section>
 
-      <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {summary.map((card) => {
-          const inner = (
-            <>
-              <h2 className="text-sm font-medium text-[var(--color-muted)]">
-                {card.title}
+      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <AdminCard>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-[15px] font-semibold tracking-tight">
+                Recent Orders
               </h2>
-              <p className="mt-2 text-base font-semibold">{card.body}</p>
-            </>
-          );
-          return card.href ? (
-            <Link
-              key={card.title}
-              href={card.href}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 transition-colors hover:border-[var(--color-primary)]"
-            >
-              {inner}
-            </Link>
-          ) : (
-            <article
-              key={card.title}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
-            >
-              {inner}
-            </article>
-          );
-        })}
-      </div>
-
-      <section className="mt-10">
-        <h2 className="text-lg font-semibold">Recent Orders</h2>
-        <div className="mt-4">
+              <p className="mt-1 text-sm text-[var(--color-muted)]">
+                Latest purchases from your storefront.
+              </p>
+            </div>
+            {canOrders ? (
+              <Link
+                href={getAdminPath("/orders")}
+                className={cn(adminBtn("ghost"), "!min-h-8 !px-2 !text-xs")}
+              >
+                View all
+              </Link>
+            ) : null}
+          </div>
           <EmptyState
             title="No orders yet"
             description="When customers place orders, they will show up here."
           />
-        </div>
-      </section>
+        </AdminCard>
 
-      {(canProducts || canCms) && (
-        <section className="mt-10">
-          <h2 className="text-lg font-semibold">Quick tasks</h2>
-          <ul className="mt-3 space-y-2 text-sm">
-            {canProducts ? (
-              <li>
-                <Link
-                  href={getAdminPath("/catalog/products")}
-                  className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-                >
-                  Review your products
-                </Link>
-              </li>
-            ) : null}
-            {hasPermission(admin, "settings.view") ? (
-              <li>
-                <Link
-                  href={getAdminPath("/settings")}
-                  className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-                >
-                  Check store settings
-                </Link>
-              </li>
-            ) : null}
-            {hasPermission(admin, "media.view") ? (
-              <li>
-                <Link
-                  href={getAdminPath("/media")}
-                  className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-                >
-                  Upload images & files
-                </Link>
-              </li>
-            ) : null}
-          </ul>
-        </section>
-      )}
+        {hasPermission(admin, "settings.view") ? (
+          <AdminSetupChecklist
+            items={setup.items}
+            completedCount={setup.completedCount}
+            alwaysShow
+          />
+        ) : (
+          <AdminCard>
+            <h2 className="text-[15px] font-semibold tracking-tight">
+              Store Setup
+            </h2>
+            <p className="mt-2 text-sm text-[var(--color-muted)]">
+              Setup progress is available when you can manage store settings.
+            </p>
+          </AdminCard>
+        )}
+      </div>
 
-      <p className="mt-10 text-xs text-[var(--color-muted)]">
+      <p className="text-xs text-[var(--color-muted)]">
         Platform template v{APP_VERSION}
       </p>
     </div>

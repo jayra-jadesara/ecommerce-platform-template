@@ -19,8 +19,8 @@ export function sectionShellClassName(
 
   const space: Record<SectionCommonSettings["spacingPreset"], string> = {
     compact: "py-8 md:py-10",
-    normal: "py-12 md:py-16",
-    spacious: "py-16 md:py-24",
+    normal: "py-10 md:py-14",
+    spacious: "py-12 md:py-16",
   };
 
   return [

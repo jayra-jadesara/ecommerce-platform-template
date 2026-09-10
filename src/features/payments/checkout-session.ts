@@ -1,6 +1,6 @@
 import "server-only";
 
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { getCurrentUser } from "@/features/auth/session";
 import { writePaymentAudit } from "@/features/payments/audit";
 import { getPaymentProvider } from "@/features/payments/providers";

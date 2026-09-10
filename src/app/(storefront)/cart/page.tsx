@@ -14,7 +14,8 @@ export default async function CartPage() {
   return (
     <PageShell
       title="Your cart"
-      description="Review items before checkout. Prices shown are current catalog prices and may change before payment."
+      backHref="/products"
+      backLabel="Back to shopping"
     >
       <CartPageClient initialCart={cart} />
     </PageShell>

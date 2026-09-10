@@ -3,9 +3,12 @@ import { THEME_COLOR_PACKS, findMatchingThemePackId } from "@/features/admin/the
 
 describe("theme color packs", () => {
   it("offers ready-made looks for merchants", () => {
-    expect(THEME_COLOR_PACKS.length).toBeGreaterThanOrEqual(4);
+    expect(THEME_COLOR_PACKS.length).toBeGreaterThanOrEqual(12);
     expect(THEME_COLOR_PACKS.every((pack) => pack.light.primary)).toBe(true);
     expect(THEME_COLOR_PACKS.every((pack) => pack.dark.primary)).toBe(true);
+    expect(THEME_COLOR_PACKS.every((pack) => pack.preview.length === 4)).toBe(
+      true,
+    );
   });
 
   it("matches the forest pack by primary colors", () => {

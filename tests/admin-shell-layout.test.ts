@@ -8,20 +8,24 @@ describe("admin shell responsive layout", () => {
     "utf8",
   );
 
-  it("uses full-width content area", () => {
-    expect(source).toContain("h-dvh overflow-hidden");
+  it("uses viewport-locked shell with isolated nav scroll", () => {
+    expect(source).toContain("h-dvh max-h-dvh overflow-hidden");
+    expect(source).toContain("flex min-h-0 flex-1");
     expect(source).toContain("overflow-y-auto");
-    expect(source).toContain('className="w-full min-w-0 px-2 py-2 sm:px-3 sm:py-3"');
+    expect(source).toContain("adminScrollHide");
+    expect(source).toContain("admin-page-content");
   });
 
-  it("puts logout in the sidebar footer", () => {
-    expect(source).toContain("LogoutButton");
+  it("pins logout in the sidebar footer without scrolling the whole sidebar", () => {
+    expect(source).toContain("LogoutControl");
     expect(source).toContain('label="Log out"');
     expect(source).toContain("shrink-0 space-y-2 border-t");
   });
 
-  it("applies tinted backgrounds to sidebar and navbar", () => {
-    expect(source).toContain("sidebarBg");
-    expect(source).toContain("chromeBg");
+  it("uses layered admin surfaces and View Store action", () => {
+    expect(source).toContain("adminSidebarBg");
+    expect(source).toContain("adminTopBar");
+    expect(source).toContain("View Store");
+    expect(source).toContain("siteUrl");
   });
 });

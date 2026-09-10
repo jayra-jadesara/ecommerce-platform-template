@@ -19,6 +19,14 @@ export {
 } from "./json-ld";
 
 export { JsonLdScript } from "./JsonLdScript";
+export { GoogleSeoPreview } from "./components/GoogleSeoPreview";
+export { AdminSeoFields } from "./components/AdminSeoFields";
+export {
+  buildSeoTitle,
+  buildSeoDescription,
+  normalizeSeoText,
+  shouldKeepAutoSeo,
+} from "./auto-seo";
 
 /** Pure robots/sitemap helpers (no server-only DB access). */
 export {

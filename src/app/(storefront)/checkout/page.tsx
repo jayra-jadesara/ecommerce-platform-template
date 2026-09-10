@@ -19,10 +19,7 @@ export default async function CheckoutPage() {
   const summary = await getCheckoutSummary();
 
   return (
-    <PageShell
-      title="Checkout"
-      description="Review your cart and choose a shipping address. Payment and shipping totals are prepared in later phases."
-    >
+    <PageShell title="Checkout" backHref="/cart" backLabel="Back to cart">
       <CheckoutClient initialSummary={summary} />
     </PageShell>
   );

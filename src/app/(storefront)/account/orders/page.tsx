@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/features/auth/session";
 import { formatMoney } from "@/features/catalog/money";
 import { listCustomerOrders } from "@/features/orders/queries";
 import { orderStatusLabel } from "@/features/orders/state-machine";
+import { formatDateTime } from "@/lib/format-date";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export default async function AccountOrdersPage({
                     <div>
                       <p className="font-medium">{order.orderNumber}</p>
                       <p className="text-xs text-[var(--color-muted)]">
-                        {new Date(order.createdAt).toLocaleString()} ·{" "}
+                        {formatDateTime(order.createdAt)} ·{" "}
                         {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
                       </p>
                     </div>

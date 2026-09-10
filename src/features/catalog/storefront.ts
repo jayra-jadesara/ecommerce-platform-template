@@ -76,10 +76,21 @@ export type StorefrontProductCard = {
   stockStatus: StockStatus;
   primaryImageUrl?: string;
   primaryImageAlt?: string;
+  secondaryImageUrl?: string;
+  /** Lowest compare-at among active variants when higher than min price. */
+  compareAtPrice?: number | null;
   /** Active variants; >1 requires choosing options before add-to-cart. */
   activeVariantCount: number;
   /** Set when exactly one active variant exists (safe quick-add). */
   defaultVariantId: string | null;
+  /** Compact active variant options for card / quick-view (name + price only). */
+  variantOptions: Array<{
+    id: string;
+    name: string;
+    price: number;
+    compareAtPrice: number | null;
+    available: boolean;
+  }>;
 };
 
 type VariantJoin = {
@@ -314,8 +325,26 @@ async function listStorefrontProductsUncached(
       ? primary.public_url ||
         resolvePublicStorageUrl("products", primary.storage_path)
       : undefined;
+    const secondary =
+      [...images]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .find((image) => image.id !== primary?.id) ?? null;
+    const secondaryUrl = secondary
+      ? secondary.public_url ||
+        resolvePublicStorageUrl("products", secondary.storage_path)
+      : undefined;
     const activeVariants = variants.filter((v) => v.is_active);
     const activePrices = activeVariants.map((v) => Number(v.price));
+    const compareAts = activeVariants
+      .map((v) =>
+        v.compare_at_price != null ? Number(v.compare_at_price) : null,
+      )
+      .filter((n): n is number => n != null && Number.isFinite(n));
+    const minPrice = activePrices.length ? Math.min(...activePrices) : null;
+    const compareAtPrice =
+      minPrice != null && compareAts.length
+        ? Math.min(...compareAts.filter((c) => c > minPrice))
+        : null;
 
     return {
       id: row.id,
@@ -326,7 +355,7 @@ async function listStorefrontProductsUncached(
       featured: row.featured,
       categoryName: category?.name ?? null,
       categorySlug: category?.slug ?? null,
-      minPrice: activePrices.length ? Math.min(...activePrices) : null,
+      minPrice,
       maxPrice: activePrices.length ? Math.max(...activePrices) : null,
       stockStatus: aggregateProductStockStatus(
         variants.map((v) => ({
@@ -337,9 +366,31 @@ async function listStorefrontProductsUncached(
       ),
       primaryImageUrl: primaryUrl,
       primaryImageAlt: primary?.alt_text || row.name,
+      secondaryImageUrl: secondaryUrl,
+      compareAtPrice:
+        compareAtPrice != null && Number.isFinite(compareAtPrice)
+          ? compareAtPrice
+          : null,
       activeVariantCount: activeVariants.length,
       defaultVariantId:
         activeVariants.length === 1 ? activeVariants[0]!.id : null,
+      variantOptions: activeVariants.map((v) => {
+        const inventory = inv(v.inventory);
+        const status = deriveStockStatus({
+          quantity: inventory?.quantity ?? 0,
+          reservedQuantity: inventory?.reserved_quantity ?? 0,
+          lowStockThreshold: inventory?.low_stock_threshold ?? 0,
+          trackInventory: v.track_inventory,
+        });
+        return {
+          id: v.id,
+          name: v.name,
+          price: Number(v.price),
+          compareAtPrice:
+            v.compare_at_price != null ? Number(v.compare_at_price) : null,
+          available: status !== "OUT_OF_STOCK",
+        };
+      }),
     };
   });
 

@@ -7,22 +7,25 @@ interface ContainerProps {
   as?: "div" | "section" | "main" | "article";
   /** When true, skip horizontal padding (edge-to-edge sections). */
   flush?: boolean;
+  /** When false, allow full viewport width (rare). Default constrains readable width. */
+  constrained?: boolean;
 }
 
 /**
- * Full-width page container. Side padding only — no artificial max-width
- * that leaves empty left/right gutters on wide screens.
+ * Storefront page container — centered content width with responsive padding.
  */
 export function Container({
   children,
   className,
   as: Tag = "div",
   flush = false,
+  constrained = true,
 }: ContainerProps) {
   return (
     <Tag
       className={cn(
         "w-full",
+        constrained && "mx-auto max-w-[var(--layout-content-max,1520px)]",
         !flush && "px-[var(--layout-container-padding)]",
         className,
       )}

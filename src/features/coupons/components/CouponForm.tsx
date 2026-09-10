@@ -6,7 +6,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import {
@@ -17,6 +17,15 @@ import {
   couponFormSchema,
   type CouponFormValues,
 } from "@/features/coupons/schemas";
+import { formatMoney } from "@/features/catalog/money";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminFieldGroup,
+  adminFieldsGrid,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
 
 interface CouponFormProps {
   mode: "create" | "edit";
@@ -55,6 +64,11 @@ export function CouponForm({
     resolver: zodResolver(couponFormSchema) as Resolver<CouponFormValues>,
     defaultValues: {
       ...initialValues,
+      discountType:
+        initialValues.discountType === "percentage" ||
+        initialValues.discountType === "fixed"
+          ? initialValues.discountType
+          : "percentage",
       startsAt: initialValues.startsAt
         ? toDatetimeLocalValue(initialValues.startsAt)
         : null,
@@ -64,7 +78,39 @@ export function CouponForm({
     },
   });
 
-  const discountType = useWatch({ control, name: "discountType" });
+  const watched = useWatch({ control });
+  const discountType =
+    watched.discountType === "percentage" || watched.discountType === "fixed"
+      ? watched.discountType
+      : "percentage";
+  const discountValue = Number(watched.discountValue);
+  const codePreview = (watched.code || "").trim().toUpperCase() || "YOURCODE";
+  const isActive = Boolean(watched.isActive);
+
+  const example = useMemo(() => {
+    const sampleSubtotal = 1000;
+    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+      return { sampleSubtotal, savings: 0, pay: sampleSubtotal };
+    }
+    let savings =
+      discountType === "percentage"
+        ? (sampleSubtotal * discountValue) / 100
+        : discountValue;
+    const maxCap = Number(watched.maximumDiscountAmount);
+    if (
+      discountType === "percentage" &&
+      Number.isFinite(maxCap) &&
+      maxCap > 0
+    ) {
+      savings = Math.min(savings, maxCap);
+    }
+    savings = Math.min(savings, sampleSubtotal);
+    return {
+      sampleSubtotal,
+      savings,
+      pay: Math.max(0, sampleSubtotal - savings),
+    };
+  }, [discountType, discountValue, watched.maximumDiscountAmount]);
 
   function onSubmit(values: CouponFormValues) {
     if (!canSubmit) return;
@@ -91,191 +137,295 @@ export function CouponForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="mx-auto max-w-2xl space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+      className="w-full"
+      style={adminStackStyle}
+      noValidate
     >
       {error ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
         </p>
       ) : null}
 
-      <TextField
-        label="Coupon Code"
-        fullWidth
-        required
-        disabled={!canSubmit || pending}
-        error={Boolean(errors.code)}
-        helperText={errors.code?.message ?? "Stored uppercase (e.g. WELCOME10)"}
-        slotProps={{ htmlInput: { style: { textTransform: "uppercase" } } }}
-        {...register("code")}
-      />
+      <p className="text-sm text-[var(--color-muted)]">
+        Customers type this code at checkout to get a discount. Keep the code
+        short and easy to remember.
+      </p>
 
-      <TextField
-        label="Description"
-        fullWidth
-        multiline
-        minRows={2}
-        disabled={!canSubmit || pending}
-        error={Boolean(errors.description)}
-        helperText={errors.description?.message}
-        {...register("description")}
-      />
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={adminStackStyle}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">1. Coupon code</p>
+          <p className="admin-field-group__hint">
+            This is what shoppers enter — for example WELCOME10.
+          </p>
+          <TextField
+            label="Code shoppers type"
+            fullWidth
+            required
+            disabled={!canSubmit || pending}
+            error={Boolean(errors.code)}
+            helperText={
+              errors.code?.message ??
+              "Letters and numbers only. Saved in CAPITALS."
+            }
+            placeholder="WELCOME10"
+            slotProps={{ htmlInput: { style: { textTransform: "uppercase" } } }}
+            {...register("code")}
+          />
+          <TextField
+            label="Note for your team (optional)"
+            fullWidth
+            multiline
+            minRows={2}
+            disabled={!canSubmit || pending}
+            error={Boolean(errors.description)}
+            helperText={
+              errors.description?.message ??
+              "Not shown to customers — just for your records."
+            }
+            placeholder="Example: Launch offer for first-time buyers"
+            {...register("description")}
+          />
+        </div>
+      </section>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Controller
-          name="discountType"
-          control={control}
-          render={({ field }) => (
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={adminStackStyle}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">2. How much off?</p>
+          <p className="admin-field-group__hint">
+            Choose a percent off the order, or a fixed amount in {currency}.
+          </p>
+          <div className={adminFieldsGrid(2)}>
+            <Controller
+              name="discountType"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  label="Discount type"
+                  fullWidth
+                  disabled={!canSubmit || pending}
+                  value={discountType}
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  inputRef={field.ref}
+                  helperText="Most stores use a percentage"
+                >
+                  <MenuItem value="percentage">Percentage off (%)</MenuItem>
+                  <MenuItem value="fixed">
+                    Fixed amount off ({currency})
+                  </MenuItem>
+                </TextField>
+              )}
+            />
             <TextField
-              {...field}
-              select
-              label="Discount Type"
+              label={
+                discountType === "percentage"
+                  ? "Percent off"
+                  : `Amount off (${currency})`
+              }
+              type="number"
+              fullWidth
+              required
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.discountValue)}
+              helperText={
+                errors.discountValue?.message ||
+                (discountType === "percentage"
+                  ? "Example: 10 means 10% off"
+                  : `Example: 100 means ${formatMoney(100, currency)} off`)
+              }
+              slotProps={{ htmlInput: { step: "any", min: 0 } }}
+              {...register("discountValue", { valueAsNumber: true })}
+            />
+          </div>
+
+          <div className={adminFieldsGrid(2)}>
+            <TextField
+              label={`Minimum order (${currency})`}
+              type="number"
               fullWidth
               disabled={!canSubmit || pending}
-            >
-              <MenuItem value="percentage">Percentage</MenuItem>
-              <MenuItem value="fixed">Fixed amount</MenuItem>
-            </TextField>
-          )}
-        />
-        <TextField
-          label={
-            discountType === "percentage"
-              ? "Discount Value (%)"
-              : `Discount Value (${currency})`
-          }
-          type="number"
-          fullWidth
-          required
-          disabled={!canSubmit || pending}
-          error={Boolean(errors.discountValue)}
-          helperText={errors.discountValue?.message}
-          slotProps={{ htmlInput: { step: "any", min: 0 } }}
-          {...register("discountValue", { valueAsNumber: true })}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label={`Minimum Order (${currency})`}
-          type="number"
-          fullWidth
-          disabled={!canSubmit || pending}
-          error={Boolean(errors.minimumOrderAmount)}
-          helperText={
-            errors.minimumOrderAmount?.message ??
-            "Optional. Compared to cart subtotal."
-          }
-          slotProps={{ htmlInput: { step: "any", min: 0 } }}
-          {...register("minimumOrderAmount", {
-            setValueAs: (v) =>
-              v === "" || v == null || Number.isNaN(Number(v))
-                ? null
-                : Number(v),
-          })}
-        />
-        <TextField
-          label={`Maximum Discount (${currency})`}
-          type="number"
-          fullWidth
-          disabled={!canSubmit || pending || discountType !== "percentage"}
-          error={Boolean(errors.maximumDiscountAmount)}
-          helperText={
-            errors.maximumDiscountAmount?.message ??
-            (discountType === "percentage"
-              ? "Optional cap for percentage coupons."
-              : "Only applies to percentage coupons.")
-          }
-          slotProps={{ htmlInput: { step: "any", min: 0 } }}
-          {...register("maximumDiscountAmount", {
-            setValueAs: (v) =>
-              v === "" || v == null || Number.isNaN(Number(v))
-                ? null
-                : Number(v),
-          })}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Usage Limit"
-          type="number"
-          fullWidth
-          disabled={!canSubmit || pending}
-          error={Boolean(errors.usageLimit)}
-          helperText={errors.usageLimit?.message ?? "Optional total redemptions."}
-          slotProps={{ htmlInput: { step: 1, min: 1 } }}
-          {...register("usageLimit", {
-            setValueAs: (v) =>
-              v === "" || v == null || Number.isNaN(Number(v))
-                ? null
-                : Math.trunc(Number(v)),
-          })}
-        />
-        <TextField
-          label="Per Customer Limit"
-          type="number"
-          fullWidth
-          disabled={!canSubmit || pending}
-          error={Boolean(errors.perUserLimit)}
-          helperText={
-            errors.perUserLimit?.message ?? "Optional uses per signed-in customer."
-          }
-          slotProps={{ htmlInput: { step: 1, min: 1 } }}
-          {...register("perUserLimit", {
-            setValueAs: (v) =>
-              v === "" || v == null || Number.isNaN(Number(v))
-                ? null
-                : Math.trunc(Number(v)),
-          })}
-        />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <TextField
-          label="Start Date"
-          type="datetime-local"
-          fullWidth
-          disabled={!canSubmit || pending}
-          slotProps={{ inputLabel: { shrink: true } }}
-          error={Boolean(errors.startsAt)}
-          helperText={errors.startsAt?.message}
-          {...register("startsAt")}
-        />
-        <TextField
-          label="Expiry Date"
-          type="datetime-local"
-          fullWidth
-          disabled={!canSubmit || pending}
-          slotProps={{ inputLabel: { shrink: true } }}
-          error={Boolean(errors.expiresAt)}
-          helperText={errors.expiresAt?.message}
-          {...register("expiresAt")}
-        />
-      </div>
-
-      <Controller
-        name="isActive"
-        control={control}
-        render={({ field }) => (
-          <FormControlLabel
-            control={
-              <Switch
-                checked={field.value}
-                onChange={(_, checked) => field.onChange(checked)}
+              error={Boolean(errors.minimumOrderAmount)}
+              helperText={
+                errors.minimumOrderAmount?.message ??
+                "Leave blank for no minimum. Checked against cart total."
+              }
+              placeholder="Optional"
+              slotProps={{ htmlInput: { step: "any", min: 0 } }}
+              {...register("minimumOrderAmount", {
+                setValueAs: (v) =>
+                  v === "" || v == null || Number.isNaN(Number(v))
+                    ? null
+                    : Number(v),
+              })}
+            />
+            {discountType === "percentage" ? (
+              <TextField
+                label={`Max discount (${currency})`}
+                type="number"
+                fullWidth
                 disabled={!canSubmit || pending}
+                error={Boolean(errors.maximumDiscountAmount)}
+                helperText={
+                  errors.maximumDiscountAmount?.message ??
+                  "Optional cap so a big cart does not get unlimited off."
+                }
+                placeholder="Optional"
+                slotProps={{ htmlInput: { step: "any", min: 0 } }}
+                {...register("maximumDiscountAmount", {
+                  setValueAs: (v) =>
+                    v === "" || v == null || Number.isNaN(Number(v))
+                      ? null
+                      : Number(v),
+                })}
               />
-            }
-            label="Active"
-          />
-        )}
-      />
+            ) : (
+              <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)] self-center">
+                Max discount only applies to percentage coupons.
+              </p>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <div className="flex flex-wrap gap-2 pt-2">
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={adminStackStyle}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">3. Limits & schedule</p>
+          <p className="admin-field-group__hint">
+            Control how many times the code can be used, and when it works.
+          </p>
+          <div className={adminFieldsGrid(2)}>
+            <TextField
+              label="Total uses allowed"
+              type="number"
+              fullWidth
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.usageLimit)}
+              helperText={
+                errors.usageLimit?.message ??
+                "Leave blank for unlimited uses across all customers."
+              }
+              placeholder="Optional"
+              slotProps={{ htmlInput: { step: 1, min: 1 } }}
+              {...register("usageLimit", {
+                setValueAs: (v) =>
+                  v === "" || v == null || Number.isNaN(Number(v))
+                    ? null
+                    : Math.trunc(Number(v)),
+              })}
+            />
+            <TextField
+              label="Uses per customer"
+              type="number"
+              fullWidth
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.perUserLimit)}
+              helperText={
+                errors.perUserLimit?.message ??
+                "Leave blank for no per-person limit (signed-in customers)."
+              }
+              placeholder="Optional"
+              slotProps={{ htmlInput: { step: 1, min: 1 } }}
+              {...register("perUserLimit", {
+                setValueAs: (v) =>
+                  v === "" || v == null || Number.isNaN(Number(v))
+                    ? null
+                    : Math.trunc(Number(v)),
+              })}
+            />
+            <TextField
+              label="Starts"
+              type="datetime-local"
+              fullWidth
+              disabled={!canSubmit || pending}
+              slotProps={{ inputLabel: { shrink: true } }}
+              error={Boolean(errors.startsAt)}
+              helperText={
+                errors.startsAt?.message ??
+                "Leave blank to start as soon as you save."
+              }
+              {...register("startsAt")}
+            />
+            <TextField
+              label="Ends"
+              type="datetime-local"
+              fullWidth
+              disabled={!canSubmit || pending}
+              slotProps={{ inputLabel: { shrink: true } }}
+              error={Boolean(errors.expiresAt)}
+              helperText={
+                errors.expiresAt?.message ??
+                "Leave blank if the code should not expire."
+              }
+              {...register("expiresAt")}
+            />
+          </div>
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(field.value)}
+                    onChange={(_, checked) => field.onChange(checked)}
+                    disabled={!canSubmit || pending}
+                  />
+                }
+                label={
+                  isActive
+                    ? "Active — customers can use this code"
+                    : "Inactive — code is hidden from checkout"
+                }
+              />
+            )}
+          />
+        </div>
+      </section>
+
+      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <h3 className="text-base font-semibold text-[var(--color-foreground)]">
+          Example at checkout
+        </h3>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
+          If someone buys {formatMoney(example.sampleSubtotal, currency)} and
+          enters <span className="font-medium">{codePreview}</span>:
+        </p>
+        <dl className="mt-4 space-y-2 text-sm">
+          <div className="flex justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3">
+            <dt>Discount</dt>
+            <dd className="font-medium">
+              −{formatMoney(example.savings, currency)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-base font-semibold">
+            <dt>They pay</dt>
+            <dd>{formatMoney(example.pay, currency)}</dd>
+          </div>
+        </dl>
+        {!isActive ? (
+          <p className="mt-3 text-sm text-[var(--color-muted)]">
+            This coupon is inactive, so it will not work until you turn it on.
+          </p>
+        ) : null}
+      </section>
+
+      <div className="flex flex-wrap gap-2">
         <button
           type="submit"
           disabled={!canSubmit || pending}
-          className="rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
+          className={adminBtn("primary")}
         >
           {pending
             ? "Saving…"
@@ -287,7 +437,7 @@ export function CouponForm({
           type="button"
           disabled={pending}
           onClick={() => router.push(listHref)}
-          className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm font-medium"
+          className={adminBtn("outline")}
         >
           Cancel
         </button>

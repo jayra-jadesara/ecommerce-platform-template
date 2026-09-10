@@ -52,14 +52,13 @@ function getSnapshot() {
   return snapshot;
 }
 
-/** Must return a stable cached value — new objects each call cause an infinite loop. */
 const SERVER_SNAPSHOT: AuthSnapshot = { ready: false, email: null };
 
 function getServerSnapshot(): AuthSnapshot {
   return SERVER_SNAPSHOT;
 }
 
-export function HeaderAuthLinks() {
+export function HeaderAuthLinks({ compact = false }: { compact?: boolean }) {
   const { ready, email } = useSyncExternalStore(
     subscribe,
     getSnapshot,
@@ -67,20 +66,38 @@ export function HeaderAuthLinks() {
   );
 
   if (!ready) {
-    return <span className="inline-block h-8 w-16" aria-hidden />;
+    return (
+      <span
+        className={compact ? "inline-block h-8 w-8" : "inline-block h-8 w-16"}
+        aria-hidden
+      />
+    );
   }
 
   if (email) {
     return (
       <div className="flex items-center gap-1">
-        <Link
-          href="/account"
-          className="rounded-md px-2 py-1 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
-        >
-          Account
-        </Link>
+        {!compact ? (
+          <Link
+            href="/account"
+            className="rounded-md px-2 py-1 text-sm font-medium text-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+          >
+            Account
+          </Link>
+        ) : null}
         <LogoutButton />
       </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <Link
+        href="/login"
+        className="rounded-md px-2 py-1 text-sm font-medium text-[var(--color-header-foreground)] hover:text-[var(--color-primary)]"
+      >
+        Sign in
+      </Link>
     );
   }
 
@@ -94,7 +111,7 @@ export function HeaderAuthLinks() {
       </Link>
       <Link
         href="/register"
-        className="rounded-md bg-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-white"
+        className="rounded-md border border-[var(--color-border)] bg-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-[var(--color-button-foreground)]"
       >
         Register
       </Link>

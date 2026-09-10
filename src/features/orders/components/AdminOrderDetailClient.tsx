@@ -11,6 +11,7 @@ import {
 import { canTransitionOrderStatus, orderStatusLabel } from "@/features/orders/state-machine";
 import type { OrderDetail } from "@/features/orders/types";
 import type { OrderStatus } from "@/types/database";
+import { formatDateTime } from "@/lib/format-date";
 
 const ACTION_FLOW: Array<{ label: string; status: OrderStatus }> = [
   { label: "Process order", status: "PROCESSING" },
@@ -78,7 +79,7 @@ export function AdminOrderDetailClient({
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-[var(--color-muted)]">Placed</dt>
-              <dd>{new Date(order.createdAt).toLocaleString()}</dd>
+              <dd>{formatDateTime(order.createdAt)}</dd>
             </div>
             <div className="flex justify-between gap-2">
               <dt className="text-[var(--color-muted)]">Customer</dt>
@@ -293,7 +294,7 @@ export function AdminOrderDetailClient({
               <li key={activity.id} className="border-l-2 border-[var(--color-border)] pl-3">
                 <p className="font-medium">{activity.message || activity.eventType}</p>
                 <p className="text-xs text-[var(--color-muted)]">
-                  {new Date(activity.createdAt).toLocaleString()}
+                  {formatDateTime(activity.createdAt)}
                 </p>
               </li>
             ))}

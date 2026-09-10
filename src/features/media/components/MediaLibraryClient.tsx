@@ -1,13 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   deleteMediaAction,
   uploadMediaAction,
@@ -15,9 +12,12 @@ import {
 import { UploadDropzone } from "@/features/media/components/UploadDropzone";
 import type { MediaRow } from "@/features/media/media-service";
 import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
-import { bucketForFolder } from "@/features/media/validation";
 import { getAdminPath } from "@/config/admin-route";
+import {
+  adminBtn,
+  adminCard,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
 
 interface MediaLibraryClientProps {
   initialItems: MediaRow[];
@@ -30,14 +30,21 @@ interface MediaLibraryClientProps {
   canDelete: boolean;
 }
 
-function mediaPreviewUrl(row: MediaRow): string | undefined {
-  if (row.public_url) return row.public_url;
-  const folder = (row.folder || "general") as MediaFolder;
-  const bucket = bucketForFolder(
-    MEDIA_FOLDERS.includes(folder as MediaFolder) ? folder : "general",
-  );
-  return resolvePublicStorageUrl(bucket, row.storage_path);
-}
+const FOLDER_LABELS: Record<MediaFolder, string> = {
+  general: "General library",
+  cms: "Homepage & pages",
+  products: "Products",
+  categories: "Categories",
+  branding: "Logo & branding",
+};
+
+const FOLDER_HINTS: Record<MediaFolder, string> = {
+  general: "Private admin library — use signed previews in admin only.",
+  cms: "Best for banners and homepage images (public on the store).",
+  products: "Product photos",
+  categories: "Category images",
+  branding: "Logo, favicon, social image",
+};
 
 function buildHref(input: {
   page?: number;
@@ -50,6 +57,13 @@ function buildHref(input: {
   if (input.page && input.page > 1) params.set("page", String(input.page));
   const qs = params.toString();
   return `${getAdminPath("/media")}${qs ? `?${qs}` : ""}`;
+}
+
+function formatBytes(size: number | null): string {
+  if (size == null || size <= 0) return "";
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function MediaLibraryClient({
@@ -67,178 +81,221 @@ export function MediaLibraryClient({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [uploadFolder, setUploadFolder] = useState<MediaFolder>(
-    folder === "all" ? "general" : folder,
+    folder === "all" ? "cms" : folder,
   );
+  const [filterQ, setFilterQ] = useState(q);
+  const [filterFolder, setFilterFolder] = useState<MediaFolder | "all">(folder);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
   const items = useMemo(() => initialItems, [initialItems]);
 
+  useEffect(() => {
+    setFilterQ(q);
+    setFilterFolder(folder);
+  }, [q, folder]);
+
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 lg:grid-cols-[1fr_220px]">
-        <UploadDropzone
-          disabled={!canUpload || pending}
-          onFiles={async (files) => {
-            setError(null);
-            setSuccess(null);
-            for (const file of files) {
-              const formData = new FormData();
-              formData.set("file", file);
-              formData.set("folder", uploadFolder);
-              const result = await uploadMediaAction(formData);
-              if (!result.ok) {
-                setError(result.error);
-                return;
+    <div style={adminStackStyle}>
+      <div
+        className={`${adminCard()} p-4 md:p-5`}
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+      >
+        <div>
+          <p className="text-sm font-semibold text-[var(--color-foreground)]">
+            Upload images
+          </p>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            Choose where the file belongs, then upload. For storefront banners
+            and homepage, prefer <strong>Homepage &amp; pages</strong>.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+          <UploadDropzone
+            disabled={!canUpload || pending}
+            label="Drop images here"
+            hint="JPEG, PNG, or WEBP · up to 10 MB each"
+            onFiles={async (files) => {
+              setError(null);
+              setSuccess(null);
+              for (const file of files) {
+                const formData = new FormData();
+                formData.set("file", file);
+                formData.set("folder", uploadFolder);
+                const result = await uploadMediaAction(formData);
+                if (!result.ok) {
+                  setError(result.error);
+                  return;
+                }
               }
-            }
-            setSuccess("Upload complete.");
-            router.refresh();
-          }}
-        />
-        <TextField
-          select
-          label="Upload folder"
-          value={uploadFolder}
-          required
-          disabled={!canUpload}
-          onChange={(event) =>
-            setUploadFolder(event.target.value as MediaFolder)
-          }
-        >
-          {MEDIA_FOLDERS.map((value) => (
-            <MenuItem key={value} value={value}>
-              {value}
-            </MenuItem>
-          ))}
-        </TextField>
+              setSuccess(
+                files.length === 1
+                  ? "Image uploaded."
+                  : `${files.length} images uploaded.`,
+              );
+              router.refresh();
+            }}
+          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <TextField
+              select
+              label="Save into"
+              value={uploadFolder}
+              required
+              disabled={!canUpload}
+              helperText={FOLDER_HINTS[uploadFolder]}
+              onChange={(event) =>
+                setUploadFolder(event.target.value as MediaFolder)
+              }
+            >
+              {MEDIA_FOLDERS.map((value) => (
+                <MenuItem key={value} value={value}>
+                  {FOLDER_LABELS[value]}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
+        </div>
       </div>
 
       <form
-        className="flex flex-col gap-3 sm:flex-row"
+        className={`${adminCard()} flex flex-col gap-3 p-4 sm:flex-row sm:items-end`}
         onSubmit={(event) => {
           event.preventDefault();
-          const form = new FormData(event.currentTarget);
           router.push(
             buildHref({
-              q: String(form.get("q") ?? ""),
-              folder: String(form.get("folder") ?? "all"),
+              q: filterQ,
+              folder: filterFolder,
               page: 1,
             }),
           );
         }}
       >
         <TextField
-          name="q"
-          label="Search"
+          label="Search by name"
           size="small"
-          defaultValue={q}
+          value={filterQ}
+          onChange={(event) => setFilterQ(event.target.value)}
           fullWidth
         />
         <TextField
           select
-          name="folder"
-          label="Filter"
+          label="Folder"
           size="small"
-          defaultValue={folder}
-          className="min-w-40"
+          value={filterFolder}
+          onChange={(event) =>
+            setFilterFolder(event.target.value as MediaFolder | "all")
+          }
+          className="min-w-48"
         >
-          <MenuItem value="all">All</MenuItem>
+          <MenuItem value="all">All folders</MenuItem>
           {MEDIA_FOLDERS.map((value) => (
             <MenuItem key={value} value={value}>
-              {value}
+              {FOLDER_LABELS[value]}
             </MenuItem>
           ))}
         </TextField>
-        <Button type="submit" variant="outlined">
+        <button type="submit" className={adminBtn("outline")}>
           Apply
-        </Button>
+        </button>
       </form>
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center text-sm text-[var(--color-muted)]">
-          No media found for this store yet.
-        </p>
+        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-14 text-center">
+          <p className="text-sm font-medium text-[var(--color-foreground)]">
+            No images yet
+          </p>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            Upload product photos, banners, or brand assets to use across your
+            store.
+          </p>
+        </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((item) => {
-            const url = mediaPreviewUrl(item);
+            const url = item.preview_url || null;
+            const folderKey = (item.folder || "general") as MediaFolder;
+            const folderLabel =
+              FOLDER_LABELS[folderKey] ?? item.folder ?? "General";
             return (
-              <li
-                key={item.id}
-                className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]"
-              >
-                <div className="relative aspect-square bg-[var(--color-surface)]">
+              <li key={item.id} className={`${adminCard()} overflow-hidden`}>
+                <div className="relative aspect-[4/3] bg-[var(--color-surface)]">
                   {url ? (
-                    <Image
+                    // Signed private URLs must not go through next/image optimizer.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
                       src={url}
                       alt={item.alt_text || item.file_name}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 768px) 50vw, 240px"
+                      className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-xs text-[var(--color-muted)]">
-                      Private media
+                    <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
+                      <p className="text-sm font-medium text-[var(--color-foreground)]">
+                        Preview unavailable
+                      </p>
+                      <p className="text-xs text-[var(--color-muted)]">
+                        {item.file_name}
+                      </p>
                     </div>
                   )}
                 </div>
-                <div className="space-y-2 p-3">
-                  <p className="truncate text-sm font-medium">{item.file_name}</p>
-                  <div className="flex flex-wrap gap-1">
-                    <Chip size="small" label={item.folder || "general"} />
-                    <Chip
-                      size="small"
-                      variant="outlined"
-                      label={item.mime_type}
-                    />
+                <div
+                  className="p-3"
+                  style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+                >
+                  <div>
+                    <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
+                      {item.file_name}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                      {folderLabel}
+                      {item.file_size ? ` · ${formatBytes(item.file_size)}` : ""}
+                    </p>
                   </div>
-                  <p className="truncate text-xs text-[var(--color-muted)]">
-                    {item.storage_path}
-                  </p>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="small"
+                    <button
+                      type="button"
+                      className={adminBtn("outline")}
                       onClick={async () => {
                         await navigator.clipboard.writeText(item.storage_path);
-                        setSuccess("Storage path copied.");
+                        setSuccess("Path copied — paste this in image fields.");
                       }}
                     >
                       Copy path
-                    </Button>
+                    </button>
                     {url ? (
-                      <Button
-                        size="small"
+                      <button
+                        type="button"
+                        className={adminBtn("ghost")}
                         onClick={async () => {
                           await navigator.clipboard.writeText(url);
-                          setSuccess("URL copied.");
+                          setSuccess("Preview link copied.");
                         }}
                       >
-                        Copy URL
-                      </Button>
+                        Copy link
+                      </button>
                     ) : null}
-                    <Button
-                      size="small"
-                      color="error"
+                    <button
+                      type="button"
+                      className={adminBtn("danger")}
                       disabled={!canDelete || pending}
                       onClick={() => {
-                        if (!window.confirm("Delete this media item?")) return;
+                        if (!window.confirm("Delete this image?")) return;
                         startTransition(async () => {
                           const result = await deleteMediaAction(item.id);
                           if (!result.ok) {
                             setError(result.error);
                             return;
                           }
-                          setSuccess(result.message);
+                          setSuccess("Image deleted.");
                           router.refresh();
                         });
                       }}
                     >
                       Delete
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </li>
@@ -247,25 +304,25 @@ export function MediaLibraryClient({
         </ul>
       )}
 
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex items-center justify-between gap-3 text-sm">
         <p className="text-[var(--color-muted)]">
-          {total} item{total === 1 ? "" : "s"} · page {page} of {totalPages}
+          {total} image{total === 1 ? "" : "s"} · page {page} of {totalPages}
         </p>
         <div className="flex gap-2">
-          <Button
-            size="small"
-            disabled={page <= 1}
+          <a
+            className={`${adminBtn("outline")} ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
             href={buildHref({ q, folder, page: page - 1 })}
+            aria-disabled={page <= 1}
           >
             Previous
-          </Button>
-          <Button
-            size="small"
-            disabled={page >= totalPages}
+          </a>
+          <a
+            className={`${adminBtn("outline")} ${page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
             href={buildHref({ q, folder, page: page + 1 })}
+            aria-disabled={page >= totalPages}
           >
             Next
-          </Button>
+          </a>
         </div>
       </div>
     </div>

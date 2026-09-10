@@ -162,7 +162,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
     layout: {
       ...fallback.layout,
       maxWidth: "100%",
-      containerPadding: "0.75rem",
+      containerPadding: "1.25rem",
       stickyHeader: header.sticky,
       footerVariant: footer.description ? "detailed" : "simple",
     },

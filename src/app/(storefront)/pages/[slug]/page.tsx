@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
@@ -54,8 +54,8 @@ export default async function CmsContentPage({ params }: Props) {
   if (!payload) notFound();
 
   return (
-    <PageShell>
-      <article className="mx-auto max-w-3xl px-4 py-10">
+    <PageShell backHref="/" backLabel="Back to home">
+      <article className="mx-auto max-w-3xl py-6 md:py-10">
         <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-4xl">
           {payload.page.title}
         </h1>
@@ -70,6 +70,7 @@ export default async function CmsContentPage({ params }: Props) {
           sections={payload.sections}
           animation={config.animation}
           visualEffects={config.visualEffects}
+          currency={config.store.currency}
         />
       ) : null}
     </PageShell>

@@ -51,10 +51,16 @@ export async function loadShippingSettingsForm(): Promise<{
     currency: settings?.currency || "INR",
     values: shipping
       ? {
-          enabled: shipping.enabled,
-          method: shipping.method,
+          enabled: Boolean(shipping.enabled),
+          method:
+            shipping.method === "flat_rate" ||
+            shipping.method === "free" ||
+            shipping.method === "percentage" ||
+            shipping.method === "zone"
+              ? shipping.method
+              : DEFAULT_SHIPPING_SETTINGS.method,
           freeShippingThreshold: shipping.free_shipping_threshold,
-          defaultShippingFee: Number(shipping.default_shipping_fee),
+          defaultShippingFee: Number(shipping.default_shipping_fee) || 0,
           percentageRate: shipping.percentage_rate,
           estimatedDeliveryMinDays: shipping.estimated_delivery_min_days,
           estimatedDeliveryMaxDays: shipping.estimated_delivery_max_days,
@@ -97,14 +103,30 @@ export async function loadPaymentSettingsForm(): Promise<{
     currency: settings?.currency || "INR",
     values: payment
       ? {
-          provider: payment.provider,
-          feeEnabled: payment.fee_enabled,
-          feeType: payment.fee_type,
-          feeValue: Number(payment.fee_value),
-          feeBasis: payment.fee_basis,
-          taxEnabled: payment.tax_enabled,
-          taxType: payment.tax_type,
-          taxValue: Number(payment.tax_value),
+          provider:
+            payment.provider === "none" ||
+            payment.provider === "razorpay" ||
+            payment.provider === "other"
+              ? payment.provider
+              : DEFAULT_PAYMENT_SETTINGS.provider,
+          feeEnabled: Boolean(payment.fee_enabled),
+          feeType:
+            payment.fee_type === "PERCENTAGE" || payment.fee_type === "FIXED"
+              ? payment.fee_type
+              : DEFAULT_PAYMENT_SETTINGS.feeType,
+          feeValue: Number(payment.fee_value) || 0,
+          feeBasis:
+            payment.fee_basis === "SUBTOTAL" ||
+            payment.fee_basis === "SUBTOTAL_PLUS_SHIPPING" ||
+            payment.fee_basis === "ORDER_TOTAL_BEFORE_PAYMENT_FEE"
+              ? payment.fee_basis
+              : DEFAULT_PAYMENT_SETTINGS.feeBasis,
+          taxEnabled: Boolean(payment.tax_enabled),
+          taxType:
+            payment.tax_type === "PERCENTAGE" || payment.tax_type === "FIXED"
+              ? payment.tax_type
+              : DEFAULT_PAYMENT_SETTINGS.taxType,
+          taxValue: Number(payment.tax_value) || 0,
         }
       : DEFAULT_PAYMENT_SETTINGS,
   };

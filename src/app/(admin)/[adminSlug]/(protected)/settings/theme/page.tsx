@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ThemeEditorForm } from "@/features/admin/theme/components/ThemeEditorForm";
+import { AppearanceStudio } from "@/features/admin/theme/components/AppearanceStudio";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getStorefrontPlatformConfig } from "@/features/theme/service";
 import { getAdminPath } from "@/config/admin-route";
@@ -17,7 +17,7 @@ export default async function AdminThemeSettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Appearance"
-        description="Change your store colors, light/dark mode and visual style."
+        description="Design your storefront colors, typography, and visual style."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Appearance" },
@@ -42,7 +42,7 @@ export default async function AdminThemeSettingsPage() {
           .
         </p>
       ) : null}
-      <ThemeEditorForm
+      <AppearanceStudio
         initialTheme={config.theme}
         initialAnimation={config.animation}
         initialVisualEffects={config.visualEffects}

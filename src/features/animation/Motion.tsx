@@ -3,6 +3,7 @@
 import { motion, type HTMLMotionProps } from "framer-motion";
 import type { ReactNode } from "react";
 import { getAnimationVariants } from "@/features/animation/presets";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 import type { AnimationConfig, AnimationPreset } from "@/types";
 
 interface MotionProps extends Omit<HTMLMotionProps<"div">, "children"> {
@@ -14,6 +15,7 @@ interface MotionProps extends Omit<HTMLMotionProps<"div">, "children"> {
 
 /**
  * Config-driven motion wrapper using only safe presets.
+ * Renders a plain element until hydrated to avoid Framer Motion SSR mismatches.
  */
 export function Motion({
   children,
@@ -23,12 +25,13 @@ export function Motion({
   className,
   ...rest
 }: MotionProps) {
+  const hydrated = useHasHydrated();
   const enabled = animation?.enabled ?? true;
   const intensity = animation?.intensity ?? "medium";
   const resolvedPreset = preset ?? animation?.defaultPreset ?? "fade-up";
+  const Tag = as;
 
-  if (!enabled || resolvedPreset === "none") {
-    const Tag = as;
+  if (!hydrated || !enabled || resolvedPreset === "none") {
     return <Tag className={className}>{children}</Tag>;
   }
 

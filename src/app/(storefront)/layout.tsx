@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { AppLayout } from "@/components/layout";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 
 export default async function StorefrontLayout({
   children,

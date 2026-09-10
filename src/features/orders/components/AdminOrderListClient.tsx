@@ -7,7 +7,57 @@ import { getAdminPath } from "@/config/admin-route";
 import { formatMoney } from "@/features/catalog/money";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import type { OrderListItem } from "@/features/orders/types";
+import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
+import { adminBtn } from "@/features/admin/ui/admin-classes";
+import { cn } from "@/lib/cn";
+import { formatDate } from "@/lib/format-date";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
+
+function statusTone(
+  status: OrderStatus,
+): "success" | "warning" | "error" | "info" | "neutral" {
+  switch (status) {
+    case "DELIVERED":
+      return "success";
+    case "CANCELLED":
+    case "REFUNDED":
+      return "error";
+    case "PENDING":
+      return "warning";
+    case "PROCESSING":
+    case "SHIPPED":
+    case "CONFIRMED":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+function paymentTone(
+  status: PaymentStatus | null | undefined,
+): "success" | "warning" | "error" | "info" | "neutral" {
+  switch (status) {
+    case "CAPTURED":
+    case "AUTHORIZED":
+      return "success";
+    case "FAILED":
+      return "error";
+    case "PENDING":
+      return "warning";
+    case "REFUNDED":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
+const SUMMARY_CHIPS: Array<{ value: OrderStatus | "ALL"; label: string }> = [
+  { value: "ALL", label: "All" },
+  { value: "PENDING", label: "Pending" },
+  { value: "PROCESSING", label: "Processing" },
+  { value: "SHIPPED", label: "Shipped" },
+  { value: "DELIVERED", label: "Delivered" },
+];
 
 export function AdminOrderListClient({
   initialItems,
@@ -62,12 +112,16 @@ export function AdminOrderListClient({
     [],
   );
 
-  function applyFilters(nextPage = 1) {
+  function applyFilters(
+    nextPage = 1,
+    nextStatus = status,
+    nextPayment = paymentStatus,
+  ) {
     const params = new URLSearchParams();
     if (search.trim()) params.set("q", search.trim());
-    if (status && status !== "ALL") params.set("status", status);
-    if (paymentStatus && paymentStatus !== "ALL") {
-      params.set("payment", paymentStatus);
+    if (nextStatus && nextStatus !== "ALL") params.set("status", nextStatus);
+    if (nextPayment && nextPayment !== "ALL") {
+      params.set("payment", nextPayment);
     }
     if (nextPage > 1) params.set("page", String(nextPage));
     startTransition(() => {
@@ -77,6 +131,31 @@ export function AdminOrderListClient({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {SUMMARY_CHIPS.map((chip) => {
+          const active = status === chip.value;
+          return (
+            <button
+              key={chip.value}
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setStatus(chip.value);
+                applyFilters(1, chip.value, paymentStatus);
+              }}
+              className={cn(
+                "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                active
+                  ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                  : "border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
+              )}
+            >
+              {chip.label}
+            </button>
+          );
+        })}
+      </div>
+
       <form
         className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4"
         onSubmit={(event) => {
@@ -88,12 +167,12 @@ export function AdminOrderListClient({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Search order number"
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm"
+          className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-sm"
         />
         <select
           value={status}
           onChange={(event) => setStatus(event.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm"
+          className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-sm"
         >
           {statusOptions.map((option) => (
             <option key={option} value={option}>
@@ -104,7 +183,7 @@ export function AdminOrderListClient({
         <select
           value={paymentStatus}
           onChange={(event) => setPaymentStatus(event.target.value)}
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm"
+          className="h-10 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 text-sm"
         >
           {paymentOptions.map((option) => (
             <option key={option} value={option}>
@@ -115,51 +194,65 @@ export function AdminOrderListClient({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-[var(--color-button-background)] px-3 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
+          className={cn(adminBtn("primary"), "disabled:opacity-50")}
         >
           Filter
         </button>
       </form>
 
       {!initialItems.length ? (
-        <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center text-sm text-[var(--color-muted)]">
-          No orders match these filters.
-        </p>
+        <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-12 text-center">
+          <p className="text-sm font-semibold">No orders yet</p>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            When customers place orders, they will show up here.
+          </p>
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+        <div className="overflow-x-auto rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)]">
           <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-muted)]">
+            <thead className="border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-foreground)_4%)] text-[var(--color-muted)]">
               <tr>
-                <th className="px-3 py-2 font-medium">Order</th>
-                <th className="px-3 py-2 font-medium">Customer</th>
-                <th className="px-3 py-2 font-medium">Date</th>
-                <th className="px-3 py-2 font-medium">Amount</th>
-                <th className="px-3 py-2 font-medium">Payment</th>
-                <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Actions</th>
+                <th className="px-4 py-3 font-medium">Order</th>
+                <th className="px-4 py-3 font-medium">Customer</th>
+                <th className="px-4 py-3 font-medium">Date</th>
+                <th className="px-4 py-3 font-medium">Total</th>
+                <th className="px-4 py-3 font-medium">Payment</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
               {initialItems.map((order) => (
-                <tr key={order.id}>
-                  <td className="px-3 py-2 font-medium">{order.orderNumber}</td>
-                  <td className="px-3 py-2">
+                <tr
+                  key={order.id}
+                  className="transition-colors hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,transparent)]"
+                >
+                  <td className="px-4 py-3.5 font-semibold">
+                    {order.orderNumber}
+                  </td>
+                  <td className="px-4 py-3.5">
                     {order.customerName || "Customer"}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
-                    {new Date(order.createdAt).toLocaleDateString()}
+                  <td className="whitespace-nowrap px-4 py-3.5">
+                    {formatDate(order.createdAt)}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">
+                  <td className="whitespace-nowrap px-4 py-3.5">
                     {formatMoney(order.grandTotal, order.currency)}
                   </td>
-                  <td className="px-3 py-2">{order.paymentStatus ?? "—"}</td>
-                  <td className="px-3 py-2">
-                    {orderStatusLabel(order.status)}
+                  <td className="px-4 py-3.5">
+                    <AdminStatusBadge tone={paymentTone(order.paymentStatus)}>
+                      {order.paymentStatus ?? "—"}
+                    </AdminStatusBadge>
                   </td>
-                  <td className="px-3 py-2">
+                  <td className="px-4 py-3.5">
+                    <AdminStatusBadge tone={statusTone(order.status)}>
+                      {orderStatusLabel(order.status)}
+                    </AdminStatusBadge>
+                  </td>
+                  <td className="px-4 py-3.5">
                     <Link
                       href={getAdminPath(`/orders/${order.id}`)}
-                      className="underline"
+                      className="text-sm font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
                     >
                       {canUpdate ? "Manage" : "View"}
                     </Link>

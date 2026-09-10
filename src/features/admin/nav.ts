@@ -7,7 +7,19 @@ export type AdminNavIcon =
   | "orders"
   | "customers"
   | "content"
-  | "settings";
+  | "settings"
+  | "categories"
+  | "homepage"
+  | "pages"
+  | "banners"
+  | "media";
+
+export type AdminNavSection =
+  | "main"
+  | "catalog"
+  | "sales"
+  | "content"
+  | "store";
 
 export type AdminNavLink = {
   kind: "link";
@@ -17,6 +29,7 @@ export type AdminNavLink = {
   /** Any of these permissions grants visibility. */
   permissions: Permission[];
   icon?: AdminNavIcon;
+  section?: AdminNavSection;
 };
 
 export type AdminNavGroup = {
@@ -24,6 +37,7 @@ export type AdminNavGroup = {
   id: string;
   label: string;
   icon: AdminNavIcon;
+  section?: AdminNavSection;
   children: AdminNavLink[];
 };
 
@@ -38,6 +52,11 @@ export type AdminNavItem = {
 
 const p = getAdminPath;
 
+/**
+ * Business-friendly navigation.
+ * Flat links with section labels for the redesigned sidebar.
+ * Groups preserved where nested destinations still exist for permissions tests.
+ */
 export const ADMIN_NAV_TREE: AdminNavEntry[] = [
   {
     kind: "link",
@@ -46,12 +65,14 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     href: p("/dashboard"),
     permissions: ["dashboard.view"],
     icon: "dashboard",
+    section: "main",
   },
   {
     kind: "group",
     id: "products",
     label: "Products",
     icon: "products",
+    section: "catalog",
     children: [
       {
         kind: "link",
@@ -59,6 +80,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "All Products",
         href: p("/catalog/products"),
         permissions: ["products.view"],
+        icon: "products",
+        section: "catalog",
       },
       {
         kind: "link",
@@ -66,6 +89,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Categories",
         href: p("/catalog/categories"),
         permissions: ["categories.view"],
+        icon: "categories",
+        section: "catalog",
       },
     ],
   },
@@ -76,6 +101,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     href: p("/orders"),
     permissions: ["orders.view"],
     icon: "orders",
+    section: "sales",
   },
   {
     kind: "link",
@@ -84,12 +110,14 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     href: p("/customers"),
     permissions: ["customers.view"],
     icon: "customers",
+    section: "sales",
   },
   {
     kind: "group",
     id: "content",
     label: "Content",
     icon: "content",
+    section: "content",
     children: [
       {
         kind: "link",
@@ -97,6 +125,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Homepage",
         href: p("/content/homepage"),
         permissions: ["content.view", "cms.view"],
+        icon: "homepage",
+        section: "content",
       },
       {
         kind: "link",
@@ -104,6 +134,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Pages",
         href: p("/content/pages"),
         permissions: ["content.view", "cms.view"],
+        icon: "pages",
+        section: "content",
       },
       {
         kind: "link",
@@ -111,6 +143,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Banners",
         href: p("/content/banners"),
         permissions: ["content.view", "cms.view"],
+        icon: "banners",
+        section: "content",
       },
       {
         kind: "link",
@@ -118,6 +152,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Images & Files",
         href: p("/media"),
         permissions: ["media.view"],
+        icon: "media",
+        section: "content",
       },
     ],
   },
@@ -126,6 +162,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     id: "settings",
     label: "Store Settings",
     icon: "settings",
+    section: "store",
     children: [
       {
         kind: "link",
@@ -142,6 +179,8 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
           "payments.view",
           "coupons.view",
         ],
+        icon: "settings",
+        section: "store",
       },
       {
         kind: "link",
@@ -149,6 +188,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Store Information",
         href: p("/settings/general"),
         permissions: ["settings.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -156,6 +196,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Logo & Branding",
         href: p("/settings/branding"),
         permissions: ["branding.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -163,6 +204,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Appearance",
         href: p("/settings/theme"),
         permissions: ["theme.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -170,6 +212,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Menu & Navigation",
         href: p("/settings/navigation"),
         permissions: ["navigation.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -177,6 +220,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Shipping",
         href: p("/settings/shipping"),
         permissions: ["shipping.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -184,6 +228,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Payments",
         href: p("/settings/payments"),
         permissions: ["payments.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -191,6 +236,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Coupons",
         href: p("/settings/coupons"),
         permissions: ["coupons.view"],
+        section: "store",
       },
       {
         kind: "link",
@@ -198,10 +244,33 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Google & SEO",
         href: p("/settings/seo"),
         permissions: ["seo.view"],
+        section: "store",
       },
     ],
   },
 ];
+
+export const ADMIN_NAV_SECTION_LABELS: Record<AdminNavSection, string> = {
+  main: "Main",
+  catalog: "Catalog",
+  sales: "Sales",
+  content: "Content",
+  store: "Store",
+};
+
+/** Sidebar prefers a compact flat list: Products/Categories + Content children + Store Settings hub only. */
+export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
+  "dashboard",
+  "products-all",
+  "products-categories",
+  "orders",
+  "customers",
+  "content-homepage",
+  "content-pages",
+  "content-banners",
+  "content-media",
+  "settings-hub",
+]);
 
 function canSee(permissions: Set<Permission>, required: Permission[]): boolean {
   return required.some((permission) => permissions.has(permission));
@@ -224,18 +293,14 @@ export function getAdminNavTreeForPermissions(
     const children = entry.children.filter((child) =>
       canSee(permissions, child.permissions),
     );
-    if (children.length > 0) {
-      result.push({ ...entry, children });
-    }
+    if (children.length === 0) continue;
+    result.push({ ...entry, children });
   }
 
   return result;
 }
 
-/**
- * Flat list of visible links (for tests / compatibility).
- * Parent group labels are not included — only actionable destinations.
- */
+/** Flat links for permission-filtered navigation (includes nested children). */
 export function getAdminNavForPermissions(
   permissions: Set<Permission>,
 ): AdminNavItem[] {
@@ -260,30 +325,55 @@ export function getAdminNavForPermissions(
   return items;
 }
 
-/** Human-readable labels for breadcrumbs by path suffix. */
+/** Flatten tree into sidebar-ready links with section labels. */
+export function getAdminSidebarLinks(
+  tree: AdminNavEntry[],
+): Array<AdminNavLink & { section: AdminNavSection }> {
+  const links: Array<AdminNavLink & { section: AdminNavSection }> = [];
+  for (const entry of tree) {
+    if (entry.kind === "link") {
+      if (ADMIN_SIDEBAR_PRIMARY_LINK_IDS.has(entry.id)) {
+        links.push({
+          ...entry,
+          section: entry.section ?? "main",
+        });
+      }
+      continue;
+    }
+    for (const child of entry.children) {
+      if (ADMIN_SIDEBAR_PRIMARY_LINK_IDS.has(child.id)) {
+        links.push({
+          ...child,
+          section: child.section ?? entry.section ?? "main",
+        });
+      }
+    }
+  }
+  return links;
+}
+
 export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
+  catalog: "Catalog",
+  products: "Products",
+  categories: "Categories",
   orders: "Orders",
   customers: "Customers",
-  media: "Images & Files",
-  cms: "Content",
   content: "Content",
   homepage: "Homepage",
   pages: "Pages",
   banners: "Banners",
-  catalog: "Products",
-  products: "All Products",
-  new: "Add Product",
-  categories: "Categories",
+  media: "Images & Files",
   settings: "Store Settings",
   general: "Store Information",
   branding: "Logo & Branding",
   theme: "Appearance",
-  header: "Header",
-  footer: "Footer",
   navigation: "Menu & Navigation",
   shipping: "Shipping",
   payments: "Payments",
   coupons: "Coupons",
   seo: "Google & SEO",
+  header: "Header",
+  footer: "Footer",
+  new: "Add Product",
 };

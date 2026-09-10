@@ -4,6 +4,7 @@ export { createAppMuiTheme } from "./create-mui-theme";
 export {
   applyColorTokens,
   colorTokensToCssVars,
+  normalizeColorTokensForMode,
   serializeCssVars,
   resolveThemeMode,
 } from "./css-vars";

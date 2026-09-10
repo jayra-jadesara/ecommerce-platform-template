@@ -1,13 +1,17 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import Chip from "@mui/material/Chip";
 import { ProductPurchaseActions } from "@/features/cart/components/ProductPurchaseActions";
+import { DeliveryInfoBlock } from "@/features/catalog/components/DeliveryInfoBlock";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
 import type { VisualEffectsConfig, AnimationConfig } from "@/types";
+import { sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
+import { cn } from "@/lib/cn";
 
 const Product3DViewer = dynamic(
   () =>
@@ -72,6 +76,16 @@ export function ProductDetailClient({
     );
   }
 
+  const discountPct =
+    selected.compareAtPrice != null &&
+    selected.compareAtPrice > selected.price
+      ? Math.round(
+          ((selected.compareAtPrice - selected.price) /
+            selected.compareAtPrice) *
+            100,
+        )
+      : null;
+
   const galleryFallback = (
     <div className="relative h-full w-full">
       {activeImage ? (
@@ -80,17 +94,23 @@ export function ProductDetailClient({
           alt={activeImage.altText || product.name}
           fill
           priority
-          className="object-contain p-5"
-          sizes="(max-width: 1024px) 100vw, 480px"
+          className="object-contain p-4 md:p-6"
+          sizes="(max-width: 1024px) 100vw, 520px"
         />
       ) : (
-        <p
-          className="absolute inset-0 flex items-center justify-center text-sm text-[var(--color-muted)]"
+        <div
+          className="absolute inset-0 flex items-center justify-center"
           role="img"
           aria-label="Product image placeholder"
+          style={{
+            background:
+              "radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 60%), var(--color-surface)",
+          }}
         >
-          No product image available
-        </p>
+          <span className="text-sm text-[var(--color-muted)]">
+            No product image
+          </span>
+        </div>
       )}
     </div>
   );
@@ -101,10 +121,10 @@ export function ProductDetailClient({
     visualEffects.productEnabled;
 
   const galleryShellClass =
-    "relative mx-auto aspect-square max-h-[28rem] w-full overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0";
+    "relative mx-auto aspect-square w-full overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-border)_30%)] lg:mx-0";
 
   return (
-    <div className="grid gap-8 pb-24 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)] lg:pb-0 xl:grid-cols-[minmax(0,480px)_minmax(0,1fr)] lg:gap-12">
+    <div className="grid gap-8 pb-28 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-start lg:gap-12 lg:pb-0 xl:grid-cols-[minmax(0,540px)_minmax(0,1fr)]">
       <div className="space-y-3">
         {product3dEligible ? (
           <Product3DViewer
@@ -130,7 +150,7 @@ export function ProductDetailClient({
                     type="button"
                     aria-label={`Show ${image.altText || "product image"}`}
                     aria-pressed={active}
-                    className={`relative h-16 w-16 overflow-hidden rounded-md border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
+                    className={`relative h-16 w-16 overflow-hidden rounded-[var(--radius-default,0.5rem)] border focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] ${
                       active
                         ? "border-[var(--color-primary)]"
                         : "border-[var(--color-border)]"
@@ -153,14 +173,34 @@ export function ProductDetailClient({
         ) : null}
       </div>
 
-      <div className="space-y-5">
+      <div className="space-y-6">
         <div>
+          <nav className="mb-3 text-xs text-[var(--color-muted)]" aria-label="Breadcrumb">
+            <ol className="flex flex-wrap items-center gap-1.5">
+              <li>
+                <Link href="/products" className="hover:text-[var(--color-foreground)]">
+                  Products
+                </Link>
+              </li>
+              {product.category ? (
+                <>
+                  <li aria-hidden>/</li>
+                  <li>
+                    <Link
+                      href={`/categories/${product.category.slug}`}
+                      className="hover:text-[var(--color-foreground)]"
+                    >
+                      {product.category.name}
+                    </Link>
+                  </li>
+                </>
+              ) : null}
+            </ol>
+          </nav>
           {product.category ? (
-            <p className="text-sm text-[var(--color-muted)]">
-              {product.category.name}
-            </p>
+            <p className={sfEyebrow()}>{product.category.name}</p>
           ) : null}
-          <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight">
+          <h1 className={`mt-1 ${sfDisplay()} text-3xl md:text-4xl`}>
             {product.name}
           </h1>
           {product.brand ? (
@@ -179,62 +219,92 @@ export function ProductDetailClient({
         </div>
 
         {product.shortDescription ? (
-          <p className="text-[var(--color-muted)]">{product.shortDescription}</p>
+          <p className="text-[var(--color-muted)] leading-relaxed">
+            {product.shortDescription}
+          </p>
         ) : null}
 
-        <div>
-          <p className="text-2xl font-semibold text-[var(--color-foreground)]">
+        <div className="flex flex-wrap items-end gap-3">
+          <p className="text-3xl font-semibold tabular-nums text-[var(--color-foreground)]">
             {formatMoney(selected.price, currency)}
           </p>
           {selected.compareAtPrice != null &&
           selected.compareAtPrice > selected.price ? (
-            <p className="text-sm text-[var(--color-muted)] line-through">
-              {formatMoney(selected.compareAtPrice, currency)}
-            </p>
+            <>
+              <p className="pb-1 text-sm tabular-nums text-[var(--color-muted)] line-through">
+                {formatMoney(selected.compareAtPrice, currency)}
+              </p>
+              {discountPct != null ? (
+                <span className="mb-1 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] px-2.5 py-0.5 text-xs font-semibold text-[var(--color-primary)]">
+                  −{discountPct}%
+                </span>
+              ) : null}
+            </>
           ) : null}
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Chip
-              size="small"
-              label={selected.stockStatus.replaceAll("_", " ")}
-              color={stockColor[selected.stockStatus]}
-            />
-            <span className="text-xs text-[var(--color-muted)]">
-              SKU {selected.sku}
-              {selected.stockStatus !== "OUT_OF_STOCK" || selected.available > 0
-                ? ` · ${selected.available} available`
-                : ""}
-            </span>
-          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip
+            size="small"
+            label={
+              selected.stockStatus === "OUT_OF_STOCK"
+                ? "Out of stock"
+                : selected.stockStatus === "LOW_STOCK"
+                  ? "Limited stock"
+                  : "In stock"
+            }
+            color={stockColor[selected.stockStatus]}
+          />
         </div>
 
         <fieldset>
           <legend className="mb-2 text-sm font-medium">
-            {product.variants.length > 1 ? "Choose size / pack" : "Size / pack"}
+            {product.variants.length > 1 ? "Size / option" : "Selected option"}
           </legend>
           {product.variants.length > 1 ? (
-            <select
-              className="w-full max-w-sm rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
-              value={selected.id}
-              onChange={(event) => {
-                const id = event.target.value;
-                setVariantId(id);
-                const nextImages = product.images.filter(
-                  (image) => image.variantId === id || !image.variantId,
-                );
-                const preferred =
-                  nextImages.find((image) => image.variantId === id) ??
-                  nextImages.find((image) => image.isPrimary) ??
-                  nextImages[0];
-                if (preferred) setActiveImageId(preferred.id);
-              }}
-              aria-label="Choose size or pack"
+            <div
+              className="flex flex-wrap gap-2"
+              role="listbox"
+              aria-label="Choose product option"
             >
-              {product.variants.map((variant) => (
-                <option key={variant.id} value={variant.id}>
-                  {variant.name} — {formatMoney(variant.price, currency)}
-                </option>
-              ))}
-            </select>
+              {product.variants.map((variant) => {
+                const active = variant.id === selected.id;
+                const soldOut = variant.stockStatus === "OUT_OF_STOCK";
+                return (
+                  <button
+                    key={variant.id}
+                    type="button"
+                    role="option"
+                    aria-selected={active}
+                    disabled={soldOut}
+                    className={cn(
+                      "min-h-11 rounded-[var(--radius-default,0.5rem)] border px-3.5 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
+                      active
+                        ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[var(--color-primary)]",
+                      soldOut && "opacity-40",
+                    )}
+                    onClick={() => {
+                      setVariantId(variant.id);
+                      const nextImages = product.images.filter(
+                        (image) =>
+                          image.variantId === variant.id || !image.variantId,
+                      );
+                      const preferred =
+                        nextImages.find((image) => image.variantId === variant.id) ??
+                        nextImages.find((image) => image.isPrimary) ??
+                        nextImages[0];
+                      if (preferred) setActiveImageId(preferred.id);
+                    }}
+                  >
+                    <span className="block">{variant.name}</span>
+                    <span className="block text-xs font-normal text-[var(--color-muted)]">
+                      {formatMoney(variant.price, currency)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <p className="text-sm text-[var(--color-muted)]">{selected.name}</p>
           )}
@@ -254,26 +324,28 @@ export function ProductDetailClient({
           />
         </div>
 
+        <DeliveryInfoBlock currency={currency} />
+
         {product.description ? (
-          <section>
+          <section className="border-t border-[var(--color-border)] pt-6">
             <h2 className="font-semibold">Description</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--color-muted)]">
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-muted)]">
               {product.description}
             </p>
           </section>
         ) : null}
         {product.ingredients ? (
           <section>
-            <h2 className="font-semibold">Ingredients</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--color-muted)]">
+            <h2 className="font-semibold">Specifications</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-muted)]">
               {product.ingredients}
             </p>
           </section>
         ) : null}
         {product.usageInstructions ? (
           <section>
-            <h2 className="font-semibold">Usage</h2>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-[var(--color-muted)]">
+            <h2 className="font-semibold">How to use</h2>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-muted)]">
               {product.usageInstructions}
             </p>
           </section>

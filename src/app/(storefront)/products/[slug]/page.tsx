@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/features/catalog/components/ProductDetailClient";
 import { getStorefrontProductBySlug } from "@/features/catalog/storefront";
 import { getCurrentUser } from "@/features/auth/session";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveProductSeo } from "@/features/seo/resolve";
 import {
@@ -11,7 +11,7 @@ import {
   buildProductJsonLd,
   JsonLdScript,
 } from "@/features/seo";
-import { Container } from "@/components/layout";
+import { BackLink, Container } from "@/components/layout";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +106,10 @@ export default async function ProductDetailPage({
   ];
 
   return (
-    <Container className="py-10">
+    <Container className="relative z-0 py-8 md:py-12">
+      <div className="mb-5">
+        <BackLink href="/products" label="Back to products" />
+      </div>
       <JsonLdScript data={[productLd, buildBreadcrumbJsonLd(crumbs)]} />
       <ProductDetailClient
         product={product}

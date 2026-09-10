@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
-import Button from "@mui/material/Button";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
@@ -25,7 +24,16 @@ import {
   type CategoryFormValues,
 } from "@/features/catalog/validation";
 import { MediaPicker } from "@/features/media/components/MediaPicker";
-import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
+import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminFieldGroup,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
+import { resolveCmsImageUrl } from "@/features/cms/section-styles";
+import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 
 function CategoryImagePicker({
   disabled,
@@ -37,15 +45,14 @@ function CategoryImagePicker({
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button
+      <button
         type="button"
-        size="small"
-        variant="outlined"
+        className={adminBtn("outline")}
         disabled={disabled}
         onClick={() => setOpen(true)}
       >
-        Select from Media Library
-      </Button>
+        Choose image
+      </button>
       <MediaPicker
         open={open}
         folder="categories"
@@ -99,13 +106,12 @@ export function CategoryManager({
     });
 
   const watchedSeoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
-  const watchedSeoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
+  const watchedSeoDescription =
+    useWatch({ control, name: "seoDescription" }) ?? "";
   const watchedName = useWatch({ control, name: "name" }) ?? "";
+  const watchedDescription = useWatch({ control, name: "description" }) ?? "";
   const watchedSlug = useWatch({ control, name: "slug" }) ?? "";
-  const siteUrl =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : "https://example.com";
+  const canEditForm = editingId ? canUpdate : canCreate;
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -130,25 +136,31 @@ export function CategoryManager({
   );
 
   return (
-    <div className="grid w-full min-w-0 gap-3 lg:grid-cols-2 lg:gap-4">
-      <section className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 className="font-semibold">
-            {editingId ? "Edit category" : "Create category"}
-          </h2>
+    <div className="grid w-full min-w-0 gap-4 lg:grid-cols-2 lg:gap-5">
+      <section className={`${adminCard()} ${adminCardPadding()} min-w-0`}>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+              {editingId ? "Edit category" : "Create category"}
+            </h2>
+            <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+              Groups products on your store. Google text fills in automatically.
+            </p>
+          </div>
           {editingId ? (
-            <Button
+            <button
               type="button"
-              size="small"
+              className={adminBtn("ghost")}
               onClick={() => {
                 setEditingId(null);
                 reset(DEFAULT_CATEGORY_FORM);
               }}
             >
-              Cancel edit
-            </Button>
+              Cancel
+            </button>
           ) : null}
         </div>
+
         {error ? (
           <Alert severity="error" className="mb-3">
             {error}
@@ -159,71 +171,137 @@ export function CategoryManager({
             {success}
           </Alert>
         ) : null}
+
         <form
-          className="space-y-2.5"
+          style={adminStackStyle}
+          className="mt-4"
           onSubmit={(event) => {
             event.preventDefault();
             onSubmit();
           }}
         >
-          <Controller
-            name="name"
-            control={control}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Name"
-                fullWidth
-                required
-                disabled={!(editingId ? canUpdate : canCreate)}
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message}
-                onChange={(event) => {
-                  field.onChange(event);
-                  if (!editingId) {
-                    setValue("slug", slugify(event.target.value), {
-                      shouldValidate: true,
-                    });
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">1. Basics</p>
+            <Controller
+              name="name"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  label="Category name"
+                  fullWidth
+                  required
+                  disabled={!canEditForm}
+                  error={Boolean(fieldState.error)}
+                  helperText={
+                    fieldState.error?.message ??
+                    (editingId
+                      ? undefined
+                      : `Store address: /categories/${slugify(field.value) || "…"}`)
                   }
-                }}
-              />
-            )}
-          />
-          <Controller
-            name="description"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                size="small"
-                label="Description"
-                fullWidth
-                multiline
-                minRows={2}
-                disabled={!(editingId ? canUpdate : canCreate)}
-              />
-            )}
-          />
-          <details className="rounded-lg border border-[var(--color-border)] p-3">
-            <summary className="cursor-pointer text-sm font-medium">
+                  onChange={(event) => {
+                    field.onChange(event);
+                    if (!editingId) {
+                      setValue("slug", slugify(event.target.value), {
+                        shouldValidate: true,
+                      });
+                    }
+                  }}
+                />
+              )}
+            />
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Short description"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  disabled={!canEditForm}
+                  helperText="Shown on the category page and used for Google text."
+                />
+              )}
+            />
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">2. Image (optional)</p>
+            <Controller
+              name="imagePath"
+              control={control}
+              render={({ field }) => {
+                const preview =
+                  resolvePublicStorageUrl("categories", field.value) ??
+                  resolveCmsImageUrl(field.value);
+                return (
+                  <div
+                    className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "0.75rem",
+                    }}
+                  >
+                    {preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={preview}
+                        alt=""
+                        className="h-36 w-full rounded-lg object-cover"
+                      />
+                    ) : (
+                      <p className="text-sm text-[var(--color-muted)]">
+                        No image selected
+                      </p>
+                    )}
+                    <div className="flex flex-wrap gap-2">
+                      <CategoryImagePicker
+                        disabled={!canEditForm}
+                        onPick={(path) =>
+                          setValue("imagePath", path, { shouldDirty: true })
+                        }
+                      />
+                      {field.value ? (
+                        <button
+                          type="button"
+                          className={adminBtn("ghost")}
+                          disabled={!canEditForm}
+                          onClick={() =>
+                            setValue("imagePath", null, { shouldDirty: true })
+                          }
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              }}
+            />
+          </div>
+
+          <details className={adminFieldGroup()}>
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--color-foreground)]">
               More options
             </summary>
-            <div className="mt-3 space-y-2.5">
+            <div className="mt-3" style={adminStackStyle}>
               <Controller
                 name="parentId"
                 control={control}
                 render={({ field }) => (
                   <TextField
                     select
-                    size="small"
                     label="Parent category"
                     fullWidth
-                    disabled={!(editingId ? canUpdate : canCreate)}
+                    disabled={!canEditForm}
                     value={field.value ?? ""}
                     onChange={(event) =>
                       field.onChange(event.target.value || null)
                     }
+                    helperText="Optional — nest under another category"
                   >
                     <MenuItem value="">None (top level)</MenuItem>
                     {parentOptions.map((category) => (
@@ -240,80 +318,39 @@ export function CategoryManager({
                 render={({ field }) => (
                   <TextField
                     {...field}
-                    size="small"
                     type="number"
-                    label="Sort order"
+                    label="Display order"
                     fullWidth
-                    disabled={!(editingId ? canUpdate : canCreate)}
+                    disabled={!canEditForm}
+                    helperText="Lower numbers appear first in lists"
                     onChange={(event) =>
                       field.onChange(Number(event.target.value) || 0)
                     }
                   />
                 )}
               />
-              <Controller
-                name="imagePath"
-                control={control}
-                render={({ field }) => (
-                  <div className="space-y-2">
-                    <TextField
-                      {...field}
-                      size="small"
-                      value={field.value ?? ""}
-                      label="Image (optional)"
-                      fullWidth
-                      disabled={!(editingId ? canUpdate : canCreate)}
-                      helperText="Pick from Media Library or leave empty."
-                      onChange={(event) =>
-                        field.onChange(event.target.value || null)
-                      }
-                    />
-                    <CategoryImagePicker
-                      disabled={!(editingId ? canUpdate : canCreate)}
-                      onPick={(path) =>
-                        setValue("imagePath", path, { shouldDirty: true })
-                      }
-                    />
-                  </div>
-                )}
-              />
-              <p className="pt-1 text-sm font-medium">SEO</p>
-              <Controller
-                name="seoTitle"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    size="small"
-                    label="SEO title"
-                    fullWidth
-                    disabled={!(editingId ? canUpdate : canCreate)}
-                    helperText="Optional. Falls back to category name."
-                  />
-                )}
-              />
-              <Controller
-                name="seoDescription"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    size="small"
-                    label="SEO description"
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    disabled={!(editingId ? canUpdate : canCreate)}
-                  />
-                )}
-              />
-              <GoogleSeoPreview
-                title={watchedSeoTitle || watchedName}
-                url={`${siteUrl}/categories/${watchedSlug || "category-slug"}`}
-                description={watchedSeoDescription}
-              />
             </div>
           </details>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">3. Google &amp; SEO</p>
+            <AdminSeoFields
+              resetKey={editingId ?? "new"}
+              sourceTitle={watchedName}
+              sourceDescription={watchedDescription}
+              seoTitle={watchedSeoTitle}
+              seoDescription={watchedSeoDescription}
+              onSeoTitleChange={(value) =>
+                setValue("seoTitle", value, { shouldDirty: true })
+              }
+              onSeoDescriptionChange={(value) =>
+                setValue("seoDescription", value, { shouldDirty: true })
+              }
+              previewUrl={`/categories/${watchedSlug || "category-slug"}`}
+              disabled={!canEditForm}
+            />
+          </div>
+
           <Controller
             name="isActive"
             control={control}
@@ -323,53 +360,87 @@ export function CategoryManager({
                   <Switch
                     checked={field.value}
                     onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!(editingId ? canUpdate : canCreate)}
+                    disabled={!canEditForm}
                   />
                 }
-                label="Active"
+                label="Show on store"
               />
             )}
           />
-          <Button
+
+          <button
             type="submit"
-            variant="contained"
-            disabled={pending || !(editingId ? canUpdate : canCreate)}
+            className={adminBtn("primary")}
+            disabled={pending || !canEditForm}
           >
-            {pending ? "Saving…" : editingId ? "Save changes" : "Create category"}
-          </Button>
+            {pending
+              ? "Saving…"
+              : editingId
+                ? "Save category"
+                : "Create category"}
+          </button>
         </form>
       </section>
 
-      <section className="min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
-        <h2 className="mb-3 font-semibold">Categories</h2>
+      <section className={`${adminCard()} ${adminCardPadding()} min-w-0`}>
+        <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+          Categories
+        </h2>
+        <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+          {initialCategories.length} categor
+          {initialCategories.length === 1 ? "y" : "ies"}
+        </p>
+
         {initialCategories.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">
+          <div className="mt-6 rounded-xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center text-sm text-[var(--color-muted)]">
             No categories yet. Create the first one to organize products.
-          </p>
+          </div>
         ) : (
-          <ul className="divide-y divide-[var(--color-border)]">
+          <ul
+            className="mt-4"
+            style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+          >
             {initialCategories.map((category) => {
               const parent = initialCategories.find(
                 (item) => item.id === category.parent_id,
               );
+              const preview =
+                resolvePublicStorageUrl("categories", category.image_path) ??
+                resolveCmsImageUrl(category.image_path);
               return (
                 <li
                   key={category.id}
-                  className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-wrap items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
                 >
-                  <div>
-                    <p className="font-medium">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]">
+                    {preview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={preview}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">
+                        No img
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-[var(--color-foreground)]">
                       {parent ? `${parent.name} / ` : null}
                       {category.name}
                     </p>
                     <p className="text-xs text-[var(--color-muted)]">
-                      /{category.slug} · sort {category.sort_order} ·{" "}
-                      {category.is_active ? "active" : "inactive"}
+                      /categories/{category.slug}
+                      {" · "}
+                      {category.is_active ? "Visible" : "Hidden"}
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button
-                      size="small"
+                    <button
+                      type="button"
+                      className={adminBtn("outline")}
                       disabled={!canUpdate}
                       onClick={() => {
                         setEditingId(category.id);
@@ -378,9 +449,10 @@ export function CategoryManager({
                       }}
                     >
                       Edit
-                    </Button>
-                    <Button
-                      size="small"
+                    </button>
+                    <button
+                      type="button"
+                      className={adminBtn("ghost")}
                       disabled={!canUpdate || !category.is_active}
                       onClick={() => {
                         startTransition(async () => {
@@ -395,16 +467,16 @@ export function CategoryManager({
                         });
                       }}
                     >
-                      Deactivate
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
+                      Hide
+                    </button>
+                    <button
+                      type="button"
+                      className={adminBtn("danger")}
                       disabled={!canDelete}
                       onClick={() => {
                         if (
                           !window.confirm(
-                            "Delete this category? This is blocked if products or children still reference it.",
+                            "Delete this category? Blocked if products or child categories still use it.",
                           )
                         ) {
                           return;
@@ -423,7 +495,7 @@ export function CategoryManager({
                       }}
                     >
                       Delete
-                    </Button>
+                    </button>
                   </div>
                 </li>
               );

@@ -1,10 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Metadata } from "next";
 import { DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { buildPageMetadata } from "@/lib/metadata";
-import { colorTokensToCssVars } from "@/features/theme/css-vars";
-import { buildThemeBootScript } from "@/features/theme/theme-boot-script";
+import { colorTokensToCssVars, normalizeColorTokensForMode } from "@/features/theme/css-vars";
 import { AppProviders } from "@/providers";
 import { ServiceWorkerRegister } from "@/features/pwa/ServiceWorkerRegister";
 import { OfflineBanner } from "@/features/pwa/OfflineBanner";
@@ -68,8 +67,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     // keep default
   }
 
-  const initialTokens =
-    config.theme.defaultMode === "dark" ? config.theme.dark : config.theme.light;
+  const initialTokens = normalizeColorTokensForMode(
+    config.theme.defaultMode === "dark" ? config.theme.dark : config.theme.light,
+    config.theme.defaultMode === "dark" ? "dark" : "light",
+  );
 
   const layoutVars = {
     ...colorTokensToCssVars(initialTokens),
@@ -81,7 +82,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       : {}),
   } as CSSProperties;
 
-  const themeBoot = buildThemeBootScript(config);
   const defaultIsDark = config.theme.defaultMode === "dark";
 
   return (
@@ -93,7 +93,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       data-theme-default={config.theme.defaultMode}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+        {/*
+          Theme FOUC boot is injected via ThemeBootScript + useServerInsertedHTML
+          (not a <script> in the React tree — avoids React 19 client warning).
+        */}
         {config.brand.faviconUrl ? (
           <link rel="icon" href={config.brand.faviconUrl} />
         ) : (

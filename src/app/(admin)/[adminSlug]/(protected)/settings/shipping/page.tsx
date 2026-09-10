@@ -19,7 +19,7 @@ export default async function AdminShippingSettingsPage() {
     <div>
       <AdminPageHeader
         title="Shipping"
-        description="Set your delivery charges and free-shipping rules."
+        description="Choose how much customers pay for delivery, and when it becomes free."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Shipping" },

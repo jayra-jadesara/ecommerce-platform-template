@@ -1,5 +1,6 @@
 import {
   colorTokensToCssVars,
+  normalizeColorTokensForMode,
   serializeCssVars,
 } from "@/features/theme/css-vars";
 import type { PlatformConfig } from "@/types";
@@ -11,8 +12,12 @@ const STORAGE_KEY = "platform-theme-mode";
  * so dark-mode users don't flash the light (white) background.
  */
 export function buildThemeBootScript(config: PlatformConfig): string {
-  const light = serializeCssVars(colorTokensToCssVars(config.theme.light));
-  const dark = serializeCssVars(colorTokensToCssVars(config.theme.dark));
+  const light = serializeCssVars(
+    colorTokensToCssVars(normalizeColorTokensForMode(config.theme.light, "light")),
+  );
+  const dark = serializeCssVars(
+    colorTokensToCssVars(normalizeColorTokensForMode(config.theme.dark, "dark")),
+  );
   const defaultMode = config.theme.defaultMode === "dark" ? "dark" : "light";
   const enabled = JSON.stringify(config.theme.enabledModes);
 

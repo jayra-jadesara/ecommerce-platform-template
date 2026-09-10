@@ -47,7 +47,7 @@ export default async function PaymentFailedPage({
   }
 
   return (
-    <PageShell title="Payment failed">
+    <PageShell title="Payment failed" backHref="/cart" backLabel="Back to cart">
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-6">
         <p className="text-sm text-[var(--color-muted)]">{reason}</p>
         <div className="mt-6 flex flex-wrap gap-3">

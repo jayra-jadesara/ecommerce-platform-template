@@ -42,7 +42,7 @@ function FloatingShapes({
       ] as [number, number, number],
       scale: 0.35 + (i % 3) * 0.12,
     }));
-  }, [colors, hints.shapeCount]);
+  }, [colors.primary, colors.accent, colors.secondary, hints.shapeCount]);
 
   useFrame((_, delta) => {
     if (reducedMotion || !group.current) return;

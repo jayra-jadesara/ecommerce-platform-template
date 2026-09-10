@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Button from "@mui/material/Button";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
@@ -9,9 +8,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import { useEffect, useState, useTransition } from "react";
 import { listMediaAction } from "@/features/media/actions";
 import type { MediaRow } from "@/features/media/media-service";
-import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
-import { bucketForFolder } from "@/features/media/validation";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import type { MediaFolder } from "@/features/media/validation";
 
 export type MediaPickerSelection = {
   id: string;
@@ -26,13 +23,6 @@ interface MediaPickerProps {
   onClose: () => void;
   onSelect: (selection: MediaPickerSelection) => void;
   folder?: MediaFolder | "all";
-}
-
-function previewUrl(row: MediaRow): string | undefined {
-  if (row.public_url) return row.public_url;
-  const folder = (row.folder || "general") as MediaFolder;
-  const safeFolder = MEDIA_FOLDERS.includes(folder) ? folder : "general";
-  return resolvePublicStorageUrl(bucketForFolder(safeFolder), row.storage_path);
 }
 
 export function MediaPicker({
@@ -60,27 +50,28 @@ export function MediaPicker({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
-      <DialogTitle>Select from Media Library</DialogTitle>
+      <DialogTitle>Choose an image</DialogTitle>
       <DialogContent>
         {pending ? (
-          <p className="text-sm text-[var(--color-muted)]">Loading media…</p>
+          <p className="text-sm text-[var(--color-muted)]">Loading images…</p>
         ) : null}
         {error ? (
           <p className="text-sm text-[var(--color-error)]">{error}</p>
         ) : null}
         {!pending && items.length === 0 ? (
-          <p className="text-sm text-[var(--color-muted)]">
-            No media available yet.
+          <p className="py-8 text-center text-sm text-[var(--color-muted)]">
+            No images in this folder yet. Upload some under Content → Images
+            &amp; Files.
           </p>
         ) : (
           <ul className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {items.map((item) => {
-              const url = previewUrl(item);
+              const url = item.preview_url || undefined;
               return (
                 <li key={item.id}>
                   <button
                     type="button"
-                    className="w-full overflow-hidden rounded-lg border border-[var(--color-border)] text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+                    className="w-full overflow-hidden rounded-xl border border-[var(--color-border)] text-left transition hover:border-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                     onClick={() => {
                       onSelect({
                         id: item.id,
@@ -94,12 +85,11 @@ export function MediaPicker({
                   >
                     <div className="relative aspect-square bg-[var(--color-surface)]">
                       {url ? (
-                        <Image
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
                           src={url}
                           alt={item.alt_text || item.file_name}
-                          fill
-                          className="object-cover"
-                          sizes="160px"
+                          className="h-full w-full object-cover"
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center p-2 text-center text-xs text-[var(--color-muted)]">
@@ -107,7 +97,9 @@ export function MediaPicker({
                         </div>
                       )}
                     </div>
-                    <p className="truncate px-2 py-1 text-xs">{item.file_name}</p>
+                    <p className="truncate px-2 py-1.5 text-xs font-medium">
+                      {item.file_name}
+                    </p>
                   </button>
                 </li>
               );

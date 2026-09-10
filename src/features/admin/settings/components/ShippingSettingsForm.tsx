@@ -18,6 +18,13 @@ import {
 import { calculateOrderPricing } from "@/features/pricing/engine";
 import { majorToMinor } from "@/features/pricing/money";
 import { formatMoney } from "@/features/catalog/money";
+import {
+  adminCard,
+  adminCardPadding,
+  adminFieldGroup,
+  adminFieldsGrid,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
 
 interface ShippingSettingsFormProps {
   initialValues: ShippingSettingsFormValues;
@@ -35,6 +42,25 @@ export function ShippingSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const defaults = useMemo(
+    () => ({
+      ...DEFAULT_SHIPPING_SETTINGS,
+      ...initialValues,
+      method:
+        initialValues.method === "flat_rate" ||
+        initialValues.method === "free" ||
+        initialValues.method === "percentage" ||
+        initialValues.method === "zone"
+          ? initialValues.method
+          : DEFAULT_SHIPPING_SETTINGS.method,
+      enabled: Boolean(initialValues.enabled),
+      defaultShippingFee:
+        initialValues.defaultShippingFee ??
+        DEFAULT_SHIPPING_SETTINGS.defaultShippingFee,
+    }),
+    [initialValues],
+  );
+
   const {
     register,
     control,
@@ -45,16 +71,26 @@ export function ShippingSettingsForm({
     resolver: zodResolver(
       shippingSettingsSchema,
     ) as Resolver<ShippingSettingsFormValues>,
-    defaultValues: initialValues,
+    defaultValues: defaults,
   });
 
   const watched = useWatch({ control });
+  const method =
+    watched.method === "flat_rate" ||
+    watched.method === "free" ||
+    watched.method === "percentage" ||
+    watched.method === "zone"
+      ? watched.method
+      : "flat_rate";
+  const deliveryOn = Boolean(watched.enabled);
+  const showFlatFields = method === "flat_rate" || method === "zone";
+  const showPercentage = method === "percentage";
+  const showFreeThreshold = method === "flat_rate" || method === "zone";
 
   const preview = useMemo(() => {
     const threshold = Number(watched.freeShippingThreshold);
     const fee = Number(watched.defaultShippingFee);
     const enabled = Boolean(watched.enabled);
-    const method = watched.method || "flat_rate";
     const sampleBelow =
       Number.isFinite(threshold) && threshold > 0
         ? Math.max(0, threshold - Math.max(fee, 1))
@@ -107,7 +143,7 @@ export function ShippingSettingsForm({
       sampleBelow,
       sampleAt,
     };
-  }, [watched, currency]);
+  }, [watched, currency, method]);
 
   const onSave = handleSubmit((values) => {
     setError(null);
@@ -130,7 +166,8 @@ export function ShippingSettingsForm({
         event.preventDefault();
         onSave();
       }}
-      className="space-y-4"
+      className="w-full"
+      style={adminStackStyle}
       noValidate
     >
       <SettingsFormToolbar
@@ -141,134 +178,222 @@ export function ShippingSettingsForm({
         success={success}
         onSave={onSave}
         onCancel={() => {
-          reset(initialValues);
+          reset(defaults);
           setError(null);
           setSuccess(null);
         }}
         onResetDefaults={() => reset(DEFAULT_SHIPPING_SETTINGS)}
       />
 
-      <Controller
-        name="enabled"
-        control={control}
-        render={({ field }) => (
-          <FormControlLabel
-            control={
-              <Switch
-                checked={Boolean(field.value)}
-                onChange={(_, checked) => field.onChange(checked)}
-                disabled={!canUpdate || pending}
-              />
-            }
-            label="Offer delivery"
-          />
-        )}
-      />
-
-      <TextField
-        select
-        label="How shipping is calculated"
-        fullWidth
-        required
-        disabled={!canUpdate || pending}
-        error={Boolean(errors.method)}
-        helperText={errors.method?.message}
-        {...register("method")}
-      >
-        <MenuItem value="flat_rate">Flat delivery charge (+ free above amount)</MenuItem>
-        <MenuItem value="free">Always free delivery</MenuItem>
-        <MenuItem value="percentage">Percentage of order subtotal</MenuItem>
-        <MenuItem value="zone">By delivery zone (uses flat charge for now)</MenuItem>
-      </TextField>
-
-      <TextField
-        label="Delivery charge"
-        type="number"
-        fullWidth
-        required
-        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-        disabled={!canUpdate || pending}
-        error={Boolean(errors.defaultShippingFee)}
-        helperText={
-          errors.defaultShippingFee?.message ||
-          `Amount charged for delivery (${currency}) when free delivery does not apply.`
-        }
-        {...register("defaultShippingFee")}
-      />
-
-      <TextField
-        label="Free delivery above"
-        type="number"
-        fullWidth
-        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-        disabled={!canUpdate || pending}
-        error={Boolean(errors.freeShippingThreshold)}
-        helperText={
-          errors.freeShippingThreshold?.message ||
-          `Customers get free delivery when their order reaches this amount (${currency}).`
-        }
-        {...register("freeShippingThreshold")}
-      />
-
-      <TextField
-        label="Percentage rate"
-        type="number"
-        fullWidth
-        slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
-        disabled={!canUpdate || pending || watched.method !== "percentage"}
-        helperText="Only used when shipping is calculated as a percentage"
-        {...register("percentageRate")}
-      />
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <TextField
-          label="Delivery time (min days)"
-          type="number"
-          fullWidth
-          disabled={!canUpdate || pending}
-          {...register("estimatedDeliveryMinDays")}
-        />
-        <TextField
-          label="Delivery time (max days)"
-          type="number"
-          fullWidth
-          disabled={!canUpdate || pending}
-          {...register("estimatedDeliveryMaxDays")}
-        />
-      </div>
-
-      <TextField
-        label="Delivery note shown to customers"
-        fullWidth
-        disabled={!canUpdate || pending}
-        {...register("estimatedDeliveryLabel")}
-      />
-
-      <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-        <h3 className="font-semibold">Example checkout</h3>
-        <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Approximate delivery charge for sample order amounts.
-        </p>
-        <ul className="mt-3 space-y-2 text-sm">
-          <li>
-            Order {formatMoney(preview.sampleBelow, currency)} → shipping{" "}
-            {preview.below
-              ? formatMoney(preview.below.shipping.major, currency)
-              : "—"}
-          </li>
-          <li>
-            Order {formatMoney(preview.sampleAt, currency)} → shipping{" "}
-            {preview.at
-              ? formatMoney(preview.at.shipping.major, currency)
-              : "—"}
-          </li>
-        </ul>
-        {watched.method === "percentage" && watched.percentageRate != null ? (
-          <p className="mt-2 text-xs text-[var(--color-muted)]">
-            Percentage method uses the configured rate against the order
-            subtotal (see preview rows above).
+      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">1. Offer delivery?</p>
+          <p className="admin-field-group__hint">
+            Turn this on if customers can get products delivered to their
+            address.
           </p>
-        ) : null}
+          <Controller
+            name="enabled"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={Boolean(field.value)}
+                    onChange={(_, checked) => field.onChange(checked)}
+                    disabled={!canUpdate || pending}
+                  />
+                }
+                label={deliveryOn ? "Yes — delivery is available" : "No — delivery is off"}
+              />
+            )}
+          />
+        </div>
+      </section>
+
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={{
+          ...adminStackStyle,
+          opacity: deliveryOn ? 1 : 0.55,
+          pointerEvents: deliveryOn ? "auto" : "none",
+        }}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">2. How much do you charge?</p>
+          <p className="admin-field-group__hint">
+            Pick the simple option that matches how you deliver orders.
+          </p>
+          <Controller
+            name="method"
+            control={control}
+            render={({ field }) => (
+              <TextField
+                select
+                label="Delivery pricing"
+                fullWidth
+                required
+                disabled={!canUpdate || pending || !deliveryOn}
+                error={Boolean(errors.method)}
+                helperText={
+                  errors.method?.message ??
+                  "Most stores use a fixed delivery fee with free delivery on bigger orders."
+                }
+                value={
+                  field.value === "flat_rate" ||
+                  field.value === "free" ||
+                  field.value === "percentage" ||
+                  field.value === "zone"
+                    ? field.value
+                    : "flat_rate"
+                }
+                onChange={(event) => field.onChange(event.target.value)}
+                onBlur={field.onBlur}
+                name={field.name}
+                inputRef={field.ref}
+              >
+                <MenuItem value="flat_rate">
+                  Fixed fee (free above a certain order amount)
+                </MenuItem>
+                <MenuItem value="free">Always free delivery</MenuItem>
+                <MenuItem value="percentage">
+                  Percentage of the order total
+                </MenuItem>
+                <MenuItem value="zone">
+                  Different areas (uses your fixed fee for now)
+                </MenuItem>
+              </TextField>
+            )}
+          />
+
+          {showFlatFields ? (
+            <TextField
+              label={`Delivery fee (${currency})`}
+              type="number"
+              fullWidth
+              required
+              slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+              disabled={!canUpdate || pending || !deliveryOn}
+              error={Boolean(errors.defaultShippingFee)}
+              helperText={
+                errors.defaultShippingFee?.message ||
+                `What customers pay for delivery when free delivery does not apply.`
+              }
+              {...register("defaultShippingFee")}
+            />
+          ) : null}
+
+          {showFreeThreshold ? (
+            <TextField
+              label={`Free delivery starts at (${currency})`}
+              type="number"
+              fullWidth
+              slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+              disabled={!canUpdate || pending || !deliveryOn}
+              error={Boolean(errors.freeShippingThreshold)}
+              helperText={
+                errors.freeShippingThreshold?.message ||
+                `Example: enter 500 so orders of ${formatMoney(500, currency)} or more get free delivery. Leave blank for no free threshold.`
+              }
+              {...register("freeShippingThreshold")}
+            />
+          ) : null}
+
+          {showPercentage ? (
+            <TextField
+              label="Delivery percent of order"
+              type="number"
+              fullWidth
+              slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
+              disabled={!canUpdate || pending || !deliveryOn}
+              helperText="Example: 5 means delivery is 5% of the product total."
+              {...register("percentageRate")}
+            />
+          ) : null}
+
+          {method === "free" ? (
+            <p className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)]">
+              Delivery will show as free on every order.
+            </p>
+          ) : null}
+        </div>
+      </section>
+
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={{
+          ...adminStackStyle,
+          opacity: deliveryOn ? 1 : 0.55,
+          pointerEvents: deliveryOn ? "auto" : "none",
+        }}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">3. How long does delivery take?</p>
+          <p className="admin-field-group__hint">
+            Shown to customers so they know when to expect their order.
+          </p>
+          <div className={adminFieldsGrid(2)}>
+            <TextField
+              label="Fastest delivery (days)"
+              type="number"
+              fullWidth
+              disabled={!canUpdate || pending || !deliveryOn}
+              helperText="Shortest usual time"
+              {...register("estimatedDeliveryMinDays")}
+            />
+            <TextField
+              label="Longest delivery (days)"
+              type="number"
+              fullWidth
+              disabled={!canUpdate || pending || !deliveryOn}
+              helperText="Longest usual time"
+              {...register("estimatedDeliveryMaxDays")}
+            />
+          </div>
+          <TextField
+            label="Message customers see (optional)"
+            fullWidth
+            disabled={!canUpdate || pending || !deliveryOn}
+            placeholder="Example: Delivered in 2–4 working days across India"
+            helperText="A short note next to delivery at checkout."
+            {...register("estimatedDeliveryLabel")}
+          />
+        </div>
+      </section>
+
+      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <h3 className="text-base font-semibold text-[var(--color-foreground)]">
+          What customers will pay
+        </h3>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
+          Live examples based on your settings above.
+        </p>
+        {!deliveryOn ? (
+          <p className="mt-3 text-sm text-[var(--color-muted)]">
+            Delivery is currently off — turn it on to see examples.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm">
+              <span>If the order is {formatMoney(preview.sampleBelow, currency)}</span>
+              <span className="font-semibold">
+                Delivery{" "}
+                {preview.below
+                  ? formatMoney(preview.below.shipping.major, currency)
+                  : "—"}
+              </span>
+            </li>
+            <li className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm">
+              <span>If the order is {formatMoney(preview.sampleAt, currency)}</span>
+              <span className="font-semibold">
+                Delivery{" "}
+                {preview.at
+                  ? formatMoney(preview.at.shipping.major, currency)
+                  : "—"}
+              </span>
+            </li>
+          </ul>
+        )}
       </section>
     </form>
   );

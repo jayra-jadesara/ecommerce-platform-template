@@ -16,7 +16,24 @@ import {
   type HeaderSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import { LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
+import {
+  adminCard,
+  adminCardPadding,
+  adminFieldGroup,
+  adminFieldsGrid,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
+import {
+  pageOptionLabel,
+  StorePageLinkField,
+} from "@/features/admin/ui/StorePageLinkField";
 import type { BrandConfig } from "@/types";
+
+const LOGO_SIZE_LABELS: Record<(typeof LOGO_SIZE_OPTIONS)[number], string> = {
+  small: "Small",
+  medium: "Medium",
+  large: "Large",
+};
 
 interface HeaderSettingsFormProps {
   initialValues: HeaderSettingsFormValues;
@@ -34,6 +51,20 @@ export function HeaderSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const defaults = useMemo(
+    () => ({
+      ...DEFAULT_HEADER_SETTINGS,
+      ...initialValues,
+      logoSize:
+        initialValues.logoSize === "small" ||
+        initialValues.logoSize === "medium" ||
+        initialValues.logoSize === "large"
+          ? initialValues.logoSize
+          : DEFAULT_HEADER_SETTINGS.logoSize,
+    }),
+    [initialValues],
+  );
+
   const {
     control,
     handleSubmit,
@@ -41,17 +72,22 @@ export function HeaderSettingsForm({
     formState: { isDirty },
   } = useForm<HeaderSettingsFormValues>({
     resolver: zodResolver(headerSettingsSchema),
-    defaultValues: initialValues,
+    defaultValues: defaults,
   });
 
   const watched = useWatch({ control });
+  const announcementOn = Boolean(watched.announcementEnabled);
+  const logoSize =
+    watched.logoSize === "small" ||
+    watched.logoSize === "medium" ||
+    watched.logoSize === "large"
+      ? watched.logoSize
+      : "medium";
 
   const previewAnnouncement = useMemo(() => {
-    if (!watched.announcementEnabled || !watched.announcementText?.trim()) {
-      return null;
-    }
-    return watched.announcementText;
-  }, [watched.announcementEnabled, watched.announcementText]);
+    if (!announcementOn || !watched.announcementText?.trim()) return null;
+    return watched.announcementText.trim();
+  }, [announcementOn, watched.announcementText]);
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -74,7 +110,9 @@ export function HeaderSettingsForm({
         event.preventDefault();
         onSubmit();
       }}
-      className="space-y-6"
+      className="w-full"
+      style={adminStackStyle}
+      noValidate
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -84,7 +122,7 @@ export function HeaderSettingsForm({
         success={success}
         onSave={onSubmit}
         onCancel={() => {
-          reset(initialValues);
+          reset(defaults);
           setError(null);
           setSuccess(null);
         }}
@@ -94,61 +132,87 @@ export function HeaderSettingsForm({
         }}
       />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <h2 className="font-semibold">Header behavior</h2>
-          {(
-            [
-              ["stickyHeader", "Sticky header"],
-              ["searchEnabled", "Search enabled"],
-              ["cartEnabled", "Cart enabled"],
-              ["accountEnabled", "Account / login enabled"],
-              ["mobileMenuEnabled", "Mobile menu enabled"],
-              ["navVisible", "Navigation visible"],
-            ] as const
-          ).map(([name, label]) => (
-            <Controller
-              key={name}
-              name={name}
-              control={control}
-              render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                      disabled={!canUpdate}
-                    />
-                  }
-                  label={label}
-                />
-              )}
-            />
-          ))}
+      <p className="text-sm text-[var(--color-muted)]">
+        Control the top bar shoppers see on every page — logo size, menu, and
+        optional announcement strip.
+      </p>
+
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={adminStackStyle}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">1. What shows in the header</p>
+          <p className="admin-field-group__hint">
+            Turn features on or off. Most stores leave all of these on.
+          </p>
+            <div className={adminFieldsGrid(3)}>
+              {(
+                [
+                  ["stickyHeader", "Stick to top while scrolling"],
+                  ["searchEnabled", "Show search"],
+                  ["cartEnabled", "Show cart"],
+                  ["accountEnabled", "Show account / login"],
+                  ["mobileMenuEnabled", "Show mobile menu"],
+                  ["navVisible", "Show menu links"],
+                ] as const
+              ).map(([name, label]) => (
+              <Controller
+                key={name}
+                name={name}
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(field.value)}
+                        onChange={(_, checked) => field.onChange(checked)}
+                        disabled={!canUpdate || pending}
+                      />
+                    }
+                    label={label}
+                  />
+                )}
+              />
+            ))}
+          </div>
           <Controller
             name="logoSize"
             control={control}
             render={({ field }) => (
               <TextField
-                {...field}
                 select
                 label="Logo size"
                 fullWidth
                 required
-                disabled={!canUpdate}
+                disabled={!canUpdate || pending}
+                value={logoSize}
+                onChange={(event) => field.onChange(event.target.value)}
+                onBlur={field.onBlur}
+                name={field.name}
+                inputRef={field.ref}
+                helperText="How large your logo appears in the header"
               >
                 {LOGO_SIZE_OPTIONS.map((size) => (
                   <MenuItem key={size} value={size}>
-                    {size}
+                    {LOGO_SIZE_LABELS[size]}
                   </MenuItem>
                 ))}
               </TextField>
             )}
           />
-        </section>
+        </div>
+      </section>
 
-        <section className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
-          <h2 className="font-semibold">Announcement bar</h2>
+      <section
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={adminStackStyle}
+      >
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">2. Announcement bar</p>
+          <p className="admin-field-group__hint">
+            Optional strip above the header for offers or short news.
+          </p>
           <Controller
             name="announcementEnabled"
             control={control}
@@ -156,78 +220,131 @@ export function HeaderSettingsForm({
               <FormControlLabel
                 control={
                   <Switch
-                    checked={field.value}
+                    checked={Boolean(field.value)}
                     onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate}
+                    disabled={!canUpdate || pending}
                   />
                 }
-                label="Enabled"
-              />
-            )}
-          />
-          <Controller
-            name="announcementText"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="Announcement text"
-                fullWidth
-                multiline
-                minRows={2}
-                disabled={!canUpdate}
-              />
-            )}
-          />
-          <Controller
-            name="announcementUrl"
-            control={control}
-            render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Announcement link"
-                fullWidth
-                disabled={!canUpdate}
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message}
-              />
-            )}
-          />
-          <Controller
-            name="announcementOpenInNewTab"
-            control={control}
-            render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate}
-                  />
+                label={
+                  announcementOn
+                    ? "Yes — show announcement bar"
+                    : "No — hide announcement bar"
                 }
-                label="Open link in new tab"
               />
             )}
           />
-        </section>
-      </div>
 
-      <aside className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-        <p className="mb-3 text-sm font-semibold">Header preview</p>
-        {previewAnnouncement ? (
-          <div className="mb-2 rounded-md bg-[var(--color-button-background)] px-3 py-2 text-center text-sm text-[var(--color-button-foreground)]">
-            {previewAnnouncement}
-          </div>
-        ) : null}
-        <div className="flex items-center justify-between rounded-md border border-[var(--color-border)] bg-[var(--color-header-background)] px-4 py-3 text-[var(--color-header-foreground)]">
-          <span className="font-semibold">{brand.name}</span>
-          <span className="text-xs text-[var(--color-muted)]">
-            {watched.navVisible ? "Nav on" : "Nav hidden"} ·{" "}
-            {watched.stickyHeader ? "Sticky" : "Static"} · Logo{" "}
-            {watched.logoSize}
-          </span>
+          {announcementOn ? (
+            <>
+              <Controller
+                name="announcementText"
+                control={control}
+                render={({ field }) => (
+                  <TextField
+                    {...field}
+                    value={field.value ?? ""}
+                    label="Message shoppers see"
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    disabled={!canUpdate || pending}
+                    placeholder="Example: Free shipping on orders over ₹500"
+                    helperText="Keep it short — one line works best"
+                  />
+                )}
+              />
+              <Controller
+                name="announcementUrl"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <StorePageLinkField
+                    label="Opens this page when clicked"
+                    value={field.value}
+                    fallback="/"
+                    allowEmpty
+                    emptyLabel="No link (text only)"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    onChange={(value) => field.onChange(value ?? "")}
+                    helperText={
+                      fieldState.error?.message ??
+                      "Pick a store page — no need to type a URL"
+                    }
+                  />
+                )}
+              />
+              <Controller
+                name="announcementOpenInNewTab"
+                control={control}
+                render={({ field }) => (
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(field.value)}
+                        onChange={(_, checked) => field.onChange(checked)}
+                        disabled={!canUpdate || pending}
+                      />
+                    }
+                    label="Open link in a new browser tab"
+                  />
+                )}
+              />
+            </>
+          ) : (
+            <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)]">
+              Announcement bar is off. Turn it on to show a message above the
+              header.
+            </p>
+          )}
         </div>
-      </aside>
+      </section>
+
+      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <h3 className="text-base font-semibold text-[var(--color-foreground)]">
+          Header preview
+        </h3>
+        <p className="mt-1 text-sm text-[var(--color-muted)]">
+          Rough look of the top of your store.
+        </p>
+        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-border)]">
+          {previewAnnouncement ? (
+            <div className="bg-[var(--color-button-background)] px-3 py-2 text-center text-sm text-[var(--color-button-foreground)]">
+              {previewAnnouncement}
+              {watched.announcementUrl?.trim() ? (
+                <span className="mt-1 block text-xs opacity-80">
+                  Links to {pageOptionLabel(watched.announcementUrl.trim())}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
+          <div className="flex items-center justify-between bg-[var(--color-header-background)] px-4 py-3 text-[var(--color-header-foreground)]">
+            <span
+              className="font-semibold"
+              style={{
+                fontSize:
+                  logoSize === "small"
+                    ? "0.95rem"
+                    : logoSize === "large"
+                      ? "1.35rem"
+                      : "1.1rem",
+              }}
+            >
+              {brand.name}
+            </span>
+            <span className="text-xs text-[var(--color-muted)]">
+              {[
+                watched.navVisible ? "Menu" : null,
+                watched.searchEnabled ? "Search" : null,
+                watched.cartEnabled ? "Cart" : null,
+                watched.accountEnabled ? "Account" : null,
+                watched.stickyHeader ? "Sticky" : null,
+              ]
+                .filter(Boolean)
+                .join(" · ") || "Minimal header"}
+            </span>
+          </div>
+        </div>
+      </section>
     </form>
   );
 }

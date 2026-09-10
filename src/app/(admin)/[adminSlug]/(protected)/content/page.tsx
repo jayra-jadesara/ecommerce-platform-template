@@ -14,7 +14,7 @@ const SECTIONS = [
   {
     href: "/content/pages",
     title: "Pages",
-    description: "About, policies, and other store pages.",
+    description: "About, Shipping, Privacy, and other store pages (not the Homepage).",
   },
   {
     href: "/content/banners",
@@ -24,7 +24,7 @@ const SECTIONS = [
   {
     href: "/media",
     title: "Images & Files",
-    description: "Upload and manage images used across your store.",
+    description: "Upload images for products, banners, and pages.",
   },
 ] as const;
 

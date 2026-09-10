@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 
 /**
  * Store-aware web app manifest — branding-driven, no hard-coded client names.

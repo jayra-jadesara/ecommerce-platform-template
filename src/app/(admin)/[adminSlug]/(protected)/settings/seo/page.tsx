@@ -15,7 +15,7 @@ export default async function AdminSeoSettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Google & SEO"
-        description="Control how your store appears in Google and when shared online."
+        description="How your store looks in Google and when shared online."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Google & SEO" },

@@ -123,8 +123,50 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
   }
 
   return (
-    <div className="grid gap-8 pb-24 lg:grid-cols-[1fr_340px] lg:pb-0">
+    <div className="grid gap-8 pb-24 lg:grid-cols-[1fr_360px] lg:pb-0">
       <div className="space-y-6">
+        <nav aria-label="Checkout progress" className="mb-2">
+          <ol className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
+            {(
+              [
+                { key: "CART_REVIEW", label: "Cart" },
+                { key: "ADDRESS_SELECTION", label: "Address" },
+                { key: "READY_FOR_PAYMENT", label: "Payment" },
+              ] as const
+            ).map((step, index) => {
+              const active =
+                summary.step === step.key ||
+                (step.key === "READY_FOR_PAYMENT" &&
+                  (summary.step === "READY_FOR_PAYMENT" ||
+                    summary.step === "PAYMENT" ||
+                    summary.step === "PROCESSING")) ||
+                (step.key === "ADDRESS_SELECTION" &&
+                  (summary.step === "READY_FOR_PAYMENT" ||
+                    summary.step === "PAYMENT" ||
+                    summary.step === "PROCESSING")) ||
+                (step.key === "CART_REVIEW" && summary.canProceed);
+              return (
+                <li key={step.key} className="flex items-center gap-2">
+                  {index > 0 ? (
+                    <span className="text-[var(--color-border)]" aria-hidden>
+                      /
+                    </span>
+                  ) : null}
+                  <span
+                    className={
+                      active
+                        ? "text-[var(--color-primary)]"
+                        : "text-[var(--color-muted)]"
+                    }
+                  >
+                    {step.label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+
         {summary.issues.length ? (
           <div
             className="space-y-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3"
@@ -313,10 +355,12 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
         </section>
       </div>
 
-      <aside className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 lg:sticky lg:top-4">
-        <h2 className="font-semibold">Checkout summary</h2>
+      <aside className="h-fit rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)] lg:sticky lg:top-24">
+        <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
+          Order summary
+        </h2>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Totals from the server pricing engine.
+          Totals calculated securely at checkout.
         </p>
 
         <div className="mt-4 space-y-2">

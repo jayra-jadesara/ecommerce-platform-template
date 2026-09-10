@@ -10,10 +10,12 @@ import {
   removeFromCartAction,
   updateCartItemQuantityAction,
 } from "@/features/cart/actions";
+import { FreeShippingProgressLoader } from "@/features/cart/components/FreeShippingProgressLoader";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
 import { CART_MAX_QUANTITY, type CartView } from "@/features/cart/types";
 import { formatMoney } from "@/features/catalog/money";
+import { EmptyState, emptyStateCtaClass } from "@/components/ui/EmptyState";
 
 interface CartPageClientProps {
   initialCart: CartView;
@@ -61,20 +63,15 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
 
   if (cart.items.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-16 text-center">
-        <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-          Your cart is empty
-        </h2>
-        <p className="mt-2 text-sm text-[var(--color-muted)]">
-          Browse the catalog and add items when you are ready.
-        </p>
-        <Link
-          href="/products"
-          className="mt-6 inline-flex rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-        >
-          Continue shopping
-        </Link>
-      </div>
+      <EmptyState
+        title="Your cart is empty"
+        description="Browse the catalog and add items when you are ready."
+        action={
+          <Link href="/products" className={emptyStateCtaClass("primary")}>
+            Continue shopping
+          </Link>
+        }
+      />
     );
   }
 
@@ -207,6 +204,12 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
           Subtotal only — shipping, tax, and payment fees are calculated at
           checkout.
         </p>
+        <div className="mt-4">
+          <FreeShippingProgressLoader
+            subtotalMajor={cart.subtotal}
+            currency={cart.currency}
+          />
+        </div>
         <dl className="mt-4 space-y-2 text-sm">
           <div className="flex justify-between">
             <dt>Items</dt>

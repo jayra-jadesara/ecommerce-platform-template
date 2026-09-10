@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import { PageShell } from "@/components/layout";
-import { getPlatformConfigAsync, getSiteUrl } from "@/config/site";
+import { Container } from "@/components/layout";
+import { getSiteUrl } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { getPublishedHomepage } from "@/features/cms/storefront";
+import {
+  listStorefrontCategories,
+  listStorefrontProducts,
+} from "@/features/catalog/storefront";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveStoreHomepageSeo } from "@/features/seo/resolve";
 import {
@@ -25,9 +30,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [config, homepage] = await Promise.all([
+  const [config, homepage, categories, productList] = await Promise.all([
     getPlatformConfigAsync(),
     getPublishedHomepage(),
+    listStorefrontCategories(),
+    listStorefrontProducts({
+      page: "1",
+      pageSize: "8",
+      sort: "featured",
+    }),
   ]);
 
   const hasSections = (homepage?.sections.length ?? 0) > 0;
@@ -46,17 +57,23 @@ export default async function HomePage() {
   });
 
   return (
-    <PageShell>
+    <Container as="main" flush constrained={false} className="relative z-0 flex-1">
       <JsonLdScript data={[org, website]} />
       {hasSections && homepage ? (
         <HomepageSections
           sections={homepage.sections}
           animation={config.animation}
           visualEffects={config.visualEffects}
+          currency={config.store.currency}
         />
       ) : (
-        <HomeView config={config} />
+        <HomeView
+          config={config}
+          products={productList.items}
+          categories={categories}
+          currency={config.store.currency}
+        />
       )}
-    </PageShell>
+    </Container>
   );
 }

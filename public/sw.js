@@ -8,7 +8,7 @@
  * This file is served from /public and must stay dependency-free.
  */
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE = `storefront-static-${CACHE_VERSION}`;
 const OFFLINE_CACHE = `storefront-offline-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline";

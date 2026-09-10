@@ -17,7 +17,22 @@ import {
   type BannerFormValues,
 } from "@/features/cms/schemas";
 import type { BannerRow } from "@/features/cms/types";
+import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { MediaPicker } from "@/features/media";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminFieldGroup,
+  adminFieldsGrid,
+  adminFormStack,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
+import {
+  pageOptionLabel,
+  StorePageLinkField,
+} from "@/features/admin/ui/StorePageLinkField";
+import { formatDateTime } from "@/lib/format-date";
 
 function toDatetimeLocal(iso: string | null): string {
   if (!iso) return "";
@@ -51,26 +66,39 @@ export function BannersManager({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const formOpen = creating || Boolean(editing);
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        {canCreate ? (
-          <button
-            type="button"
-            className="rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)]"
-            onClick={() => {
-              setCreating(true);
-              setEditing(null);
-            }}
-          >
-            Create banner
-          </button>
-        ) : null}
-      </div>
+    <div style={adminStackStyle}>
+      {!formOpen ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-[var(--color-muted)]">
+            Promo strips shoppers see on the storefront. Add an image, optional
+            button, and when it should show.
+          </p>
+          {canCreate ? (
+            <button
+              type="button"
+              className={adminBtn("primary")}
+              onClick={() => {
+                setCreating(true);
+                setEditing(null);
+                setError(null);
+              }}
+            >
+              Create banner
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {error}
+        </p>
+      ) : null}
 
-      {(creating || editing) && (
+      {formOpen ? (
         <BannerForm
           mode={creating ? "create" : "edit"}
           bannerId={editing?.id}
@@ -99,66 +127,113 @@ export function BannersManager({
             });
             setCreating(false);
             setEditing(null);
+            setError(null);
             router.refresh();
           }}
           onError={setError}
         />
-      )}
+      ) : null}
 
-      <ul className="space-y-2">
+      <ul style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
         {banners.length === 0 ? (
-          <li className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center text-sm text-[var(--color-muted)]">
-            No banners yet. Create a promotional banner for your storefront.
+          <li className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
+            <p className="text-sm font-medium text-[var(--color-foreground)]">
+              No banners yet
+            </p>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              Create a promotional banner for sales, announcements, or seasonal
+              offers.
+            </p>
+            {canCreate && !formOpen ? (
+              <button
+                type="button"
+                className={`${adminBtn("primary")} mt-4`}
+                onClick={() => {
+                  setCreating(true);
+                  setEditing(null);
+                }}
+              >
+                Create banner
+              </button>
+            ) : null}
           </li>
         ) : (
-          banners.map((banner) => (
-            <li
-              key={banner.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3"
-            >
-              <div>
-                <p className="font-medium">{banner.title}</p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {banner.isActive ? "Active" : "Inactive"} · sort {banner.sortOrder}
-                </p>
-              </div>
-              <div className="flex gap-2">
-                {canUpdate ? (
-                  <button
-                    type="button"
-                    className="underline text-sm"
-                    onClick={() => {
-                      setEditing(banner);
-                      setCreating(false);
-                    }}
-                  >
-                    Edit
-                  </button>
-                ) : null}
-                {canDelete ? (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    className="text-sm text-red-700 underline"
-                    onClick={() => {
-                      if (!window.confirm("Delete this banner?")) return;
-                      startTransition(async () => {
-                        const result = await deleteBannerAction(banner.id);
-                        if (!result.ok) {
-                          setError(result.error);
-                          return;
-                        }
-                        setBanners((prev) => prev.filter((b) => b.id !== banner.id));
-                        router.refresh();
-                      });
-                    }}
-                  >
-                    Delete
-                  </button>
-                ) : null}
-              </div>
-            </li>
-          ))
+          banners.map((banner) => {
+            const preview = resolveCmsImageUrl(banner.imagePath);
+            return (
+              <li
+                key={banner.id}
+                className={`${adminCard()} flex flex-wrap items-center gap-4 p-4`}
+              >
+                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  {preview ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={preview}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">
+                      No image
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-[var(--color-foreground)]">
+                    {banner.title}
+                  </p>
+                  <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+                    {banner.isActive ? "Showing on store" : "Hidden"}
+                    {banner.linkUrl
+                      ? ` · Opens ${pageOptionLabel(banner.linkUrl)}`
+                      : ""}
+                    {banner.startsAt || banner.endsAt
+                      ? ` · ${banner.startsAt ? formatDateTime(banner.startsAt) : "Anytime"} → ${banner.endsAt ? formatDateTime(banner.endsAt) : "No end"}`
+                      : ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {canUpdate ? (
+                    <button
+                      type="button"
+                      className={adminBtn("outline")}
+                      onClick={() => {
+                        setEditing(banner);
+                        setCreating(false);
+                        setError(null);
+                      }}
+                    >
+                      Edit
+                    </button>
+                  ) : null}
+                  {canDelete ? (
+                    <button
+                      type="button"
+                      disabled={pending}
+                      className={adminBtn("danger")}
+                      onClick={() => {
+                        if (!window.confirm("Delete this banner?")) return;
+                        startTransition(async () => {
+                          const result = await deleteBannerAction(banner.id);
+                          if (!result.ok) {
+                            setError(result.error);
+                            return;
+                          }
+                          setBanners((prev) =>
+                            prev.filter((b) => b.id !== banner.id),
+                          );
+                          router.refresh();
+                        });
+                      }}
+                    >
+                      Delete
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })
         )}
       </ul>
     </div>
@@ -204,6 +279,9 @@ function BannerForm({
   });
 
   const imagePath = watch("imagePath");
+  const buttonText = watch("buttonText");
+  const linkUrl = watch("linkUrl");
+  const imagePreview = resolveCmsImageUrl(imagePath);
 
   return (
     <>
@@ -227,93 +305,194 @@ function BannerForm({
             onSaved(result.banner);
           });
         })}
-        className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+        className={`${adminCard()} ${adminCardPadding()} ${adminFormStack()}`}
+        style={adminStackStyle}
       >
-        <TextField
-          label="Title"
-          fullWidth
-          required
-          error={Boolean(errors.title)}
-          helperText={errors.title?.message}
-          {...register("title")}
-        />
-        <TextField
-          label="Description"
-          fullWidth
-          multiline
-          minRows={2}
-          {...register("description")}
-        />
-        <div className="rounded-lg border border-[var(--color-border)] p-3">
-          <p className="text-sm font-medium">Image</p>
-          <p className="mt-1 truncate text-xs text-[var(--color-muted)]">
-            {imagePath || "None"}
+        <div>
+          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
+            {mode === "create" ? "Create banner" : "Edit banner"}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            Shoppers see this as a promo strip — keep the title short and pick a
+            clear image.
           </p>
-          <button
-            type="button"
-            className="mt-2 rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm"
-            onClick={() => setMediaOpen(true)}
-          >
-            Choose image
-          </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <TextField label="Button text" fullWidth {...register("buttonText")} />
+
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">1. Banner text</p>
           <TextField
-            label="Link"
+            label="Title shoppers see"
             fullWidth
-            error={Boolean(errors.linkUrl)}
-            helperText={errors.linkUrl?.message}
-            {...register("linkUrl")}
+            required
+            disabled={!canSubmit || pending}
+            error={Boolean(errors.title)}
+            helperText={errors.title?.message ?? "Short headline on the banner."}
+            {...register("title")}
           />
           <TextField
-            label="Start"
-            type="datetime-local"
+            label="Supporting text (optional)"
             fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            {...register("startsAt")}
+            multiline
+            minRows={2}
+            disabled={!canSubmit || pending}
+            helperText="One short line under the title."
+            {...register("description")}
           />
+        </div>
+
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">2. Image</p>
+          <p className="admin-field-group__hint">
+            Wide images work best (roughly 1600×600 or similar).
+          </p>
+          <div
+            className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+            style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+          >
+            {imagePreview ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={imagePreview}
+                alt=""
+                className="h-40 w-full rounded-lg object-cover"
+              />
+            ) : (
+              <p className="text-sm text-[var(--color-muted)]">
+                No image selected yet
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={!canSubmit || pending}
+                className={adminBtn("outline")}
+                onClick={() => setMediaOpen(true)}
+              >
+                Choose image
+              </button>
+              {imagePath ? (
+                <button
+                  type="button"
+                  disabled={!canSubmit || pending}
+                  className={adminBtn("ghost")}
+                  onClick={() =>
+                    setValue("imagePath", null, { shouldDirty: true })
+                  }
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">3. Button (optional)</p>
+          <p className="admin-field-group__hint">
+            Add a button so shoppers can jump to a store page.
+          </p>
+          <div
+            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+          >
+            <TextField
+              label="Button text shoppers see"
+              fullWidth
+              disabled={!canSubmit || pending}
+              helperText="Leave blank to hide the button"
+              {...register("buttonText")}
+            />
+            <Controller
+              name="linkUrl"
+              control={control}
+              render={({ field }) => (
+                <StorePageLinkField
+                  value={field.value}
+                  fallback="/products"
+                  allowEmpty
+                  emptyLabel="No page (banner not clickable)"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.linkUrl)}
+                  onChange={field.onChange}
+                  helperText={
+                    errors.linkUrl?.message ??
+                    (buttonText
+                      ? `“${buttonText}” opens ${pageOptionLabel(String(linkUrl ?? "/products"))}`
+                      : "Pick where the button should send shoppers")
+                  }
+                />
+              )}
+            />
+          </div>
+        </div>
+
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">4. Schedule &amp; visibility</p>
+          <p className="admin-field-group__hint">
+            Leave dates empty to show whenever the banner is active.
+          </p>
+          <div className={adminFieldsGrid(2)}>
+            <TextField
+              label="Show from (optional)"
+              type="datetime-local"
+              fullWidth
+              disabled={!canSubmit || pending}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register("startsAt")}
+            />
+            <TextField
+              label="Show until (optional)"
+              type="datetime-local"
+              fullWidth
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.endsAt)}
+              helperText={errors.endsAt?.message}
+              slotProps={{ inputLabel: { shrink: true } }}
+              {...register("endsAt")}
+            />
+          </div>
           <TextField
-            label="End"
-            type="datetime-local"
-            fullWidth
-            slotProps={{ inputLabel: { shrink: true } }}
-            {...register("endsAt")}
-          />
-          <TextField
-            label="Sort order"
+            label="Display order"
             type="number"
             fullWidth
+            disabled={!canSubmit || pending}
+            helperText="Lower numbers appear first when several banners are active."
             {...register("sortOrder", { valueAsNumber: true })}
           />
+          <Controller
+            name="isActive"
+            control={control}
+            render={({ field }) => (
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={field.value}
+                    onChange={(_, checked) => field.onChange(checked)}
+                    disabled={!canSubmit || pending}
+                  />
+                }
+                label="Show on store now"
+              />
+            )}
+          />
         </div>
-        <Controller
-          name="isActive"
-          control={control}
-          render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={field.value}
-                  onChange={(_, checked) => field.onChange(checked)}
-                />
-              }
-              label="Active"
-            />
-          )}
-        />
-        <div className="flex gap-2">
+
+        <div className="flex flex-wrap gap-2">
           <button
             type="submit"
             disabled={!canSubmit || pending}
-            className="rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
+            className={adminBtn("primary")}
           >
-            {pending ? "Saving…" : "Save banner"}
+            {pending
+              ? "Saving…"
+              : mode === "create"
+                ? "Create banner"
+                : "Save banner"}
           </button>
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm"
+            className={adminBtn("outline")}
           >
             Cancel
           </button>

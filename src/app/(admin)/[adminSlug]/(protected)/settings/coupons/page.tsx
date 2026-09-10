@@ -68,7 +68,7 @@ export default async function AdminCouponsPage({
       <div className="space-y-4 pb-16">
         <AdminPageHeader
           title="Create coupon"
-          description="Add a discount code customers can use at checkout."
+          description="Make a discount code shoppers can enter at checkout."
           breadcrumbs={[
             { label: "Store Settings", href: getAdminPath("/settings") },
             { label: "Coupons", href: listHref },
@@ -134,7 +134,7 @@ export default async function AdminCouponsPage({
       <div className="space-y-4 pb-16">
         <AdminPageHeader
           title={`Edit ${coupon.code}`}
-          description="Update discount rules. Historical redemptions stay intact."
+          description="Change the discount rules. Past uses of this code stay in your records."
           breadcrumbs={[
             { label: "Store Settings", href: getAdminPath("/settings") },
             { label: "Coupons", href: listHref },

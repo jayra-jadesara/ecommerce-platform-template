@@ -12,6 +12,7 @@ import { deleteCouponAction } from "@/features/coupons/actions";
 import type { AdminCouponListItem } from "@/features/coupons/admin-service";
 import type { CouponListQuery } from "@/features/coupons/schemas";
 import { couponStatusLabel } from "@/features/coupons/status";
+import { formatDateTime } from "@/lib/format-date";
 
 interface CouponListTableProps {
   items: AdminCouponListItem[];
@@ -47,18 +48,6 @@ function formatDiscount(item: AdminCouponListItem, currency: string): string {
     return `${item.discountValue}%`;
   }
   return formatMoney(item.discountValue, currency);
-}
-
-function formatDate(iso: string | null): string {
-  if (!iso) return "—";
-  try {
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
 }
 
 const statusColor: Record<
@@ -204,8 +193,8 @@ export function CouponListTable({
                     {item.redemptionCount}
                     {item.usageLimit != null ? ` / ${item.usageLimit}` : ""}
                   </td>
-                  <td className="px-3 py-2">{formatDate(item.startsAt)}</td>
-                  <td className="px-3 py-2">{formatDate(item.expiresAt)}</td>
+                  <td className="px-3 py-2">{formatDateTime(item.startsAt)}</td>
+                  <td className="px-3 py-2">{formatDateTime(item.expiresAt)}</td>
                   <td className="px-3 py-2">
                     <Chip
                       size="small"

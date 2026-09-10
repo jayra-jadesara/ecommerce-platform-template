@@ -63,7 +63,7 @@ export default async function AdminContentPagesPage({
       <div className="space-y-4 pb-16">
         <AdminPageHeader
           title="Create page"
-          description="Add a storefront page such as About or Shipping."
+          description="Add a store page shoppers can open — About, Shipping, Privacy, and similar. Homepage layout is edited under Content → Homepage."
           breadcrumbs={[
             { label: "Content", href: getAdminPath("/content") },
             { label: "Pages", href: listHref },
@@ -124,7 +124,7 @@ export default async function AdminContentPagesPage({
     <div className="space-y-4">
       <AdminPageHeader
         title="Pages"
-        description="Create and publish store pages customers can visit."
+        description="Standalone store pages (About, Shipping, policies). Separate from Homepage sections."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Pages" },

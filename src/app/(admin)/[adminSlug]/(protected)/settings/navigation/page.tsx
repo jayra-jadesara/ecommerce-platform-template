@@ -15,7 +15,7 @@ export default async function AdminNavigationSettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Menu & Navigation"
-        description="Choose which pages appear in your store menu."
+        description="Set the links shoppers see at the top and bottom of your store."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Menu & Navigation" },

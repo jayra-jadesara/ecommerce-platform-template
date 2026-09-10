@@ -17,6 +17,7 @@ import {
   deleteProductAction,
   updateProductAction,
 } from "@/features/catalog/actions";
+import { adminFieldsGrid } from "@/features/admin/ui/admin-classes";
 import type { CategoryRow } from "@/features/catalog/categories-service";
 import { autoSkuFromSlug, slugify } from "@/features/catalog/slug";
 import {
@@ -28,7 +29,7 @@ import {
   type ProductFormValues,
 } from "@/features/catalog/validation";
 import { getAdminPath } from "@/config/admin-route";
-import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
+import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
 
 function sizeMenuItems(current: string) {
   const options = PRODUCT_SIZE_OPTIONS as readonly string[];
@@ -69,8 +70,8 @@ function StepCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:p-5">
-      <div className="mb-4 flex gap-3">
+    <section className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 md:p-6 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]">
+      <div className="mb-5 flex gap-3">
         <span
           className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-sm font-semibold text-[var(--color-button-foreground)]"
           aria-hidden
@@ -78,11 +79,11 @@ function StepCard({
           {step}
         </span>
         <div>
-          <h2 className="text-base font-semibold">{title}</h2>
-          <p className="text-sm text-[var(--color-muted)]">{description}</p>
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">{description}</p>
         </div>
       </div>
-      {children}
+      <div className="admin-form-stack">{children}</div>
     </section>
   );
 }
@@ -124,11 +125,14 @@ export function ProductForm({
 
   const variants = useWatch({ control, name: "variants" }) ?? [];
   const productName = useWatch({ control, name: "name" }) ?? "";
+  const shortDescriptionWatch =
+    useWatch({ control, name: "shortDescription" }) ?? "";
+  const descriptionWatch = useWatch({ control, name: "description" }) ?? "";
   const seoTitleWatch = useWatch({ control, name: "seoTitle" }) ?? "";
   const seoDescriptionWatch = useWatch({ control, name: "seoDescription" }) ?? "";
   const slugWatch = useWatch({ control, name: "slug" }) ?? "";
-  const previewOrigin =
-    typeof window !== "undefined" ? window.location.origin : "https://example.com";
+  const seoSourceDescription =
+    String(shortDescriptionWatch).trim() || String(descriptionWatch).trim();
 
   function syncAutoCodesFromName(name: string) {
     if (mode !== "create") return;
@@ -194,13 +198,13 @@ export function ProductForm({
 
   return (
     <form
-      className="space-y-5 pb-24"
+      className="admin-form-stack pb-24"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
     >
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-primary)_8%)] px-2 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-3 lg:left-60 xl:left-64">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-primary)_8%)] px-2 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-3 lg:left-[var(--admin-sidebar-width,15.5rem)]">
         <div className="flex w-full flex-wrap items-center gap-2">
           <Button type="button" href={listHref} size="small">
             ← Back to list
@@ -307,7 +311,7 @@ export function ProductForm({
         title="What are you selling?"
         description="Name, category, and what customers should know."
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className={adminFieldsGrid(2) + " admin-fields-grid--2-md"}>
           <Controller
             name="name"
             control={control}
@@ -553,7 +557,7 @@ export function ProductForm({
         title="Show on your store?"
         description="Draft stays private. Active means customers can buy it."
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className={adminFieldsGrid(2) + " admin-fields-grid--2-md"}>
           <Controller
             name="status"
             control={control}
@@ -651,7 +655,7 @@ export function ProductForm({
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           Brand, ingredients, shipping weight, and search listing text.
         </p>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className={`mt-4 ${adminFieldsGrid(2)}`}>
           <Controller
             name="brand"
             control={control}
@@ -700,39 +704,23 @@ export function ProductForm({
               )}
             />
           </div>
-          <Controller
-            name="seoTitle"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="SEO title"
-                fullWidth
-                disabled={!fieldsEditable}
-                helperText="Optional title for Google / search engines."
-              />
-            )}
-          />
-          <Controller
-            name="seoDescription"
-            control={control}
-            render={({ field }) => (
-              <TextField
-                {...field}
-                label="SEO description"
-                fullWidth
-                multiline
-                minRows={2}
-                disabled={!fieldsEditable}
-                helperText="Optional short blurb under the search title."
-              />
-            )}
-          />
           <div className="md:col-span-2">
-            <GoogleSeoPreview
-              title={seoTitleWatch || productName}
-              url={`${previewOrigin}/products/${slugWatch || "product-slug"}`}
-              description={seoDescriptionWatch}
+            <p className="mb-2 text-sm font-semibold text-[var(--color-foreground)]">
+              Google &amp; SEO
+            </p>
+            <AdminSeoFields
+              sourceTitle={productName}
+              sourceDescription={seoSourceDescription}
+              seoTitle={seoTitleWatch}
+              seoDescription={seoDescriptionWatch}
+              onSeoTitleChange={(value) =>
+                setValue("seoTitle", value, { shouldDirty: true })
+              }
+              onSeoDescriptionChange={(value) =>
+                setValue("seoDescription", value, { shouldDirty: true })
+              }
+              previewUrl={`/products/${slugWatch || "product-slug"}`}
+              disabled={!fieldsEditable}
             />
           </div>
           {visibleVariants.map(({ field, index }) => {

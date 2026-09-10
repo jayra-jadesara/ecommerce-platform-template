@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import Button from "@mui/material/Button";
 import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
@@ -12,7 +11,14 @@ import type { CategoryRow } from "@/features/catalog/categories-service";
 import type { ProductListQuery } from "@/features/catalog/validation";
 import { PRODUCT_SORT_OPTIONS } from "@/features/catalog/validation";
 import { deleteProductAction } from "@/features/catalog/actions";
+import { formatMoney } from "@/features/catalog/money";
 import { getAdminPath } from "@/config/admin-route";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
 
 interface ProductListTableProps {
   items: AdminProductListItem[];
@@ -22,6 +28,7 @@ interface ProductListTableProps {
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  currency?: string;
 }
 
 function buildHref(next: Partial<ProductListQuery>, current: ProductListQuery) {
@@ -71,6 +78,43 @@ const sortLabels: Record<string, string> = {
   featured: "Featured first",
 };
 
+function formatPriceRange(
+  minPrice: number | null,
+  maxPrice: number | null,
+  currency: string,
+): string {
+  if (minPrice == null) return "—";
+  if (maxPrice == null || minPrice === maxPrice) {
+    return formatMoney(minPrice, currency);
+  }
+  return `${formatMoney(minPrice, currency)} – ${formatMoney(maxPrice, currency)}`;
+}
+
+function ProductThumb({
+  name,
+  imageUrl,
+}: {
+  name: string;
+  imageUrl: string | null;
+}) {
+  return (
+    <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <div
+          className="flex h-full items-center justify-center text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]"
+          aria-hidden
+          title={name}
+        >
+          No img
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function ProductListTable({
   items,
   total,
@@ -79,6 +123,7 @@ export function ProductListTable({
   canCreate,
   canUpdate,
   canDelete,
+  currency = "INR",
 }: ProductListTableProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -90,12 +135,42 @@ export function ProductListTable({
     query.featured === "all" &&
     query.stock === "all";
 
+  function confirmDelete(item: AdminProductListItem) {
+    if (!window.confirm(`Delete “${item.name}”? This cannot be undone.`)) {
+      return;
+    }
+    startTransition(async () => {
+      const result = await deleteProductAction(item.id);
+      if (result.ok) router.refresh();
+      else window.alert(result.error);
+    });
+  }
+
   return (
-    <div className="flex flex-1 flex-col space-y-4">
-      <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 sm:p-4">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div style={adminStackStyle}>
+      <div
+        className={`${adminCard()} ${adminCardPadding()}`}
+        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-[var(--color-foreground)]">
+              Find products
+            </p>
+            <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+              Search, filter, or add a new item to your catalog.
+            </p>
+          </div>
+          {canCreate ? (
+            <Link href={panelHref("new")} className={adminBtn("primary")}>
+              + Add product
+            </Link>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <TextField
-            label="Search products..."
+            label="Search by name"
             size="small"
             fullWidth
             defaultValue={query.q}
@@ -105,6 +180,7 @@ export function ProductListTable({
                 router.push(buildHref({ q: value, page: 1 }, query));
               }
             }}
+            helperText="Press Enter to search"
           />
           <TextField
             select
@@ -146,7 +222,7 @@ export function ProductListTable({
               )
             }
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">All statuses</MenuItem>
             <MenuItem value="draft">Draft</MenuItem>
             <MenuItem value="active">Active</MenuItem>
             <MenuItem value="archived">Archived</MenuItem>
@@ -169,14 +245,14 @@ export function ProductListTable({
               )
             }
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">All stock</MenuItem>
             <MenuItem value="IN_STOCK">In stock</MenuItem>
             <MenuItem value="LOW_STOCK">Low stock</MenuItem>
             <MenuItem value="OUT_OF_STOCK">Out of stock</MenuItem>
           </TextField>
           <TextField
             select
-            label="Sort"
+            label="Sort by"
             size="small"
             fullWidth
             value={query.sort}
@@ -198,110 +274,75 @@ export function ProductListTable({
               </MenuItem>
             ))}
           </TextField>
-          <Button
-            variant="contained"
-            disabled={!canCreate}
-            href={panelHref("new")}
-            className="!h-[40px] sm:!self-end"
-            fullWidth
-          >
-            + Add Product
-          </Button>
         </div>
       </div>
 
       {/* Mobile cards */}
-      <div className="flex flex-1 flex-col gap-3 md:hidden">
+      <div className="flex flex-col gap-3 md:hidden">
         {items.length === 0 ? (
-          <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
-            {emptyFilters ? (
-              <div className="space-y-3">
-                <p className="font-medium">No products yet.</p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  Add your first product to start selling.
-                </p>
-                {canCreate ? (
-                  <Button variant="contained" href={panelHref("new")}>
-                    Add Your First Product
-                  </Button>
-                ) : null}
-              </div>
-            ) : (
-              <p className="text-[var(--color-muted)]">
-                No products match these filters.
-              </p>
-            )}
-          </div>
+          <EmptyState
+            emptyFilters={emptyFilters}
+            canCreate={canCreate}
+            panelHref={panelHref("new")}
+          />
         ) : (
           items.map((item) => (
             <article
               key={item.id}
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+              className={`${adminCard()} flex gap-3 p-3`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <Link
-                    href={panelHref("view", item.id)}
-                    className="font-medium hover:underline"
-                  >
-                    {item.name}
-                  </Link>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">
-                    {item.categoryName ?? "No category"}
-                    {" · "}
-                    {item.minPrice == null
-                      ? "—"
-                      : item.minPrice === item.maxPrice
-                        ? item.minPrice.toFixed(2)
-                        : `${item.minPrice.toFixed(2)} – ${item.maxPrice?.toFixed(2)}`}
-                  </p>
+              <ProductThumb name={item.name} imageUrl={item.imageUrl} />
+              <div className="min-w-0 flex-1" style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <Link
+                      href={panelHref("view", item.id)}
+                      className="font-semibold text-[var(--color-foreground)] hover:underline"
+                    >
+                      {item.name}
+                    </Link>
+                    <p className="text-xs text-[var(--color-muted)]">
+                      {item.categoryName ?? "No category"}
+                      {" · "}
+                      {formatPriceRange(item.minPrice, item.maxPrice, currency)}
+                    </p>
+                  </div>
+                  <Chip
+                    size="small"
+                    label={
+                      item.status.charAt(0).toUpperCase() + item.status.slice(1)
+                    }
+                    variant="outlined"
+                  />
                 </div>
-                <Chip
-                  size="small"
-                  label={
-                    item.status.charAt(0).toUpperCase() + item.status.slice(1)
-                  }
-                  variant="outlined"
-                />
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Chip
-                  size="small"
-                  label={stockLabel[item.stockStatus] ?? item.stockStatus}
-                  color={stockColor[item.stockStatus]}
-                />
-                <div className="ml-auto flex flex-wrap gap-1">
-                  <Button size="small" href={panelHref("view", item.id)}>
-                    View
-                  </Button>
-                  <Button
+                <div className="flex flex-wrap items-center gap-2">
+                  <Chip
                     size="small"
-                    disabled={!canUpdate}
-                    href={panelHref("edit", item.id)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    size="small"
-                    color="error"
-                    disabled={!canDelete || pending}
-                    onClick={() => {
-                      if (
-                        !window.confirm(
-                          `Delete “${item.name}”? This cannot be undone.`,
-                        )
-                      ) {
-                        return;
-                      }
-                      startTransition(async () => {
-                        const result = await deleteProductAction(item.id);
-                        if (result.ok) router.refresh();
-                        else window.alert(result.error);
-                      });
-                    }}
-                  >
-                    Delete
-                  </Button>
+                    label={stockLabel[item.stockStatus] ?? item.stockStatus}
+                    color={stockColor[item.stockStatus]}
+                  />
+                  {item.featured ? (
+                    <Chip size="small" label="Featured" color="warning" variant="outlined" />
+                  ) : null}
+                  <div className="ml-auto flex flex-wrap gap-1">
+                    <Link href={panelHref("view", item.id)} className={adminBtn("ghost")}>
+                      View
+                    </Link>
+                    <Link
+                      href={panelHref("edit", item.id)}
+                      className={`${adminBtn("outline")} ${!canUpdate ? "pointer-events-none opacity-50" : ""}`}
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      type="button"
+                      className={adminBtn("danger")}
+                      disabled={!canDelete || pending}
+                      onClick={() => confirmDelete(item)}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             </article>
@@ -309,87 +350,68 @@ export function ProductListTable({
         )}
       </div>
 
-      {/* Desktop / tablet table */}
-      <div className="hidden min-h-[16rem] flex-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] md:block">
+      {/* Desktop table */}
+      <div className={`${adminCard()} hidden min-h-[16rem] overflow-x-auto md:block`}>
         <table className="min-w-full text-left text-sm">
-          <thead className="border-b border-[var(--color-border)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
+          <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
             <tr>
-              <th className="px-3 py-3">Product</th>
-              <th className="px-3 py-3">Category</th>
-              <th className="px-3 py-3">Price</th>
-              <th className="px-3 py-3">Stock</th>
-              <th className="px-3 py-3">Status</th>
-              <th className="px-3 py-3">Actions</th>
+              <th className="px-4 py-3 font-medium">Product</th>
+              <th className="px-4 py-3 font-medium">Category</th>
+              <th className="px-4 py-3 font-medium">Price</th>
+              <th className="px-4 py-3 font-medium">Stock</th>
+              <th className="px-4 py-3 font-medium">Status</th>
+              <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-16 text-center">
-                  {emptyFilters ? (
-                    <div className="space-y-3">
-                      <p className="font-medium">No products yet.</p>
-                      <p className="text-sm text-[var(--color-muted)]">
-                        Add your first product to start selling.
-                      </p>
-                      {canCreate ? (
-                        <Button variant="contained" href={panelHref("new")}>
-                          Add Your First Product
-                        </Button>
-                      ) : null}
-                    </div>
-                  ) : (
-                    <p className="text-[var(--color-muted)]">
-                      No products match these filters.
-                    </p>
-                  )}
+                <td colSpan={6} className="px-4 py-16 text-center">
+                  <EmptyState
+                    emptyFilters={emptyFilters}
+                    canCreate={canCreate}
+                    panelHref={panelHref("new")}
+                  />
                 </td>
               </tr>
             ) : (
               items.map((item) => (
                 <tr
                   key={item.id}
-                  className="border-b border-[var(--color-border)] last:border-0"
+                  className="border-b border-[var(--color-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--color-surface)_70%,transparent)]"
                 >
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-md bg-[var(--color-surface)] text-xs text-[var(--color-muted)]"
-                        aria-hidden
-                      >
-                        —
-                      </div>
-                      <div>
+                      <ProductThumb name={item.name} imageUrl={item.imageUrl} />
+                      <div className="min-w-0">
                         <Link
                           href={panelHref("view", item.id)}
-                          className="font-medium text-[var(--color-foreground)] hover:underline"
+                          className="font-semibold text-[var(--color-foreground)] hover:underline"
                         >
                           {item.name}
                         </Link>
-                        {item.featured ? (
-                          <p className="text-xs text-[var(--color-muted)]">
-                            Featured
-                          </p>
-                        ) : null}
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {item.featured ? "Featured · " : ""}
+                          {item.variantCount} pack
+                          {item.variantCount === 1 ? "" : "s"}
+                        </p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3">{item.categoryName ?? "—"}</td>
-                  <td className="px-3 py-3">
-                    {item.minPrice == null
-                      ? "—"
-                      : item.minPrice === item.maxPrice
-                        ? item.minPrice.toFixed(2)
-                        : `${item.minPrice.toFixed(2)} – ${item.maxPrice?.toFixed(2)}`}
+                  <td className="px-4 py-3 text-[var(--color-foreground)]">
+                    {item.categoryName ?? "—"}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-3 font-medium tabular-nums">
+                    {formatPriceRange(item.minPrice, item.maxPrice, currency)}
+                  </td>
+                  <td className="px-4 py-3">
                     <Chip
                       size="small"
                       label={stockLabel[item.stockStatus] ?? item.stockStatus}
                       color={stockColor[item.stockStatus]}
                     />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-4 py-3">
                     <Chip
                       size="small"
                       label={
@@ -398,39 +420,25 @@ export function ProductListTable({
                       variant="outlined"
                     />
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex flex-wrap gap-1">
-                      <Button size="small" href={panelHref("view", item.id)}>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Link href={panelHref("view", item.id)} className={adminBtn("ghost")}>
                         View
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={!canUpdate}
+                      </Link>
+                      <Link
                         href={panelHref("edit", item.id)}
+                        className={`${adminBtn("outline")} ${!canUpdate ? "pointer-events-none opacity-50" : ""}`}
                       >
                         Edit
-                      </Button>
-                      <Button
-                        size="small"
-                        color="error"
+                      </Link>
+                      <button
+                        type="button"
+                        className={adminBtn("danger")}
                         disabled={!canDelete || pending}
-                        onClick={() => {
-                          if (
-                            !window.confirm(
-                              `Delete “${item.name}”? This cannot be undone.`,
-                            )
-                          ) {
-                            return;
-                          }
-                          startTransition(async () => {
-                            const result = await deleteProductAction(item.id);
-                            if (result.ok) router.refresh();
-                            else window.alert(result.error);
-                          });
-                        }}
+                        onClick={() => confirmDelete(item)}
                       >
                         Delete
-                      </Button>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -440,28 +448,57 @@ export function ProductListTable({
         </table>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
         <p className="text-[var(--color-muted)]">
           {total} product{total === 1 ? "" : "s"} · page {query.page} of{" "}
           {totalPages}
         </p>
         <div className="flex gap-2">
-          <Button
-            size="small"
-            disabled={query.page <= 1}
+          <Link
             href={buildHref({ page: query.page - 1 }, query)}
+            className={`${adminBtn("outline")} ${query.page <= 1 ? "pointer-events-none opacity-50" : ""}`}
+            aria-disabled={query.page <= 1}
           >
             Previous
-          </Button>
-          <Button
-            size="small"
-            disabled={query.page >= totalPages}
+          </Link>
+          <Link
             href={buildHref({ page: query.page + 1 }, query)}
+            className={`${adminBtn("outline")} ${query.page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+            aria-disabled={query.page >= totalPages}
           >
             Next
-          </Button>
+          </Link>
         </div>
       </div>
+    </div>
+  );
+}
+
+function EmptyState({
+  emptyFilters,
+  canCreate,
+  panelHref,
+}: {
+  emptyFilters: boolean;
+  canCreate: boolean;
+  panelHref: string;
+}) {
+  if (!emptyFilters) {
+    return (
+      <p className="text-[var(--color-muted)]">No products match these filters.</p>
+    );
+  }
+  return (
+    <div className="space-y-3 py-4">
+      <p className="font-semibold text-[var(--color-foreground)]">No products yet</p>
+      <p className="text-sm text-[var(--color-muted)]">
+        Add your first product to start selling on the storefront.
+      </p>
+      {canCreate ? (
+        <Link href={panelHref} className={adminBtn("primary")}>
+          Add your first product
+        </Link>
+      ) : null}
     </div>
   );
 }

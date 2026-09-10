@@ -34,6 +34,8 @@ export type MediaRow = {
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+  /** Admin UI preview (public URL or short-lived signed URL). Not persisted. */
+  preview_url?: string | null;
 };
 
 export type MediaListQuery = {
@@ -48,6 +50,50 @@ function normalizeFolder(value: string | null | undefined): MediaFolder {
     return value as MediaFolder;
   }
   return "general";
+}
+
+async function attachPreviewUrls(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  items: MediaRow[],
+): Promise<MediaRow[]> {
+  if (!items.length) return items;
+
+  const privatePaths: string[] = [];
+  for (const item of items) {
+    const bucket = bucketForFolder(normalizeFolder(item.folder));
+    if (bucket === STORAGE_BUCKETS.media) {
+      privatePaths.push(item.storage_path);
+    }
+  }
+
+  const signedByPath = new Map<string, string>();
+  if (privatePaths.length) {
+    const { data } = await supabase.storage
+      .from(STORAGE_BUCKETS.media)
+      .createSignedUrls(privatePaths, 60 * 60);
+    (data ?? []).forEach((entry, index) => {
+      if (!entry?.signedUrl) return;
+      const original = privatePaths[index];
+      if (original) signedByPath.set(original, entry.signedUrl);
+      if (entry.path) signedByPath.set(entry.path, entry.signedUrl);
+    });
+  }
+
+  return items.map((item) => {
+    const folder = normalizeFolder(item.folder);
+    const bucket = bucketForFolder(folder);
+    if (bucket === STORAGE_BUCKETS.media) {
+      return {
+        ...item,
+        preview_url: signedByPath.get(item.storage_path) ?? null,
+      };
+    }
+    const publicUrl =
+      item.public_url ||
+      resolvePublicStorageUrl(bucket, item.storage_path) ||
+      null;
+    return { ...item, preview_url: publicUrl };
+  });
 }
 
 export async function listMedia(
@@ -85,8 +131,10 @@ export async function listMedia(
   const { data, error, count } = await query.range(from, to);
   if (error || !data) return empty;
 
+  const items = await attachPreviewUrls(supabase, data as MediaRow[]);
+
   return {
-    items: data as MediaRow[],
+    items,
     total: count ?? data.length,
     page,
     pageSize,

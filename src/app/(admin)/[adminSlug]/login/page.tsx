@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { AuthShell } from "@/features/auth/components/AuthShell";
 import { AdminLoginForm } from "@/features/admin/components/AdminLoginForm";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 
 export default async function AdminLoginPage() {
   const { brand } = await getPlatformConfigAsync();

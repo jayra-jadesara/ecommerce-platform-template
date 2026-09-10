@@ -16,7 +16,7 @@ import {
 } from "@/features/cms/schemas";
 import type { BannerRow, ContentPage, ParsedContentSection } from "@/features/cms/types";
 import { listStorefrontCategories, listStorefrontProducts } from "@/features/catalog/storefront";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabasePublicClient } from "@/lib/supabase/public";
 import type { Tables } from "@/types/database";
 
 function mapPage(row: Tables<"pages">): ContentPage {
@@ -72,7 +72,9 @@ async function loadPublishedPageUncached(
   storeId: string,
   slug: string,
 ): Promise<StorefrontPagePayload | null> {
-  const supabase = await createSupabaseServerClient();
+  // Public anon client — must not call cookies() inside unstable_cache.
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return null;
   const { data: pageRow } = await supabase
     .from("pages")
     .select("*")
@@ -184,7 +186,8 @@ export async function getPublishedHomepage(): Promise<StorefrontPagePayload | nu
 }
 
 async function loadActiveBannersUncached(storeId: string): Promise<BannerRow[]> {
-  const supabase = await createSupabaseServerClient();
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return [];
   const now = new Date().toISOString();
   const { data } = await supabase
     .from("banners")

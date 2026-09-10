@@ -19,7 +19,7 @@ export default async function AdminFooterSettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Footer layout"
-        description="Footer text and which contact details to show."
+        description="What to show in the footer. Description and copyright fill in automatically."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Appearance", href: getAdminPath("/settings/theme") },

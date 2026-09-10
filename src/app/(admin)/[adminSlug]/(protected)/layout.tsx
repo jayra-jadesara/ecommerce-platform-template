@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { AdminShell } from "@/features/admin/components/AdminShell";
 import { getAdminNavTreeForPermissions } from "@/features/admin/nav";
 import { requireAdmin } from "@/features/auth/session";
-import { getPlatformConfigAsync } from "@/config/site";
+import { getSiteUrl } from "@/config/site";
+import { getPlatformConfigAsync } from "@/config/site.server";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function AdminProtectedLayout({
       email={admin.user.email}
       roles={admin.roles}
       navItems={navItems}
+      siteUrl={getSiteUrl()}
     >
       {children}
     </AdminShell>

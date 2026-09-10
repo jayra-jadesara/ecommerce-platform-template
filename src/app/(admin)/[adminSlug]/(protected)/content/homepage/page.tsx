@@ -33,7 +33,7 @@ export default async function AdminContentHomepagePage() {
     <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="Homepage"
-        description="Arrange and edit the sections customers see first."
+        description="Build the sections of your storefront."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Homepage" },

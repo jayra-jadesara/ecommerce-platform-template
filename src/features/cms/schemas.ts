@@ -140,6 +140,24 @@ export const sectionCommonSettingsSchema = z.object({
 
 export type SectionCommonSettings = z.infer<typeof sectionCommonSettingsSchema>;
 
+export const HERO_LAYOUT_PRESETS = [
+  "SPLIT",
+  "CENTERED",
+  "FULL_BLEED",
+  "IMAGE_RIGHT",
+  "IMAGE_LEFT",
+] as const;
+
+export type HeroLayoutPreset = (typeof HERO_LAYOUT_PRESETS)[number];
+
+export const HERO_LAYOUT_PRESET_LABELS: Record<HeroLayoutPreset, string> = {
+  SPLIT: "Split (text + visual)",
+  CENTERED: "Centered",
+  FULL_BLEED: "Full-bleed overlay",
+  IMAGE_RIGHT: "Image right",
+  IMAGE_LEFT: "Image left",
+};
+
 export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   title: shortTextSchema.default(""),
   subtitle: z.string().max(300).optional().default(""),
@@ -151,6 +169,8 @@ export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   secondaryButtonText: z.string().max(80).optional().default(""),
   secondaryButtonLink: optionalSafeUrlSchema.optional().default(null),
   alignment: z.enum(["left", "center", "right"]).default("left"),
+  /** Safe layout presets — never arbitrary CSS/JS from the database. */
+  layoutPreset: z.enum(HERO_LAYOUT_PRESETS).default("SPLIT"),
   /** Optional decorative 3D — allow-listed preset only; never arbitrary code. */
   enable3d: z.boolean().default(false),
   scene3dPreset: z

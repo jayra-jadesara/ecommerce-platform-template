@@ -1,54 +1,54 @@
 /**
  * Semantic design tokens (fallback before JS/runtime theme injection).
- * Runtime values come from ThemeConfig / Supabase — these are safe defaults only.
+ * Warm spice / food-brand defaults — not a specific client brand.
  */
 
 :root {
   color-scheme: light;
-  --color-primary: #1a5f4a;
-  --color-secondary: #2c3e50;
-  --color-accent: #c4783a;
-  --color-background: #f3f1ec;
-  --color-foreground: #1a1a1a;
-  --color-surface: #ffffff;
+  --color-primary: #9f1239;
+  --color-secondary: #44403c;
+  --color-accent: #d97706;
+  --color-background: #fff8f0;
+  --color-foreground: #1c1917;
+  --color-surface: #fffdf9;
   --color-card: #ffffff;
-  --color-border: #ddd6cc;
-  --color-muted: #6b6560;
-  --color-success: #2e7d4f;
-  --color-warning: #b7791f;
-  --color-error: #b42318;
-  --color-header-background: #ffffff;
-  --color-header-foreground: #1a1a1a;
-  --color-footer-background: #ffffff;
-  --color-footer-foreground: #6b6560;
-  --color-button-background: #1a5f4a;
-  --color-button-foreground: #ffffff;
+  --color-border: #eadfce;
+  --color-muted: #78716c;
+  --color-success: #3f6212;
+  --color-warning: #a16207;
+  --color-error: #b91c1c;
+  --color-header-background: #fffdf9;
+  --color-header-foreground: #1c1917;
+  --color-footer-background: #1c1917;
+  --color-footer-foreground: #f5f0e8;
+  --color-button-background: #9f1239;
+  --color-button-foreground: #fff8f0;
 
   --layout-max-width: 100%;
-  --layout-header-height: 4rem;
-  --layout-container-padding: clamp(0.5rem, 1vw, 0.75rem);
-  --radius-default: 8px;
+  --layout-content-max: 1520px;
+  --layout-header-height: 4.75rem;
+  --layout-container-padding: clamp(1.25rem, 3vw, 2.25rem);
+  --radius-default: 14px;
 }
 
-/* Applied by theme boot script before React — prevents white flash in dark mode */
 html.dark {
   color-scheme: dark;
-  --color-primary: #4fd1a5;
-  --color-secondary: #94a3b8;
-  --color-accent: #e8a05c;
-  --color-background: #0f1412;
-  --color-foreground: #f2f0eb;
-  --color-surface: #1a211e;
-  --color-card: #222a26;
-  --color-border: #2f3a35;
-  --color-muted: #9ca89f;
-  --color-success: #4ade80;
+  --color-primary: #fb923c;
+  --color-secondary: #a8a29e;
+  --color-accent: #fbbf24;
+  --color-background: #140f0c;
+  --color-foreground: #faf6f1;
+  --color-surface: #1f1712;
+  --color-card: #2a1f18;
+  --color-border: #3f2e24;
+  --color-muted: #a8a29e;
+  --color-success: #a3e635;
   --color-warning: #fbbf24;
   --color-error: #f87171;
-  --color-header-background: #1a211e;
-  --color-header-foreground: #f2f0eb;
-  --color-footer-background: #1a211e;
-  --color-footer-foreground: #9ca89f;
-  --color-button-background: #4fd1a5;
-  --color-button-foreground: #0f1412;
+  --color-header-background: #1f1712;
+  --color-header-foreground: #faf6f1;
+  --color-footer-background: #0c0907;
+  --color-footer-foreground: #e7e0d6;
+  --color-button-background: #fb923c;
+  --color-button-foreground: #140f0c;
 }

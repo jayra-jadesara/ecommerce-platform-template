@@ -12,6 +12,7 @@ import {
 } from "@/features/cms/actions";
 import type { ContentPage } from "@/features/cms/types";
 import { HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import { formatDate } from "@/lib/format-date";
 
 export function PagesListClient({
   pages,
@@ -50,7 +51,7 @@ export function PagesListClient({
           <thead className="bg-[var(--color-surface)] text-[var(--color-muted)]">
             <tr>
               <th className="px-3 py-2 font-medium">Title</th>
-              <th className="px-3 py-2 font-medium">URL</th>
+              <th className="px-3 py-2 font-medium">Page address</th>
               <th className="px-3 py-2 font-medium">Status</th>
               <th className="px-3 py-2 font-medium">Updated</th>
               <th className="px-3 py-2 font-medium">Actions</th>
@@ -60,7 +61,7 @@ export function PagesListClient({
             {visible.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-3 py-8 text-center text-[var(--color-muted)]">
-                  No pages yet. Create About, Shipping, or other store pages here.
+                  No pages yet. Add About, Shipping, Privacy, or other store pages here.
                 </td>
               </tr>
             ) : (
@@ -72,7 +73,7 @@ export function PagesListClient({
                     <Chip size="small" label={page.status} />
                   </td>
                   <td className="px-3 py-2 text-[var(--color-muted)]">
-                    {new Date(page.updatedAt).toLocaleDateString()}
+                    {formatDate(page.updatedAt)}
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">

@@ -5,6 +5,8 @@ import { useEffect } from "react";
 /**
  * Registers the minimal storefront service worker.
  * Failures are silent — the site must work without a SW.
+ * In development, actively unregister SWs so stale caches cannot serve
+ * old Turbopack chunks (causes "module factory is not available").
  */
 export function ServiceWorkerRegister({
   adminSegment = "manage-store",
@@ -14,11 +16,23 @@ export function ServiceWorkerRegister({
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    // Avoid SW during Next.js local HMR quirks unless explicitly enabled
-    if (
-      process.env.NODE_ENV === "development" &&
-      process.env.NEXT_PUBLIC_ENABLE_SW_DEV !== "1"
-    ) {
+
+    const isDev = process.env.NODE_ENV === "development";
+    const allowDevSw = process.env.NEXT_PUBLIC_ENABLE_SW_DEV === "1";
+
+    if (isDev && !allowDevSw) {
+      void navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) {
+          void reg.unregister();
+        }
+      });
+      if ("caches" in window) {
+        void caches.keys().then((keys) => {
+          for (const key of keys) {
+            void caches.delete(key);
+          }
+        });
+      }
       return;
     }
 

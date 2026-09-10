@@ -14,7 +14,7 @@ export default async function AdminContentBannersPage() {
     <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="Banners"
-        description="Promotional banners shown across your store."
+        description="Promotional strips for sales and announcements. Pick an image and an optional store page for the button."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Banners" },
