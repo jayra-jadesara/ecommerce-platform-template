@@ -3,7 +3,7 @@
  */
 
 .admin-scroll-hide {
-  scrollbar-width: none;
+  scrollbar-width: none !important;
   -ms-overflow-style: none;
 }
 
@@ -137,4 +137,169 @@
 .admin-page-content {
   width: 100%;
   max-width: none;
+}
+
+/** Two settings cards per row on desktop; stack on mobile. */
+.admin-cards-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  align-items: stretch;
+}
+
+@media (min-width: 1024px) {
+  .admin-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.admin-cards-grid > * {
+  min-width: 0;
+  height: 100%;
+}
+
+.admin-cards-grid__full {
+  grid-column: 1 / -1;
+}
+
+/**
+ * Themed MUI X date/time pickers — use store tokens instead of default blue.
+ * Applied to poppers portaled outside the admin shell.
+ */
+.admin-datetime-paper,
+.admin-datetime-popper .MuiPaper-root {
+  background-color: var(--color-surface) !important;
+  color: var(--color-foreground) !important;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius-default, 0.75rem) + 2px) !important;
+  box-shadow:
+    0 12px 32px color-mix(in srgb, var(--color-foreground) 12%, transparent) !important;
+}
+
+.admin-datetime-popper .MuiPickersLayout-root,
+.admin-datetime-paper .MuiPickersLayout-root {
+  background-color: var(--color-surface);
+  color: var(--color-foreground);
+}
+
+.admin-datetime-popper .MuiPickersCalendarHeader-label,
+.admin-datetime-popper .MuiDayCalendar-weekDayLabel,
+.admin-datetime-popper .MuiPickersArrowSwitcher-button,
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-item,
+.admin-datetime-popper .MuiPickersYear-yearButton,
+.admin-datetime-popper .MuiPickersMonth-monthButton,
+.admin-datetime-paper .MuiPickersCalendarHeader-label,
+.admin-datetime-paper .MuiDayCalendar-weekDayLabel,
+.admin-datetime-paper .MuiPickersArrowSwitcher-button,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-item,
+.admin-datetime-paper .MuiPickersYear-yearButton,
+.admin-datetime-paper .MuiPickersMonth-monthButton {
+  color: var(--color-foreground);
+}
+
+.admin-datetime-popper .MuiDayCalendar-weekDayLabel,
+.admin-datetime-paper .MuiDayCalendar-weekDayLabel {
+  color: var(--color-muted);
+}
+
+.admin-datetime-popper .MuiPickersDay-root,
+.admin-datetime-paper .MuiPickersDay-root {
+  color: var(--color-foreground);
+  border-radius: 0.5rem;
+}
+
+.admin-datetime-popper .MuiPickersDay-root:hover,
+.admin-datetime-paper .MuiPickersDay-root:hover,
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-item:hover,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-item:hover,
+.admin-datetime-popper .MuiPickersYear-yearButton:hover,
+.admin-datetime-paper .MuiPickersYear-yearButton:hover,
+.admin-datetime-popper .MuiPickersMonth-monthButton:hover,
+.admin-datetime-paper .MuiPickersMonth-monthButton:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 12%,
+    transparent
+  ) !important;
+}
+
+.admin-datetime-popper .MuiPickersDay-root.Mui-selected,
+.admin-datetime-paper .MuiPickersDay-root.Mui-selected,
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-item.Mui-selected,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-item.Mui-selected,
+.admin-datetime-popper .MuiPickersYear-yearButton.Mui-selected,
+.admin-datetime-paper .MuiPickersYear-yearButton.Mui-selected,
+.admin-datetime-popper .MuiPickersMonth-monthButton.Mui-selected,
+.admin-datetime-paper .MuiPickersMonth-monthButton.Mui-selected {
+  background-color: var(--color-primary) !important;
+  color: var(--color-button-foreground) !important;
+  font-weight: 600;
+}
+
+.admin-datetime-popper .MuiPickersDay-root.Mui-selected:hover,
+.admin-datetime-paper .MuiPickersDay-root.Mui-selected:hover,
+.admin-datetime-popper
+  .MuiMultiSectionDigitalClockSection-item.Mui-selected:hover,
+.admin-datetime-paper
+  .MuiMultiSectionDigitalClockSection-item.Mui-selected:hover {
+  background-color: var(--color-primary) !important;
+  filter: brightness(0.94);
+}
+
+.admin-datetime-popper .MuiPickersDay-root.MuiPickersDay-today,
+.admin-datetime-paper .MuiPickersDay-root.MuiPickersDay-today {
+  border: 1px solid var(--color-primary);
+}
+
+.admin-datetime-popper .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected),
+.admin-datetime-paper .MuiPickersDay-root.MuiPickersDay-today:not(.Mui-selected) {
+  color: var(--color-primary);
+}
+
+.admin-datetime-popper .MuiDialogActions-root .MuiButton-root,
+.admin-datetime-paper .MuiDialogActions-root .MuiButton-root,
+.admin-datetime-popper .MuiPickersLayout-actionBar .MuiButton-root,
+.admin-datetime-paper .MuiPickersLayout-actionBar .MuiButton-root {
+  color: var(--color-primary);
+  text-transform: none;
+  font-weight: 600;
+}
+
+.admin-datetime-popper .MuiDialogActions-root .MuiButton-root:hover,
+.admin-datetime-paper .MuiDialogActions-root .MuiButton-root:hover,
+.admin-datetime-popper .MuiPickersLayout-actionBar .MuiButton-root:hover,
+.admin-datetime-paper .MuiPickersLayout-actionBar .MuiButton-root:hover {
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 10%,
+    transparent
+  );
+}
+
+.admin-datetime-popper .MuiPickersLayout-contentWrapper,
+.admin-datetime-paper .MuiPickersLayout-contentWrapper {
+  border-color: var(--color-border);
+}
+
+.admin-datetime-popper .MuiDivider-root,
+.admin-datetime-paper .MuiDivider-root {
+  border-color: var(--color-border);
+}
+
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-root::after,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-root::after {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-surface) 0%, transparent),
+    var(--color-surface)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-datetime-popper *,
+  .admin-datetime-paper * {
+    transition: none !important;
+    animation: none !important;
+  }
 }

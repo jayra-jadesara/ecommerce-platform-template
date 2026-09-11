@@ -22,10 +22,15 @@ import {
   adminBtn,
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import {
+  AdminDateTimeField,
+  isoToAdminDateTimeLocal,
+} from "@/features/admin/ui/AdminDateTimeField";
 
 interface CouponFormProps {
   mode: "create" | "edit";
@@ -33,14 +38,6 @@ interface CouponFormProps {
   initialValues: CouponFormValues;
   currency: string;
   canSubmit: boolean;
-}
-
-function toDatetimeLocalValue(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 export function CouponForm({
@@ -70,10 +67,10 @@ export function CouponForm({
           ? initialValues.discountType
           : "percentage",
       startsAt: initialValues.startsAt
-        ? toDatetimeLocalValue(initialValues.startsAt)
+        ? isoToAdminDateTimeLocal(initialValues.startsAt)
         : null,
       expiresAt: initialValues.expiresAt
-        ? toDatetimeLocalValue(initialValues.expiresAt)
+        ? isoToAdminDateTimeLocal(initialValues.expiresAt)
         : null,
     },
   });
@@ -152,10 +149,11 @@ export function CouponForm({
         short and easy to remember.
       </p>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+      <div className={adminCardsGrid()}>
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. Coupon code</p>
           <p className="admin-field-group__hint">
@@ -190,12 +188,12 @@ export function CouponForm({
             {...register("description")}
           />
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. How much off?</p>
           <p className="admin-field-group__hint">
@@ -294,12 +292,12 @@ export function CouponForm({
             )}
           </div>
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">3. Limits & schedule</p>
           <p className="admin-field-group__hint">
@@ -344,31 +342,43 @@ export function CouponForm({
                     : Math.trunc(Number(v)),
               })}
             />
-            <TextField
-              label="Starts"
-              type="datetime-local"
-              fullWidth
-              disabled={!canSubmit || pending}
-              slotProps={{ inputLabel: { shrink: true } }}
-              error={Boolean(errors.startsAt)}
-              helperText={
-                errors.startsAt?.message ??
-                "Leave blank to start as soon as you save."
-              }
-              {...register("startsAt")}
+            <Controller
+              name="startsAt"
+              control={control}
+              render={({ field }) => (
+                <AdminDateTimeField
+                  label="Starts"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.startsAt)}
+                  helperText={
+                    errors.startsAt?.message ??
+                    "Leave blank to start as soon as you save."
+                  }
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
-            <TextField
-              label="Ends"
-              type="datetime-local"
-              fullWidth
-              disabled={!canSubmit || pending}
-              slotProps={{ inputLabel: { shrink: true } }}
-              error={Boolean(errors.expiresAt)}
-              helperText={
-                errors.expiresAt?.message ??
-                "Leave blank if the code should not expire."
-              }
-              {...register("expiresAt")}
+            <Controller
+              name="expiresAt"
+              control={control}
+              render={({ field }) => (
+                <AdminDateTimeField
+                  label="Ends"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.expiresAt)}
+                  helperText={
+                    errors.expiresAt?.message ??
+                    "Leave blank if the code should not expire."
+                  }
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
           </div>
           <Controller
@@ -392,9 +402,9 @@ export function CouponForm({
             )}
           />
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <section className={`${adminCard()} ${adminCardPadding()}`}>
         <h3 className="text-base font-semibold text-[var(--color-foreground)]">
           Example at checkout
         </h3>
@@ -419,7 +429,8 @@ export function CouponForm({
             This coupon is inactive, so it will not work until you turn it on.
           </p>
         ) : null}
-      </section>
+        </section>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button

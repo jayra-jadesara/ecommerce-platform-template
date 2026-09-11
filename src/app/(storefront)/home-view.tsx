@@ -12,6 +12,7 @@ import {
   sfEyebrow,
   sfSectionInner,
 } from "@/components/ui/storefront-classes";
+import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
 import type { PlatformConfig } from "@/types";
 
 interface HomeViewProps {
@@ -19,6 +20,7 @@ interface HomeViewProps {
   products?: StorefrontProductCard[];
   categories?: StorefrontCategory[];
   currency?: string;
+  isAuthenticated?: boolean;
 }
 
 function meaningfulText(value: string | undefined | null) {
@@ -37,6 +39,7 @@ export function HomeView({
   products = [],
   categories = [],
   currency,
+  isAuthenticated = false,
 }: HomeViewProps) {
   const storeCurrency = currency ?? config.store.currency;
   const featured = products.slice(0, 8);
@@ -161,13 +164,43 @@ export function HomeView({
       {collection.length > 0 ? (
         <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] py-12 md:py-16">
           <div className={sfSectionInner()}>
-            <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className={sfEyebrow()}>Shop</p>
-                <h2 className={`${sfDisplay()} mt-2 text-2xl md:text-3xl`}>
-                  Shop by category
-                </h2>
-              </div>
+            <div className="mx-auto mb-8 max-w-3xl text-center">
+              <SectionAccentHeading title="Explore our Collections" />
+              <p className="mt-3 text-sm text-[var(--color-muted)]">
+                Seasoning, grinded, and blended spices for kitchens and food
+                industries.
+              </p>
+            </div>
+            <ul className="mx-auto flex max-w-5xl flex-wrap justify-center gap-5 sm:gap-6">
+              {collection.slice(0, 4).map((category) => (
+                <li key={category.id} className="w-48 shrink-0 sm:w-56 md:w-60">
+                  <Link
+                    href={`/categories/${category.slug}`}
+                    className="group block overflow-hidden rounded-[var(--radius-default,14px)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+                  >
+                    <div className="relative aspect-square overflow-hidden rounded-[var(--radius-default,14px)] bg-[color-mix(in_srgb,var(--color-accent)_12%,var(--color-surface))]">
+                      {category.imageUrl ? (
+                        <Image
+                          src={category.imageUrl}
+                          alt=""
+                          fill
+                          className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
+                          sizes="240px"
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--font-display)] text-xl font-semibold text-[var(--color-primary)]">
+                          {category.name.slice(0, 1)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="px-1 pt-2.5 text-center text-sm font-semibold text-[var(--color-foreground)]">
+                      {category.name}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="mt-6 text-center">
               <Link
                 href="/products"
                 className="text-sm font-semibold text-[var(--color-primary)] hover:underline"
@@ -175,64 +208,36 @@ export function HomeView({
                 View all products
               </Link>
             </div>
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 lg:gap-4">
-              {collection.map((category) => (
-                <li key={category.id}>
-                  <Link
-                    href={`/categories/${category.slug}`}
-                    className="group flex h-full flex-col overflow-hidden rounded-[var(--radius-default,14px)] border border-[var(--color-border)] bg-[var(--color-card)] transition-colors hover:border-[var(--color-primary)]"
-                  >
-                    <div className="relative aspect-square overflow-hidden bg-[color-mix(in_srgb,var(--color-accent)_12%,var(--color-surface))]">
-                      {category.imageUrl ? (
-                        <Image
-                          src={category.imageUrl}
-                          alt=""
-                          fill
-                          className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-                          sizes="160px"
-                        />
-                      ) : (
-                        <span className="absolute inset-0 flex items-center justify-center font-[family-name:var(--font-display)] text-3xl font-semibold text-[var(--color-primary)]">
-                          {category.name.slice(0, 1)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="px-3 py-3 text-center text-sm font-semibold text-[var(--color-foreground)]">
-                      {category.name}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
         </section>
       ) : null}
 
       <section className="py-12 md:py-16">
         <div className={sfSectionInner()}>
-          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className={sfEyebrow()}>Catalog</p>
-              <h2 className={`${sfDisplay()} mt-2 text-2xl md:text-3xl`}>
-                Featured products
-              </h2>
+          <div className="mx-auto mb-8 max-w-3xl text-center">
+            <SectionAccentHeading title="Featured products" />
+            <div className="mt-4">
+              <Link href="/products" className={sfBtn("outline")}>
+                Shop all
+              </Link>
             </div>
-            <Link href="/products" className={sfBtn("outline")}>
-              Shop all
-            </Link>
           </div>
 
           {featured.length > 0 ? (
-            <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-4">
+            <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4">
               {featured.map((product) => (
-                <li key={product.id} className="min-w-0">
-                  <ProductCard product={product} currency={storeCurrency} />
+                <li key={product.id} className="flex h-full min-w-0">
+                  <ProductCard
+                    product={product}
+                    currency={storeCurrency}
+                    isAuthenticated={isAuthenticated}
+                  />
                 </li>
               ))}
             </ul>
           ) : (
             <div className="rounded-[var(--radius-default,14px)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-14 text-center">
-              <p className={`${sfDisplay()} text-xl`}>Products coming soon</p>
+              <SectionAccentHeading title="Products coming soon" />
               <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-muted)]">
                 Publish products with images in the admin catalog to feature them
                 here.

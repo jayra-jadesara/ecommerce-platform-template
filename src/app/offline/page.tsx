@@ -19,8 +19,8 @@ export default function OfflinePage() {
         You&apos;re offline
       </h1>
       <p className="text-[var(--color-muted)]">
-        Some store features require an internet connection. Checkout and payment
-        are not available offline.
+        Some store features require an internet connection. Buy it now and
+        payment are not available offline.
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
         <Link

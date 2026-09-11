@@ -69,6 +69,15 @@ export function adminPageStack(): string {
   return "flex flex-col gap-6";
 }
 
+/** Two cards side-by-side from lg; use adminCardSpanFull() for full-width rows. */
+export function adminCardsGrid(): string {
+  return "admin-cards-grid";
+}
+
+export function adminCardSpanFull(): string {
+  return "admin-cards-grid__full";
+}
+
 export function adminBtn(
   variant: "primary" | "secondary" | "outline" | "ghost" | "danger" = "primary",
 ): string {

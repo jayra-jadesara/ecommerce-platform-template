@@ -89,6 +89,9 @@ export function createAppMuiTheme(
         styleOverrides: {
           root: {
             backgroundColor: "var(--color-card)",
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: tokens.primary,
+            },
             "&.Mui-error:hover .MuiOutlinedInput-notchedOutline": {
               borderColor: tokens.error,
             },
@@ -99,6 +102,15 @@ export function createAppMuiTheme(
           input: {
             paddingTop: 12,
             paddingBottom: 12,
+          },
+        },
+      },
+      MuiInputLabel: {
+        styleOverrides: {
+          root: {
+            "&.Mui-focused": {
+              color: tokens.primary,
+            },
           },
         },
       },
@@ -138,12 +150,67 @@ export function createAppMuiTheme(
         },
       },
       MuiCssBaseline: {
-        styleOverrides: {
-          body: {
-            backgroundColor: "var(--color-background)",
-            color: "var(--color-foreground)",
-          },
-        },
+        styleOverrides: `
+          :root {
+            --scrollbar-size: 10px;
+            --scrollbar-thumb: var(--color-primary);
+            --scrollbar-track: color-mix(in srgb, var(--color-surface) 55%, var(--color-border));
+            --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 78%, #000 22%);
+          }
+          html.dark {
+            --scrollbar-thumb-hover: color-mix(in srgb, var(--color-primary) 85%, #fff 15%);
+          }
+          @supports (-moz-appearance: none) {
+            * {
+              scrollbar-width: thin;
+              scrollbar-color: var(--color-primary) var(--scrollbar-track);
+            }
+          }
+          ::-webkit-scrollbar {
+            width: 10px !important;
+            height: 10px !important;
+          }
+          ::-webkit-scrollbar-track {
+            background: var(--scrollbar-track) !important;
+          }
+          ::-webkit-scrollbar-thumb {
+            background-color: var(--color-primary) !important;
+            border-radius: 8px !important;
+            border: 2px solid var(--scrollbar-track) !important;
+            background-clip: padding-box !important;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--scrollbar-thumb-hover) !important;
+          }
+          ::-webkit-scrollbar-corner {
+            background: transparent !important;
+          }
+          .MuiMultiSectionDigitalClockSection-root {
+            scrollbar-width: unset !important;
+            overflow-y: auto !important;
+          }
+          .MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar,
+          .MuiList-root::-webkit-scrollbar {
+            width: 8px !important;
+            height: 8px !important;
+          }
+          .MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-track,
+          .MuiList-root::-webkit-scrollbar-track {
+            background: var(--scrollbar-track) !important;
+            border-radius: 8px !important;
+          }
+          .MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-thumb,
+          .MuiList-root::-webkit-scrollbar-thumb {
+            background-color: var(--color-primary) !important;
+            border-radius: 8px !important;
+            border: 2px solid var(--scrollbar-track) !important;
+            background-clip: padding-box !important;
+          }
+          .MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-thumb:hover,
+          .MuiList-root::-webkit-scrollbar-thumb:hover {
+            background-color: var(--scrollbar-thumb-hover) !important;
+          }
+        `,
       },
     },
   });

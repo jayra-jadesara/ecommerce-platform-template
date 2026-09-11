@@ -41,7 +41,7 @@ export default async function PaymentFailedPage({
       }
       if (payment.failure_reason) {
         reason =
-          "Payment failed. Please try again from checkout with a different method if needed.";
+          "Payment failed. Please try again from Buy it now with a different method if needed.";
       }
     }
   }

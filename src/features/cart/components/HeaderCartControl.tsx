@@ -197,7 +197,7 @@ export function HeaderCartControl() {
               </span>
             </div>
             <p className="text-xs text-[var(--color-muted)]">
-              Shipping and taxes calculated at checkout.
+              Shipping and taxes calculated when you Buy it now.
             </p>
             <Link
               href="/cart"
@@ -212,7 +212,7 @@ export function HeaderCartControl() {
                 onClick={() => setOpen(false)}
                 className={cn(sfBtn("primary"), "w-full")}
               >
-                Checkout
+                Buy it now
               </Link>
             ) : (
               <button
@@ -221,11 +221,11 @@ export function HeaderCartControl() {
                 title={
                   cart.items.length === 0
                     ? "Your cart is empty"
-                    : "Remove unavailable items before checkout"
+                    : "Remove unavailable items before Buy it now"
                 }
                 className={cn(sfBtn("primary"), "w-full opacity-50")}
               >
-                Checkout
+                Buy it now
               </button>
             )}
           </div>

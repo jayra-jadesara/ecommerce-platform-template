@@ -20,6 +20,7 @@ import {
   adminBtn,
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -136,10 +137,11 @@ export function FooterSettingsForm({
         copyright are filled automatically from your brand.
       </p>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+      <div className={adminCardsGrid()}>
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. Footer on or off</p>
           <Controller
@@ -163,16 +165,16 @@ export function FooterSettingsForm({
             )}
           />
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={{
-          ...adminStackStyle,
-          opacity: footerOn ? 1 : 0.55,
-          pointerEvents: footerOn ? "auto" : "none",
-        }}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={{
+            ...adminStackStyle,
+            opacity: footerOn ? 1 : 0.55,
+            pointerEvents: footerOn ? "auto" : "none",
+          }}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. What to include</p>
           <p className="admin-field-group__hint">
@@ -207,16 +209,16 @@ export function FooterSettingsForm({
             ))}
           </div>
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={{
-          ...adminStackStyle,
-          opacity: footerOn ? 1 : 0.55,
-          pointerEvents: footerOn ? "auto" : "none",
-        }}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={{
+            ...adminStackStyle,
+            opacity: footerOn ? 1 : 0.55,
+            pointerEvents: footerOn ? "auto" : "none",
+          }}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">3. Footer text (automatic)</p>
           <p className="admin-field-group__hint">
@@ -301,9 +303,9 @@ export function FooterSettingsForm({
             </div>
           </details>
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <section className={`${adminCard()} ${adminCardPadding()}`}>
         <h3 className="text-base font-semibold text-[var(--color-foreground)]">
           Footer preview
         </h3>
@@ -334,7 +336,8 @@ export function FooterSettingsForm({
             </p>
           </div>
         )}
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

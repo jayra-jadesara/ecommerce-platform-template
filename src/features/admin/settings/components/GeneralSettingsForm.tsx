@@ -28,6 +28,8 @@ import {
 import {
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
+  adminCardSpanFull,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -217,7 +219,8 @@ export function GeneralSettingsForm({
         }}
       />
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+      <div className={adminCardsGrid()}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. Store name</p>
           <p className="admin-field-group__hint">
@@ -256,9 +259,9 @@ export function GeneralSettingsForm({
             />
           </div>
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. Money &amp; language</p>
           <p className="admin-field-group__hint">
@@ -315,9 +318,9 @@ export function GeneralSettingsForm({
             />
           </div>
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">3. Contact &amp; address</p>
           <p className="admin-field-group__hint">
@@ -518,9 +521,9 @@ export function GeneralSettingsForm({
             />
           </div>
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">4. Business IDs (optional)</p>
           <p className="admin-field-group__hint">
@@ -586,9 +589,12 @@ export function GeneralSettingsForm({
             />
           </div>
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section
+          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">5. Social links (optional)</p>
           <p className="admin-field-group__hint">
@@ -624,7 +630,8 @@ export function GeneralSettingsForm({
             ))}
           </div>
         </div>
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

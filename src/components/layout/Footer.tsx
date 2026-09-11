@@ -182,7 +182,7 @@ export function Footer({
       </Container>
 
       <div className="border-t border-[color-mix(in_srgb,var(--color-footer-foreground)_12%,transparent)]">
-        <Container className="py-4 text-xs text-[color-mix(in_srgb,var(--color-footer-foreground)_65%,transparent)]">
+        <Container className="py-4 text-center text-xs text-[color-mix(in_srgb,var(--color-footer-foreground)_65%,transparent)]">
           <p>{copyright}</p>
         </Container>
       </div>

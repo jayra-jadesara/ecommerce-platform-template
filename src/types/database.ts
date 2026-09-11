@@ -24,6 +24,17 @@ export type AnimationPresetDb =
 export type AnimationIntensityDb = "subtle" | "medium" | "strong";
 export type ProductStatus = "draft" | "active" | "archived";
 export type PageStatus = "draft" | "published" | "archived";
+export type BlogPostStatus = "draft" | "published" | "archived";
+export type BlogLayoutPreset = "GRID" | "LIST" | "FEATURED_GRID";
+/** Preferred: RIGHT | LEFT | TOP | NONE. Legacy SIDEBAR / TOP_FILTER still accepted. */
+export type BlogSidebarPreset =
+  | "RIGHT"
+  | "LEFT"
+  | "TOP"
+  | "NONE"
+  | "SIDEBAR"
+  | "TOP_FILTER";
+export type BlogCardStyle = "STANDARD" | "MINIMAL" | "EDITORIAL";
 export type OrderStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -1026,6 +1037,221 @@ export type Database = {
         };
         Update: Partial<Database["public"]["Tables"]["banners"]["Insert"]>;
         Relationships: [];
+      };
+      blog_categories: {
+        Row: {
+          id: string;
+          store_id: string;
+          name: string;
+          slug: string;
+          description: string | null;
+          image_path: string | null;
+          is_active: boolean;
+          sort_order: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          name: string;
+          slug: string;
+          description?: string | null;
+          image_path?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_categories"]["Insert"]>;
+        Relationships: [];
+      };
+      blog_posts: {
+        Row: {
+          id: string;
+          store_id: string;
+          title: string;
+          slug: string;
+          excerpt: string | null;
+          content: string | null;
+          featured_image_path: string | null;
+          author_name: string | null;
+          status: BlogPostStatus;
+          is_featured: boolean;
+          seo_title: string | null;
+          seo_description: string | null;
+          og_image_path: string | null;
+          published_at: string | null;
+          reading_time_minutes: number | null;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          title: string;
+          slug: string;
+          excerpt?: string | null;
+          content?: string | null;
+          featured_image_path?: string | null;
+          author_name?: string | null;
+          status?: BlogPostStatus;
+          is_featured?: boolean;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          og_image_path?: string | null;
+          published_at?: string | null;
+          reading_time_minutes?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_posts"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_categories_post_id_fkey";
+            columns: ["id"];
+            isOneToOne: false;
+            referencedRelation: "blog_post_categories";
+            referencedColumns: ["post_id"];
+          },
+          {
+            foreignKeyName: "blog_post_products_post_id_fkey";
+            columns: ["id"];
+            isOneToOne: false;
+            referencedRelation: "blog_post_products";
+            referencedColumns: ["post_id"];
+          },
+        ];
+      };
+      blog_post_categories: {
+        Row: {
+          post_id: string;
+          category_id: string;
+          store_id: string;
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          category_id: string;
+          store_id: string;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["blog_post_categories"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_categories_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "blog_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "blog_post_categories_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "blog_categories";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      blog_post_products: {
+        Row: {
+          post_id: string;
+          product_id: string;
+          store_id: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          post_id: string;
+          product_id: string;
+          store_id: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["blog_post_products"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_products_post_id_fkey";
+            columns: ["post_id"];
+            isOneToOne: false;
+            referencedRelation: "blog_posts";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "blog_post_products_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      blog_settings: {
+        Row: {
+          store_id: string;
+          page_title: string;
+          page_description: string | null;
+          posts_per_page: number;
+          show_categories: boolean;
+          show_author: boolean;
+          show_date: boolean;
+          show_featured_image: boolean;
+          show_sidebar: boolean;
+          show_search: boolean;
+          layout_preset: BlogLayoutPreset;
+          sidebar_preset: BlogSidebarPreset;
+          show_reading_time: boolean;
+          show_share_buttons: boolean;
+          show_related_posts: boolean;
+          show_related_products: boolean;
+          show_featured_post: boolean;
+          auto_featured_fallback: boolean;
+          featured_post_id: string | null;
+          card_style: BlogCardStyle;
+          cta_title: string | null;
+          cta_description: string | null;
+          cta_button_label: string | null;
+          cta_button_href: string | null;
+        } & Timestamps;
+        Insert: {
+          store_id: string;
+          page_title?: string;
+          page_description?: string | null;
+          posts_per_page?: number;
+          show_categories?: boolean;
+          show_author?: boolean;
+          show_date?: boolean;
+          show_featured_image?: boolean;
+          show_sidebar?: boolean;
+          show_search?: boolean;
+          layout_preset?: BlogLayoutPreset;
+          sidebar_preset?: BlogSidebarPreset;
+          show_reading_time?: boolean;
+          show_share_buttons?: boolean;
+          show_related_posts?: boolean;
+          show_related_products?: boolean;
+          show_featured_post?: boolean;
+          auto_featured_fallback?: boolean;
+          featured_post_id?: string | null;
+          card_style?: BlogCardStyle;
+          cta_title?: string | null;
+          cta_description?: string | null;
+          cta_button_label?: string | null;
+          cta_button_href?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["blog_settings"]["Insert"]>;
+        Relationships: [
+          {
+            foreignKeyName: "blog_settings_featured_post_id_fkey";
+            columns: ["featured_post_id"];
+            isOneToOne: false;
+            referencedRelation: "blog_posts";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       newsletter_subscribers: {
         Row: {

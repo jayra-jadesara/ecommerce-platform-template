@@ -105,14 +105,20 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
       changeFrequency: "daily",
       priority: 0.9,
     },
+    {
+      url: absoluteUrl("/blog"),
+      changeFrequency: "daily",
+      priority: 0.8,
+    },
   ];
 
   if (!storeId) return entries;
 
-  const [products, categories, pages] = await Promise.all([
+  const [products, categories, pages, blogPosts] = await Promise.all([
     fetchAllSlugs("products", storeId, { status: "active" }),
     fetchAllSlugs("categories", storeId, { is_active: true }),
     fetchAllSlugs("pages", storeId, { status: "published" }),
+    fetchPublishedBlogPostSlugs(storeId),
   ]);
 
   for (const product of products) {
@@ -145,5 +151,48 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
     });
   }
 
+  for (const post of blogPosts) {
+    entries.push({
+      url: absoluteUrl(`/blog/${post.slug}`),
+      lastModified: post.updated_at ?? undefined,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    });
+  }
+
   return entries;
+}
+
+async function fetchPublishedBlogPostSlugs(
+  storeId: string,
+): Promise<Array<{ slug: string; updated_at: string | null }>> {
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return [];
+
+  const now = new Date().toISOString();
+  const rows: Array<{ slug: string; updated_at: string | null }> = [];
+  let from = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from("blog_posts")
+      .select("slug, updated_at, published_at")
+      .eq("store_id", storeId)
+      .eq("status", "published")
+      .or(`published_at.is.null,published_at.lte.${now}`)
+      .order("updated_at", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1);
+
+    if (error || !data?.length) break;
+    for (const row of data) {
+      if (row.slug) {
+        rows.push({
+          slug: row.slug,
+          updated_at: row.updated_at ?? row.published_at ?? null,
+        });
+      }
+    }
+    if (data.length < PAGE_SIZE) break;
+    from += PAGE_SIZE;
+  }
+  return rows;
 }

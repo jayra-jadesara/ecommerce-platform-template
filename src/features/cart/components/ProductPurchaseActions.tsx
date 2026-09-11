@@ -1,8 +1,10 @@
 "use client";
 
+import FavoriteIcon from "@mui/icons-material/Favorite";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
@@ -22,6 +24,13 @@ interface ProductPurchaseActionsProps {
   maxAvailable: number | null;
   outOfStock: boolean;
   isAuthenticated: boolean;
+  /** Content above the qty + CTA row (price, stock, options…). */
+  leading?: ReactNode;
+  /**
+   * `rail` — price/options, then qty + medium CTAs in one horizontal row (PDP).
+   * `stack` — quantity then wider button row (default / mobile chrome).
+   */
+  layout?: "rail" | "stack";
 }
 
 export function ProductPurchaseActions({
@@ -31,6 +40,8 @@ export function ProductPurchaseActions({
   maxAvailable,
   outOfStock,
   isAuthenticated,
+  leading,
+  layout = "stack",
 }: ProductPurchaseActionsProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -38,6 +49,12 @@ export function ProductPurchaseActions({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [buyPending, setBuyPending] = useState(false);
+  /** Avoid SSR/client mismatch while wishlist query resolves. */
+  const [wishlistReady, setWishlistReady] = useState(false);
+
+  useEffect(() => {
+    setWishlistReady(true);
+  }, []);
 
   const maxQty = Math.min(
     CART_MAX_QUANTITY,
@@ -96,68 +113,95 @@ export function ProductPurchaseActions({
       void queryClient.invalidateQueries({ queryKey: cartQueryKey });
       router.push("/checkout");
     } catch {
-      setError("Could not start checkout.");
+      setError("Could not start Buy it now.");
     } finally {
       setBuyPending(false);
     }
   }
 
   const busy = addMutation.isPending || buyPending;
+  const inWishlist =
+    wishlistReady && isAuthenticated && Boolean(wishlistQuery.data);
 
-  return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3">
-        <QuantityStepper
-          value={quantity}
-          max={maxQty}
-          disabled={outOfStock}
-          onChange={setQuantity}
-        />
-      </div>
+  const railBtn = "min-h-10 justify-center !px-3 !text-sm";
+  const stackBtn =
+    "min-h-11 w-full justify-center sm:w-auto sm:min-w-[9.5rem]";
+  const btnClass = layout === "rail" ? railBtn : stackBtn;
+  const railBtnStyle: CSSProperties | undefined =
+    layout === "rail"
+      ? { width: "9.75rem", flexShrink: 0 }
+      : undefined;
 
-      <div className="flex flex-wrap gap-2">
+  const actionButtons = (
+    <>
+      <button
+        type="button"
+        disabled={outOfStock || busy}
+        onClick={() => {
+          setError(null);
+          setMessage(null);
+          addMutation.mutate({ productId, variantId, quantity });
+        }}
+        className={cn(sfBtn("outline"), btnClass)}
+        style={railBtnStyle}
+      >
+        {outOfStock ? "Out of stock" : "Add to cart"}
+      </button>
+
+      <button
+        type="button"
+        disabled={outOfStock || busy}
+        onClick={() => void buyNow()}
+        className={cn(sfBtn("primary"), btnClass)}
+        style={railBtnStyle}
+      >
+        {buyPending ? "Starting…" : "Buy it now"}
+      </button>
+
+      {isAuthenticated ? (
         <button
           type="button"
-          disabled={outOfStock || busy}
-          onClick={() => {
-            setError(null);
-            setMessage(null);
-            addMutation.mutate({ productId, variantId, quantity });
-          }}
-          className={cn(sfBtn("primary"), "min-w-[9rem] flex-1 sm:flex-none")}
+          disabled={wishlistMutation.isPending}
+          aria-pressed={inWishlist}
+          aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+          onClick={() => wishlistMutation.mutate()}
+          className={cn(
+            layout === "rail" ? sfBtn("outline") : sfBtn("ghost"),
+            btnClass,
+            "gap-1.5",
+          )}
+          style={railBtnStyle}
         >
-          {outOfStock ? "Out of stock" : "Add to cart"}
+          {inWishlist ? (
+            <FavoriteIcon
+              fontSize="small"
+              className="!text-[var(--color-primary)]"
+              aria-hidden
+            />
+          ) : (
+            <FavoriteBorderIcon fontSize="small" aria-hidden />
+          )}
+          <span>{inWishlist ? "Saved" : "Wishlist"}</span>
         </button>
-
-        <button
-          type="button"
-          disabled={outOfStock || busy}
-          onClick={() => void buyNow()}
-          className={cn(sfBtn("outline"), "min-w-[9rem] flex-1 sm:flex-none")}
+      ) : (
+        <a
+          href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
+          className={cn(
+            layout === "rail" ? sfBtn("outline") : sfBtn("ghost"),
+            btnClass,
+            "gap-1.5",
+          )}
+          style={railBtnStyle}
         >
-          {buyPending ? "Starting…" : "Buy now"}
-        </button>
+          <FavoriteBorderIcon fontSize="small" aria-hidden />
+          <span>{layout === "rail" ? "Wishlist" : "Sign in to save"}</span>
+        </a>
+      )}
+    </>
+  );
 
-        {isAuthenticated ? (
-          <button
-            type="button"
-            disabled={wishlistMutation.isPending}
-            aria-pressed={Boolean(wishlistQuery.data)}
-            onClick={() => wishlistMutation.mutate()}
-            className={sfBtn("ghost")}
-          >
-            {wishlistQuery.data ? "Saved" : "Wishlist"}
-          </button>
-        ) : (
-          <a
-            href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
-            className={sfBtn("ghost")}
-          >
-            Sign in to save
-          </a>
-        )}
-      </div>
-
+  const statusMessages = (
+    <>
       {message ? (
         <p className="text-sm text-[var(--color-success)]" role="status">
           {message}
@@ -168,6 +212,51 @@ export function ProductPurchaseActions({
           {error}
         </p>
       ) : null}
+    </>
+  );
+
+  if (layout === "rail") {
+    return (
+      <div className="space-y-3.5">
+        {leading ? <div className="space-y-3">{leading}</div> : null}
+        <div
+          style={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <QuantityStepper
+            value={quantity}
+            max={maxQty}
+            disabled={outOfStock}
+            onChange={setQuantity}
+          />
+          {actionButtons}
+        </div>
+        {statusMessages}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3.5">
+      {leading}
+      <div className="flex flex-wrap items-center gap-3">
+        <QuantityStepper
+          value={quantity}
+          max={maxQty}
+          disabled={outOfStock}
+          onChange={setQuantity}
+        />
+      </div>
+
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
+        {actionButtons}
+      </div>
+
+      {statusMessages}
     </div>
   );
 }

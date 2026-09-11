@@ -21,6 +21,7 @@ import { formatMoney } from "@/features/catalog/money";
 import {
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -210,7 +211,8 @@ export function PaymentSettingsForm({
         API keys stay in your server settings — never paste secrets here.
       </p>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+      <div className={adminCardsGrid()}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. How do customers pay?</p>
           <p className="admin-field-group__hint">
@@ -246,9 +248,9 @@ export function PaymentSettingsForm({
             )}
           />
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. Checkout fee (optional)</p>
           <p className="admin-field-group__hint">
@@ -366,9 +368,9 @@ export function PaymentSettingsForm({
             </p>
           )}
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">3. Tax (optional)</p>
           <p className="admin-field-group__hint">
@@ -444,9 +446,9 @@ export function PaymentSettingsForm({
             </p>
           )}
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <section className={`${adminCard()} ${adminCardPadding()}`}>
         <h3 className="text-base font-semibold text-[var(--color-foreground)]">
           What the customer pays
         </h3>
@@ -495,7 +497,8 @@ export function PaymentSettingsForm({
             Check the numbers above — preview could not be calculated.
           </p>
         )}
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

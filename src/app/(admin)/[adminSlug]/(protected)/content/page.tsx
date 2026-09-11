@@ -22,6 +22,11 @@ const SECTIONS = [
     description: "Promotional banners shown across your store.",
   },
   {
+    href: "/content/blog",
+    title: "Blog",
+    description: "Articles and journal posts for your store.",
+  },
+  {
     href: "/media",
     title: "Images & Files",
     description: "Upload images for products, banners, and pages.",

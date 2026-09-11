@@ -23,6 +23,8 @@ import {
 import {
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
+  adminCardSpanFull,
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
@@ -136,16 +138,19 @@ export function SeoSettingsForm({
         fields update automatically unless you customize them.
       </p>
 
-      <GoogleSeoPreview
-        title={siteTitle}
-        url={canonicalUrl || "https://your-store.example/"}
-        description={metaDescription}
-      />
+      <div className={adminCardsGrid()}>
+        <div className={adminCardSpanFull()}>
+          <GoogleSeoPreview
+            title={siteTitle}
+            url={canonicalUrl || "https://your-store.example/"}
+            description={metaDescription}
+          />
+        </div>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div>
           <h2 className="text-base font-semibold text-[var(--color-foreground)]">
             1. Default Google listing
@@ -230,12 +235,12 @@ export function SeoSettingsForm({
             />
           </div>
         </details>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div>
           <h2 className="text-base font-semibold text-[var(--color-foreground)]">
             2. Social sharing
@@ -308,12 +313,12 @@ export function SeoSettingsForm({
             />
           </div>
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
+          style={adminStackStyle}
+        >
         <h2 className="text-base font-semibold text-[var(--color-foreground)]">
           3. Search engine access
         </h2>
@@ -354,7 +359,8 @@ export function SeoSettingsForm({
             )}
           />
         </div>
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

@@ -12,7 +12,7 @@ export default async function AccountAddressesPage() {
         Addresses
       </h2>
       <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Manage shipping addresses for checkout. At most one address is marked
+        Manage shipping addresses for your orders. At most one address is marked
         default.
       </p>
       <div className="mt-6">

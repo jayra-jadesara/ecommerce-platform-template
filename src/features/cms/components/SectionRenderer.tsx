@@ -23,12 +23,14 @@ import {
   sfSectionInner,
 } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
 
 type Props = {
   section: StorefrontSection;
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
   currency?: string;
+  isAuthenticated?: boolean;
 };
 
 function SectionMotion({
@@ -222,6 +224,7 @@ export function SectionRenderer({
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
+  isAuthenticated = false,
 }: Props) {
   const cfg = section.config;
   const shell = sectionShellClassName(cfg as SectionConfigMap["hero"]);
@@ -356,64 +359,65 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["categories"];
       const cats = section.resolved?.categories ?? [];
       if (cats.length === 0) return null;
+      const heading = c.title?.trim() || "Explore our Collections";
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className={sfSectionInner()}>
-            {c.title ? (
-              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
-            ) : null}
-            {c.description ? (
-              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
-                {c.description}
-              </p>
-            ) : null}
-            <ul
-              className={`mt-8 grid gap-4 ${
-                c.columns === 2
-                  ? "sm:grid-cols-2"
-                  : c.columns === 4
-                    ? "grid-cols-2 lg:grid-cols-4"
-                    : "grid-cols-2 lg:grid-cols-3"
-              }`}
-            >
+            <div className="mx-auto max-w-3xl text-center">
+              <SectionAccentHeading
+                title={heading}
+                accentWord={
+                  /\bcollections?\b/i.test(heading)
+                    ? "Collections"
+                    : /\brange\b/i.test(heading)
+                      ? "range"
+                      : undefined
+                }
+              />
+              {c.description ? (
+                <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[var(--color-muted)] sm:text-base">
+                  {c.description}
+                </p>
+              ) : null}
+            </div>
+            <ul className="mx-auto mt-8 flex max-w-5xl flex-wrap justify-center gap-5 sm:gap-6">
               {cats.map((cat) => (
-                <li key={cat.id}>
+                <li key={cat.id} className="w-48 shrink-0 sm:w-56 md:w-60">
                   <Link
                     href={`/categories/${encodeURIComponent(cat.slug)}`}
-                    className="group block overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)] transition-[box-shadow,transform] duration-200 motion-safe:hover:-translate-y-0.5 motion-safe:hover:shadow-[0_12px_28px_color-mix(in_srgb,var(--color-foreground)_10%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+                    className="group block overflow-hidden rounded-[var(--radius-default,0.75rem)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
                   >
-                    <div className="relative aspect-[5/4] overflow-hidden bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-primary)_10%)]">
+                    <div className="relative aspect-square overflow-hidden rounded-[var(--radius-default,0.75rem)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-primary)_10%)]">
                       {cat.imageUrl ? (
                         <Image
                           src={cat.imageUrl}
                           alt=""
                           fill
                           className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
-                          sizes="(max-width: 768px) 50vw, 25vw"
+                          sizes="240px"
                         />
                       ) : (
                         <div
-                          className="absolute inset-0"
+                          className="absolute inset-0 flex items-center justify-center text-xl font-semibold text-[var(--color-primary)]"
                           aria-hidden
                           style={{
                             background:
                               "radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 60%)",
                           }}
-                        />
+                        >
+                          {cat.name.slice(0, 1)}
+                        </div>
                       )}
                     </div>
-                    <div className="p-4">
-                      <p className="font-semibold text-[var(--color-foreground)]">
+                    <div className="px-1 pt-2.5 text-center">
+                      <p className="text-sm font-semibold text-[var(--color-foreground)]">
                         {cat.name}
                       </p>
                       {cat.description ? (
-                        <p className="mt-1 line-clamp-2 text-sm text-[var(--color-muted)]">
+                        <p className="mt-0.5 line-clamp-1 text-xs text-[var(--color-muted)]">
                           {cat.description}
                         </p>
                       ) : null}
-                      <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                        Shop collection
-                      </p>
                     </div>
                   </Link>
                 </li>
@@ -432,17 +436,27 @@ export function SectionRenderer({
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className={sfSectionInner()}>
             {c.title ? (
-              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
-            ) : null}
-            {c.description ? (
-              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+              <div className="mx-auto max-w-3xl text-center">
+                <SectionAccentHeading title={c.title} />
+                {c.description ? (
+                  <p className="mt-3 text-sm text-[var(--color-muted)] sm:text-base">
+                    {c.description}
+                  </p>
+                ) : null}
+              </div>
+            ) : c.description ? (
+              <p className="mx-auto max-w-2xl text-center text-sm text-[var(--color-muted)]">
                 {c.description}
               </p>
             ) : null}
-            <ul className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+            <ul className="mx-auto mt-8 grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4">
               {products.map((product) => (
-                <li key={product.id} className="min-w-0">
-                  <ProductCard product={product} currency={currency} />
+                <li key={product.id} className="flex h-full min-w-0">
+                  <ProductCard
+                    product={product}
+                    currency={currency}
+                    isAuthenticated={isAuthenticated}
+                  />
                 </li>
               ))}
             </ul>
@@ -538,7 +552,7 @@ export function SectionRenderer({
             }`}
           >
             <div className={imageLeft ? "md:order-2" : ""}>
-              {heading ? <h2 className="text-2xl font-semibold">{heading}</h2> : null}
+              {heading ? <SectionAccentHeading title={heading} /> : null}
               {description ? (
                 <p className="mt-3 whitespace-pre-wrap text-[var(--color-muted)]">
                   {description}
@@ -569,10 +583,16 @@ export function SectionRenderer({
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className={sfSectionInner()}>
             {c.title ? (
-              <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>{c.title}</h2>
-            ) : null}
-            {c.description ? (
-              <p className="mt-2 max-w-2xl text-[var(--color-muted)]">
+              <div className="mx-auto max-w-3xl text-center">
+                <SectionAccentHeading title={c.title} />
+                {c.description ? (
+                  <p className="mt-3 text-sm text-[var(--color-muted)] sm:text-base">
+                    {c.description}
+                  </p>
+                ) : null}
+              </div>
+            ) : c.description ? (
+              <p className="mx-auto max-w-2xl text-center text-sm text-[var(--color-muted)]">
                 {c.description}
               </p>
             ) : null}
@@ -607,7 +627,11 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-6xl px-4">
-            {c.title ? <h2 className="mb-6 text-2xl font-semibold">{c.title}</h2> : null}
+            {c.title ? (
+              <div className="mb-6 text-center">
+                <SectionAccentHeading title={c.title} />
+              </div>
+            ) : null}
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {c.items.map((item, index) => (
                 <li key={`${item.label}-${index}`} className="text-center">
@@ -629,7 +653,11 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-6xl px-4">
-            {c.title ? <h2 className="text-2xl font-semibold">{c.title}</h2> : null}
+            {c.title ? (
+              <div className="text-center">
+                <SectionAccentHeading title={c.title} />
+              </div>
+            ) : null}
             <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {c.items.map((item, index) => (
                 <li
@@ -664,7 +692,11 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-3xl px-4">
-            {c.title ? <h2 className="text-2xl font-semibold">{c.title}</h2> : null}
+            {c.title ? (
+              <div className="text-center">
+                <SectionAccentHeading title={c.title} />
+              </div>
+            ) : null}
             <dl className="mt-6 space-y-4">
               {items.map((item, index) => (
                 <div
@@ -699,9 +731,7 @@ export function SectionRenderer({
               />
               <div className="relative">
                 {c.heading ? (
-                  <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>
-                    {c.heading}
-                  </h2>
+                  <SectionAccentHeading title={c.heading} />
                 ) : null}
                 {c.description ? (
                   <p className="mx-auto mt-3 max-w-xl text-[var(--color-muted)]">
@@ -727,7 +757,7 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-xl px-4 text-center">
-            {c.heading ? <h2 className="text-2xl font-semibold">{c.heading}</h2> : null}
+            {c.heading ? <SectionAccentHeading title={c.heading} /> : null}
             {c.description ? (
               <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
             ) : null}
@@ -745,9 +775,13 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-3xl px-4">
-            {c.heading ? <h2 className="text-2xl font-semibold">{c.heading}</h2> : null}
+            {c.heading ? (
+              <div className="text-center">
+                <SectionAccentHeading title={c.heading} />
+              </div>
+            ) : null}
             {c.body ? (
-              <p className="mt-3 whitespace-pre-wrap text-[var(--color-muted)]">{c.body}</p>
+              <p className="mt-3 whitespace-pre-wrap text-center text-[var(--color-muted)]">{c.body}</p>
             ) : null}
           </div>
         </SectionMotion>
@@ -764,11 +798,13 @@ export function HomepageSections({
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
+  isAuthenticated = false,
 }: {
   sections: StorefrontSection[];
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
   currency?: string;
+  isAuthenticated?: boolean;
 }) {
   return (
     <div className="space-y-0">
@@ -779,6 +815,7 @@ export function HomepageSections({
           animation={animation}
           visualEffects={visualEffects}
           currency={currency}
+          isAuthenticated={isAuthenticated}
         />
       ))}
     </div>

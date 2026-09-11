@@ -227,24 +227,24 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
           {showAccount ? (
             <IconButton
               component={Link}
-              href="/account/wishlist"
-              aria-label="Wishlist"
-              size="medium"
-              className="!hidden !text-[var(--color-header-foreground)] sm:!inline-flex"
-            >
-              <FavoriteBorderIcon fontSize="small" />
-            </IconButton>
-          ) : null}
-
-          {showAccount ? (
-            <IconButton
-              component={Link}
               href="/account"
               aria-label="Account"
               size="medium"
               className="!hidden !text-[var(--color-header-foreground)] sm:!inline-flex"
             >
               <PersonOutlinedIcon fontSize="small" />
+            </IconButton>
+          ) : null}
+
+          {showAccount ? (
+            <IconButton
+              component={Link}
+              href="/account/wishlist"
+              aria-label="Wishlist"
+              size="medium"
+              className="!hidden !text-[var(--color-header-foreground)] sm:!inline-flex"
+            >
+              <FavoriteBorderIcon fontSize="small" />
             </IconButton>
           ) : null}
 

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { CollectionFilterDrawer } from "@/features/catalog/components/CollectionFilterDrawer";
-import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { ProductsCatalog } from "@/features/catalog/components/ProductsCatalog";
 import {
+  countStorefrontProductsByCategory,
   listStorefrontCategories,
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
+import { getCurrentUser } from "@/features/auth/session";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveProductsListingSeo } from "@/features/seo/resolve";
@@ -42,147 +42,60 @@ export default async function ProductsPage({
   }
 
   const config = await getPlatformConfigAsync();
-  const [list, categories] = await Promise.all([
+  const [list, categories, user, counts] = await Promise.all([
     listStorefrontProducts(flat),
     listStorefrontCategories(),
+    getCurrentUser(),
+    countStorefrontProductsByCategory(),
   ]);
+  const isAuthenticated = Boolean(user);
 
   const q = flat.q ?? "";
   const categoryId = flat.categoryId ?? "";
-  const sort = flat.sort ?? "featured";
+  const sort = flat.sort ?? "newest";
   const page = Number(flat.page || "1") || 1;
   const totalPages = Math.max(1, Math.ceil(list.total / list.pageSize));
 
-  function href(next: Record<string, string | undefined>) {
-    const merged = { q, categoryId, sort, page: String(page), ...next };
-    const search = new URLSearchParams();
-    if (merged.q) search.set("q", merged.q);
-    if (merged.categoryId) search.set("categoryId", merged.categoryId);
-    if (merged.sort && merged.sort !== "featured") search.set("sort", merged.sort);
-    if (merged.page && merged.page !== "1") search.set("page", merged.page);
-    const qs = search.toString();
-    return `/products${qs ? `?${qs}` : ""}`;
-  }
-
   return (
-    <PageShell title="Products" backHref="/" backLabel="Back to home">
-      <p className="mb-4 text-sm text-[var(--color-muted)]">
-        {list.total === 0
-          ? "No products match your filters."
-          : `${list.total} ${list.total === 1 ? "product" : "products"}`}
-      </p>
-      <div className="mb-4 md:hidden">
-        <CollectionFilterDrawer
-          categories={categories.map((c) => ({ id: c.id, name: c.name }))}
-          q={q}
-          categoryId={categoryId}
-          sort={sort}
-        />
-      </div>
-      <form
-        className="mb-6 hidden flex-col gap-3 rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-3 md:flex md:flex-row md:flex-wrap md:items-center md:p-4"
-        method="get"
-      >
-        <label className="sr-only" htmlFor="product-search">
-          Search products
-        </label>
-        <input
-          id="product-search"
-          name="q"
-          defaultValue={q}
-          placeholder="Search products"
-          className="w-full min-h-11 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-        />
-        <label className="sr-only" htmlFor="product-category">
-          Category
-        </label>
-        <select
-          id="product-category"
-          name="categoryId"
-          defaultValue={categoryId}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] sm:min-w-[11rem]"
-        >
-          <option value="">All categories</option>
-          {categories.map((category) => (
-            <option key={category.id} value={category.id}>
-              {category.name}
-            </option>
-          ))}
-        </select>
-        <label className="sr-only" htmlFor="product-sort">
-          Sort
-        </label>
-        <select
-          id="product-sort"
-          name="sort"
-          defaultValue={sort}
-          className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] sm:min-w-[10rem]"
-        >
-          <option value="featured">Featured</option>
-          <option value="newest">Newest</option>
-          <option value="price">Price: low to high</option>
-          <option value="price_desc">Price: high to low</option>
-          <option value="name">Name</option>
-        </select>
-        <button
-          type="submit"
-          className="min-h-11 rounded-md bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-[var(--color-button-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-        >
-          Apply
-        </button>
-      </form>
-
-      {list.items.length === 0 ? (
-        <EmptyState
-          title="No products found"
-          description="Try a different search, or browse the full catalog once products are published."
-          action={
-            q || categoryId ? (
-              <Link
-                href="/products"
-                className="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-default,0.5rem)] bg-[var(--color-button-background)] px-5 py-2.5 text-sm font-semibold text-[var(--color-button-foreground)]"
-              >
-                Clear filters
-              </Link>
-            ) : undefined
-          }
-        />
-      ) : (
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-          {list.items.map((product) => (
-            <li key={product.id} className="min-w-0">
-              <ProductCard product={product} currency={config.store.currency} />
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {totalPages > 1 ? (
+    <PageShell showBack={false} className="!pt-3 md:!pt-5">
+      <header className="mx-auto mb-3 max-w-5xl md:mb-4">
+        <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-2xl">
+          Products
+        </h1>
         <nav
-          className="mt-8 flex items-center justify-between text-sm"
-          aria-label="Pagination"
+          className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-muted)]"
+          aria-label="Breadcrumb"
         >
           <Link
-            href={href({ page: String(Math.max(1, page - 1)) })}
-            aria-disabled={page <= 1}
-            className={page <= 1 ? "pointer-events-none opacity-40" : "underline"}
+            href="/"
+            className="font-medium text-[var(--color-primary)] hover:underline"
           >
-            Previous
+            Home
           </Link>
-          <span className="text-[var(--color-muted)]">
-            Page {page} of {totalPages}
+          <span aria-hidden className="text-[var(--color-border)]">
+            /
           </span>
-          <Link
-            href={href({ page: String(Math.min(totalPages, page + 1)) })}
-            aria-disabled={page >= totalPages}
-            className={
-              page >= totalPages ? "pointer-events-none opacity-40" : "underline"
-            }
-          >
-            Next
-          </Link>
+          <span className="text-[var(--color-foreground)]">Products</span>
         </nav>
-      ) : null}
+      </header>
+
+      <ProductsCatalog
+        products={list.items}
+        categories={categories.map((c) => ({
+          id: c.id,
+          name: c.name,
+          slug: c.slug,
+          count: counts[c.id] ?? 0,
+        }))}
+        currency={config.store.currency}
+        isAuthenticated={isAuthenticated}
+        total={list.total}
+        q={q}
+        categoryId={categoryId}
+        sort={sort}
+        page={page}
+        totalPages={totalPages}
+      />
     </PageShell>
   );
 }

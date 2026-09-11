@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 export const STORE_PAGE_OPTIONS = [
   { value: "/products", label: "Products catalog" },
   { value: "/about", label: "About page" },
+  { value: "/blog", label: "Blog" },
   { value: "/contact", label: "Contact page" },
   { value: "/", label: "Home page" },
   { value: "/cart", label: "Cart" },

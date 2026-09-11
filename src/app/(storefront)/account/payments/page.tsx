@@ -31,7 +31,7 @@ export default async function AccountPaymentsPage() {
         {!payments?.length ? (
           <EmptyState
             title="No payments yet"
-            description="Completed checkout payments will appear here."
+            description="Completed payments will appear here."
           />
         ) : (
           <ul className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">

@@ -20,6 +20,7 @@ import {
   adminBtn,
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -172,8 +173,9 @@ export function NavigationSettingsForm({
         address.
       </p>
 
-      <NavSection
-        title="Top menu (header)"
+      <div className={adminCardsGrid()}>
+        <NavSection
+          title="Top menu (header)"
         hint="Links shown in the bar at the top of every page."
         emptyText="No top menu links yet."
         addLabel="+ Add top menu link"
@@ -194,10 +196,10 @@ export function NavigationSettingsForm({
             onDelete={() => update(index, { ...item, _delete: true })}
           />
         )}
-      />
+        />
 
-      <NavSection
-        title="Bottom menu (footer)"
+        <NavSection
+          title="Bottom menu (footer)"
         hint="Links shown at the bottom of every page."
         emptyText="No bottom menu links yet."
         addLabel="+ Add bottom menu link"
@@ -218,7 +220,8 @@ export function NavigationSettingsForm({
             onDelete={() => update(index, { ...item, _delete: true })}
           />
         )}
-      />
+        />
+      </div>
     </form>
   );
 }

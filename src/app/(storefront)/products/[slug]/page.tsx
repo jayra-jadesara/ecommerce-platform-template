@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ProductDetailClient } from "@/features/catalog/components/ProductDetailClient";
-import { getStorefrontProductBySlug } from "@/features/catalog/storefront";
+import { PopularProducts } from "@/features/catalog/components/PopularProducts";
+import { RecentlyViewedProducts } from "@/features/catalog/components/RecentlyViewedProducts";
+import { RelatedProducts } from "@/features/catalog/components/RelatedProducts";
+import {
+  getStorefrontProductBySlug,
+  listPopularStorefrontProducts,
+  listSimilarStorefrontProducts,
+} from "@/features/catalog/storefront";
 import { getCurrentUser } from "@/features/auth/session";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { metadataFromResolved } from "@/lib/metadata";
@@ -73,9 +80,27 @@ export default async function ProductDetailPage({
   ]);
   if (!product) notFound();
 
+  const isAuthenticated = Boolean(user);
+  const [related, popularRaw] = await Promise.all([
+    listSimilarStorefrontProducts({
+      productId: product.id,
+      categoryId: product.category?.id ?? null,
+      limit: 5,
+    }),
+    listPopularStorefrontProducts({
+      excludeProductId: product.id,
+      limit: 8,
+    }),
+  ]);
+  const relatedIds = new Set(related.map((p) => p.id));
+  const popular = popularRaw
+    .filter((p) => !relatedIds.has(p.id))
+    .slice(0, 5);
+
   const productLd = buildProductJsonLd({
     name: product.name,
-    description: product.seoDescription || product.shortDescription || product.description,
+    description:
+      product.seoDescription || product.shortDescription || product.description,
     slug: product.slug,
     brand: product.brand,
     images: product.images.map((image) => ({
@@ -114,9 +139,24 @@ export default async function ProductDetailPage({
       <ProductDetailClient
         product={product}
         currency={config.store.currency}
-        isAuthenticated={Boolean(user)}
+        isAuthenticated={isAuthenticated}
         visualEffects={config.visualEffects}
         animation={config.animation}
+      />
+      <RelatedProducts
+        products={related}
+        currency={config.store.currency}
+        isAuthenticated={isAuthenticated}
+      />
+      <PopularProducts
+        products={popular}
+        currency={config.store.currency}
+        isAuthenticated={isAuthenticated}
+      />
+      <RecentlyViewedProducts
+        currentSlug={product.slug}
+        currency={config.store.currency}
+        isAuthenticated={isAuthenticated}
       />
     </Container>
   );

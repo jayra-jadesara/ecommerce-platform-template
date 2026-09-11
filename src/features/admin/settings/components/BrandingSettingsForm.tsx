@@ -19,8 +19,9 @@ import type { BrandingUploadKind } from "@/features/admin/settings/update-brandi
 import { AdminSection } from "@/features/admin/ui/AdminCard";
 import {
   adminBtn,
+  adminCardSpanFull,
+  adminCardsGrid,
   adminFormGrid,
-  adminFormStack,
 } from "@/features/admin/ui/admin-classes";
 import {
   LogoThemeSuggest,
@@ -196,48 +197,47 @@ export function BrandingSettingsForm({
         }}
       />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-        <div className="space-y-5">
-          <AdminSection
-            title="Brand identity"
-            description="Name and tagline shown across your storefront."
-          >
-            <div className={adminFormGrid()}>
-              <Controller
-                name="brandName"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="Brand name"
-                    fullWidth
-                    required
-                    disabled={!canUpdate}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                  />
-                )}
-              />
-              <Controller
-                name="tagline"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Tagline"
-                    fullWidth
-                    disabled={!canUpdate}
-                  />
-                )}
-              />
-            </div>
-          </AdminSection>
+      <div className={adminCardsGrid()}>
+        <AdminSection
+          title="Brand identity"
+          description="Name and tagline shown across your storefront."
+        >
+          <div className={adminFormGrid()}>
+            <Controller
+              name="brandName"
+              control={control}
+              render={({ field, fieldState }) => (
+                <TextField
+                  {...field}
+                  label="Brand name"
+                  fullWidth
+                  required
+                  disabled={!canUpdate}
+                  error={Boolean(fieldState.error)}
+                  helperText={fieldState.error?.message}
+                />
+              )}
+            />
+            <Controller
+              name="tagline"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Tagline"
+                  fullWidth
+                  disabled={!canUpdate}
+                />
+              )}
+            />
+          </div>
+        </AdminSection>
 
-          <AdminSection
-            title="Brand images"
-            description="Upload logos and icons. Changes apply after you save."
-          >
-            <div className={adminFormStack()}>
+        <AdminSection
+          title="Brand images"
+          description="Upload logos and icons. Changes apply after you save."
+        >
+            <div className="grid gap-3 sm:grid-cols-2">
               {IMAGE_FIELDS.map(
                 ({ pathKey, kind, label, hint, previewKey, tall }) => {
                   const url = preview[previewKey];
@@ -246,131 +246,131 @@ export function BrandingSettingsForm({
                       key={pathKey}
                       className="overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-surface)]"
                     >
-                      <div
-                        className={`flex items-center justify-center bg-[color-mix(in_srgb,var(--color-background)_80%,var(--color-primary)_8%)] ${
-                          tall ? "min-h-48 p-5" : "min-h-36 p-8"
-                        } ${previewKey === "logoDarkUrl" ? "bg-[var(--color-foreground)]" : ""}`}
-                      >
-                        {url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={url}
-                            alt={`${label} preview`}
-                            className={
-                              tall
-                                ? "max-h-40 w-full object-contain"
-                                : previewKey === "faviconUrl"
-                                  ? "h-14 w-14 object-contain"
-                                  : "max-h-24 w-auto max-w-full object-contain"
-                            }
-                          />
-                        ) : (
-                          <p className="text-sm text-[var(--color-muted)]">
-                            No image yet
-                          </p>
-                        )}
-                      </div>
-                      <div className="space-y-3 p-4">
-                        <div>
-                          <p className="text-sm font-semibold">{label}</p>
-                          <p className="mt-1 text-xs text-[var(--color-muted)]">
-                            {hint}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <label
-                            className={cn(
-                              adminBtn("primary"),
-                              "cursor-pointer",
-                              (!canUpdate || uploadPending === kind) &&
-                                "pointer-events-none opacity-50",
-                            )}
-                          >
-                            {uploadPending === kind
-                              ? "Uploading…"
-                              : url
-                                ? "Replace"
-                                : "Upload"}
-                            <input
-                              hidden
-                              type="file"
-                              accept="image/jpeg,image/png,image/webp"
-                              disabled={!canUpdate || uploadPending === kind}
-                              onChange={(event) => {
-                                const file = event.target.files?.[0] ?? null;
-                                void handleUpload(kind, pathKey, file);
-                                event.target.value = "";
-                              }}
-                            />
-                          </label>
-                          <button
-                            type="button"
-                            className={adminBtn("outline")}
-                            disabled={!canUpdate || !watched[pathKey]}
-                            onClick={() =>
-                              setValue(pathKey, null, { shouldDirty: true })
-                            }
-                          >
-                            Remove
-                          </button>
-                        </div>
-                        {watched[pathKey] ? (
-                          <details className="text-xs text-[var(--color-muted)]">
-                            <summary className="cursor-pointer">
-                              File details
-                            </summary>
-                            <p className="mt-1 break-all">{watched[pathKey]}</p>
-                          </details>
-                        ) : null}
-                      </div>
+                    <div
+                      className={`flex items-center justify-center bg-[color-mix(in_srgb,var(--color-background)_80%,var(--color-primary)_8%)] ${
+                        tall ? "min-h-48 p-5" : "min-h-36 p-8"
+                      } ${previewKey === "logoDarkUrl" ? "bg-[var(--color-foreground)]" : ""}`}
+                    >
+                      {url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={url}
+                          alt={`${label} preview`}
+                          className={
+                            tall
+                              ? "max-h-40 w-full object-contain"
+                              : previewKey === "faviconUrl"
+                                ? "h-14 w-14 object-contain"
+                                : "max-h-24 w-auto max-w-full object-contain"
+                          }
+                        />
+                      ) : (
+                        <p className="text-sm text-[var(--color-muted)]">
+                          No image yet
+                        </p>
+                      )}
                     </div>
-                  );
-                },
-              )}
-            </div>
-          </AdminSection>
+                    <div className="space-y-3 p-4">
+                      <div>
+                        <p className="text-sm font-semibold">{label}</p>
+                        <p className="mt-1 text-xs text-[var(--color-muted)]">
+                          {hint}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <label
+                          className={cn(
+                            adminBtn("primary"),
+                            "cursor-pointer",
+                            (!canUpdate || uploadPending === kind) &&
+                              "pointer-events-none opacity-50",
+                          )}
+                        >
+                          {uploadPending === kind
+                            ? "Uploading…"
+                            : url
+                              ? "Replace"
+                              : "Upload"}
+                          <input
+                            hidden
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            disabled={!canUpdate || uploadPending === kind}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0] ?? null;
+                              void handleUpload(kind, pathKey, file);
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          className={adminBtn("outline")}
+                          disabled={!canUpdate || !watched[pathKey]}
+                          onClick={() =>
+                            setValue(pathKey, null, { shouldDirty: true })
+                          }
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {watched[pathKey] ? (
+                        <details className="text-xs text-[var(--color-muted)]">
+                          <summary className="cursor-pointer">
+                            File details
+                          </summary>
+                          <p className="mt-1 break-all">{watched[pathKey]}</p>
+                        </details>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        </AdminSection>
 
+        <div className={adminCardSpanFull()}>
           <LogoThemeSuggest logoUrl={preview.logoUrl} mode="branding" />
         </div>
 
-        <aside className="h-fit xl:sticky xl:top-20">
-          <AdminSection
-            title="Live preview"
-            description="How your brand may appear in the storefront header."
-          >
-            <div className="overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)]">
-              <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-header-background)] px-4 py-4">
-                {preview.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={preview.logoUrl}
-                    alt=""
-                    className="h-10 w-auto max-w-[10rem] object-contain"
-                  />
-                ) : (
-                  <span className="font-[family-name:var(--font-display)] text-lg font-semibold">
-                    {watched.brandName || "Brand Name"}
-                  </span>
-                )}
-                <div className="ml-auto hidden gap-3 text-xs text-[var(--color-muted)] sm:flex">
-                  <span>Shop</span>
-                  <span>About</span>
-                </div>
-              </div>
-              <div className="space-y-2 bg-[var(--color-background)] p-4">
-                <p className="font-[family-name:var(--font-display)] text-xl font-semibold">
+        <AdminSection
+          className={adminCardSpanFull()}
+          title="Live preview"
+          description="How your brand may appear in the storefront header."
+        >
+          <div className="overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)]">
+            <div className="flex items-center gap-3 border-b border-[var(--color-border)] bg-[var(--color-header-background)] px-4 py-4">
+              {preview.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={preview.logoUrl}
+                  alt=""
+                  className="h-10 w-auto max-w-[10rem] object-contain"
+                />
+              ) : (
+                <span className="font-[family-name:var(--font-display)] text-lg font-semibold">
                   {watched.brandName || "Brand Name"}
-                </p>
-                <p className="text-sm text-[var(--color-muted)]">
-                  {watched.tagline?.trim() &&
-                  watched.tagline !== "Your store, your brand."
-                    ? watched.tagline
-                    : "Explore our collection"}
-                </p>
+                </span>
+              )}
+              <div className="ml-auto hidden gap-3 text-xs text-[var(--color-muted)] sm:flex">
+                <span>Shop</span>
+                <span>About</span>
               </div>
             </div>
-          </AdminSection>
-        </aside>
+            <div className="space-y-2 bg-[var(--color-background)] p-4">
+              <p className="font-[family-name:var(--font-display)] text-xl font-semibold">
+                {watched.brandName || "Brand Name"}
+              </p>
+              <p className="text-sm text-[var(--color-muted)]">
+                {watched.tagline?.trim() &&
+                watched.tagline !== "Your store, your brand."
+                  ? watched.tagline
+                  : "Explore our collection"}
+              </p>
+            </div>
+          </div>
+        </AdminSection>
       </div>
     </form>
   );

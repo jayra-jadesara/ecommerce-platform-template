@@ -4,6 +4,9 @@ import { normalizeSupabaseUrl } from "@/lib/supabase/env";
 /**
  * Build a public object URL for Supabase Storage.
  * Returns undefined when path is empty or public env is missing.
+ *
+ * Note: object paths may start with the same segment as the bucket name
+ * (e.g. products/{storeId}/… inside the `products` bucket). Do not strip that.
  */
 export function resolvePublicStorageUrl(
   bucket: StorageBucket,

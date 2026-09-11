@@ -16,6 +16,7 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import IconButton from "@mui/material/IconButton";
@@ -39,6 +40,7 @@ import {
   type AdminNavItem,
   type AdminNavSection,
 } from "@/features/admin/nav";
+import { AdminDatePickersProvider } from "@/features/admin/ui/AdminDatePickersProvider";
 
 export type { AdminNavItem };
 
@@ -55,6 +57,7 @@ const ICONS: Record<
   homepage: HomeOutlinedIcon,
   pages: DescriptionOutlinedIcon,
   banners: ViewCarouselOutlinedIcon,
+  blog: MenuBookOutlinedIcon,
   media: PhotoLibraryOutlinedIcon,
   settings: SettingsOutlinedIcon,
 };
@@ -287,12 +290,13 @@ export function AdminShell({
   );
 
   return (
-    <div
-      className={cn(
-        "admin-shell flex h-dvh max-h-dvh overflow-hidden text-[var(--color-foreground)]",
-        adminAppBg(),
-      )}
-    >
+    <AdminDatePickersProvider>
+      <div
+        className={cn(
+          "admin-shell flex h-dvh max-h-dvh overflow-hidden text-[var(--color-foreground)]",
+          adminAppBg(),
+        )}
+      >
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh w-[min(17.5rem,88vw)] flex-col border-r border-[var(--color-border)] transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-[var(--admin-sidebar-width)] lg:translate-x-0",
@@ -382,5 +386,6 @@ export function AdminShell({
         </main>
       </div>
     </div>
+    </AdminDatePickersProvider>
   );
 }

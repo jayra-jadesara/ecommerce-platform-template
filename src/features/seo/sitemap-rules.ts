@@ -17,7 +17,7 @@ export function buildRobotsDisallowPaths(adminSegment: string): string[] {
 }
 
 export function shouldIncludeInSitemap(input: {
-  kind: "product" | "category" | "page" | "utility";
+  kind: "product" | "category" | "page" | "utility" | "blog";
   status?: string;
   isActive?: boolean;
 }): boolean {
@@ -27,6 +27,7 @@ export function shouldIncludeInSitemap(input: {
     case "category":
       return input.isActive === true;
     case "page":
+    case "blog":
       return input.status === "published";
     case "utility":
       return false;

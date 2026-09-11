@@ -6,6 +6,7 @@ import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import { getCurrentUser } from "@/features/auth/session";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveCmsPageSeo } from "@/features/seo/resolve";
 
@@ -46,9 +47,10 @@ export default async function CmsContentPage({ params }: Props) {
   const { slug } = await params;
   if (slug === HOMEPAGE_SLUG) notFound();
 
-  const [config, payload] = await Promise.all([
+  const [config, payload, user] = await Promise.all([
     getPlatformConfigAsync(),
     getPublishedStorefrontPage(slug),
+    getCurrentUser(),
   ]);
 
   if (!payload) notFound();
@@ -71,6 +73,7 @@ export default async function CmsContentPage({ params }: Props) {
           animation={config.animation}
           visualEffects={config.visualEffects}
           currency={config.store.currency}
+          isAuthenticated={Boolean(user)}
         />
       ) : null}
     </PageShell>

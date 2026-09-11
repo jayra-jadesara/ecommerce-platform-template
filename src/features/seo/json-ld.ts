@@ -127,6 +127,42 @@ export function buildBreadcrumbJsonLd(
   };
 }
 
+export type BlogPostingJsonLdInput = {
+  title: string;
+  description?: string | null;
+  slug: string;
+  imageUrl?: string | null;
+  datePublished?: string | null;
+  dateModified?: string | null;
+  authorName?: string | null;
+};
+
+export function buildBlogPostingJsonLd(input: BlogPostingJsonLdInput): JsonLd {
+  const url = absoluteUrl(`/blog/${input.slug}`);
+  const description = input.description?.trim() || undefined;
+  const json: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: input.title,
+    mainEntityOfPage: {
+      "@type": "WebPage",
+      "@id": url,
+    },
+    url,
+  };
+  if (description) json.description = description;
+  if (isSafePublicAssetUrl(input.imageUrl)) json.image = input.imageUrl;
+  if (input.datePublished?.trim()) json.datePublished = input.datePublished.trim();
+  if (input.dateModified?.trim()) json.dateModified = input.dateModified.trim();
+  if (input.authorName?.trim()) {
+    json.author = {
+      "@type": "Person",
+      name: input.authorName.trim(),
+    };
+  }
+  return json;
+}
+
 export function buildOrganizationJsonLd(input: {
   name: string;
   url: string;

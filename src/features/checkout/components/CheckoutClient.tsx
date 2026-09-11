@@ -125,7 +125,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
   return (
     <div className="grid gap-8 pb-24 lg:grid-cols-[1fr_360px] lg:pb-0">
       <div className="space-y-6">
-        <nav aria-label="Checkout progress" className="mb-2">
+        <nav aria-label="Buy it now progress" className="mb-2">
           <ol className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-wide">
             {(
               [
@@ -360,7 +360,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
           Order summary
         </h2>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Totals calculated securely at checkout.
+          Totals calculated securely.
         </p>
 
         <div className="mt-4 space-y-2">
@@ -522,7 +522,7 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
           {paying ? "Processing…" : "Pay Now"}
         </button>
         <p className="mt-2 text-center text-xs text-[var(--color-muted)]">
-          You will complete payment in a secure checkout window.
+          You will complete payment in a secure payment window.
         </p>
         <Link
           href="/cart"

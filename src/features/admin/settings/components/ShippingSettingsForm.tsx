@@ -21,6 +21,7 @@ import { formatMoney } from "@/features/catalog/money";
 import {
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -185,7 +186,8 @@ export function ShippingSettingsForm({
         onResetDefaults={() => reset(DEFAULT_SHIPPING_SETTINGS)}
       />
 
-      <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
+      <div className={adminCardsGrid()}>
+        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. Offer delivery?</p>
           <p className="admin-field-group__hint">
@@ -209,16 +211,16 @@ export function ShippingSettingsForm({
             )}
           />
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={{
-          ...adminStackStyle,
-          opacity: deliveryOn ? 1 : 0.55,
-          pointerEvents: deliveryOn ? "auto" : "none",
-        }}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={{
+            ...adminStackStyle,
+            opacity: deliveryOn ? 1 : 0.55,
+            pointerEvents: deliveryOn ? "auto" : "none",
+          }}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. How much do you charge?</p>
           <p className="admin-field-group__hint">
@@ -317,16 +319,16 @@ export function ShippingSettingsForm({
             </p>
           ) : null}
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={{
-          ...adminStackStyle,
-          opacity: deliveryOn ? 1 : 0.55,
-          pointerEvents: deliveryOn ? "auto" : "none",
-        }}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={{
+            ...adminStackStyle,
+            opacity: deliveryOn ? 1 : 0.55,
+            pointerEvents: deliveryOn ? "auto" : "none",
+          }}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">3. How long does delivery take?</p>
           <p className="admin-field-group__hint">
@@ -359,9 +361,9 @@ export function ShippingSettingsForm({
             {...register("estimatedDeliveryLabel")}
           />
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <section className={`${adminCard()} ${adminCardPadding()}`}>
         <h3 className="text-base font-semibold text-[var(--color-foreground)]">
           What customers will pay
         </h3>
@@ -394,7 +396,8 @@ export function ShippingSettingsForm({
             </li>
           </ul>
         )}
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

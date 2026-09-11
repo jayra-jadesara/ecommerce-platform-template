@@ -19,6 +19,8 @@ import { LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
 import {
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
+  adminCardSpanFull,
   adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
@@ -137,10 +139,11 @@ export function HeaderSettingsForm({
         optional announcement strip.
       </p>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+      <div className={adminCardsGrid()}>
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. What shows in the header</p>
           <p className="admin-field-group__hint">
@@ -202,12 +205,12 @@ export function HeaderSettingsForm({
             )}
           />
         </div>
-      </section>
+        </section>
 
-      <section
-        className={`${adminCard()} ${adminCardPadding()}`}
-        style={adminStackStyle}
-      >
+        <section
+          className={`${adminCard()} ${adminCardPadding()}`}
+          style={adminStackStyle}
+        >
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. Announcement bar</p>
           <p className="admin-field-group__hint">
@@ -297,9 +300,11 @@ export function HeaderSettingsForm({
             </p>
           )}
         </div>
-      </section>
+        </section>
 
-      <section className={`${adminCard()} ${adminCardPadding()}`}>
+        <section
+          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
+        >
         <h3 className="text-base font-semibold text-[var(--color-foreground)]">
           Header preview
         </h3>
@@ -344,7 +349,8 @@ export function HeaderSettingsForm({
             </span>
           </div>
         </div>
-      </section>
+        </section>
+      </div>
     </form>
   );
 }

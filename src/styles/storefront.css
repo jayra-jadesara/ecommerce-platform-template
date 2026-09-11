@@ -1,5 +1,24 @@
 /* Storefront atmosphere — token-driven, white-label safe */
 
+/* Product detail layout helpers (columns set via inline styles in component). */
+.sf-pdp-gallery {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.sf-pdp-media {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  overflow: hidden;
+}
+
+.sf-pdp-info {
+  min-width: 0;
+}
+
 .sf-hero {
   position: relative;
   isolation: isolate;
@@ -59,10 +78,89 @@
     border-color 200ms ease;
 }
 
+/* Hard-positioned so icons stay top-right even if utility classes are purged. */
+.sf-product-tile-actions {
+  position: absolute !important;
+  top: 0.5rem !important;
+  right: 0.5rem !important;
+  left: auto !important;
+  bottom: auto !important;
+  z-index: 30 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  gap: 0.375rem !important;
+  pointer-events: auto;
+}
+
+.sf-product-tile-badges {
+  position: absolute !important;
+  top: 0.5rem !important;
+  left: 0.5rem !important;
+  right: auto !important;
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+/* Multi-image hover segment bars (Priya-style). */
+.sf-product-tile-segments {
+  position: absolute !important;
+  top: 0.625rem !important;
+  left: 0.75rem !important;
+  right: 0.75rem !important;
+  z-index: 25 !important;
+  display: flex !important;
+  justify-content: center;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.sf-product-tile-segments > span {
+  display: block;
+  height: 5px;
+  width: 40px;
+  flex: 0 0 auto;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-primary) 22%, white);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent);
+  transition:
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.sf-product-tile-segments > span[data-active="true"] {
+  background: var(--color-primary);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.sf-scroll-top,
+button[aria-label="Scroll to top"],
+button[aria-label="Back to top"] {
+  position: fixed !important;
+  right: 1.25rem !important;
+  bottom: 1.25rem !important;
+  left: auto !important;
+  top: auto !important;
+  z-index: 50;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-foreground) 14%, transparent);
+}
+
+@media (min-width: 640px) {
+  .sf-scroll-top,
+  button[aria-label="Scroll to top"],
+  button[aria-label="Back to top"] {
+    right: 1.5rem !important;
+    bottom: 1.5rem !important;
+  }
+}
+
 .sf-product-tile:hover {
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-  box-shadow: 0 16px 36px color-mix(in srgb, var(--color-foreground) 10%, transparent);
-  transform: translateY(-3px);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  transform: translateY(-2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -116,3 +214,134 @@
     animation: none;
   }
 }
+
+/* Compact breadcrumb / listing header strip */
+.blog-page-header {
+  letter-spacing: 0.01em;
+}
+
+/* Journal-style blog article body */
+.blog-markdown {
+  color: var(--color-foreground);
+  font-size: 1.125rem;
+  line-height: 1.8;
+}
+
+.blog-markdown > * + * {
+  margin-top: 1.2em;
+}
+
+.blog-markdown > p:first-child {
+  margin-top: 0.15em;
+}
+
+.blog-markdown h1,
+.blog-markdown h2,
+.blog-markdown h3 {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--color-foreground);
+}
+
+.blog-markdown h1 {
+  font-size: 1.75rem;
+}
+
+.blog-markdown h2 {
+  font-size: 1.4rem;
+  margin-top: 2em;
+  margin-bottom: 0.35em;
+}
+
+.blog-markdown h3 {
+  font-size: 1.15rem;
+  margin-top: 1.65em;
+  margin-bottom: 0.25em;
+}
+
+.blog-markdown p,
+.blog-markdown li {
+  color: color-mix(in srgb, var(--color-foreground) 92%, var(--color-muted));
+}
+
+.blog-markdown a {
+  color: var(--color-primary);
+  text-underline-offset: 0.15em;
+}
+
+.blog-markdown a:hover {
+  text-decoration: underline;
+}
+
+.blog-markdown blockquote {
+  border-left: 3px solid color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+  padding-left: 1rem;
+  color: var(--color-muted);
+  font-style: italic;
+}
+
+.blog-markdown ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.blog-markdown ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+
+.blog-markdown code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  padding: 0.12em 0.35em;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--color-surface) 80%, var(--color-border));
+}
+
+.blog-markdown pre {
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+  border-radius: var(--radius-default, 0.75rem);
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 88%, var(--color-border));
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.blog-markdown pre code {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.blog-markdown hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 2.25rem 0;
+}
+
+.blog-markdown img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius-default, 0.75rem);
+}
+
+/* Article card cover hover */
+.blog-card-image {
+  transition: box-shadow 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .blog-card-image,
+  .blog-card-image img {
+    transition: none !important;
+  }
+
+  .blog-card-image img {
+    transform: none !important;
+  }
+}
+

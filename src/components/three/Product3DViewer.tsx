@@ -85,14 +85,36 @@ export function Product3DViewer({
   ]);
 
   if (!shouldRender) {
-    return <>{fallback}</>;
+    return (
+      <div
+        className={className}
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "28rem",
+          aspectRatio: "1 / 1",
+          overflow: "hidden",
+        }}
+      >
+        {fallback}
+      </div>
+    );
   }
 
   const hints = qualityRenderHints(quality);
 
   return (
     <ThreeErrorBoundary fallback={fallback}>
-      <div className={className}>
+      <div
+        className={className}
+        style={{
+          position: "relative",
+          width: "100%",
+          maxWidth: "28rem",
+          aspectRatio: "1 / 1",
+          overflow: "hidden",
+        }}
+      >
         <Suspense fallback={fallback}>
           <SceneWrapper
             className="h-full w-full"

@@ -31,9 +31,9 @@ export function DeliveryInfoBlock({ currency }: Props) {
             Free delivery above {formatMoney(threshold, currency || hint.data.currency)}
           </li>
         ) : (
-          <li>Delivery charges calculated at checkout</li>
+          <li>Delivery charges calculated when you Buy it now</li>
         )}
-        <li>Secure checkout with encrypted payment</li>
+        <li>Secure payment with encryption</li>
       </ul>
     </div>
   );

@@ -57,3 +57,99 @@ body {
 .MuiSelect-select:focus-visible {
   outline: none;
 }
+
+/**
+ * Themed scrollbars (Admin + storefront).
+ * Placed LAST (unlayered) so they beat Tailwind/MUI layers.
+ *
+ * Do not combine `scrollbar-width` with `::-webkit-scrollbar` on Chromium —
+ * that keeps the OS default bar on Windows.
+ */
+:root {
+  --scrollbar-size: 10px;
+  --scrollbar-thumb: var(--color-primary);
+  --scrollbar-thumb-hover: color-mix(
+    in srgb,
+    var(--color-primary) 78%,
+    #000 22%
+  );
+  --scrollbar-track: color-mix(
+    in srgb,
+    var(--color-surface) 55%,
+    var(--color-border)
+  );
+}
+
+html.dark {
+  --scrollbar-thumb-hover: color-mix(
+    in srgb,
+    var(--color-primary) 85%,
+    #fff 15%
+  );
+}
+
+/* Firefox only (Chrome incorrectly matches selector(::-webkit-scrollbar) checks). */
+@supports (-moz-appearance: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+}
+
+/* Chrome / Edge / Safari — force classic themed bars */
+::-webkit-scrollbar {
+  width: var(--scrollbar-size) !important;
+  height: var(--scrollbar-size) !important;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb) !important;
+  border-radius: 8px !important;
+  border: 2px solid var(--scrollbar-track) !important;
+  background-clip: padding-box !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover) !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent !important;
+}
+
+/* Narrow MUI time/list columns — undo MUI's scrollbarWidth:'thin' first */
+.MuiMultiSectionDigitalClockSection-root {
+  scrollbar-width: unset !important;
+  overflow-y: auto !important;
+}
+
+.MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar,
+.MuiYearCalendar-root::-webkit-scrollbar,
+.MuiMonthCalendar-root::-webkit-scrollbar,
+.MuiList-root::-webkit-scrollbar {
+  width: 8px !important;
+  height: 8px !important;
+}
+
+.MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-track,
+.MuiList-root::-webkit-scrollbar-track {
+  background: var(--scrollbar-track) !important;
+  border-radius: 8px !important;
+}
+
+.MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-thumb,
+.MuiList-root::-webkit-scrollbar-thumb {
+  background: var(--color-primary) !important;
+  border-radius: 8px !important;
+  border: 2px solid var(--scrollbar-track) !important;
+  background-clip: padding-box !important;
+}
+
+.MuiMultiSectionDigitalClockSection-root::-webkit-scrollbar-thumb:hover,
+.MuiList-root::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover) !important;
+}

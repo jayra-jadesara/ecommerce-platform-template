@@ -68,7 +68,7 @@ export async function createCheckoutPaymentSession(input: {
   if (!summary.storeId || !summary.pricing || !summary.shippingSnapshot) {
     return {
       ok: false,
-      error: "Checkout is incomplete.",
+      error: "Buy it now is incomplete.",
       code: "INCOMPLETE",
     };
   }

@@ -12,6 +12,7 @@ export type AdminNavIcon =
   | "homepage"
   | "pages"
   | "banners"
+  | "blog"
   | "media";
 
 export type AdminNavSection =
@@ -148,6 +149,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
       },
       {
         kind: "link",
+        id: "content-blog",
+        label: "Blog",
+        href: p("/content/blog"),
+        permissions: ["blog.view"],
+        icon: "blog",
+        section: "content",
+      },
+      {
+        kind: "link",
         id: "content-media",
         label: "Images & Files",
         href: p("/media"),
@@ -268,6 +278,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "content-homepage",
   "content-pages",
   "content-banners",
+  "content-blog",
   "content-media",
   "settings-hub",
 ]);
@@ -363,6 +374,7 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   homepage: "Homepage",
   pages: "Pages",
   banners: "Banners",
+  blog: "Blog",
   media: "Images & Files",
   settings: "Store Settings",
   general: "Store Information",

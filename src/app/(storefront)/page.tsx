@@ -8,6 +8,7 @@ import {
   listStorefrontCategories,
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
+import { getCurrentUser } from "@/features/auth/session";
 import { metadataFromResolved } from "@/lib/metadata";
 import { resolveStoreHomepageSeo } from "@/features/seo/resolve";
 import {
@@ -30,7 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [config, homepage, categories, productList] = await Promise.all([
+  const [config, homepage, categories, productList, user] = await Promise.all([
     getPlatformConfigAsync(),
     getPublishedHomepage(),
     listStorefrontCategories(),
@@ -39,8 +40,10 @@ export default async function HomePage() {
       pageSize: "8",
       sort: "featured",
     }),
+    getCurrentUser(),
   ]);
 
+  const isAuthenticated = Boolean(user);
   const hasSections = (homepage?.sections.length ?? 0) > 0;
   const siteUrl = getSiteUrl();
   const org = buildOrganizationJsonLd({
@@ -65,6 +68,7 @@ export default async function HomePage() {
           animation={config.animation}
           visualEffects={config.visualEffects}
           currency={config.store.currency}
+          isAuthenticated={isAuthenticated}
         />
       ) : (
         <HomeView
@@ -72,6 +76,7 @@ export default async function HomePage() {
           products={productList.items}
           categories={categories}
           currency={config.store.currency}
+          isAuthenticated={isAuthenticated}
         />
       )}
     </Container>

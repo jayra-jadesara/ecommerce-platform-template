@@ -21,10 +21,12 @@ export type CollectionFilterDrawerProps = {
 
 const SORT_OPTIONS = [
   { value: "featured", label: "Featured" },
-  { value: "newest", label: "Newest" },
-  { value: "price", label: "Price: low to high" },
-  { value: "price_desc", label: "Price: high to low" },
-  { value: "name", label: "Name" },
+  { value: "newest", label: "Date, new to old" },
+  { value: "oldest", label: "Date, old to new" },
+  { value: "name", label: "Alphabetically, A-Z" },
+  { value: "name_desc", label: "Alphabetically, Z-A" },
+  { value: "price", label: "Price, low to high" },
+  { value: "price_desc", label: "Price, high to low" },
 ] as const;
 
 function buildHref(

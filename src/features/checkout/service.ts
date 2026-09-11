@@ -81,7 +81,7 @@ export async function validateCheckoutCart(): Promise<{
       issues: [
         {
           code: "UNAUTHORIZED",
-          message: "Sign in to continue to checkout.",
+          message: "Sign in to continue to Buy it now.",
         },
       ],
       currency: "INR",
@@ -127,7 +127,7 @@ export async function validateCheckoutCart(): Promise<{
       issues: [
         {
           code: "UNAUTHORIZED",
-          message: "Checkout is only available for your store cart.",
+          message: "Buy it now is only available for your store cart.",
         },
       ],
       currency,
@@ -253,7 +253,7 @@ export async function getCheckoutSummary(input?: {
     return emptySummary("INR", [
       {
         code: "UNAUTHORIZED",
-        message: "Sign in to continue to checkout.",
+        message: "Sign in to continue to Buy it now.",
       },
     ]);
   }

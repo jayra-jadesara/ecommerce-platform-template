@@ -201,8 +201,8 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
       <aside className="h-fit rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 lg:sticky lg:top-4">
         <h2 className="font-semibold">Order summary</h2>
         <p className="mt-1 text-xs text-[var(--color-muted)]">
-          Subtotal only — shipping, tax, and payment fees are calculated at
-          checkout.
+          Subtotal only — shipping, tax, and payment fees are calculated when
+          you Buy it now.
         </p>
         <div className="mt-4">
           <FreeShippingProgressLoader
@@ -229,18 +229,18 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
               title={
                 cart.items.length === 0
                   ? "Your cart is empty"
-                  : "Remove unavailable items before checkout"
+                  : "Remove unavailable items before Buy it now"
               }
               className="flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Proceed to checkout
+              Buy it now
             </button>
           ) : (
             <Link
               href="/checkout"
               className="flex min-h-11 w-full items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 py-2.5 text-sm font-medium text-[var(--color-button-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-              Proceed to checkout
+              Buy it now
             </Link>
           )}
           <Link
@@ -252,7 +252,7 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
         </div>
       </aside>
 
-      {/* Mobile sticky checkout CTA */}
+      {/* Mobile sticky Buy it now CTA */}
       <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_94%,transparent)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-lg items-center gap-3">
           <div className="min-w-0 flex-1">
@@ -267,14 +267,14 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
               disabled
               className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
             >
-              Checkout
+              Buy it now
             </button>
           ) : (
             <Link
               href="/checkout"
               className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-[var(--color-button-background)] px-4 text-sm font-medium text-[var(--color-button-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
             >
-              Checkout
+              Buy it now
             </Link>
           )}
         </div>

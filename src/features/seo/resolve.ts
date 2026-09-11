@@ -179,3 +179,80 @@ export function resolveProductsListingSeo(input: {
     robotsFollow: input.seo.robotsFollow !== false,
   };
 }
+
+export function resolveBlogListingSeo(input: {
+  settings: {
+    pageTitle: string;
+    pageDescription: string | null;
+  };
+  seo: SeoConfig;
+  page?: number;
+  categorySlug?: string;
+  q?: string;
+}): ResolvedPageSeo {
+  const page = input.page && input.page > 1 ? input.page : 1;
+  const hasFilter = Boolean(input.categorySlug?.trim() || input.q?.trim());
+  const title =
+    firstNonEmpty(input.settings.pageTitle, input.seo.title, input.seo.siteName) ||
+    "Blog";
+  const description = firstNonEmpty(
+    input.settings.pageDescription,
+    input.seo.description,
+  );
+  return {
+    title,
+    description,
+    canonicalPath: "/blog",
+    canonicalUrl: absoluteUrl("/blog"),
+    ogImage: isSafePublicAssetUrl(input.seo.ogImage) ? input.seo.ogImage : undefined,
+    ogType: "website",
+    robotsIndex:
+      page <= 1 && !hasFilter && input.seo.robotsIndex !== false,
+    robotsFollow: input.seo.robotsFollow !== false,
+  };
+}
+
+export function resolveBlogPostSeo(input: {
+  post: {
+    title: string;
+    slug: string;
+    excerpt?: string | null;
+    seoTitle?: string | null;
+    seoDescription?: string | null;
+    featuredImageUrl?: string | null;
+    ogImageUrl?: string | null;
+    status?: string;
+  };
+  seo: SeoConfig;
+  brandName?: string;
+}): ResolvedPageSeo {
+  const brand = input.brandName?.trim() || input.seo.siteName || input.seo.title;
+  const title =
+    firstNonEmpty(input.post.seoTitle, input.post.title, input.seo.title, brand) ||
+    input.post.title;
+  const description = firstNonEmpty(
+    input.post.seoDescription,
+    input.post.excerpt,
+    input.seo.description,
+  );
+  const path = `/blog/${input.post.slug}`;
+  const ogImage = isSafePublicAssetUrl(input.post.ogImageUrl)
+    ? input.post.ogImageUrl!
+    : isSafePublicAssetUrl(input.post.featuredImageUrl)
+      ? input.post.featuredImageUrl!
+      : isSafePublicAssetUrl(input.seo.ogImage)
+        ? input.seo.ogImage
+        : undefined;
+  const published =
+    !input.post.status || input.post.status === "published";
+  return {
+    title,
+    description,
+    canonicalPath: path,
+    canonicalUrl: absoluteUrl(path),
+    ogImage,
+    ogType: "article",
+    robotsIndex: published && input.seo.robotsIndex !== false,
+    robotsFollow: published && input.seo.robotsFollow !== false,
+  };
+}

@@ -29,23 +29,20 @@ import {
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import {
+  AdminDateTimeField,
+  isoToAdminDateTimeLocal,
+} from "@/features/admin/ui/AdminDateTimeField";
+import {
   pageOptionLabel,
   StorePageLinkField,
 } from "@/features/admin/ui/StorePageLinkField";
 import { formatDateTime } from "@/lib/format-date";
+import dayjs from "dayjs";
 
-function toDatetimeLocal(iso: string | null): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function fromDatetimeLocal(value: string): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+function fromDatetimeLocal(value: string | null | undefined): string | null {
+  if (value == null || String(value).trim() === "") return null;
+  const d = dayjs(value);
+  return d.isValid() ? d.toISOString() : null;
 }
 
 export function BannersManager({
@@ -272,9 +269,11 @@ function BannerForm({
     defaultValues: {
       ...initialValues,
       startsAt: initialValues.startsAt
-        ? toDatetimeLocal(initialValues.startsAt)
+        ? isoToAdminDateTimeLocal(initialValues.startsAt)
         : null,
-      endsAt: initialValues.endsAt ? toDatetimeLocal(initialValues.endsAt) : null,
+      endsAt: initialValues.endsAt
+        ? isoToAdminDateTimeLocal(initialValues.endsAt)
+        : null,
     },
   });
 
@@ -432,23 +431,35 @@ function BannerForm({
             Leave dates empty to show whenever the banner is active.
           </p>
           <div className={adminFieldsGrid(2)}>
-            <TextField
-              label="Show from (optional)"
-              type="datetime-local"
-              fullWidth
-              disabled={!canSubmit || pending}
-              slotProps={{ inputLabel: { shrink: true } }}
-              {...register("startsAt")}
+            <Controller
+              name="startsAt"
+              control={control}
+              render={({ field }) => (
+                <AdminDateTimeField
+                  label="Show from (optional)"
+                  disabled={!canSubmit || pending}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
-            <TextField
-              label="Show until (optional)"
-              type="datetime-local"
-              fullWidth
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.endsAt)}
-              helperText={errors.endsAt?.message}
-              slotProps={{ inputLabel: { shrink: true } }}
-              {...register("endsAt")}
+            <Controller
+              name="endsAt"
+              control={control}
+              render={({ field }) => (
+                <AdminDateTimeField
+                  label="Show until (optional)"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.endsAt)}
+                  helperText={errors.endsAt?.message}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                />
+              )}
             />
           </div>
           <TextField

@@ -29,6 +29,7 @@ import {
   adminBtn,
   adminCard,
   adminCardPadding,
+  adminCardsGrid,
   adminFieldGroup,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
@@ -136,7 +137,7 @@ export function CategoryManager({
   );
 
   return (
-    <div className="grid w-full min-w-0 gap-4 lg:grid-cols-2 lg:gap-5">
+    <div className={adminCardsGrid()}>
       <section className={`${adminCard()} ${adminCardPadding()} min-w-0`}>
         <div className="mb-1 flex items-center justify-between gap-2">
           <div>
