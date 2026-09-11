@@ -17,6 +17,7 @@ import type {
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/features/auth/session";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type AdminCouponListItem = CouponRow & {
   status: CouponDisplayStatus;
@@ -254,7 +255,17 @@ export async function createAdminCoupon(
         error: "A coupon with this code already exists for this store.",
       };
     }
-    return { ok: false, error: "Unable to create coupon." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "CREATE_COUPON",
+      feature: "COUPONS",
+      message: error?.message || "Unable to create coupon",
+      error,
+      storeId: ctx.storeId,
+      entityType: "coupon",
+      route: "/settings/coupons",
+    });
   }
 
   await writeCouponAudit({
@@ -337,7 +348,20 @@ export async function updateAdminCoupon(
         error: "A coupon with this code already exists for this store.",
       };
     }
-    return { ok: false, error: "Unable to update coupon." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: values.isActive === false && current.is_active
+        ? "DISABLE_COUPON"
+        : "UPDATE_COUPON",
+      feature: "COUPONS",
+      message: error.message || "Unable to update coupon",
+      error,
+      storeId: ctx.storeId,
+      entityType: "coupon",
+      entityId: id,
+      route: "/settings/coupons",
+    });
   }
 
   const wasDisabled = current.is_active && !values.isActive;
@@ -384,7 +408,20 @@ export async function deleteAdminCoupon(
       .update({ is_active: false })
       .eq("id", id)
       .eq("store_id", ctx.storeId);
-    if (error) return { ok: false, error: "Unable to deactivate coupon." };
+    if (error) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "DISABLE_COUPON",
+        feature: "COUPONS",
+        message: error.message || "Unable to deactivate coupon",
+        error,
+        storeId: ctx.storeId,
+        entityType: "coupon",
+        entityId: id,
+        route: "/settings/coupons",
+      });
+    }
 
     await writeCouponAudit({
       storeId: ctx.storeId,
@@ -410,7 +447,20 @@ export async function deleteAdminCoupon(
     .eq("id", id)
     .eq("store_id", ctx.storeId);
 
-  if (error) return { ok: false, error: "Unable to delete coupon." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "DELETE_COUPON",
+      feature: "COUPONS",
+      message: error.message || "Unable to delete coupon",
+      error,
+      storeId: ctx.storeId,
+      entityType: "coupon",
+      entityId: id,
+      route: "/settings/coupons",
+    });
+  }
 
   await writeCouponAudit({
     storeId: ctx.storeId,

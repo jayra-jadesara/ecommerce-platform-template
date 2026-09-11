@@ -35,7 +35,9 @@ export function Motion({
   ...rest
 }: MotionProps) {
   const hydrated = useHasHydrated();
-  const reducedMotion = usePrefersReducedMotion(true);
+  const prefersReducedMotion = usePrefersReducedMotion(true);
+  /** Match ThemeProvider: don't treat SSR snapshot as real reduced-motion. */
+  const reducedMotion = hydrated && prefersReducedMotion;
 
   const global: AnimationConfig = animation ?? {
     enabled: true,

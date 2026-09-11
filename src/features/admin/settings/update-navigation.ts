@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -12,6 +13,9 @@ import {
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+
+const NAVIGATION_ROUTE = getAdminPath("/settings/navigation");
 
 export type AdminNavItemRow = {
   id: string;
@@ -85,10 +89,19 @@ export async function updateNavigationSettings(
       .eq("id", item.id)
       .eq("store_id", storeId);
     if (error) {
-      return {
-        ok: false,
-        error: "Unable to delete a navigation item. Try again.",
-      };
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "NAVIGATION_UPDATE",
+        feature: "NAVIGATION",
+        message: "Unable to delete a navigation item",
+        error,
+        databaseCode: error.code,
+        storeId,
+        entityType: "navigation_items",
+        entityId: item.id,
+        route: NAVIGATION_ROUTE,
+      });
     }
   }
 
@@ -101,7 +114,10 @@ export async function updateNavigationSettings(
 
   async function writeItem(
     item: NavigationItemFormValues,
-  ): Promise<string | null> {
+  ): Promise<
+    | { ok: true; id: string }
+    | { ok: false; error: { message: string; code?: string } | null }
+  > {
     let parentId = item.parentId;
     if (!parentId && item.parentClientKey) {
       parentId = clientKeyToId.get(item.parentClientKey) ?? null;
@@ -124,8 +140,8 @@ export async function updateNavigationSettings(
         .update(payload)
         .eq("id", item.id)
         .eq("store_id", storeId!);
-      if (error) return null;
-      return item.id;
+      if (error) return { ok: false, error };
+      return { ok: true, id: item.id };
     }
 
     const { data, error } = await supabase
@@ -133,10 +149,10 @@ export async function updateNavigationSettings(
       .insert(payload)
       .select("id")
       .single();
-    if (error || !data) return null;
+    if (error || !data) return { ok: false, error: error ?? null };
     createdCount += 1;
     clientKeyToId.set(item.clientKey, data.id);
-    return data.id;
+    return { ok: true, id: data.id };
   }
 
   // Roots (no parent) first, then nested items (may depend on newly created parents).
@@ -148,23 +164,40 @@ export async function updateNavigationSettings(
   );
 
   for (const item of roots) {
-    const id = await writeItem(item);
-    if (!id) {
-      return {
-        ok: false,
-        error:
-          "Unable to save navigation items. Check permissions and try again.",
-      };
+    const result = await writeItem(item);
+    if (!result.ok) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "NAVIGATION_UPDATE",
+        feature: "NAVIGATION",
+        message: "Unable to save navigation items",
+        error: result.error ?? undefined,
+        databaseCode: result.error?.code,
+        storeId,
+        entityType: "navigation_items",
+        entityId: item.id ?? storeId,
+        route: NAVIGATION_ROUTE,
+      });
     }
   }
 
   for (const item of nested) {
-    const id = await writeItem(item);
-    if (!id) {
-      return {
-        ok: false,
-        error: "Unable to save nested navigation items.",
-      };
+    const result = await writeItem(item);
+    if (!result.ok) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "NAVIGATION_UPDATE",
+        feature: "NAVIGATION",
+        message: "Unable to save nested navigation items",
+        error: result.error ?? undefined,
+        databaseCode: result.error?.code,
+        storeId,
+        entityType: "navigation_items",
+        entityId: item.id ?? storeId,
+        route: NAVIGATION_ROUTE,
+      });
     }
   }
 

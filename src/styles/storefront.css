@@ -71,11 +71,33 @@
   background: var(--color-card);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-default, 14px);
-  overflow: hidden;
+  /* Keep overflow visible so lift shadow / image motion are not clipped. */
+  overflow: visible;
+  isolation: isolate;
   transition:
-    transform 200ms ease,
-    box-shadow 200ms ease,
-    border-color 200ms ease;
+    transform var(--motion-duration, 380ms) var(--motion-ease, ease),
+    box-shadow var(--motion-duration, 380ms) var(--motion-ease, ease),
+    border-color var(--motion-duration, 380ms) var(--motion-ease, ease);
+  will-change: transform;
+}
+
+.sf-product-tile-media {
+  overflow: hidden;
+  border-radius: inherit;
+  perspective: 900px;
+}
+
+html[data-card-motion="float"][data-store-motion="on"] .sf-product-tile {
+  animation: sf-card-float 3.2s var(--motion-ease, ease) infinite alternate;
+}
+
+@keyframes sf-card-float {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(var(--motion-float-distance, 5px) * -1));
+  }
 }
 
 /* Hard-positioned so icons stay top-right even if utility classes are purged. */
@@ -158,16 +180,65 @@ button[aria-label="Back to top"] {
 }
 
 .sf-product-tile:hover {
+  z-index: 2;
   border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-foreground) 8%, transparent);
-  transform: translateY(-2px);
+  box-shadow: var(
+    --motion-card-shadow,
+    0 14px 32px color-mix(in srgb, var(--color-foreground) 12%, transparent)
+  );
+  transform: translateY(calc(var(--motion-hover-lift, 8px) * -1))
+    scale(var(--motion-hover-scale, 1));
+  animation: none;
+}
+
+.sf-product-tile-image {
+  transform-origin: center center;
+  transition:
+    transform var(--motion-duration, 380ms) var(--motion-ease, ease),
+    opacity 200ms ease;
+}
+
+.sf-product-tile:hover .sf-product-tile-image {
+  transform: translateY(var(--motion-image-lift, 0px))
+    scale(var(--motion-image-scale, 1))
+    rotateY(var(--motion-image-rotate, 0deg));
+}
+
+/* Storefront CTAs — hover driven by Appearance → Motion & 3D */
+.sf-motion-btn {
+  transition:
+    transform var(--motion-duration, 380ms) var(--motion-ease, ease),
+    box-shadow var(--motion-duration, 380ms) var(--motion-ease, ease),
+    filter 200ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    opacity 200ms ease;
+}
+
+html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
+  .sf-motion-btn:hover {
+  transform: translateY(calc(var(--motion-btn-lift, 0px) * -1))
+    scale(var(--motion-btn-scale, 1));
+  box-shadow: var(--motion-btn-shadow, none);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .sf-product-tile {
     transition: none;
+    animation: none !important;
   }
   .sf-product-tile:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .sf-product-tile-image,
+  .sf-product-tile:hover .sf-product-tile-image {
+    transition: none;
+    transform: none;
+  }
+  .sf-motion-btn,
+  html[data-store-motion="on"] .sf-motion-btn:hover {
+    transition: none;
     transform: none;
   }
 }

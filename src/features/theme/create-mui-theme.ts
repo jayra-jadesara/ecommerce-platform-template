@@ -2,6 +2,7 @@
 
 import { createTheme, type Theme } from "@mui/material/styles";
 import type { ColorTokens, TypographyConfig } from "@/types";
+import { normalizeStoredFontCss } from "@/features/theme/typography-css";
 
 function parseBorderRadius(value: string | undefined): number {
   if (!value) return 8;
@@ -17,6 +18,12 @@ export function createAppMuiTheme(
   mode: "light" | "dark",
   borderRadius?: string,
 ): Theme {
+  const fontSans = normalizeStoredFontCss(typography.fontSans, "sans");
+  const fontDisplay = normalizeStoredFontCss(
+    typography.fontDisplay,
+    "display",
+  );
+
   return createTheme({
     palette: {
       mode,
@@ -39,13 +46,13 @@ export function createAppMuiTheme(
       divider: tokens.border,
     },
     typography: {
-      fontFamily: typography.fontSans,
+      fontFamily: fontSans,
       fontSize: typography.baseSizePx,
       fontWeightRegular: typography.bodyWeight,
       fontWeightMedium: typography.headingWeight,
-      h1: { fontFamily: typography.fontDisplay ?? typography.fontSans },
-      h2: { fontFamily: typography.fontDisplay ?? typography.fontSans },
-      h3: { fontFamily: typography.fontDisplay ?? typography.fontSans },
+      h1: { fontFamily: fontDisplay },
+      h2: { fontFamily: fontDisplay },
+      h3: { fontFamily: fontDisplay },
     },
     shape: { borderRadius: parseBorderRadius(borderRadius) },
     components: {

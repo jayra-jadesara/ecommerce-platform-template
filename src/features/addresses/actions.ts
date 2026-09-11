@@ -13,6 +13,7 @@ import {
   addressFormSchema,
   addressIdSchema,
 } from "@/features/addresses/validation";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
 function revalidateAddressPaths() {
   revalidatePath("/account/addresses");
@@ -34,7 +35,17 @@ export async function createAddressAction(
     };
   }
 
-  const result = await createCustomerAddress(parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "AUTH",
+      source: "SERVER",
+      operation: "CREATE_ADDRESS",
+      feature: "AUTH",
+      entityType: "user_address",
+      route: "/account/addresses",
+    },
+    () => createCustomerAddress(parsed.data),
+  );
   if (result.ok) revalidateAddressPaths();
   return result;
 }
@@ -55,7 +66,18 @@ export async function updateAddressAction(
     };
   }
 
-  const result = await updateCustomerAddress(idParsed.data.addressId, parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "AUTH",
+      source: "SERVER",
+      operation: "UPDATE_ADDRESS",
+      feature: "AUTH",
+      entityType: "user_address",
+      entityId: idParsed.data.addressId,
+      route: "/account/addresses",
+    },
+    () => updateCustomerAddress(idParsed.data.addressId, parsed.data),
+  );
   if (result.ok) revalidateAddressPaths();
   return result;
 }
@@ -68,7 +90,18 @@ export async function deleteAddressAction(
     return { ok: false, error: "Invalid address." };
   }
 
-  const result = await deleteCustomerAddress(parsed.data.addressId);
+  const result = await runLoggedMutation(
+    {
+      type: "AUTH",
+      source: "SERVER",
+      operation: "DELETE_ADDRESS",
+      feature: "AUTH",
+      entityType: "user_address",
+      entityId: parsed.data.addressId,
+      route: "/account/addresses",
+    },
+    () => deleteCustomerAddress(parsed.data.addressId),
+  );
   if (result.ok) revalidateAddressPaths();
   return result;
 }
@@ -81,7 +114,18 @@ export async function setDefaultAddressAction(
     return { ok: false, error: "Invalid address." };
   }
 
-  const result = await setDefaultAddress(parsed.data.addressId);
+  const result = await runLoggedMutation(
+    {
+      type: "AUTH",
+      source: "SERVER",
+      operation: "SET_DEFAULT_ADDRESS",
+      feature: "AUTH",
+      entityType: "user_address",
+      entityId: parsed.data.addressId,
+      route: "/account/addresses",
+    },
+    () => setDefaultAddress(parsed.data.addressId),
+  );
   if (result.ok) revalidateAddressPaths();
   return result;
 }

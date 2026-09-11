@@ -16,6 +16,7 @@ import {
 } from "@/features/blog/settings-map";
 import { normalizeSidebarPreset } from "@/features/blog/settings-normalize";
 import type { BlogSettings } from "@/features/blog/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type BlogSettingsMutationResult =
@@ -124,7 +125,18 @@ export async function upsertAdminBlogSettings(
     .single();
 
   if (error || !data) {
-    return { ok: false, error: "Unable to save blog settings." };
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_BLOG_SETTINGS",
+      feature: "BLOG",
+      message: error?.message || "Unable to save blog settings",
+      error,
+      storeId,
+      entityType: "blog_settings",
+      entityId: storeId,
+      route: "/blog/settings",
+    });
   }
 
   await syncFeaturedPostFlag(storeId, values.featuredPostId);

@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
@@ -17,10 +18,13 @@ import {
   buildProductImagePath,
   validateImageUpload,
 } from "@/features/media/validation";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type ProductImageResult =
   | { ok: true; message: string; id?: string; image?: ProductImageRow }
-  | { ok: false; error: string };
+  | { ok: false; error: string; referenceId?: string };
+
+const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
 
 export type ProductImageRow = {
   id: string;
@@ -158,10 +162,23 @@ export async function createProductImage(
     });
 
   if (uploadError) {
-    return {
-      ok: false,
-      error: "Unable to upload image. Check storage permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "STORAGE",
+      source: "SERVER",
+      operation: "PRODUCT_IMAGE_UPLOAD",
+      feature: "MEDIA",
+      message: "Unable to upload product image to storage",
+      error: uploadError,
+      storeId: scope.storeId,
+      entityType: "product_images",
+      entityId: productId,
+      route: PRODUCTS_ROUTE,
+      metadata: {
+        product_id: productId,
+        bucket: STORAGE_BUCKETS.products,
+        path,
+      },
+    });
   }
 
   const publicUrl = resolvePublicStorageUrl(STORAGE_BUCKETS.products, path) ?? null;
@@ -190,7 +207,20 @@ export async function createProductImage(
 
   if (error || !data) {
     await scope.supabase.storage.from(STORAGE_BUCKETS.products).remove([path]);
-    return { ok: false, error: "Unable to save product image metadata." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PRODUCT_IMAGE_UPLOAD",
+      feature: "MEDIA",
+      message: "Unable to save product image metadata",
+      error: error ?? undefined,
+      databaseCode: error?.code,
+      storeId: scope.storeId,
+      entityType: "product_images",
+      entityId: productId,
+      route: PRODUCTS_ROUTE,
+      metadata: { product_id: productId, path },
+    });
   }
 
   // Also register in media library for reuse.
@@ -271,7 +301,22 @@ export async function deleteProductImage(
     .delete()
     .eq("id", imageId);
 
-  if (error) return { ok: false, error: "Unable to delete product image." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PRODUCT_IMAGE_DELETE",
+      feature: "MEDIA",
+      message: "Unable to delete product image",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "product_images",
+      entityId: imageId,
+      route: PRODUCTS_ROUTE,
+      metadata: { product_id: productId, path },
+    });
+  }
 
   // Remove storage object only if unused by other product_images.
   const { count } = await supabase
@@ -361,7 +406,22 @@ export async function setPrimaryProductImage(
     .update({ is_primary: true })
     .eq("id", imageId);
 
-  if (error) return { ok: false, error: "Unable to set primary image." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PRODUCT_IMAGE_UPDATE",
+      feature: "MEDIA",
+      message: "Unable to set primary product image",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "product_images",
+      entityId: imageId,
+      route: PRODUCTS_ROUTE,
+      metadata: { product_id: productId },
+    });
+  }
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,
@@ -411,7 +471,22 @@ export async function reorderProductImages(
       .update({ sort_order: index })
       .eq("id", unique[index])
       .eq("product_id", productId);
-    if (error) return { ok: false, error: "Unable to reorder images." };
+    if (error) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "PRODUCT_IMAGE_UPDATE",
+        feature: "MEDIA",
+        message: "Unable to reorder product images",
+        error,
+        databaseCode: error.code,
+        storeId: scope.storeId,
+        entityType: "product_images",
+        entityId: productId,
+        route: PRODUCTS_ROUTE,
+        metadata: { product_id: productId },
+      });
+    }
   }
 
   await scope.supabase.from("audit_logs").insert({
@@ -464,7 +539,22 @@ export async function updateProductImageAlt(
     .update({ alt_text: altText.trim() || null })
     .eq("id", imageId);
 
-  if (error) return { ok: false, error: "Unable to update alt text." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PRODUCT_IMAGE_UPDATE",
+      feature: "MEDIA",
+      message: "Unable to update product image alt text",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "product_images",
+      entityId: imageId,
+      route: PRODUCTS_ROUTE,
+      metadata: { product_id: image.product_id },
+    });
+  }
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,

@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          # Public placeholders only — enough for Next to compile; no real secrets.
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ci-placeholder
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          # Server keys required by some modules at build analysis time.
+          SUPABASE_SERVICE_ROLE_KEY: ci-service-role-placeholder
+          GUEST_CART_SECRET: ci-guest-cart-secret-placeholder-32chars
+
+      - name: Build failure note
+        if: failure()
+        run: |
+          echo "::error::Build/compile/typecheck failures block deployment."
+          echo "These are NOT written to application error_logs — fix the CI log, then redeploy."

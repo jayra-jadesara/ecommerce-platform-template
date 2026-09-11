@@ -7,12 +7,9 @@ import {
   type CustomerAddress,
 } from "@/features/addresses/types";
 import type { AddressFormInput } from "@/features/addresses/validation";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
-
-function friendlyError(): string {
-  return "Something went wrong with your address book. Please try again.";
-}
 
 function mapAddress(row: Tables<"user_addresses">): CustomerAddress {
   return {
@@ -44,14 +41,17 @@ async function listForUser(userId: string): Promise<CustomerAddress[]> {
   return data.map(mapAddress);
 }
 
-async function clearDefaults(userId: string): Promise<boolean> {
+async function clearDefaults(
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: unknown }> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase
     .from("user_addresses")
     .update({ is_default: false })
     .eq("user_id", userId)
     .eq("is_default", true);
-  return !error;
+  if (error) return { ok: false, error };
+  return { ok: true };
 }
 
 export async function getCustomerAddresses(): Promise<CustomerAddress[]> {
@@ -86,7 +86,21 @@ export async function createCustomerAddress(
 
   if (makeDefault) {
     const cleared = await clearDefaults(user.id);
-    if (!cleared) return { ok: false, error: friendlyError() };
+    if (!cleared.ok) {
+      return unexpectedFailure({
+        type: "AUTH",
+        source: "DATABASE",
+        operation: "CREATE_ADDRESS",
+        feature: "AUTH",
+        message:
+          (cleared.error as { message?: string })?.message ||
+          "Unable to create address",
+        error: cleared.error,
+        entityType: "user_address",
+        entityId: user.id,
+        route: "/account/addresses",
+      });
+    }
   }
 
   const { data, error } = await supabase
@@ -106,7 +120,19 @@ export async function createCustomerAddress(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: friendlyError() };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "AUTH",
+      source: "DATABASE",
+      operation: "CREATE_ADDRESS",
+      feature: "AUTH",
+      message: error?.message || "Unable to create address",
+      error,
+      entityType: "user_address",
+      entityId: user.id,
+      route: "/account/addresses",
+    });
+  }
 
   const addresses = await listForUser(user.id);
   return {
@@ -138,7 +164,21 @@ export async function updateCustomerAddress(
   const makeDefault = Boolean(input.isDefault);
   if (makeDefault) {
     const cleared = await clearDefaults(user.id);
-    if (!cleared) return { ok: false, error: friendlyError() };
+    if (!cleared.ok) {
+      return unexpectedFailure({
+        type: "AUTH",
+        source: "DATABASE",
+        operation: "UPDATE_ADDRESS",
+        feature: "AUTH",
+        message:
+          (cleared.error as { message?: string })?.message ||
+          "Unable to update address",
+        error: cleared.error,
+        entityType: "user_address",
+        entityId: addressId,
+        route: "/account/addresses",
+      });
+    }
   }
 
   const { data, error } = await supabase
@@ -159,7 +199,19 @@ export async function updateCustomerAddress(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: friendlyError() };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "AUTH",
+      source: "DATABASE",
+      operation: "UPDATE_ADDRESS",
+      feature: "AUTH",
+      message: error?.message || "Unable to update address",
+      error,
+      entityType: "user_address",
+      entityId: addressId,
+      route: "/account/addresses",
+    });
+  }
 
   const addresses = await listForUser(user.id);
   return {
@@ -193,7 +245,19 @@ export async function deleteCustomerAddress(
     .eq("id", addressId)
     .eq("user_id", user.id);
 
-  if (error) return { ok: false, error: friendlyError() };
+  if (error) {
+    return unexpectedFailure({
+      type: "AUTH",
+      source: "DATABASE",
+      operation: "DELETE_ADDRESS",
+      feature: "AUTH",
+      message: error.message || "Unable to delete address",
+      error,
+      entityType: "user_address",
+      entityId: addressId,
+      route: "/account/addresses",
+    });
+  }
 
   let addresses = await listForUser(user.id);
 
@@ -236,7 +300,21 @@ export async function setDefaultAddress(
   }
 
   const cleared = await clearDefaults(user.id);
-  if (!cleared) return { ok: false, error: friendlyError() };
+  if (!cleared.ok) {
+    return unexpectedFailure({
+      type: "AUTH",
+      source: "DATABASE",
+      operation: "SET_DEFAULT_ADDRESS",
+      feature: "AUTH",
+      message:
+        (cleared.error as { message?: string })?.message ||
+        "Unable to set default address",
+      error: cleared.error,
+      entityType: "user_address",
+      entityId: addressId,
+      route: "/account/addresses",
+    });
+  }
 
   const { data, error } = await supabase
     .from("user_addresses")
@@ -246,7 +324,19 @@ export async function setDefaultAddress(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: friendlyError() };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "AUTH",
+      source: "DATABASE",
+      operation: "SET_DEFAULT_ADDRESS",
+      feature: "AUTH",
+      message: error?.message || "Unable to set default address",
+      error,
+      entityType: "user_address",
+      entityId: addressId,
+      route: "/account/addresses",
+    });
+  }
 
   const addresses = await listForUser(user.id);
   return {

@@ -2,6 +2,10 @@ import "server-only";
 
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { getCurrentUser } from "@/features/auth/session";
+import {
+  customerFacingError,
+  logPaymentError,
+} from "@/features/error-monitoring/logger";
 import { writePaymentAudit } from "@/features/payments/audit";
 import { getPaymentProvider } from "@/features/payments/providers";
 import { getRazorpayEnvOptional } from "@/features/payments/env";
@@ -158,10 +162,25 @@ export async function createCheckoutPaymentSession(input: {
     .single();
 
   if (orderError || !order) {
+    const logged = await logPaymentError({
+      message: orderError?.message || "Order create failed before payment",
+      error: orderError,
+      type: "ORDER",
+      source: "DATABASE",
+      severity: "ERROR",
+      operation: "CHECKOUT",
+      storeId: summary.storeId,
+      userId: user.id,
+      userLogin: user.email,
+      errorCode: "ORDER_CREATE_FAILED",
+      route: "/checkout",
+      databaseCode: orderError?.code ?? null,
+    });
     return {
       ok: false,
-      error: "Unable to prepare your order.",
+      ...customerFacingError(logged.referenceId, true),
       code: "ORDER_CREATE_FAILED",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -209,10 +228,26 @@ export async function createCheckoutPaymentSession(input: {
 
   if (paymentError || !payment) {
     await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
+    const logged = await logPaymentError({
+      message: paymentError?.message || "Payment row create failed",
+      error: paymentError,
+      source: "DATABASE",
+      type: "PAYMENT",
+      severity: "ERROR",
+      operation: "CREATE_PAYMENT",
+      storeId: summary.storeId,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: order.id,
+      errorCode: "PAYMENT_CREATE_FAILED",
+      route: "/checkout",
+      databaseCode: paymentError?.code ?? null,
+    });
     return {
       ok: false,
-      error: "Unable to prepare payment.",
+      ...customerFacingError(logged.referenceId, true),
       code: "PAYMENT_CREATE_FAILED",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -229,7 +264,7 @@ export async function createCheckoutPaymentSession(input: {
         store_id: summary.storeId,
       },
     });
-  } catch {
+  } catch (providerError) {
     await supabase
       .from("payments")
       .update({
@@ -238,10 +273,29 @@ export async function createCheckoutPaymentSession(input: {
       })
       .eq("id", payment.id);
     await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
+    const logged = await logPaymentError({
+      message:
+        providerError instanceof Error
+          ? providerError.message
+          : "Razorpay order creation failed",
+      error: providerError,
+      source: "PROVIDER",
+      severity: "ERROR",
+      operation: "CREATE_PAYMENT",
+      storeId: summary.storeId,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: order.id,
+      paymentId: payment.id,
+      errorCode: "PROVIDER_ORDER_FAILED",
+      route: "/checkout",
+      metadata: { currency, amountMinor },
+    });
     return {
       ok: false,
-      error: "Unable to start payment. Please try again.",
+      ...customerFacingError(logged.referenceId, true),
       code: "PROVIDER_ORDER_FAILED",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -257,10 +311,31 @@ export async function createCheckoutPaymentSession(input: {
       })
       .eq("id", payment.id);
     await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
+    const logged = await logPaymentError({
+      message: "Provider amount or currency mismatch on order create",
+      source: "PROVIDER",
+      severity: "CRITICAL",
+      operation: "CREATE_PAYMENT",
+      storeId: summary.storeId,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: order.id,
+      paymentId: payment.id,
+      providerOrderId: providerOrder.providerOrderId,
+      errorCode: "PROVIDER_AMOUNT_MISMATCH",
+      route: "/checkout",
+      metadata: {
+        expectedMinor: amountMinor,
+        actualMinor: providerOrder.amountMinor,
+        currency,
+        providerCurrency: providerOrder.currency,
+      },
+    });
     return {
       ok: false,
-      error: "Unable to start payment. Please try again.",
+      ...customerFacingError(logged.referenceId, true),
       code: "PROVIDER_AMOUNT_MISMATCH",
+      referenceId: logged.referenceId,
     };
   }
 

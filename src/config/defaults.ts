@@ -78,9 +78,9 @@ export const defaultPlatformConfig: PlatformConfig = {
     borderRadius: "14px",
   },
   typography: {
-    fontSans: "var(--font-sans)",
-    fontMono: "var(--font-mono)",
-    fontDisplay: "var(--font-display)",
+    fontSans: "var(--font-dm-sans)",
+    fontMono: "var(--font-jetbrains-mono)",
+    fontDisplay: "var(--font-fraunces)",
     baseSizePx: 16,
     headingWeight: 600,
     bodyWeight: 400,

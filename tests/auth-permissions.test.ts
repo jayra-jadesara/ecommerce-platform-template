@@ -13,6 +13,8 @@ describe("permissionsForRoles", () => {
     const set = permissionsForRoles(["SUPER_ADMIN"]);
     expect(set.has("users.manage")).toBe(true);
     expect(set.has("audit.view")).toBe(true);
+    expect(set.has("error_logs.view")).toBe(true);
+    expect(set.has("error_logs.update")).toBe(true);
     expect(set.has("dashboard.view")).toBe(true);
   });
 

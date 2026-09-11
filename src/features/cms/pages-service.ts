@@ -16,6 +16,7 @@ import {
   type PageFormValues,
 } from "@/features/cms/schemas";
 import type { ContentPage } from "@/features/cms/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
@@ -193,7 +194,17 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
     if (error?.code === "23505") {
       return { ok: false, error: "A page with this URL already exists." };
     }
-    return { ok: false, error: "Unable to create page." };
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "CREATE_PAGE",
+      feature: "CMS",
+      message: error?.message || "Unable to create page",
+      error,
+      storeId,
+      entityType: "page",
+      route: "/content/pages",
+    });
   }
 
   await writeContentAudit({
@@ -278,7 +289,24 @@ export async function updateAdminPage(
     if (error?.code === "23505") {
       return { ok: false, error: "A page with this URL already exists." };
     }
-    return { ok: false, error: "Unable to update page." };
+    const operation =
+      !wasPublished && willPublish
+        ? "PUBLISH_PAGE"
+        : willArchive && current.status !== "archived"
+          ? "DELETE_PAGE"
+          : "UPDATE_PAGE";
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation,
+      feature: "CMS",
+      message: error?.message || "Unable to update page",
+      error,
+      storeId,
+      entityType: "page",
+      entityId: id,
+      route: "/content/pages",
+    });
   }
 
   const isHomepage = data.slug === HOMEPAGE_SLUG;

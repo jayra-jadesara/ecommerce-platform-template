@@ -14,6 +14,7 @@ import {
   removeFromWishlistSchema,
   wishlistContainsSchema,
 } from "@/features/wishlist/validation";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
 function revalidateWishlistPaths() {
   revalidatePath("/account/wishlist");
@@ -34,7 +35,18 @@ export async function addToWishlistAction(
     };
   }
 
-  const result = await addToWishlist(parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "WISHLIST_ADD",
+      feature: "CART",
+      entityType: "wishlist_item",
+      entityId: parsed.data.productId,
+      route: "/account/wishlist",
+    },
+    () => addToWishlist(parsed.data),
+  );
   if (result.ok) revalidateWishlistPaths();
   return result;
 }
@@ -50,7 +62,18 @@ export async function removeFromWishlistAction(
     };
   }
 
-  const result = await removeFromWishlist(parsed.data.wishlistItemId);
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "WISHLIST_REMOVE",
+      feature: "CART",
+      entityType: "wishlist_item",
+      entityId: parsed.data.wishlistItemId,
+      route: "/account/wishlist",
+    },
+    () => removeFromWishlist(parsed.data.wishlistItemId),
+  );
   if (result.ok) revalidateWishlistPaths();
   return result;
 }
@@ -66,7 +89,18 @@ export async function toggleWishlistAction(
     };
   }
 
-  const result = await toggleWishlist(parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "WISHLIST_ADD",
+      feature: "CART",
+      entityType: "wishlist_item",
+      entityId: parsed.data.productId,
+      route: "/account/wishlist",
+    },
+    () => toggleWishlist(parsed.data),
+  );
   if (result.ok) revalidateWishlistPaths();
   return result;
 }

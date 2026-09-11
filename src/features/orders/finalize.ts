@@ -7,6 +7,7 @@ import {
 } from "@/features/orders/inventory";
 import { redeemCoupon } from "@/features/coupons/redeem";
 import { normalizeCouponCode } from "@/features/coupons/normalize";
+import { logPaymentError } from "@/features/error-monitoring/logger";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export type FinalizePaidOrderResult =
@@ -112,6 +113,20 @@ export async function finalizePaidOrder(input: {
           message: "Coupon could not be redeemed after payment",
           metadata: { error: redeemed.error, code: order.coupon_code },
         });
+        await logPaymentError({
+          message: redeemed.error || "Coupon redemption failed after payment",
+          type: "ORDER",
+          source: "SERVER",
+          severity: "ERROR",
+          operation: "FINALIZE_ORDER",
+          feature: "PAYMENT",
+          storeId: input.storeId,
+          userId: input.userId,
+          orderId: order.id,
+          paymentId: input.paymentId,
+          errorCode: "COUPON_REDEMPTION_FAILED",
+          route: "/checkout",
+        });
       } else if (!redeemed.alreadyRedeemed) {
         await writeOrderActivity({
           orderId: order.id,
@@ -136,6 +151,20 @@ export async function finalizePaidOrder(input: {
         storeId: input.storeId,
         eventType: "INVENTORY_FINALIZATION_FAILED",
         message: inventory.error ?? "Inventory finalization failed",
+      });
+      await logPaymentError({
+        message: inventory.error ?? "Inventory finalization failed",
+        type: "INVENTORY",
+        source: "DATABASE",
+        severity: "CRITICAL",
+        operation: "FINALIZE_ORDER",
+        feature: "PAYMENT",
+        storeId: input.storeId,
+        userId: input.userId,
+        orderId: order.id,
+        paymentId: input.paymentId,
+        errorCode: "INVENTORY_FINALIZATION_FAILED",
+        route: "/checkout",
       });
     } else {
       inventoryShortages = inventory.shortages?.length ?? 0;

@@ -9,8 +9,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
-import Switch from "@mui/material/Switch";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import {
   createSectionAction,
   deleteSectionAction,
@@ -24,7 +22,6 @@ import {
   defaultConfigForType,
   HERO_LAYOUT_PRESETS,
   HERO_LAYOUT_PRESET_LABELS,
-  SECTION_ANIMATION_PRESETS,
   SECTION_BACKGROUND_STYLES,
   SECTION_SPACING_PRESETS,
   SECTION_TYPE_DESCRIPTIONS,
@@ -1320,111 +1317,84 @@ function SectionConfigFields({
           Motion &amp; 3D (optional)
         </summary>
         <p className="admin-field-group__hint mt-2">
-          Uses your store Appearance → Motion &amp; 3D settings by default. Only
+          Default: use store settings from Appearance → Motion &amp; 3D. Only
           customize this section if you need something different.
         </p>
         <div className={`mt-3 space-y-4`}>
           <TextField
             select
-            label="Motion"
+            label="Animation"
             fullWidth
-            value={String(config.motionSource ?? "global")}
-            onChange={(e) => setField("motionSource", e.target.value)}
-            helperText="Use store default for most sections."
+            value={
+              (config.motionSource ?? "global") === "global"
+                ? "store"
+                : String(config.animationPreset ?? "fade-up") === "none"
+                  ? "none"
+                  : String(config.animationIntensity ?? "smooth") === "subtle"
+                    ? "subtle"
+                    : "smooth"
+            }
+            onChange={(e) => {
+              const v = e.target.value;
+              if (v === "store") {
+                setField("motionSource", "global");
+                return;
+              }
+              setField("motionSource", "custom");
+              setField("animationEnabled", v !== "none");
+              setField(
+                "animationPreset",
+                v === "none" ? "none" : "fade-up",
+              );
+              setField(
+                "animationIntensity",
+                v === "subtle" ? "subtle" : "smooth",
+              );
+            }}
+            helperText="Use store settings for most sections."
           >
-            <MenuItem value="global">Use store default</MenuItem>
-            <MenuItem value="custom">Customize for this section</MenuItem>
+            <MenuItem value="store">Use store settings</MenuItem>
+            <MenuItem value="none">None</MenuItem>
+            <MenuItem value="subtle">Subtle</MenuItem>
+            <MenuItem value="smooth">Smooth</MenuItem>
           </TextField>
-          {(config.motionSource ?? "global") === "custom" ? (
-            <div className={adminFieldsGrid(2)}>
-              <TextField
-                select
-                label="Animation"
-                fullWidth
-                value={String(config.animationPreset ?? "fade-up")}
-                onChange={(e) => setField("animationPreset", e.target.value)}
-              >
-                {SECTION_ANIMATION_PRESETS.map((style) => (
-                  <MenuItem key={style} value={style}>
-                    {style === "none"
-                      ? "None"
-                      : style === "fade"
-                        ? "Fade"
-                        : style === "fade-up"
-                          ? "Rise"
-                          : style === "scale"
-                            ? "Scale"
-                            : style.startsWith("slide")
-                              ? "Slide"
-                              : style}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Intensity"
-                fullWidth
-                value={String(config.animationIntensity ?? "smooth")}
-                onChange={(e) => setField("animationIntensity", e.target.value)}
-              >
-                <MenuItem value="subtle">Subtle</MenuItem>
-                <MenuItem value="smooth">Smooth</MenuItem>
-              </TextField>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={config.animationEnabled !== false}
-                    onChange={(_, checked) =>
-                      setField("animationEnabled", checked)
-                    }
-                  />
-                }
-                label="Play entrance animation"
-              />
-            </div>
-          ) : null}
 
           {sectionType === "hero" ? (
-            <>
-              <TextField
-                select
-                label="3D"
-                fullWidth
-                value={String(config.threeSource ?? "global")}
-                onChange={(e) => setField("threeSource", e.target.value)}
-                helperText="Store default keeps Hero 3D aligned with Appearance."
-              >
-                <MenuItem value="global">Use store default</MenuItem>
-                <MenuItem value="custom">Customize for this section</MenuItem>
-              </TextField>
-              {(config.threeSource ?? "global") === "custom" ? (
-                <div className={adminFieldsGrid(2)}>
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(config.enable3d)}
-                        onChange={(_, checked) => setField("enable3d", checked)}
-                      />
-                    }
-                    label="Enable 3D"
-                  />
-                  <TextField
-                    select
-                    label="Preset"
-                    fullWidth
-                    value={String(config.scene3dPreset ?? "NONE")}
-                    onChange={(e) => setField("scene3dPreset", e.target.value)}
-                    disabled={!config.enable3d}
-                  >
-                    <MenuItem value="NONE">None</MenuItem>
-                    <MenuItem value="SOFT_GEOMETRY">Soft</MenuItem>
-                    <MenuItem value="FLOATING_SHAPES">Floating</MenuItem>
-                    <MenuItem value="ABSTRACT_PARTICLES">Particles</MenuItem>
-                    <MenuItem value="PRODUCT_ORBIT">Orbit</MenuItem>
-                  </TextField>
-                </div>
-              ) : null}
-            </>
+            <TextField
+              select
+              label="3D"
+              fullWidth
+              value={
+                (config.threeSource ?? "global") === "global"
+                  ? "store"
+                  : config.enable3d
+                    ? String(config.scene3dPreset ?? "SOFT_GEOMETRY")
+                    : "off"
+              }
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === "store") {
+                  setField("threeSource", "global");
+                  return;
+                }
+                setField("threeSource", "custom");
+                if (v === "off") {
+                  setField("enable3d", false);
+                  setField("scene3dPreset", "NONE");
+                  return;
+                }
+                setField("enable3d", true);
+                setField("scene3dPreset", v);
+              }}
+              helperText="Store setting keeps Hero 3D aligned with Appearance."
+            >
+              <MenuItem value="store">Use store setting</MenuItem>
+              <MenuItem value="off">Off</MenuItem>
+              <MenuItem value="SOFT_GEOMETRY">Soft</MenuItem>
+              <MenuItem value="FLOATING_SHAPES">Floating</MenuItem>
+              <MenuItem value="ABSTRACT_PARTICLES">Particles</MenuItem>
+              <MenuItem value="PRODUCT_ORBIT">Orbit</MenuItem>
+            </TextField>
           ) : null}
 
           <div className={adminFieldsGrid(2)}>

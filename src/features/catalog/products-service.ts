@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
@@ -23,9 +24,12 @@ import {
   type VariantFormValues,
 } from "@/features/catalog/validation";
 import type { CatalogResult } from "@/features/catalog/categories-service";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import type { ProductStatus } from "@/types/database";
 import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+
+const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
 
 export type AdminProductListItem = {
   id: string;
@@ -431,8 +435,9 @@ export async function getAdminProduct(
 
 async function upsertVariantsForProduct(
   productId: string,
+  storeId: string,
   variants: VariantFormValues[],
-): Promise<string | null> {
+): Promise<CatalogResult | null> {
   const supabase = await createSupabaseServerClient();
   const toDelete = variants.filter((v) => v._delete && v.id);
   const toPersist = variants.filter((v) => !v._delete);
@@ -444,7 +449,22 @@ async function upsertVariantsForProduct(
       .delete()
       .eq("id", variant.id)
       .eq("product_id", productId);
-    if (error) return "Unable to remove a variant.";
+    if (error) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "DELETE_PRODUCT_VARIANT",
+        feature: "PRODUCTS",
+        message: "Unable to remove a product variant",
+        error,
+        databaseCode: error.code,
+        storeId,
+        entityType: "product_variants",
+        entityId: variant.id,
+        route: PRODUCTS_ROUTE,
+        metadata: { product_id: productId },
+      });
+    }
   }
 
   for (const variant of toPersist) {
@@ -468,14 +488,44 @@ async function upsertVariantsForProduct(
         .update(payload)
         .eq("id", variantId)
         .eq("product_id", productId);
-      if (error) return `Unable to update variant ${variant.name}.`;
+      if (error) {
+        return unexpectedFailure({
+          type: "DATABASE",
+          source: "DATABASE",
+          operation: "UPDATE_PRODUCT_VARIANT",
+          feature: "PRODUCTS",
+          message: `Unable to update variant ${variant.name}`,
+          error,
+          databaseCode: error.code,
+          storeId,
+          entityType: "product_variants",
+          entityId: variantId,
+          route: PRODUCTS_ROUTE,
+          metadata: { product_id: productId },
+        });
+      }
     } else {
       const { data, error } = await supabase
         .from("product_variants")
         .insert(payload)
         .select("id")
         .single();
-      if (error || !data) return `Unable to create variant ${variant.name}.`;
+      if (error || !data) {
+        return unexpectedFailure({
+          type: "DATABASE",
+          source: "DATABASE",
+          operation: "CREATE_PRODUCT_VARIANT",
+          feature: "PRODUCTS",
+          message: `Unable to create variant ${variant.name}`,
+          error: error ?? undefined,
+          databaseCode: error?.code,
+          storeId,
+          entityType: "product_variants",
+          entityId: productId,
+          route: PRODUCTS_ROUTE,
+          metadata: { product_id: productId },
+        });
+      }
       variantId = data.id;
     }
 
@@ -485,7 +535,22 @@ async function upsertVariantsForProduct(
       reserved_quantity: variant.reservedQuantity,
       low_stock_threshold: variant.lowStockThreshold,
     });
-    if (inventoryError) return `Unable to update inventory for ${variant.name}.`;
+    if (inventoryError) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "UPDATE_INVENTORY",
+        feature: "PRODUCTS",
+        message: `Unable to update inventory for ${variant.name}`,
+        error: inventoryError,
+        databaseCode: inventoryError.code,
+        storeId,
+        entityType: "inventory",
+        entityId: variantId,
+        route: PRODUCTS_ROUTE,
+        metadata: { product_id: productId, variant_id: variantId },
+      });
+    }
   }
 
   return null;
@@ -560,13 +625,28 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
     .single();
 
   if (error || !product) {
-    return { ok: false, error: "Unable to create product. Check permissions and try again." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "CREATE_PRODUCT",
+      feature: "PRODUCTS",
+      message: "Unable to create product",
+      error: error ?? undefined,
+      databaseCode: error?.code,
+      storeId,
+      entityType: "products",
+      route: PRODUCTS_ROUTE,
+    });
   }
 
-  const variantError = await upsertVariantsForProduct(product.id, values.variants);
+  const variantError = await upsertVariantsForProduct(
+    product.id,
+    storeId,
+    values.variants,
+  );
   if (variantError) {
     await supabase.from("products").delete().eq("id", product.id);
-    return { ok: false, error: variantError };
+    return variantError;
   }
 
   await supabase.from("audit_logs").insert({
@@ -661,11 +741,23 @@ export async function updateProduct(
     .eq("store_id", storeId);
 
   if (error) {
-    return { ok: false, error: "Unable to update product. Check permissions and try again." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "UPDATE_PRODUCT",
+      feature: "PRODUCTS",
+      message: "Unable to update product",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    });
   }
 
-  const variantError = await upsertVariantsForProduct(id, values.variants);
-  if (variantError) return { ok: false, error: variantError };
+  const variantError = await upsertVariantsForProduct(id, storeId, values.variants);
+  if (variantError) return variantError;
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,
@@ -722,7 +814,22 @@ export async function archiveProduct(id: string): Promise<CatalogResult> {
     .select("slug")
     .maybeSingle();
 
-  if (error || !data) return { ok: false, error: "Unable to archive product." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "ARCHIVE_PRODUCT",
+      feature: "PRODUCTS",
+      message: "Unable to archive product",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    });
+  }
+  if (!data) return { ok: false, error: "Unable to archive product." };
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,
@@ -767,7 +874,21 @@ export async function deleteProduct(id: string): Promise<CatalogResult> {
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete product." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "DELETE_PRODUCT",
+      feature: "PRODUCTS",
+      message: "Unable to delete product",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    });
+  }
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,
@@ -830,7 +951,20 @@ export async function updateInventory(
   });
 
   if (error) {
-    return { ok: false, error: "Unable to update inventory. Check values and try again." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "UPDATE_INVENTORY",
+      feature: "PRODUCTS",
+      message: "Unable to update inventory",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "inventory",
+      entityId: values.variantId,
+      route: PRODUCTS_ROUTE,
+      metadata: { product_id: variant.product_id, variant_id: values.variantId },
+    });
   }
 
   await supabase.from("audit_logs").insert({

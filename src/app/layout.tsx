@@ -4,29 +4,35 @@ import { DM_Sans, Fraunces, JetBrains_Mono } from "next/font/google";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { buildPageMetadata } from "@/lib/metadata";
 import { colorTokensToCssVars, normalizeColorTokensForMode } from "@/features/theme/css-vars";
+import { typographyCssVars } from "@/features/theme/typography-css";
+import {
+  motionDesignTokens,
+  motionHtmlDataAttributes,
+  resolveMotionConfig,
+} from "@/features/motion-3d";
 import { AppProviders } from "@/providers";
 import { ServiceWorkerRegister } from "@/features/pwa/ServiceWorkerRegister";
 import { OfflineBanner } from "@/features/pwa/OfflineBanner";
 import { getAdminRouteSegment } from "@/config/admin-route";
 import "./globals.css";
 
-const fontSans = DM_Sans({
+const fontDmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-sans",
+  variable: "--font-dm-sans",
   display: "swap",
   adjustFontFallback: true,
 });
 
-const fontDisplay = Fraunces({
+const fontFraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-display",
+  variable: "--font-fraunces",
   display: "swap",
   adjustFontFallback: true,
 });
 
-const fontMono = JetBrains_Mono({
+const fontJetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-jetbrains-mono",
   display: "swap",
   adjustFontFallback: true,
   preload: false,
@@ -72,8 +78,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     config.theme.defaultMode === "dark" ? "dark" : "light",
   );
 
+  const motionEffective = resolveMotionConfig({
+    global: config.animation,
+    reducedMotion: false,
+  });
+  const motionVars = motionDesignTokens(motionEffective);
+  const motionAttrs = motionHtmlDataAttributes(motionEffective);
+
   const layoutVars = {
     ...colorTokensToCssVars(initialTokens),
+    ...typographyCssVars(config.typography),
+    ...motionVars,
     "--layout-max-width": config.layout.maxWidth,
     "--layout-header-height": config.layout.headerHeight,
     "--layout-container-padding": config.layout.containerPadding,
@@ -87,10 +102,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang={config.store.locale.split("-")[0] ?? "en"}
-      className={`${fontSans.variable} ${fontDisplay.variable} ${fontMono.variable} h-full antialiased${defaultIsDark ? " dark" : ""}`}
+      className={`${fontDmSans.variable} ${fontFraunces.variable} ${fontJetbrainsMono.variable} h-full antialiased${defaultIsDark ? " dark" : ""}`}
       suppressHydrationWarning
       style={layoutVars}
       data-theme-default={config.theme.defaultMode}
+      {...motionAttrs}
     >
       <head>
         {/*

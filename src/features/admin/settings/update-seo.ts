@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -14,6 +15,9 @@ import {
 } from "@/features/admin/settings/store-context";
 import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+
+const SEO_ROUTE = getAdminPath("/settings/seo");
 
 function emptyToNull(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -73,10 +77,19 @@ export async function updateSeoSettings(
       });
 
   if (write.error) {
-    return {
-      ok: false,
-      error: "Unable to save SEO settings. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "SEO_UPDATE",
+      feature: "SEO",
+      message: "Unable to save SEO settings",
+      error: write.error,
+      databaseCode: write.error.code,
+      storeId,
+      entityType: "store_seo_settings",
+      entityId: storeId,
+      route: SEO_ROUTE,
+    });
   }
 
   await supabase.from("audit_logs").insert({

@@ -1,6 +1,10 @@
 import "server-only";
 
 import { getCurrentUser } from "@/features/auth/session";
+import {
+  customerFacingError,
+  logPaymentError,
+} from "@/features/error-monitoring/logger";
 import { writePaymentAudit } from "@/features/payments/audit";
 import {
   fulfillVerifiedPayment,
@@ -83,10 +87,25 @@ export async function verifyCheckoutPayment(
       entityId: payment.id,
       metadata: { reason: "client_order_id_mismatch" },
     });
+    const logged = await logPaymentError({
+      message: "Client provider order ID mismatch",
+      source: "PROVIDER",
+      severity: "CRITICAL",
+      operation: "VERIFY_PAYMENT",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerOrderId: payment.provider_order_id,
+      errorCode: "ORDER_ID_MISMATCH",
+      route: "/checkout",
+    });
     return {
       ok: false,
-      error: "Payment verification failed.",
+      ...customerFacingError(logged.referenceId, true),
       code: "ORDER_ID_MISMATCH",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -104,21 +123,56 @@ export async function verifyCheckoutPayment(
       userId: user.id,
       reason: "Signature verification failed.",
     });
+    const logged = await logPaymentError({
+      message: "Checkout signature verification failed",
+      source: "PROVIDER",
+      severity: "CRITICAL",
+      operation: "VERIFY_PAYMENT",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerOrderId: payment.provider_order_id,
+      providerPaymentId: input.razorpayPaymentId,
+      errorCode: "SIGNATURE_INVALID",
+      route: "/checkout",
+    });
     return {
       ok: false,
-      error: "Payment verification failed.",
+      ...customerFacingError(logged.referenceId, true),
       code: "SIGNATURE_INVALID",
+      referenceId: logged.referenceId,
     };
   }
 
   let providerPayment;
   try {
     providerPayment = await provider.fetchPayment(input.razorpayPaymentId);
-  } catch {
+  } catch (fetchError) {
+    const logged = await logPaymentError({
+      message:
+        fetchError instanceof Error
+          ? fetchError.message
+          : "Provider payment fetch failed",
+      error: fetchError,
+      source: "PROVIDER",
+      severity: "ERROR",
+      operation: "VERIFY_PAYMENT",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerPaymentId: input.razorpayPaymentId,
+      errorCode: "PROVIDER_FETCH_FAILED",
+      route: "/checkout",
+    });
     return {
       ok: false,
-      error: "Unable to confirm payment with the provider.",
+      ...customerFacingError(logged.referenceId, true),
       code: "PROVIDER_FETCH_FAILED",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -129,10 +183,26 @@ export async function verifyCheckoutPayment(
       userId: user.id,
       reason: "Provider order mismatch.",
     });
+    const logged = await logPaymentError({
+      message: "Provider order mismatch during verification",
+      source: "PROVIDER",
+      severity: "CRITICAL",
+      operation: "VERIFY_PAYMENT",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerOrderId: payment.provider_order_id,
+      providerPaymentId: input.razorpayPaymentId,
+      errorCode: "PROVIDER_ORDER_MISMATCH",
+      route: "/checkout",
+    });
     return {
       ok: false,
-      error: "Payment verification failed.",
+      ...customerFacingError(logged.referenceId, true),
       code: "PROVIDER_ORDER_MISMATCH",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -150,10 +220,32 @@ export async function verifyCheckoutPayment(
       userId: user.id,
       reason: "Amount or currency mismatch.",
     });
+    const logged = await logPaymentError({
+      message: "Payment amount or currency mismatch",
+      source: "PROVIDER",
+      severity: "CRITICAL",
+      operation: "VERIFY_PAYMENT",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerOrderId: payment.provider_order_id,
+      providerPaymentId: input.razorpayPaymentId,
+      errorCode: "AMOUNT_MISMATCH",
+      route: "/checkout",
+      metadata: {
+        expectedMinor,
+        actualMinor: providerPayment.amountMinor,
+        currency: payment.currency,
+        providerCurrency: providerPayment.currency,
+      },
+    });
     return {
       ok: false,
-      error: "Payment verification failed.",
+      ...customerFacingError(logged.referenceId, true),
       code: "AMOUNT_MISMATCH",
+      referenceId: logged.referenceId,
     };
   }
 
@@ -186,7 +278,27 @@ export async function verifyCheckoutPayment(
   });
 
   if (!fulfilled.ok) {
-    return { ok: false, error: fulfilled.error, code: "FULFILLMENT_FAILED" };
+    const logged = await logPaymentError({
+      message: fulfilled.error || "Payment fulfillment failed",
+      source: "SERVER",
+      type: "ORDER",
+      severity: "CRITICAL",
+      operation: "FINALIZE_ORDER",
+      storeId: order.store_id,
+      userId: user.id,
+      userLogin: user.email,
+      orderId: payment.order_id,
+      paymentId: payment.id,
+      providerPaymentId: input.razorpayPaymentId,
+      errorCode: "FULFILLMENT_FAILED",
+      route: "/checkout",
+    });
+    return {
+      ok: false,
+      ...customerFacingError(logged.referenceId, true),
+      code: "FULFILLMENT_FAILED",
+      referenceId: logged.referenceId,
+    };
   }
 
   if (fulfilled.status === "AUTHORIZED") {

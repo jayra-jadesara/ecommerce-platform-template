@@ -20,32 +20,87 @@ import {
   updatePageSection,
 } from "@/features/cms/sections-service";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
 export async function createPageAction(raw: unknown) {
   await requirePermission("content.create");
-  return createAdminPage(raw);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "CREATE_PAGE",
+      feature: "CMS",
+      entityType: "page",
+      route: "/content/pages",
+    },
+    () => createAdminPage(raw),
+  );
 }
 
 export async function updatePageAction(id: string, raw: unknown) {
   await requirePermission("content.update");
-  return updateAdminPage(id, raw);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_PAGE",
+      feature: "CMS",
+      entityType: "page",
+      entityId: id,
+      route: "/content/pages",
+    },
+    () => updateAdminPage(id, raw),
+  );
 }
 
 export async function publishPageAction(id: string) {
   await requirePermission("content.publish");
-  return setPageStatus(id, "published");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "PUBLISH_PAGE",
+      feature: "CMS",
+      entityType: "page",
+      entityId: id,
+      route: "/content/pages",
+    },
+    () => setPageStatus(id, "published"),
+  );
 }
 
 export async function unpublishPageAction(id: string) {
   await requirePermission("content.publish");
-  return setPageStatus(id, "draft");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_PAGE",
+      feature: "CMS",
+      entityType: "page",
+      entityId: id,
+      route: "/content/pages",
+    },
+    () => setPageStatus(id, "draft"),
+  );
 }
 
 export async function archivePageAction(id: string) {
   await requirePermission("content.delete");
-  return setPageStatus(id, "archived");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "DELETE_PAGE",
+      feature: "CMS",
+      entityType: "page",
+      entityId: id,
+      route: "/content/pages",
+    },
+    () => setPageStatus(id, "archived"),
+  );
 }
 
 export async function createSectionAction(raw: unknown) {
@@ -58,7 +113,18 @@ export async function createSectionAction(raw: unknown) {
     })
     .safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid section." };
-  return createPageSection(parsed.data);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "CREATE_SECTION",
+      feature: "CMS",
+      entityType: "page_section",
+      entityId: parsed.data.pageId,
+      route: "/content/pages",
+    },
+    () => createPageSection(parsed.data),
+  );
 }
 
 export async function updateSectionAction(raw: unknown) {
@@ -72,17 +138,50 @@ export async function updateSectionAction(raw: unknown) {
     })
     .safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid section." };
-  return updatePageSection(parsed.data);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_SECTION",
+      feature: "CMS",
+      entityType: "page_section",
+      entityId: parsed.data.sectionId,
+      route: "/content/pages",
+    },
+    () => updatePageSection(parsed.data),
+  );
 }
 
 export async function duplicateSectionAction(sectionId: string) {
   await requirePermission("content.create");
-  return duplicatePageSection(sectionId);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "CREATE_SECTION",
+      feature: "CMS",
+      entityType: "page_section",
+      entityId: sectionId,
+      route: "/content/pages",
+    },
+    () => duplicatePageSection(sectionId),
+  );
 }
 
 export async function deleteSectionAction(sectionId: string) {
   await requirePermission("content.delete");
-  return deletePageSection(sectionId);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "DELETE_SECTION",
+      feature: "CMS",
+      entityType: "page_section",
+      entityId: sectionId,
+      route: "/content/pages",
+    },
+    () => deletePageSection(sectionId),
+  );
 }
 
 export async function reorderSectionsAction(raw: unknown) {
@@ -94,7 +193,18 @@ export async function reorderSectionsAction(raw: unknown) {
     })
     .safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid order." };
-  return reorderPageSections(parsed.data);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "REORDER_SECTION",
+      feature: "CMS",
+      entityType: "page",
+      entityId: parsed.data.pageId,
+      route: "/content/pages",
+    },
+    () => reorderPageSections(parsed.data),
+  );
 }
 
 export async function moveSectionAction(raw: unknown) {
@@ -106,22 +216,65 @@ export async function moveSectionAction(raw: unknown) {
     })
     .safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid move." };
-  return moveSection(parsed.data);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "REORDER_SECTION",
+      feature: "CMS",
+      entityType: "page_section",
+      entityId: parsed.data.sectionId,
+      route: "/content/pages",
+    },
+    () => moveSection(parsed.data),
+  );
 }
 
 export async function createBannerAction(raw: unknown) {
   await requirePermission("content.create");
-  return createAdminBanner(raw);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "CREATE_BANNER",
+      feature: "CMS",
+      entityType: "banner",
+      route: "/content/banners",
+    },
+    () => createAdminBanner(raw),
+  );
 }
 
 export async function updateBannerAction(id: string, raw: unknown) {
   await requirePermission("content.update");
-  return updateAdminBanner(id, raw);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_BANNER",
+      feature: "CMS",
+      entityType: "banner",
+      entityId: id,
+      route: "/content/banners",
+    },
+    () => updateAdminBanner(id, raw),
+  );
 }
 
 export async function deleteBannerAction(id: string) {
   await requirePermission("content.delete");
-  return deleteAdminBanner(id);
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "DELETE_BANNER",
+      feature: "CMS",
+      entityType: "banner",
+      entityId: id,
+      route: "/content/banners",
+    },
+    () => deleteAdminBanner(id),
+  );
 }
 
 /** Newsletter signup — stores email only; no outbound email. */

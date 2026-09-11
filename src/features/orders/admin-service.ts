@@ -8,6 +8,7 @@ import {
 import { getOrderDetail } from "@/features/orders/queries";
 import { assertOrderTransition } from "@/features/orders/state-machine";
 import type { OrderMutationResult } from "@/features/orders/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { Database, OrderStatus } from "@/types/database";
 
@@ -67,7 +68,19 @@ export async function updateOrderStatus(input: {
     .eq("status", order.status);
 
   if (error) {
-    return { ok: false, error: "Unable to update order status." };
+    return unexpectedFailure({
+      type: "ORDER",
+      source: "DATABASE",
+      operation: "UPDATE_ORDER_STATUS",
+      feature: "ORDERS",
+      message: error.message || "Unable to update order status",
+      error,
+      storeId: input.storeId,
+      entityType: "order",
+      entityId: order.id,
+      orderId: order.id,
+      route: "/orders",
+    });
   }
 
   if (input.nextStatus === "CANCELLED" || input.nextStatus === "REFUNDED") {
@@ -149,7 +162,21 @@ export async function updateOrderTracking(input: {
     })
     .eq("id", order.id);
 
-  if (error) return { ok: false, error: "Unable to save tracking." };
+  if (error) {
+    return unexpectedFailure({
+      type: "ORDER",
+      source: "DATABASE",
+      operation: "UPDATE_ORDER_TRACKING",
+      feature: "ORDERS",
+      message: error.message || "Unable to save tracking",
+      error,
+      storeId: input.storeId,
+      entityType: "order",
+      entityId: order.id,
+      orderId: order.id,
+      route: "/orders",
+    });
+  }
 
   await writeOrderActivity({
     orderId: order.id,

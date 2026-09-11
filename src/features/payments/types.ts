@@ -21,6 +21,7 @@ export type PaymentActionResult =
       ok: false;
       error: string;
       code?: string;
+      referenceId?: string;
     };
 
 export type CheckoutPaymentSession = {
@@ -43,7 +44,7 @@ export type CheckoutPaymentSession = {
 
 export type StartCheckoutPaymentResult =
   | { ok: true; session: CheckoutPaymentSession }
-  | { ok: false; error: string; code?: string };
+  | { ok: false; error: string; code?: string; referenceId?: string };
 
 export type ProviderCreateOrderInput = {
   amountMinor: number;

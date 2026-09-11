@@ -80,4 +80,6 @@ export const RATE_LIMITS = {
   coupon: { limit: 30, windowMs: 15 * 60_000 },
   checkout: { limit: 15, windowMs: 15 * 60_000 },
   webhook: { limit: 120, windowMs: 60_000 },
+  /** Browser error ingestion — prevent flood into error_logs. */
+  errors: { limit: 40, windowMs: 15 * 60_000 },
 } as const;

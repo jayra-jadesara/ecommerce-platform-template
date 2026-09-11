@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "crypto";
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
@@ -16,10 +17,13 @@ import {
   validateImageUpload,
   type MediaFolder,
 } from "@/features/media/validation";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type MediaResult =
   | { ok: true; message: string; id?: string; path?: string; url?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; referenceId?: string };
+
+const MEDIA_ROUTE = getAdminPath("/media");
 
 export type MediaRow = {
   id: string;
@@ -191,10 +195,18 @@ export async function uploadMedia(
     });
 
   if (uploadError) {
-    return {
-      ok: false,
-      error: "Unable to upload file. Check storage permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "STORAGE",
+      source: "SERVER",
+      operation: "MEDIA_UPLOAD",
+      feature: "MEDIA",
+      message: "Unable to upload media file to storage",
+      error: uploadError,
+      storeId,
+      entityType: "media",
+      route: MEDIA_ROUTE,
+      metadata: { bucket, folder, path },
+    });
   }
 
   const publicUrl =
@@ -220,7 +232,19 @@ export async function uploadMedia(
 
   if (error || !data) {
     await supabase.storage.from(bucket).remove([path]);
-    return { ok: false, error: "Unable to save media metadata." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "MEDIA_UPLOAD",
+      feature: "MEDIA",
+      message: "Unable to save media metadata",
+      error: error ?? undefined,
+      databaseCode: error?.code,
+      storeId,
+      entityType: "media",
+      route: MEDIA_ROUTE,
+      metadata: { bucket, folder, path },
+    });
   }
 
   await supabase.from("audit_logs").insert({
@@ -264,7 +288,21 @@ export async function updateMediaMeta(
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to update media." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "MEDIA_UPDATE",
+      feature: "MEDIA",
+      message: "Unable to update media",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "media",
+      entityId: id,
+      route: MEDIA_ROUTE,
+    });
+  }
   return { ok: true, message: "Media updated.", id };
 }
 
@@ -303,7 +341,22 @@ export async function deleteMedia(id: string): Promise<MediaResult> {
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete media metadata." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "MEDIA_DELETE",
+      feature: "MEDIA",
+      message: "Unable to delete media metadata",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "media",
+      entityId: id,
+      route: MEDIA_ROUTE,
+      metadata: { path: row.storage_path, folder },
+    });
+  }
 
   if ((count ?? 0) <= 1 && assertSafeStoragePath(row.storage_path)) {
     await supabase.storage.from(bucket).remove([row.storage_path]);

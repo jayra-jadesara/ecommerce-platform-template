@@ -17,6 +17,7 @@ import {
   type SupportedSectionType,
 } from "@/features/cms/schemas";
 import type { ContentSection } from "@/features/cms/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Json, Tables, TablesUpdate } from "@/types/database";
 
@@ -122,7 +123,20 @@ export async function createPageSection(input: {
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: "Unable to add section." };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "CREATE_SECTION",
+      feature: "CMS",
+      message: error?.message || "Unable to add section",
+      error,
+      storeId: scope.storeId,
+      entityType: "page_section",
+      entityId: input.pageId,
+      route: "/content/pages",
+    });
+  }
 
   await writeContentAudit({
     storeId: scope.storeId,
@@ -178,7 +192,20 @@ export async function updatePageSection(input: {
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: "Unable to update section." };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_SECTION",
+      feature: "CMS",
+      message: error?.message || "Unable to update section",
+      error,
+      storeId,
+      entityType: "page_section",
+      entityId: input.sectionId,
+      route: "/content/pages",
+    });
+  }
 
   await writeContentAudit({
     storeId,
@@ -237,7 +264,20 @@ export async function duplicatePageSection(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: "Unable to duplicate section." };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "CREATE_SECTION",
+      feature: "CMS",
+      message: error?.message || "Unable to duplicate section",
+      error,
+      storeId,
+      entityType: "page_section",
+      entityId: sectionId,
+      route: "/content/pages",
+    });
+  }
 
   await writeContentAudit({
     storeId,
@@ -277,7 +317,20 @@ export async function deletePageSection(
     .delete()
     .eq("id", sectionId);
 
-  if (error) return { ok: false, error: "Unable to delete section." };
+  if (error) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "DELETE_SECTION",
+      feature: "CMS",
+      message: error.message || "Unable to delete section",
+      error,
+      storeId,
+      entityType: "page_section",
+      entityId: sectionId,
+      route: "/content/pages",
+    });
+  }
 
   await writeContentAudit({
     storeId,
@@ -317,7 +370,20 @@ export async function reorderPageSections(input: {
       .update({ sort_order: i })
       .eq("id", input.orderedIds[i]!)
       .eq("page_id", input.pageId);
-    if (error) return { ok: false, error: "Unable to reorder sections." };
+    if (error) {
+      return unexpectedFailure({
+        type: "CMS",
+        source: "DATABASE",
+        operation: "REORDER_SECTION",
+        feature: "CMS",
+        message: error.message || "Unable to reorder sections",
+        error,
+        storeId: scope.storeId,
+        entityType: "page",
+        entityId: input.pageId,
+        route: "/content/pages",
+      });
+    }
   }
 
   await writeContentAudit({

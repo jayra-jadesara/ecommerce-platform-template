@@ -28,17 +28,17 @@ export const SAFE_FONT_OPTIONS = [
   {
     id: "dm_sans",
     label: "DM Sans",
-    css: "var(--font-sans)",
+    css: "var(--font-dm-sans)",
   },
   {
     id: "fraunces",
     label: "Fraunces",
-    css: "var(--font-display)",
+    css: "var(--font-fraunces)",
   },
   {
     id: "jetbrains_mono",
     label: "JetBrains Mono",
-    css: "var(--font-mono)",
+    css: "var(--font-jetbrains-mono)",
   },
   {
     id: "system_ui",
@@ -118,13 +118,20 @@ export type ThemeEditorFormValues = z.infer<typeof themeEditorFormSchema>;
 export function fontIdToCss(id: SafeFontId): string {
   return (
     SAFE_FONT_OPTIONS.find((option) => option.id === id)?.css ??
-    "var(--font-sans)"
+    "var(--font-dm-sans)"
   );
 }
 
+/** Map stored CSS (including legacy role vars) back to a safe font id. */
 export function cssToFontId(css: string | undefined): SafeFontId {
-  const match = SAFE_FONT_OPTIONS.find((option) => option.css === css);
-  return match?.id ?? "dm_sans";
+  if (!css) return "dm_sans";
+  const exact = SAFE_FONT_OPTIONS.find((option) => option.css === css);
+  if (exact) return exact.id;
+  // Legacy DB values pointed at semantic roles before face tokens existed.
+  if (css === "var(--font-sans)") return "dm_sans";
+  if (css === "var(--font-display)") return "fraunces";
+  if (css === "var(--font-mono)") return "jetbrains_mono";
+  return "dm_sans";
 }
 
 export function radiusToPreset(radius: string | undefined): BorderRadiusPreset {
@@ -224,7 +231,7 @@ export function formValuesToVisualEffectsConfig(
     quality: values.visual3dQuality,
     heroPreset: values.visual3dHeroPreset,
     mobileEnabled: values.visual3dMobileEnabled,
-    respectReducedMotion: values.visual3dRespectReducedMotion,
+    respectReducedMotion: true,
   };
 }
 

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
@@ -14,10 +15,13 @@ import {
   type CategoryFormValues,
 } from "@/features/catalog/validation";
 import { slugify } from "@/features/catalog/slug";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type CatalogResult =
   | { ok: true; message: string; id?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; referenceId?: string };
+
+const CATEGORIES_ROUTE = getAdminPath("/catalog/categories");
 
 export type CategoryRow = {
   id: string;
@@ -134,7 +138,18 @@ export async function createCategory(
     .single();
 
   if (error || !data) {
-    return { ok: false, error: "Unable to create category. Check permissions and try again." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "CREATE_CATEGORY",
+      feature: "CATEGORIES",
+      message: "Unable to create category",
+      error: error ?? undefined,
+      databaseCode: error?.code,
+      storeId,
+      entityType: "categories",
+      route: CATEGORIES_ROUTE,
+    });
   }
 
   await supabase.from("audit_logs").insert({
@@ -216,7 +231,19 @@ export async function updateCategory(
     .eq("store_id", storeId);
 
   if (error) {
-    return { ok: false, error: "Unable to update category. Check permissions and try again." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "UPDATE_CATEGORY",
+      feature: "CATEGORIES",
+      message: "Unable to update category",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    });
   }
 
   await supabase.from("audit_logs").insert({
@@ -265,7 +292,21 @@ export async function archiveCategory(id: string): Promise<CatalogResult> {
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to archive category." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "DISABLE_CATEGORY",
+      feature: "CATEGORIES",
+      message: "Unable to archive category",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    });
+  }
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,
@@ -323,7 +364,21 @@ export async function deleteCategory(id: string): Promise<CatalogResult> {
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete category." };
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "DELETE_CATEGORY",
+      feature: "CATEGORIES",
+      message: "Unable to delete category",
+      error,
+      databaseCode: error.code,
+      storeId,
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    });
+  }
 
   await supabase.from("audit_logs").insert({
     store_id: storeId,

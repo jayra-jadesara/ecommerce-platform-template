@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -19,6 +20,9 @@ import {
 } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+
+const BRANDING_ROUTE = getAdminPath("/settings/branding");
 
 function emptyToNull(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
@@ -75,10 +79,19 @@ export async function updateBrandingSettings(
       });
 
   if (write.error) {
-    return {
-      ok: false,
-      error: "Unable to save branding. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "BRANDING_UPDATE",
+      feature: "BRANDING",
+      message: "Unable to save branding",
+      error: write.error,
+      databaseCode: write.error.code,
+      storeId,
+      entityType: "store_branding",
+      entityId: storeId,
+      route: BRANDING_ROUTE,
+    });
   }
 
   await supabase.from("audit_logs").insert({
@@ -146,10 +159,23 @@ export async function uploadBrandingImage(
     });
 
   if (error) {
-    return {
-      ok: false,
-      error: "Unable to upload image. Check storage permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "STORAGE",
+      source: "SERVER",
+      operation: "BRANDING_UPLOAD",
+      feature: "BRANDING",
+      message: "Unable to upload branding image",
+      error,
+      storeId,
+      entityType: "store_branding",
+      entityId: storeId,
+      route: BRANDING_ROUTE,
+      metadata: {
+        asset_type: kind,
+        bucket: STORAGE_BUCKETS.branding,
+        path,
+      },
+    });
   }
 
   return { ok: true, message: "Image uploaded.", path };

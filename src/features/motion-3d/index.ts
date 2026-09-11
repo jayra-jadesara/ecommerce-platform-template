@@ -133,33 +133,220 @@ export function getMotion3DConfig(input: Motion3dGlobalConfig): Motion3dGlobalCo
   };
 }
 
+/** Card hover mode inferred from store animation (mirrors admin studio). */
+export type StorefrontCardMotion =
+  | "clean"
+  | "lift"
+  | "zoom"
+  | "float"
+  | "glow";
+
+/** Product image hover mode inferred from store animation (mirrors admin studio). */
+export type StorefrontImageMotion =
+  | "none"
+  | "gentle-zoom"
+  | "lift"
+  | "float";
+
+/** Button hover mode inferred from store animation (mirrors admin studio). */
+export type StorefrontButtonHover = "none" | "lift" | "glow" | "scale";
+
+export function inferCardMotionFromConfig(
+  animation: Pick<AnimationConfig, "enabled" | "intensity" | "defaultPreset">,
+): StorefrontCardMotion {
+  if (!animation.enabled || animation.defaultPreset === "none") return "clean";
+  if (animation.intensity === "strong") return "zoom";
+  if (animation.intensity === "subtle") return "float";
+  if (animation.defaultPreset === "fade") return "glow";
+  return "lift";
+}
+
+export function inferImageMotionFromConfig(
+  animation: Pick<AnimationConfig, "enabled" | "defaultPreset">,
+): StorefrontImageMotion {
+  if (!animation.enabled || animation.defaultPreset === "none") return "none";
+  if (animation.defaultPreset === "scale") return "gentle-zoom";
+  if (animation.defaultPreset === "slide-up") return "float";
+  if (
+    animation.defaultPreset === "fade-up" ||
+    animation.defaultPreset === "fade-down"
+  ) {
+    return "lift";
+  }
+  return "gentle-zoom";
+}
+
+export function inferButtonHoverFromConfig(
+  animation: Pick<AnimationConfig, "enabled" | "intensity" | "defaultPreset">,
+): StorefrontButtonHover {
+  if (!animation.enabled || animation.defaultPreset === "none") return "none";
+  if (animation.intensity === "strong") return "scale";
+  if (animation.intensity === "subtle") return "lift";
+  return "glow";
+}
+
+/** HTML data-* attrs so storefront CSS can match admin Motion & 3D choices. */
+export function motionHtmlDataAttributes(
+  effective: EffectiveMotionConfig,
+): Record<string, string> {
+  if (!effective.shouldAnimate) {
+    return {
+      "data-card-motion": "clean",
+      "data-image-motion": "none",
+      "data-button-hover": "none",
+      "data-store-motion": "off",
+    };
+  }
+  const animation = {
+    enabled: effective.enabled,
+    intensity: effective.intensity,
+    defaultPreset: effective.defaultPreset,
+  };
+  return {
+    "data-card-motion": inferCardMotionFromConfig(animation),
+    "data-image-motion": inferImageMotionFromConfig(animation),
+    "data-button-hover": inferButtonHoverFromConfig(animation),
+    "data-store-motion": "on",
+  };
+}
+
 /** Safe CSS custom properties derived from motion config (theme tokens only). */
 export function motionDesignTokens(effective: EffectiveMotionConfig): Record<
   string,
   string
 > {
-  if (!effective.shouldAnimate) {
-    return {
-      "--motion-duration": "0ms",
-      "--motion-hover-lift": "0px",
-      "--motion-ease": "linear",
-    };
-  }
+  const off = {
+    "--motion-duration": "0ms",
+    "--motion-hover-lift": "0px",
+    "--motion-hover-scale": "1",
+    "--motion-card-shadow": "none",
+    "--motion-image-lift": "0px",
+    "--motion-image-scale": "1",
+    "--motion-image-rotate": "0deg",
+    "--motion-float-distance": "0px",
+    "--motion-btn-lift": "0px",
+    "--motion-btn-scale": "1",
+    "--motion-btn-shadow": "none",
+    "--motion-ease": "linear",
+  };
+
+  if (!effective.shouldAnimate) return off;
+
+  const animation = {
+    enabled: effective.enabled,
+    intensity: effective.intensity,
+    defaultPreset: effective.defaultPreset,
+  };
+  const cardMotion = inferCardMotionFromConfig(animation);
+  const imageMotion = inferImageMotionFromConfig(animation);
+  const buttonHover = inferButtonHoverFromConfig(animation);
+
   const duration =
     effective.intensity === "subtle"
-      ? "280ms"
+      ? "320ms"
       : effective.intensity === "strong"
-        ? "520ms"
-        : "400ms";
-  const lift =
-    effective.hoverInteractions === "off"
-      ? "0px"
-      : effective.hoverInteractions === "smooth"
-        ? "4px"
-        : "2px";
+        ? "480ms"
+        : "380ms";
+
+  let hoverLift = "0px";
+  let hoverScale = "1";
+  let cardShadow =
+    "0 12px 28px color-mix(in srgb, var(--color-foreground) 10%, transparent)";
+  let floatDistance = "0px";
+
+  switch (cardMotion) {
+    case "clean":
+      hoverLift = "0px";
+      hoverScale = "1";
+      cardShadow = "none";
+      break;
+    case "lift":
+      hoverLift = effective.intensity === "strong" ? "10px" : "8px";
+      hoverScale = "1";
+      cardShadow =
+        "0 16px 36px color-mix(in srgb, var(--color-foreground) 14%, transparent)";
+      break;
+    case "zoom":
+      hoverLift = "4px";
+      hoverScale = effective.intensity === "strong" ? "1.04" : "1.03";
+      cardShadow =
+        "0 14px 32px color-mix(in srgb, var(--color-foreground) 12%, transparent)";
+      break;
+    case "float":
+      hoverLift = "6px";
+      hoverScale = "1";
+      floatDistance = "5px";
+      cardShadow =
+        "0 14px 30px color-mix(in srgb, var(--color-primary) 16%, transparent)";
+      break;
+    case "glow":
+      hoverLift = "3px";
+      hoverScale = "1";
+      cardShadow =
+        "0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent), 0 14px 32px color-mix(in srgb, var(--color-primary) 18%, transparent)";
+      break;
+  }
+
+  if (effective.hoverInteractions === "off") {
+    hoverLift = "0px";
+    hoverScale = "1";
+    floatDistance = "0px";
+  }
+
+  let imageLift = "0px";
+  let imageScale = "1";
+  let imageRotate = "0deg";
+  switch (imageMotion) {
+    case "none":
+      break;
+    case "gentle-zoom":
+      imageScale = effective.intensity === "strong" ? "1.1" : "1.08";
+      imageRotate = "-4deg";
+      break;
+    case "lift":
+      imageLift = "-8px";
+      imageRotate = "-6deg";
+      break;
+    case "float":
+      imageLift = "-4px";
+      imageRotate = "-8deg";
+      floatDistance =
+        floatDistance === "0px" ? "4px" : floatDistance;
+      break;
+  }
+
+  let btnLift = "0px";
+  let btnScale = "1";
+  let btnShadow = "none";
+  switch (buttonHover) {
+    case "lift":
+      btnLift = "3px";
+      btnShadow =
+        "0 8px 18px color-mix(in srgb, var(--color-foreground) 14%, transparent)";
+      break;
+    case "scale":
+      btnScale = "1.05";
+      break;
+    case "glow":
+      btnShadow =
+        "0 0 0 3px color-mix(in srgb, var(--color-primary) 26%, transparent)";
+      break;
+    default:
+      break;
+  }
+
   return {
     "--motion-duration": duration,
-    "--motion-hover-lift": lift,
+    "--motion-hover-lift": hoverLift,
+    "--motion-hover-scale": hoverScale,
+    "--motion-card-shadow": cardShadow,
+    "--motion-image-lift": imageLift,
+    "--motion-image-scale": imageScale,
+    "--motion-image-rotate": imageRotate,
+    "--motion-float-distance": floatDistance,
+    "--motion-btn-lift": btnLift,
+    "--motion-btn-scale": btnScale,
+    "--motion-btn-shadow": btnShadow,
     "--motion-ease": "cubic-bezier(0.22, 1, 0.36, 1)",
   };
 }

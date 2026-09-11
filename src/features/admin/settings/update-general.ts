@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -13,6 +14,9 @@ import {
 } from "@/features/admin/settings/store-context";
 import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+
+const GENERAL_ROUTE = getAdminPath("/settings/general");
 
 function emptyToNull(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -91,10 +95,19 @@ export async function updateGeneralStoreSettings(
     .eq("id", store.id);
 
   if (storeWrite.error) {
-    return {
-      ok: false,
-      error: "Unable to update store profile. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "STORE_SETTINGS_UPDATE",
+      feature: "SETTINGS",
+      message: "Unable to update store profile",
+      error: storeWrite.error,
+      databaseCode: storeWrite.error.code,
+      storeId: store.id,
+      entityType: "stores",
+      entityId: store.id,
+      route: GENERAL_ROUTE,
+    });
   }
 
   const settingsWrite = existing
@@ -108,10 +121,19 @@ export async function updateGeneralStoreSettings(
       });
 
   if (settingsWrite.error) {
-    return {
-      ok: false,
-      error: "Unable to save store settings. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "STORE_SETTINGS_UPDATE",
+      feature: "SETTINGS",
+      message: "Unable to save store settings",
+      error: settingsWrite.error,
+      databaseCode: settingsWrite.error.code,
+      storeId: store.id,
+      entityType: "store_settings",
+      entityId: store.id,
+      route: GENERAL_ROUTE,
+    });
   }
 
   const changed = [

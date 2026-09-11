@@ -25,6 +25,7 @@ import type {
   BlogPostStatus,
   BlogProductOption,
 } from "@/features/blog/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -367,7 +368,17 @@ export async function createAdminBlogPost(
     if (error?.code === "23505") {
       return { ok: false, error: "A post with this URL already exists." };
     }
-    return { ok: false, error: "Unable to create post." };
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "CREATE_BLOG_POST",
+      feature: "BLOG",
+      message: error?.message || "Unable to create post",
+      error,
+      storeId,
+      entityType: "blog_post",
+      route: "/blog/posts",
+    });
   }
 
   await Promise.all([
@@ -475,7 +486,26 @@ export async function updateAdminBlogPost(
     if (error?.code === "23505") {
       return { ok: false, error: "A post with this URL already exists." };
     }
-    return { ok: false, error: "Unable to update post." };
+    const operation =
+      !wasPublished && willPublish
+        ? "PUBLISH_BLOG_POST"
+        : wasPublished && !willPublish && values.status === "draft"
+          ? "UNPUBLISH_BLOG_POST"
+          : willArchive && current.status !== "archived"
+            ? "ARCHIVE_BLOG_POST"
+            : "UPDATE_BLOG_POST";
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation,
+      feature: "BLOG",
+      message: error?.message || "Unable to update post",
+      error,
+      storeId,
+      entityType: "blog_post",
+      entityId: id,
+      route: "/blog/posts",
+    });
   }
 
   await Promise.all([
@@ -558,7 +588,20 @@ export async function deleteAdminBlogPost(
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete post." };
+  if (error) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "DELETE_BLOG_POST",
+      feature: "BLOG",
+      message: error.message || "Unable to delete post",
+      error,
+      storeId,
+      entityType: "blog_post",
+      entityId: id,
+      route: "/blog/posts",
+    });
+  }
 
   await writeBlogAudit({
     storeId,

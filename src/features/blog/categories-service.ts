@@ -14,6 +14,7 @@ import {
   type BlogCategoryFormValues,
 } from "@/features/blog/schemas";
 import type { BlogCategory } from "@/features/blog/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
@@ -146,7 +147,17 @@ export async function createAdminBlogCategory(
     if (error?.code === "23505") {
       return { ok: false, error: "A category with this URL already exists." };
     }
-    return { ok: false, error: "Unable to create category." };
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_BLOG_CATEGORY",
+      feature: "BLOG",
+      message: error?.message || "Unable to create category",
+      error,
+      storeId,
+      entityType: "blog_category",
+      route: "/blog/categories",
+    });
   }
 
   await writeBlogAudit({
@@ -214,7 +225,18 @@ export async function updateAdminBlogCategory(
     if (error?.code === "23505") {
       return { ok: false, error: "A category with this URL already exists." };
     }
-    return { ok: false, error: "Unable to update category." };
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_BLOG_CATEGORY",
+      feature: "BLOG",
+      message: error?.message || "Unable to update category",
+      error,
+      storeId,
+      entityType: "blog_category",
+      entityId: id,
+      route: "/blog/categories",
+    });
   }
 
   await writeBlogAudit({
@@ -254,7 +276,20 @@ export async function deleteAdminBlogCategory(
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete category." };
+  if (error) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_BLOG_CATEGORY",
+      feature: "BLOG",
+      message: error.message || "Unable to delete category",
+      error,
+      storeId,
+      entityType: "blog_category",
+      entityId: id,
+      route: "/blog/categories",
+    });
+  }
 
   await writeBlogAudit({
     storeId,
@@ -313,7 +348,18 @@ export async function moveAdminBlogCategory(
       .eq("id", row.id)
       .eq("store_id", storeId);
     if (error) {
-      return { ok: false, error: "Unable to reorder categories." };
+      return unexpectedFailure({
+        type: "CMS",
+        source: "DATABASE",
+        operation: "UPDATE_BLOG_CATEGORY",
+        feature: "BLOG",
+        message: error.message || "Unable to reorder categories",
+        error,
+        storeId,
+        entityType: "blog_category",
+        entityId: id,
+        route: "/blog/categories",
+      });
     }
   }
 

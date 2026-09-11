@@ -63,7 +63,9 @@ Guides: [docs/CLIENT-ONBOARDING.md](./docs/CLIENT-ONBOARDING.md) · [docs/DEPLOY
 | `npm run init:store` | Create/ensure generic store + stubs |
 | `npm run bootstrap:admin` | First admin (not public self-service) |
 | `npm run scan:secrets` | Tracked-file secret / leakage scan |
-| `npm run verify:production` | Env + scan + test + typecheck + lint + build |
+| `npm run verify:production` | Env + scan + **typecheck → lint → test → build** (compile failures block deploy; not written to `error_logs`) |
+
+Runtime vs build error coverage: `docs/error-monitoring-coverage.md`.
 
 ## Environment
 

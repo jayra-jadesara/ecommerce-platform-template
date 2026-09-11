@@ -45,7 +45,7 @@ describe("phase 21.1 — admin design system", () => {
     const shell = read("src/features/admin/components/AdminShell.tsx");
     expect(shell).toContain("adminScrollHide");
     expect(shell).toContain("max-h-dvh");
-    expect(shell).toContain("overflow-x-hidden");
+    expect(shell).toContain("overflow-x-clip");
     expect(shell).toContain("flex min-h-0 flex-1 flex-col");
   });
 });

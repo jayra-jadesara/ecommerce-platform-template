@@ -11,6 +11,7 @@ import {
   updateOrderTracking,
 } from "@/features/orders/admin-service";
 import type { OrderMutationResult } from "@/features/orders/types";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 import type { OrderStatus } from "@/types/database";
 
 const statusSchema = z.object({
@@ -58,14 +59,27 @@ export async function adminUpdateOrderStatusAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid." };
   }
 
-  const result = await updateOrderStatus({
-    orderId: parsed.data.orderId,
-    storeId,
-    actorUserId: admin.user.id,
-    nextStatus: parsed.data.nextStatus as OrderStatus,
-    shippingProvider: parsed.data.shippingProvider,
-    trackingNumber: parsed.data.trackingNumber,
-  });
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "UPDATE_ORDER_STATUS",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: parsed.data.orderId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      updateOrderStatus({
+        orderId: parsed.data.orderId,
+        storeId,
+        actorUserId: admin.user.id,
+        nextStatus: parsed.data.nextStatus as OrderStatus,
+        shippingProvider: parsed.data.shippingProvider,
+        trackingNumber: parsed.data.trackingNumber,
+      }),
+  );
 
   if (result.ok) revalidateOrderPaths(parsed.data.orderId);
   return result;
@@ -83,13 +97,26 @@ export async function adminUpdateOrderTrackingAction(
     return { ok: false, error: "Invalid tracking details." };
   }
 
-  const result = await updateOrderTracking({
-    orderId: parsed.data.orderId,
-    storeId,
-    actorUserId: admin.user.id,
-    shippingProvider: parsed.data.shippingProvider,
-    trackingNumber: parsed.data.trackingNumber,
-  });
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "UPDATE_ORDER_TRACKING",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: parsed.data.orderId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      updateOrderTracking({
+        orderId: parsed.data.orderId,
+        storeId,
+        actorUserId: admin.user.id,
+        shippingProvider: parsed.data.shippingProvider,
+        trackingNumber: parsed.data.trackingNumber,
+      }),
+  );
 
   if (result.ok) revalidateOrderPaths(parsed.data.orderId);
   return result;
@@ -111,12 +138,25 @@ export async function adminMarkOrderRefundedAction(
   const parsed = refundSchema.safeParse(raw);
   if (!parsed.success) return { ok: false, error: "Invalid request." };
 
-  const result = await markOrderRefundedLocally({
-    orderId: parsed.data.orderId,
-    storeId,
-    actorUserId: admin.user.id,
-    note: parsed.data.note,
-  });
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "UPDATE_ORDER_STATUS",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: parsed.data.orderId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      markOrderRefundedLocally({
+        orderId: parsed.data.orderId,
+        storeId,
+        actorUserId: admin.user.id,
+        note: parsed.data.note,
+      }),
+  );
 
   if (result.ok) revalidateOrderPaths(parsed.data.orderId);
   return result;

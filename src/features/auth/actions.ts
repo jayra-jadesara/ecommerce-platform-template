@@ -16,6 +16,10 @@ import {
 import { requireUser } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import {
+  unexpectedFailure,
+  runLoggedMutation,
+} from "@/features/error-monitoring/unexpected";
+import {
   enforceRateLimit,
   rateLimitErrorMessage,
 } from "@/lib/security/server-rate-limit";
@@ -157,20 +161,45 @@ export async function updateProfileAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase
-    .from("user_profiles")
-    .update({
-      first_name: parsed.data.firstName,
-      last_name: parsed.data.lastName,
-      phone: parsed.data.phone || null,
-    })
-    .eq("id", user.id);
+  return runLoggedMutation(
+    {
+      type: "AUTH",
+      source: "SERVER",
+      operation: "UPDATE_PROFILE",
+      feature: "AUTH",
+      entityType: "user_profile",
+      entityId: user.id,
+      route: "/account/profile",
+    },
+    async () => {
+      const supabase = await createSupabaseServerClient();
+      const { error } = await supabase
+        .from("user_profiles")
+        .update({
+          first_name: parsed.data.firstName,
+          last_name: parsed.data.lastName,
+          phone: parsed.data.phone || null,
+        })
+        .eq("id", user.id);
 
-  if (error) return { ok: false, error: mapAuthError(error) };
+      if (error) {
+        return unexpectedFailure({
+          type: "AUTH",
+          source: "DATABASE",
+          operation: "UPDATE_PROFILE",
+          feature: "AUTH",
+          message: error.message || "Unable to update profile",
+          error,
+          entityType: "user_profile",
+          entityId: user.id,
+          route: "/account/profile",
+        });
+      }
 
-  revalidatePath("/account/profile");
-  return { ok: true, message: "Profile updated." };
+      revalidatePath("/account/profile");
+      return { ok: true as const, message: "Profile updated." };
+    },
+  );
 }
 
 export async function adminLoginAction(

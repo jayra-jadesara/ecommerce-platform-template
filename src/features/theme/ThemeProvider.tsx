@@ -20,8 +20,14 @@ import {
   nextThemeMode,
   sanitizeStoredMode,
 } from "@/features/theme/modes";
-import { motionDesignTokens, resolveMotionConfig } from "@/features/motion-3d";
+import {
+  motionDesignTokens,
+  motionHtmlDataAttributes,
+  resolveMotionConfig,
+} from "@/features/motion-3d";
+import { typographyCssVars } from "@/features/theme/typography-css";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
+import { usePrefersReducedMotion } from "@/features/visual-effects/hooks";
 import type {
   PlatformConfig,
   ResolvedThemeMode,
@@ -104,6 +110,12 @@ export function PlatformThemeProvider({
    * Defer localStorage / OS preference for the MUI theme until after hydration.
    */
   const muiReady = useHasHydrated();
+  const reducedMotionPreference = usePrefersReducedMotion(true);
+  /**
+   * Single declaration only — do not redeclare `reducedMotion` later in this file.
+   * Keep SSR motion tokens until hydrated, then honor prefers-reduced-motion.
+   */
+  const reducedMotion = muiReady && reducedMotionPreference;
 
   const mode = useSyncExternalStore(
     subscribeMode,
@@ -166,16 +178,28 @@ export function PlatformThemeProvider({
   }, [tokensKey, resolvedMode, themeConfig]);
 
   useEffect(() => {
-    const effective = resolveMotionConfig({
-      global: config.animation,
-      reducedMotion: false,
-    });
-    const vars = motionDesignTokens(effective);
+    const vars = typographyCssVars(typography);
     const root = document.documentElement;
     for (const [key, value] of Object.entries(vars)) {
       root.style.setProperty(key, value);
     }
-  }, [config.animation]);
+  }, [typography]);
+
+  useEffect(() => {
+    const effective = resolveMotionConfig({
+      global: config.animation,
+      reducedMotion,
+    });
+    const vars = motionDesignTokens(effective);
+    const attrs = motionHtmlDataAttributes(effective);
+    const root = document.documentElement;
+    for (const [key, value] of Object.entries(vars)) {
+      root.style.setProperty(key, value);
+    }
+    for (const [key, value] of Object.entries(attrs)) {
+      root.setAttribute(key, value);
+    }
+  }, [config.animation, reducedMotion]);
 
   const setMode = useCallback(
     (next: ThemeMode) => {

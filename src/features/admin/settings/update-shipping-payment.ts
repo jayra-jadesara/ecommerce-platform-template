@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -17,6 +18,10 @@ import {
   type ShippingSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
 import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+
+const SHIPPING_ROUTE = getAdminPath("/settings/shipping");
+const PAYMENTS_ROUTE = getAdminPath("/settings/payments");
 
 export async function loadShippingSettingsForm(): Promise<{
   values: ShippingSettingsFormValues;
@@ -179,7 +184,19 @@ export async function updateShippingSettings(
     .upsert(payload, { onConflict: "store_id" });
 
   if (error) {
-    return { ok: false, error: "Could not save shipping settings." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "SHIPPING_SETTINGS_UPDATE",
+      feature: "SHIPPING",
+      message: "Could not save shipping settings",
+      error,
+      databaseCode: error.code,
+      storeId: store.id,
+      entityType: "shipping_settings",
+      entityId: store.id,
+      route: SHIPPING_ROUTE,
+    });
   }
 
   const changed = diffChangedKeys(
@@ -261,7 +278,19 @@ export async function updatePaymentSettings(
     .upsert(payload, { onConflict: "store_id" });
 
   if (error) {
-    return { ok: false, error: "Could not save payment settings." };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PAYMENT_SETTINGS_UPDATE",
+      feature: "SETTINGS",
+      message: "Could not save payment settings",
+      error,
+      databaseCode: error.code,
+      storeId: store.id,
+      entityType: "payment_settings",
+      entityId: store.id,
+      route: PAYMENTS_ROUTE,
+    });
   }
 
   const changed = diffChangedKeys(

@@ -10,6 +10,7 @@ import {
   type BannerFormValues,
 } from "@/features/cms/schemas";
 import type { BannerRow } from "@/features/cms/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
 
@@ -100,7 +101,19 @@ export async function createAdminBanner(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: "Unable to create banner." };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "CREATE_BANNER",
+      feature: "CMS",
+      message: error?.message || "Unable to create banner",
+      error,
+      storeId,
+      entityType: "banner",
+      route: "/content/banners",
+    });
+  }
 
   await writeContentAudit({
     storeId,
@@ -151,7 +164,20 @@ export async function updateAdminBanner(
     .select("*")
     .single();
 
-  if (error || !data) return { ok: false, error: "Unable to update banner." };
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "UPDATE_BANNER",
+      feature: "CMS",
+      message: error?.message || "Unable to update banner",
+      error,
+      storeId,
+      entityType: "banner",
+      entityId: id,
+      route: "/content/banners",
+    });
+  }
 
   await writeContentAudit({
     storeId,
@@ -179,7 +205,20 @@ export async function deleteAdminBanner(
     .eq("id", id)
     .eq("store_id", storeId);
 
-  if (error) return { ok: false, error: "Unable to delete banner." };
+  if (error) {
+    return unexpectedFailure({
+      type: "CMS",
+      source: "DATABASE",
+      operation: "DELETE_BANNER",
+      feature: "CMS",
+      message: error.message || "Unable to delete banner",
+      error,
+      storeId,
+      entityType: "banner",
+      entityId: id,
+      route: "/content/banners",
+    });
+  }
 
   await writeContentAudit({
     storeId,

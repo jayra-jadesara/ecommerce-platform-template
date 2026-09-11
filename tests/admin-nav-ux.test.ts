@@ -27,6 +27,7 @@ describe("admin navigation structure", () => {
       "Dashboard",
       "Products",
       "Orders",
+      "Error Logs",
       "Customers",
       "Content",
       "Store Settings",
@@ -84,6 +85,7 @@ describe("permission-based admin nav visibility", () => {
       "Dashboard",
       "Products",
       "Orders",
+      "Error Logs",
       "Customers",
       "Content",
       "Store Settings",
@@ -93,6 +95,7 @@ describe("permission-based admin nav visibility", () => {
     expect(links).toContain("Shipping");
     expect(links).toContain("Payments");
     expect(links).toContain("Coupons");
+    expect(links).toContain("Error Logs");
   });
 
   it("hides orders and customers for EDITOR", () => {
@@ -110,9 +113,16 @@ describe("permission-based admin nav visibility", () => {
     const { top, links } = labelsFromTree(
       permissionsForRoles(["ORDER_MANAGER"]),
     );
-    expect(top).toEqual(["Dashboard", "Orders", "Customers", "Store Settings"]);
+    expect(top).toEqual([
+      "Dashboard",
+      "Orders",
+      "Error Logs",
+      "Customers",
+      "Store Settings",
+    ]);
     expect(links).toContain("Dashboard");
     expect(links).toContain("Orders");
+    expect(links).toContain("Error Logs");
     expect(links).toContain("Customers");
     expect(links).toContain("Payments");
     expect(links).not.toContain("All Products");

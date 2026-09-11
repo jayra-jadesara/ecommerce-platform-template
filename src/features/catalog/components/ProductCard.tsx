@@ -244,7 +244,7 @@ export function ProductCard({
   return (
     <article
       className={cn(
-        "group relative z-0 h-full w-full min-w-0 overflow-hidden sf-product-tile",
+        "group relative z-0 h-full w-full min-w-0 sf-product-tile",
         isList ? "flex flex-row items-start gap-3 p-3 sm:gap-4 sm:p-4" : "flex flex-col",
       )}
     >
@@ -276,7 +276,7 @@ export function ProductCard({
         </Link>
       ) : (
       <div
-        className="group relative aspect-[4/5] w-full overflow-hidden bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))]"
+        className="group relative aspect-[4/5] w-full overflow-hidden sf-product-tile-media bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))]"
         onMouseLeave={() => setActiveImage(0)}
       >
         {visibleGallery.length > 0 ? (
@@ -290,7 +290,7 @@ export function ProductCard({
               fill
               sizes="(max-width: 640px) 42vw, (max-width: 1024px) 22vw, 200px"
               className={cn(
-                "object-contain transition-opacity duration-200 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-105",
+                "sf-product-tile-image object-contain",
                 compact ? "p-1.5" : "p-2 sm:p-2.5",
                 index === safeActive ? "opacity-100" : "opacity-0",
               )}

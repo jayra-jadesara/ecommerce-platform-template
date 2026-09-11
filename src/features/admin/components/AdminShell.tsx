@@ -379,7 +379,7 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-clip">
           <div className="admin-page-content w-full min-w-0 px-3 py-4 sm:px-5 sm:py-5 lg:px-6">
             {children}
           </div>

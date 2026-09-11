@@ -6,7 +6,7 @@ export function sfBtn(
   variant: "primary" | "secondary" | "ghost" | "outline" | "danger" = "primary",
 ): string {
   const base =
-    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-default,0.5rem)] px-5 py-2.5 text-sm font-semibold tracking-wide transition-[transform,box-shadow,background-color,border-color,filter,opacity] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]";
+    "sf-motion-btn inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-default,0.5rem)] px-5 py-2.5 text-sm font-semibold tracking-wide transition-[transform,box-shadow,background-color,border-color,filter,opacity] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]";
 
   switch (variant) {
     case "secondary":

@@ -1,5 +1,6 @@
 "use server";
 
+import { getAdminPath } from "@/config/admin-route";
 import {
   archiveCategory,
   createCategory,
@@ -13,39 +14,136 @@ import {
   updateInventory,
   updateProduct,
 } from "@/features/catalog/products-service";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+
+const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
+const CATEGORIES_ROUTE = getAdminPath("/catalog/categories");
 
 export async function createCategoryAction(input: unknown) {
-  return createCategory(input);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "CREATE_CATEGORY",
+      feature: "CATEGORIES",
+      route: CATEGORIES_ROUTE,
+    },
+    () => createCategory(input),
+  );
 }
 
 export async function updateCategoryAction(id: string, input: unknown) {
-  return updateCategory(id, input);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "UPDATE_CATEGORY",
+      feature: "CATEGORIES",
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    },
+    () => updateCategory(id, input),
+  );
 }
 
 export async function archiveCategoryAction(id: string) {
-  return archiveCategory(id);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "DISABLE_CATEGORY",
+      feature: "CATEGORIES",
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    },
+    () => archiveCategory(id),
+  );
 }
 
 export async function deleteCategoryAction(id: string) {
-  return deleteCategory(id);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "DELETE_CATEGORY",
+      feature: "CATEGORIES",
+      entityType: "categories",
+      entityId: id,
+      route: CATEGORIES_ROUTE,
+    },
+    () => deleteCategory(id),
+  );
 }
 
 export async function createProductAction(input: unknown) {
-  return createProduct(input);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "CREATE_PRODUCT",
+      feature: "PRODUCTS",
+      route: PRODUCTS_ROUTE,
+    },
+    () => createProduct(input),
+  );
 }
 
 export async function updateProductAction(id: string, input: unknown) {
-  return updateProduct(id, input);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "UPDATE_PRODUCT",
+      feature: "PRODUCTS",
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    },
+    () => updateProduct(id, input),
+  );
 }
 
 export async function archiveProductAction(id: string) {
-  return archiveProduct(id);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "ARCHIVE_PRODUCT",
+      feature: "PRODUCTS",
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    },
+    () => archiveProduct(id),
+  );
 }
 
 export async function deleteProductAction(id: string) {
-  return deleteProduct(id);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "DELETE_PRODUCT",
+      feature: "PRODUCTS",
+      entityType: "products",
+      entityId: id,
+      route: PRODUCTS_ROUTE,
+    },
+    () => deleteProduct(id),
+  );
 }
 
 export async function updateInventoryAction(input: unknown) {
-  return updateInventory(input);
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "UPDATE_INVENTORY",
+      feature: "PRODUCTS",
+      route: PRODUCTS_ROUTE,
+    },
+    () => updateInventory(input),
+  );
 }

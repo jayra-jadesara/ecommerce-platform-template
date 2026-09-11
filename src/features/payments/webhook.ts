@@ -1,6 +1,7 @@
 import "server-only";
 
 import { createHash } from "node:crypto";
+import { logPaymentError } from "@/features/error-monitoring/logger";
 import { writePaymentAudit } from "@/features/payments/audit";
 import {
   fulfillVerifiedPayment,
@@ -57,6 +58,17 @@ export async function processRazorpayWebhook(input: {
   }
 
   if (!input.signature) {
+    await logPaymentError({
+      message: "Missing Razorpay webhook signature",
+      type: "WEBHOOK",
+      source: "WEBHOOK",
+      severity: "CRITICAL",
+      operation: "PROCESS_WEBHOOK",
+      errorCode: "WEBHOOK_SIGNATURE_MISSING",
+      route: "/api/webhooks/razorpay",
+      requestPath: "/api/webhooks/razorpay",
+      requestMethod: "POST",
+    });
     return { ok: false, status: 400, error: "Missing signature." };
   }
 
@@ -67,6 +79,17 @@ export async function processRazorpayWebhook(input: {
   });
 
   if (!valid) {
+    await logPaymentError({
+      message: "Invalid Razorpay webhook signature",
+      type: "WEBHOOK",
+      source: "WEBHOOK",
+      severity: "CRITICAL",
+      operation: "PROCESS_WEBHOOK",
+      errorCode: "WEBHOOK_SIGNATURE_INVALID",
+      route: "/api/webhooks/razorpay",
+      requestPath: "/api/webhooks/razorpay",
+      requestMethod: "POST",
+    });
     return { ok: false, status: 400, error: "Invalid signature." };
   }
 
@@ -124,6 +147,19 @@ export async function processRazorpayWebhook(input: {
   }
 
   if (!ALLOWED_EVENTS.has(eventName)) {
+    await logPaymentError({
+      message: `Unsupported webhook event: ${eventName}`,
+      type: "WEBHOOK",
+      source: "WEBHOOK",
+      severity: "WARNING",
+      operation: "PROCESS_WEBHOOK",
+      webhookEventId: eventId,
+      errorCode: "UNSUPPORTED_WEBHOOK_EVENT",
+      route: "/api/webhooks/razorpay",
+      requestPath: "/api/webhooks/razorpay",
+      requestMethod: "POST",
+      metadata: { eventName },
+    });
     await supabase
       .from("payment_webhook_events")
       .update({
@@ -156,6 +192,19 @@ export async function processRazorpayWebhook(input: {
       })
       .eq("provider", "razorpay")
       .eq("event_id", eventId);
+    await logPaymentError({
+      message: "Webhook missing payment/order references",
+      type: "WEBHOOK",
+      source: "WEBHOOK",
+      severity: "ERROR",
+      operation: "PROCESS_WEBHOOK",
+      webhookEventId: eventId,
+      errorCode: "WEBHOOK_MISSING_REFS",
+      route: "/api/webhooks/razorpay",
+      requestPath: "/api/webhooks/razorpay",
+      requestMethod: "POST",
+      metadata: { eventName },
+    });
     return { ok: false, status: 422, error: "Missing payment references." };
   }
 
@@ -274,6 +323,24 @@ export async function processRazorpayWebhook(input: {
         entityType: "payment",
         entityId: payment.id,
         metadata: { reason: "amount_mismatch", eventId, eventName },
+      });
+      await logPaymentError({
+        message: "Webhook amount or currency mismatch",
+        type: "WEBHOOK",
+        source: "WEBHOOK",
+        severity: "CRITICAL",
+        operation: "PROCESS_WEBHOOK",
+        storeId: order.store_id,
+        userId: payment.user_id,
+        orderId: payment.order_id,
+        paymentId: payment.id,
+        providerOrderId: payment.provider_order_id,
+        providerPaymentId: providerPaymentId,
+        webhookEventId: eventId,
+        errorCode: "WEBHOOK_AMOUNT_MISMATCH",
+        route: "/api/webhooks/razorpay",
+        requestPath: "/api/webhooks/razorpay",
+        requestMethod: "POST",
       });
       await supabase
         .from("payment_webhook_events")

@@ -101,9 +101,10 @@ describe("phase 21 — product card & empty states", () => {
     const css = readSrc("src/styles/storefront.css");
     expect(src).toContain("secondaryImageUrl");
     expect(src).toContain("compareAtPrice");
-    expect(src).toContain("motion-safe:group-hover:scale-105");
+    expect(src).toContain("sf-product-tile-image");
     expect(src).toContain("sfBtn");
     expect(css).toContain(".sf-product-tile:hover");
+    expect(css).toContain("--motion-image-scale");
     expect(src).not.toMatch(/#[0-9a-fA-F]{6}/);
   });
 
@@ -133,8 +134,7 @@ describe("phase 21 — admin preview realism", () => {
     expect(src).not.toContain("Sample product");
     expect(src).not.toContain("Free shipping on qualifying orders");
     expect(src).toContain("Example Product");
-    expect(src).toContain("Shop now");
-    expect(src).toContain("Browse catalog");
+    expect(src).toContain("Shop Now");
     expect(src).toContain("Shop by category");
     expect(src).toContain("lifestyleImage");
     expect(src).toContain("Category one");

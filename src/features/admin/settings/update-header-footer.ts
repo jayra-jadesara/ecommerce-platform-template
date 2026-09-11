@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -16,6 +17,7 @@ import {
 import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import type { Database } from "@/types/database";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 type StoreSettingsUpdate = Database["public"]["Tables"]["store_settings"]["Update"];
 
@@ -27,6 +29,8 @@ function emptyToNull(value: string | undefined): string | null {
 async function upsertSettingsPartial(
   permission: "settings.update",
   auditAction: "HEADER_SETTINGS_UPDATED" | "FOOTER_SETTINGS_UPDATED",
+  operation: "HEADER_SETTINGS_UPDATE" | "FOOTER_SETTINGS_UPDATE",
+  route: string,
   payload: StoreSettingsUpdate,
   successMessage: string,
 ): Promise<SettingsUpdateResult> {
@@ -61,10 +65,19 @@ async function upsertSettingsPartial(
       });
 
   if (write.error) {
-    return {
-      ok: false,
-      error: "Unable to save settings. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation,
+      feature: "SETTINGS",
+      message: "Unable to save settings",
+      error: write.error,
+      databaseCode: write.error.code,
+      storeId,
+      entityType: "store_settings",
+      entityId: storeId,
+      route,
+    });
   }
 
   await supabase.from("audit_logs").insert({
@@ -100,6 +113,8 @@ export async function updateHeaderSettings(
   return upsertSettingsPartial(
     "settings.update",
     "HEADER_SETTINGS_UPDATED",
+    "HEADER_SETTINGS_UPDATE",
+    getAdminPath("/settings/header"),
     {
       header_sticky: values.stickyHeader,
       header_search_enabled: values.searchEnabled,
@@ -132,6 +147,8 @@ export async function updateFooterSettings(
   return upsertSettingsPartial(
     "settings.update",
     "FOOTER_SETTINGS_UPDATED",
+    "FOOTER_SETTINGS_UPDATE",
+    getAdminPath("/settings/footer"),
     {
       footer_enabled: values.enabled,
       footer_description: emptyToNull(values.description),

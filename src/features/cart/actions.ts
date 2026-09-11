@@ -16,6 +16,7 @@ import {
   removeCartItemSchema,
   updateCartItemQuantitySchema,
 } from "@/features/cart/validation";
+import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
 function revalidateCartPaths() {
   revalidatePath("/cart");
@@ -41,7 +42,18 @@ export async function addToCartAction(
     };
   }
 
-  const result = await addToCart(parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "ADD_TO_CART",
+      feature: "CART",
+      entityType: "cart_item",
+      entityId: parsed.data.variantId,
+      route: "/cart",
+    },
+    () => addToCart(parsed.data),
+  );
   if (result.ok) revalidateCartPaths();
   return result;
 }
@@ -57,7 +69,18 @@ export async function updateCartItemQuantityAction(
     };
   }
 
-  const result = await updateCartItemQuantity(parsed.data);
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "UPDATE_CART_ITEM",
+      feature: "CART",
+      entityType: "cart_item",
+      entityId: parsed.data.cartItemId,
+      route: "/cart",
+    },
+    () => updateCartItemQuantity(parsed.data),
+  );
   if (result.ok) revalidateCartPaths();
   return result;
 }
@@ -85,7 +108,17 @@ export async function clearCartAction(): Promise<CartMutationResult> {
 }
 
 export async function mergeGuestCartAction(): Promise<CartMutationResult> {
-  const result = await mergeGuestCart();
+  const result = await runLoggedMutation(
+    {
+      type: "CART",
+      source: "SERVER",
+      operation: "MERGE_CART",
+      feature: "CART",
+      entityType: "cart",
+      route: "/cart",
+    },
+    () => mergeGuestCart(),
+  );
   if (result.ok) revalidateCartPaths();
   return result;
 }

@@ -21,6 +21,7 @@ import {
 import { validatePurchasableVariant } from "@/features/cart/variant-validation";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { calculateSubtotalMinor } from "@/features/pricing/engine";
 import { majorToMinor, minorToMajor } from "@/features/pricing/money";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
@@ -348,6 +349,7 @@ async function upsertCartItemQuantity(
   productId: string,
   variantId: string,
   quantity: number,
+  log?: { storeId: string; operation: string },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const { data: existing } = await client
     .from("cart_items")
@@ -362,7 +364,23 @@ async function upsertCartItemQuantity(
       .update({ quantity })
       .eq("id", existing.id)
       .eq("cart_id", cartId);
-    if (error) return { ok: false, error: friendlyDbError() };
+    if (error) {
+      if (log) {
+        return unexpectedFailure({
+          type: "CART",
+          source: "DATABASE",
+          operation: log.operation,
+          feature: "CART",
+          message: error.message || "Unable to update cart item",
+          error,
+          storeId: log.storeId,
+          entityType: "cart_item",
+          entityId: existing.id,
+          route: "/cart",
+        });
+      }
+      return { ok: false, error: friendlyDbError() };
+    }
     return { ok: true };
   }
 
@@ -381,8 +399,38 @@ async function upsertCartItemQuantity(
         .update({ quantity })
         .eq("cart_id", cartId)
         .eq("variant_id", variantId);
-      if (updateError) return { ok: false, error: friendlyDbError() };
+      if (updateError) {
+        if (log) {
+          return unexpectedFailure({
+            type: "CART",
+            source: "DATABASE",
+            operation: log.operation,
+            feature: "CART",
+            message: updateError.message || "Unable to update cart item",
+            error: updateError,
+            storeId: log.storeId,
+            entityType: "cart_item",
+            entityId: cartId,
+            route: "/cart",
+          });
+        }
+        return { ok: false, error: friendlyDbError() };
+      }
       return { ok: true };
+    }
+    if (log) {
+      return unexpectedFailure({
+        type: "CART",
+        source: "DATABASE",
+        operation: log.operation,
+        feature: "CART",
+        message: error.message || "Unable to add cart item",
+        error,
+        storeId: log.storeId,
+        entityType: "cart_item",
+        entityId: cartId,
+        route: "/cart",
+      });
     }
     return { ok: false, error: friendlyDbError() };
   }
@@ -422,6 +470,7 @@ export async function addToCart(input: {
     validated.variant.productId,
     validated.variant.variantId,
     nextQuantity,
+    { storeId, operation: "ADD_TO_CART" },
   );
   if (!written.ok) return written;
 
@@ -469,7 +518,20 @@ export async function updateCartItemQuantity(input: {
     .eq("id", item.id)
     .eq("cart_id", cart.id);
 
-  if (error) return { ok: false, error: friendlyDbError() };
+  if (error) {
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "UPDATE_CART_ITEM",
+      feature: "CART",
+      message: error.message || "Unable to update cart quantity",
+      error,
+      storeId,
+      entityType: "cart_item",
+      entityId: item.id,
+      route: "/cart",
+    });
+  }
 
   const items = await fetchCartItems(client, cart.id);
   return { ok: true, cart: toCartView(cart, items, currency) };
@@ -540,7 +602,20 @@ export async function mergeGuestCartIntoCustomer(
   if (!customerCart) {
     customerCart = await createCustomerCart(service, resolvedStoreId, userId);
   }
-  if (!customerCart) return;
+  if (!customerCart) {
+    await unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "MERGE_CART",
+      feature: "CART",
+      message: "Unable to create customer cart during merge",
+      storeId: resolvedStoreId,
+      entityType: "cart",
+      entityId: userId,
+      route: "/cart",
+    });
+    return;
+  }
 
   const guestItems = await fetchCartItems(service, guestCart.id);
 
@@ -574,6 +649,7 @@ export async function mergeGuestCartIntoCustomer(
       validated.variant.productId,
       validated.variant.variantId,
       merged.quantity,
+      { storeId: resolvedStoreId, operation: "MERGE_CART" },
     );
   }
 

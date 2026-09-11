@@ -13,6 +13,7 @@ import {
   type WishlistMutationResult,
   type WishlistView,
 } from "@/features/wishlist/types";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import type { Database } from "@/types/database";
@@ -63,10 +64,6 @@ type ItemJoin = {
       | null;
   } | null;
 };
-
-function friendlyError(): string {
-  return "Something went wrong with your wishlist. Please try again.";
-}
 
 async function loadCurrency(client: Db, storeId: string): Promise<string> {
   const { data } = await client
@@ -249,7 +246,19 @@ export async function addToWishlist(input: {
   }
 
   const wishlist = await getOrCreateWishlist(client, storeId, user.id);
-  if (!wishlist) return { ok: false, error: friendlyError() };
+  if (!wishlist) {
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "WISHLIST_ADD",
+      feature: "CART",
+      message: "Unable to open wishlist",
+      storeId,
+      entityType: "wishlist",
+      entityId: user.id,
+      route: "/account/wishlist",
+    });
+  }
 
   if (variantId) {
     const { data: existing } = await client
@@ -302,7 +311,18 @@ export async function addToWishlist(input: {
         inWishlist: true,
       };
     }
-    return { ok: false, error: friendlyError() };
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "WISHLIST_ADD",
+      feature: "CART",
+      message: error.message || "Unable to add to wishlist",
+      error,
+      storeId,
+      entityType: "wishlist_item",
+      entityId: wishlist.id,
+      route: "/account/wishlist",
+    });
   }
 
   const items = await fetchItems(client, wishlist.id);
@@ -328,7 +348,19 @@ export async function removeFromWishlist(
   const client = await createSupabaseServerClient();
   const currency = await loadCurrency(client, storeId);
   const wishlist = await getOrCreateWishlist(client, storeId, user.id);
-  if (!wishlist) return { ok: false, error: friendlyError() };
+  if (!wishlist) {
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "WISHLIST_REMOVE",
+      feature: "CART",
+      message: "Unable to open wishlist",
+      storeId,
+      entityType: "wishlist",
+      entityId: user.id,
+      route: "/account/wishlist",
+    });
+  }
 
   const { error } = await client
     .from("wishlist_items")
@@ -336,7 +368,20 @@ export async function removeFromWishlist(
     .eq("id", wishlistItemId)
     .eq("wishlist_id", wishlist.id);
 
-  if (error) return { ok: false, error: friendlyError() };
+  if (error) {
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "WISHLIST_REMOVE",
+      feature: "CART",
+      message: error.message || "Unable to remove from wishlist",
+      error,
+      storeId,
+      entityType: "wishlist_item",
+      entityId: wishlistItemId,
+      route: "/account/wishlist",
+    });
+  }
 
   const items = await fetchItems(client, wishlist.id);
   return {
@@ -395,7 +440,19 @@ export async function toggleWishlist(input: {
 
   const client = await createSupabaseServerClient();
   const wishlist = await getOrCreateWishlist(client, storeId, user.id);
-  if (!wishlist) return { ok: false, error: friendlyError() };
+  if (!wishlist) {
+    return unexpectedFailure({
+      type: "CART",
+      source: "DATABASE",
+      operation: "WISHLIST_ADD",
+      feature: "CART",
+      message: "Unable to open wishlist",
+      storeId,
+      entityType: "wishlist",
+      entityId: user.id,
+      route: "/account/wishlist",
+    });
+  }
 
   let find = client
     .from("wishlist_items")

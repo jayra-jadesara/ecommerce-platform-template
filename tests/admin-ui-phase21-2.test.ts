@@ -70,6 +70,7 @@ describe("phase 21.2 — admin shell & IA", () => {
       "Dashboard",
       "Products",
       "Orders",
+      "Error Logs",
       "Customers",
       "Content",
       "Store Settings",
@@ -94,12 +95,17 @@ describe("phase 21.2 — color studio library", () => {
     const src = read(
       "src/features/admin/theme/components/AppearanceStudio.tsx",
     );
-    expect(src).toContain("Preview Light");
-    expect(src).toContain("Preview Dark");
+    const split = read(
+      "src/features/admin/theme/components/AppearanceSplitLayout.tsx",
+    );
     expect(src).toContain("packsByCategory");
     expect(src).toContain("Heading font");
     expect(src).toContain("Motion & 3D");
-    expect(src).toContain("High");
+    expect(src).toContain("Motion3DDesignStudio");
+    expect(src).toContain("AppearanceSplitLayout");
+    expect(split).toContain("Live preview");
+    expect(split).toContain("Preview Motion");
+    expect(split).toContain("65%");
     expect(src).toContain("sticky top-0");
     expect(src).toContain("APPEARANCE_TABS");
     expect(src).not.toContain('from "@mui/material/Tabs"');

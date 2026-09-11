@@ -1,6 +1,7 @@
 import "server-only";
 
 import { revalidateTag } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
@@ -14,10 +15,13 @@ import {
   formValuesToVisualEffectsDbRow,
 } from "@/features/admin/theme/map-to-db";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type ThemeUpdateResult =
   | { ok: true; message: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; referenceId?: string };
+
+const THEME_ROUTE = getAdminPath("/settings/theme");
 
 function getConfiguredStoreSlug(): string | null {
   const slug =
@@ -113,10 +117,19 @@ export async function updateStoreThemeSettings(
       });
 
   if (themeWrite.error) {
-    return {
-      ok: false,
-      error: "Unable to save theme settings. Check permissions and try again.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "THEME_UPDATE",
+      feature: "THEME",
+      message: "Unable to save theme settings",
+      error: themeWrite.error,
+      databaseCode: themeWrite.error.code,
+      storeId,
+      entityType: "store_theme_settings",
+      entityId: storeId,
+      route: THEME_ROUTE,
+    });
   }
 
   const animationWrite = existingAnimation
@@ -130,10 +143,19 @@ export async function updateStoreThemeSettings(
       });
 
   if (animationWrite.error) {
-    return {
-      ok: false,
-      error: "Theme colors saved, but animation settings could not be updated.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "MOTION_3D_UPDATE",
+      feature: "THEME",
+      message: "Theme colors saved, but animation settings could not be updated",
+      error: animationWrite.error,
+      databaseCode: animationWrite.error.code,
+      storeId,
+      entityType: "store_animation_settings",
+      entityId: storeId,
+      route: THEME_ROUTE,
+    });
   }
 
   const visualEffectsWrite = existingVisualEffects
@@ -147,11 +169,20 @@ export async function updateStoreThemeSettings(
       });
 
   if (visualEffectsWrite.error) {
-    return {
-      ok: false,
-      error:
-        "Theme saved, but 3D & visual effects settings could not be updated.",
-    };
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "MOTION_3D_UPDATE",
+      feature: "THEME",
+      message:
+        "Theme saved, but 3D & visual effects settings could not be updated",
+      error: visualEffectsWrite.error,
+      databaseCode: visualEffectsWrite.error.code,
+      storeId,
+      entityType: "store_visual_effects_settings",
+      entityId: storeId,
+      route: THEME_ROUTE,
+    });
   }
 
   const changedFields = [

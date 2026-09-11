@@ -58,6 +58,8 @@ export const PERMISSIONS = [
   "users.view",
   "users.manage",
   "audit.view",
+  "error_logs.view",
+  "error_logs.update",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -121,6 +123,8 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "blog.update",
     "blog.delete",
     "blog.publish",
+    "error_logs.view",
+    "error_logs.update",
   ],
   EDITOR: [
     "dashboard.view",
@@ -160,6 +164,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "blog.create",
     "blog.update",
     "blog.publish",
+    "error_logs.view",
   ],
   ORDER_MANAGER: [
     "dashboard.view",
@@ -169,6 +174,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "payments.view",
     "inventory.view",
     "coupons.view",
+    "error_logs.view",
   ],
 };
 

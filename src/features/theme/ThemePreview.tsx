@@ -11,34 +11,50 @@ interface ThemePreviewProps {
   mode?: ResolvedThemeMode;
   className?: string;
   children: ReactNode;
+  /** Optional draft typography for admin live preview. */
+  fonts?: {
+    sans?: string;
+    display?: string;
+  };
 }
 
 /**
  * Isolated theme preview — applies CSS variables to a scoped container only.
- * Does not mutate the live document theme. Ready for Admin Theme Editor (Phase 5).
+ * Does not mutate the live document theme.
  */
 export function ThemePreview({
   theme,
   mode,
   className,
   children,
+  fonts,
 }: ThemePreviewProps) {
   const resolved: ResolvedThemeMode =
     mode ?? (theme.defaultMode === "dark" ? "dark" : "light");
   const tokens: ColorTokens =
     resolved === "dark" ? theme.dark : theme.light;
   const vars = colorTokensToCssVars(tokens);
+  const radius = theme.borderRadius ?? "8px";
 
   const style = {
     ...vars,
     colorScheme: resolved,
     backgroundColor: "var(--color-background)",
     color: "var(--color-foreground)",
-    borderRadius: theme.borderRadius,
+    borderRadius: radius,
+    ["--radius-default" as string]: radius,
+    ...(fonts?.sans ? { ["--font-sans" as string]: fonts.sans } : null),
+    ...(fonts?.display ? { ["--font-display" as string]: fonts.display } : null),
+    fontFamily: fonts?.sans ?? "var(--font-sans), ui-sans-serif, sans-serif",
   } as CSSProperties;
 
   return (
-    <div className={cn("theme-preview", className)} style={style} data-theme={resolved}>
+    <div
+      className={cn("theme-preview", className)}
+      style={style}
+      data-theme={resolved}
+      data-preview-radius={radius}
+    >
       {children}
     </div>
   );

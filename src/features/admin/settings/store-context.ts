@@ -263,5 +263,5 @@ async function ensureStoreSettingsStub(
 }
 
 export type SettingsUpdateResult =
-  | { ok: true; message: string }
-  | { ok: false; error: string };
+  | { ok: true; message: string; path?: string }
+  | { ok: false; error: string; referenceId?: string };

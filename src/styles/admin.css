@@ -139,6 +139,136 @@
   max-width: none;
 }
 
+/**
+ * Phase 25.4 — Motion & 3D true two-panel workspace.
+ * Uses container + viewport queries so preview stays RIGHT on desktop
+ * even when the admin sidebar narrows the content area.
+ */
+.motion-workspace-host {
+  container-type: inline-size;
+  container-name: motion-studio;
+  width: 100%;
+  min-width: 0;
+}
+
+.motion-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.motion-settings {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-card);
+  padding: 1rem;
+}
+
+.motion-preview-column {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: 1rem;
+  background: var(--color-card);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.motion-preview-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.motion-preview-toolbar__title {
+  margin: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.motion-preview-toolbar__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.motion-preview-toolbar__btn {
+  min-height: 2rem !important;
+  padding-inline: 0.65rem !important;
+  font-size: 0.7rem !important;
+}
+
+.motion-preview-frame {
+  min-width: 0;
+  max-height: calc(100dvh - 7.5rem);
+  overflow: auto;
+  border-radius: 0.75rem;
+}
+
+.motion-preview-frame--mobile {
+  max-width: 24rem;
+  margin-inline: auto;
+}
+
+/* Desktop / wide content: settings 65% | preview 35% */
+@media (min-width: 900px) {
+  .motion-workspace {
+    display: grid !important;
+    grid-template-columns: minmax(0, 65%) minmax(280px, 35%) !important;
+    grid-template-rows: auto;
+    gap: 1.25rem;
+    align-items: start;
+  }
+
+  .motion-settings {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .motion-preview-column {
+    grid-column: 2;
+    grid-row: 1;
+    position: sticky;
+    top: calc(var(--admin-topbar-height, 3.5rem) + 4.75rem);
+    align-self: start;
+    max-height: calc(100dvh - 6.5rem);
+    overflow: auto;
+  }
+}
+
+/** Compact Motion studio option density */
+.motion-studio-compact .motion-opt {
+  padding: 0.55rem 0.6rem;
+  border-radius: 0.75rem;
+}
+
+.motion-studio-compact .motion-opt__preview {
+  height: 2.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.motion-studio-compact .motion-section {
+  padding-bottom: 1.15rem;
+  margin-bottom: 0;
+  gap: 0.65rem;
+}
+
+.motion-studio-compact .motion-section + .motion-section {
+  margin-top: 0;
+}
+
 /** Two settings cards per row on desktop; stack on mobile. */
 .admin-cards-grid {
   display: grid;
@@ -324,9 +454,364 @@
   }
 }
 
+/* Store Feel mini-previews (CSS only — no WebGL) */
+@keyframes sf-feel-calm {
+  from {
+    opacity: 0.35;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sf-feel-modern {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sf-feel-lively {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes sf-feel-dynamic {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-5px) scale(1.06);
+  }
+}
+
+/* Live preview Store Feel pulse (CSS only) */
+.sf-feel-preview--lively .sf-preview-product-mesh,
+.sf-feel-preview--bold .sf-preview-product-mesh {
+  animation: sf-preview-product-orbit 3.2s ease-in-out infinite alternate;
+}
+
+.sf-feel-preview--modern article[data-card="1"],
+.sf-feel-preview--lively article,
+.sf-feel-preview--bold article {
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.sf-feel-dot {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0.85rem auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+
+.sf-feel-calm .sf-feel-dot {
+  animation: sf-feel-calm 1.6s ease infinite alternate;
+}
+
+.sf-feel-modern .sf-feel-dot {
+  animation: sf-feel-modern 1.1s ease infinite alternate;
+}
+
+.sf-feel-lively .sf-feel-dot {
+  animation: sf-feel-lively 1.2s ease-in-out infinite;
+}
+
+.sf-feel-dynamic .sf-feel-dot {
+  animation: sf-feel-dynamic 0.9s ease-in-out infinite;
+}
+
+/* Option-card mini previews (CSS only) */
+@keyframes sf-mini-img-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.12);
+  }
+}
+
+@keyframes sf-mini-img-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes sf-mini-img-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes sf-mini-card-lift {
+  from {
+    transform: translateY(0);
+    box-shadow: none;
+  }
+  to {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  }
+}
+
+@keyframes sf-mini-card-zoom {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.06);
+  }
+}
+
+@keyframes sf-mini-card-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes sf-mini-card-glow {
+  from {
+    box-shadow: none;
+  }
+  to {
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent);
+  }
+}
+
+.sf-mini-img-zoom {
+  animation: sf-mini-img-zoom 1.2s ease-in-out infinite alternate;
+}
+
+.sf-mini-img-lift {
+  animation: sf-mini-img-lift 1.1s ease-in-out infinite alternate;
+}
+
+.sf-mini-img-float {
+  animation: sf-mini-img-float 1.6s ease-in-out infinite;
+}
+
+.sf-mini-card-lift {
+  animation: sf-mini-card-lift 1.15s ease-in-out infinite alternate;
+}
+
+.sf-mini-card-zoom {
+  animation: sf-mini-card-zoom 1.2s ease-in-out infinite alternate;
+}
+
+.sf-mini-card-float {
+  animation: sf-mini-card-float 1.5s ease-in-out infinite;
+}
+
+.sf-mini-card-glow {
+  animation: sf-mini-card-glow 1.3s ease-in-out infinite alternate;
+}
+
+.sf-three-thumb {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface);
+}
+
+.sf-three-thumb::before,
+.sf-three-thumb::after {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.sf-three-thumb--soft::before {
+  inset: 28% 38%;
+  background: color-mix(in srgb, var(--color-primary) 28%, transparent);
+  filter: blur(6px);
+}
+
+.sf-three-thumb--premium::before {
+  inset: 18% 42% 42% 22%;
+  background: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  border-radius: 0.75rem;
+  transform: rotate(-8deg);
+}
+
+.sf-three-thumb--premium::after {
+  inset: 42% 22% 18% 42%;
+  background: color-mix(in srgb, var(--color-accent) 35%, transparent);
+  border-radius: 0.75rem;
+  transform: rotate(10deg);
+}
+
+.sf-three-thumb--immersive::before {
+  inset: 12% 18%;
+  background: radial-gradient(
+    circle at 30% 40%,
+    color-mix(in srgb, var(--color-primary) 45%, transparent),
+    transparent 55%
+  );
+}
+
+.sf-three-thumb--immersive::after {
+  inset: 30% 10% 8% 40%;
+  background: radial-gradient(
+    circle at 70% 60%,
+    color-mix(in srgb, var(--color-accent) 40%, transparent),
+    transparent 50%
+  );
+}
+
+/* Preview product cards — motion + lightweight 3D stage (no WebGL) */
+.sf-preview-product-card {
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.sf-preview-product-card--lift {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-border));
+}
+
+.sf-preview-product-card--zoom {
+  transform: scale(1.03);
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--color-foreground) 10%, transparent);
+}
+
+.sf-preview-product-card--soft-shadow {
+  box-shadow: 0 14px 32px color-mix(in srgb, var(--color-primary) 16%, transparent);
+}
+
+.sf-preview-product-media {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: var(--color-surface);
+}
+
+.sf-preview-product-stage {
+  position: absolute;
+  inset: 12%;
+  perspective: 640px;
+  display: grid;
+  place-items: center;
+}
+
+.sf-preview-product-mesh {
+  width: 72%;
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--color-primary) 55%, white),
+      color-mix(in srgb, var(--color-accent) 40%, var(--color-primary))
+    );
+  box-shadow:
+    0 18px 28px color-mix(in srgb, var(--color-foreground) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 35%, transparent);
+  transform: rotateY(-12deg) rotateX(8deg);
+}
+
+.sf-preview-product-mesh--live {
+  animation: sf-preview-product-orbit 3.2s ease-in-out infinite alternate;
+}
+
+.sf-preview-product-mesh--premium {
+  border-radius: 1.25rem;
+  box-shadow:
+    0 22px 36px color-mix(in srgb, var(--color-primary) 28%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 40%, transparent);
+}
+
+.sf-preview-product-mesh--immersive {
+  width: 78%;
+  filter: drop-shadow(0 16px 20px color-mix(in srgb, var(--color-accent) 30%, transparent));
+}
+
+.sf-preview-product-badge {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  z-index: 2;
+  border-radius: 999px;
+  padding: 0.15rem 0.45rem;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-button-foreground, #fff);
+  background: var(--color-primary);
+}
+
+.sf-preview-product-badge--3d {
+  background: color-mix(in srgb, var(--color-foreground) 82%, var(--color-primary));
+}
+
+@keyframes sf-preview-product-orbit {
+  from {
+    transform: rotateY(-18deg) rotateX(10deg) translateY(0);
+  }
+  to {
+    transform: rotateY(16deg) rotateX(4deg) translateY(-6px);
+  }
+}
+
+@keyframes sf-preview-card-bob {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-5px);
+  }
+}
+
+.sf-preview-product-card--bob {
+  animation: sf-preview-card-bob 1.4s ease-in-out infinite alternate;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sf-motion-preview-in,
-  .sf-motion-preview-rise {
+  .sf-motion-preview-rise,
+  .sf-feel-calm .sf-feel-dot,
+  .sf-feel-modern .sf-feel-dot,
+  .sf-feel-lively .sf-feel-dot,
+  .sf-feel-dynamic .sf-feel-dot,
+  .sf-mini-img-zoom,
+  .sf-mini-img-lift,
+  .sf-mini-img-float,
+  .sf-mini-card-lift,
+  .sf-mini-card-zoom,
+  .sf-mini-card-float,
+  .sf-mini-card-glow,
+  .sf-preview-product-mesh--live,
+  .sf-preview-product-card--bob {
     animation: none !important;
+  }
+
+  .sf-preview-product-card--lift,
+  .sf-preview-product-card--zoom,
+  .sf-preview-product-card--bob {
+    transform: none;
   }
 }
