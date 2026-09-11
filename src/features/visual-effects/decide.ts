@@ -3,6 +3,7 @@ import {
   resolveHeroPreset,
   type Visual3dPreset,
 } from "@/features/visual-effects/schemas";
+import { resolve3DConfig } from "@/features/motion-3d";
 
 export type ThreeGateInput = {
   visualEffects: VisualEffectsConfig;
@@ -19,38 +20,48 @@ export type ThreeGateInput = {
 
 /**
  * Pure gate for whether decorative/product 3D may mount.
- * Used by components and unit tests — never trusts client flags alone for auth.
+ * Delegates to the central Motion & 3D resolver (Phase 25).
  */
 export function shouldMountDecorative3d(input: ThreeGateInput): boolean {
-  const { visualEffects: v } = input;
-  if (!v.enabled) return false;
-  if (!input.featureEnabled) return false;
-  if (!input.webglAvailable) return false;
-  if (input.isMobile && !v.mobileEnabled) return false;
-  if (v.respectReducedMotion && input.prefersReducedMotion) return false;
-  if (!input.animationEnabled) return false;
-  if (input.preset != null) {
-    const preset = resolveHeroPreset(input.preset);
-    if (preset === "NONE") return false;
-  }
-  return true;
+  const resolved = resolve3DConfig({
+    global: input.visualEffects,
+    animationEnabled: input.animationEnabled,
+    section: {
+      source: "custom",
+      enabled: input.featureEnabled,
+      preset: input.preset ? resolveHeroPreset(input.preset) : undefined,
+    },
+    isMobile: input.isMobile,
+    reducedMotion: input.prefersReducedMotion,
+    webglAvailable: input.webglAvailable,
+  });
+  return resolved.mayMount3d && input.featureEnabled;
 }
 
-export function shouldMountHero3d(input: Omit<ThreeGateInput, "featureEnabled"> & {
-  section3dEnabled: boolean;
-  sectionPreset?: string | null;
-}): { mount: boolean; preset: Visual3dPreset } {
-  const preset = resolveHeroPreset(
-    input.sectionPreset && input.sectionPreset !== "NONE"
-      ? input.sectionPreset
-      : input.visualEffects.heroPreset,
-  );
-  const mount = shouldMountDecorative3d({
-    ...input,
-    featureEnabled: input.visualEffects.heroEnabled && input.section3dEnabled,
-    preset,
+export function shouldMountHero3d(
+  input: Omit<ThreeGateInput, "featureEnabled"> & {
+    section3dEnabled: boolean;
+    sectionPreset?: string | null;
+    /** When "global", section flags are ignored and store defaults apply. */
+    threeSource?: "global" | "custom";
+  },
+): { mount: boolean; preset: Visual3dPreset } {
+  const source = input.threeSource ?? "custom";
+  const resolved = resolve3DConfig({
+    global: input.visualEffects,
+    animationEnabled: input.animationEnabled,
+    section: {
+      source,
+      enabled: input.section3dEnabled,
+      preset: input.sectionPreset
+        ? resolveHeroPreset(input.sectionPreset)
+        : undefined,
+    },
+    isMobile: input.isMobile,
+    reducedMotion: input.prefersReducedMotion,
+    webglAvailable: input.webglAvailable,
   });
-  return { mount, preset };
+  return { mount: resolved.mayMountHero3d, preset: resolved.heroPreset };
 }
 
 export function shouldMountProduct3d(
@@ -58,11 +69,15 @@ export function shouldMountProduct3d(
     hasTrustedModel: boolean;
   },
 ): boolean {
-  if (!input.hasTrustedModel) return false;
-  return shouldMountDecorative3d({
-    ...input,
-    featureEnabled: input.visualEffects.productEnabled,
+  const resolved = resolve3DConfig({
+    global: input.visualEffects,
+    animationEnabled: input.animationEnabled,
+    isMobile: input.isMobile,
+    reducedMotion: input.prefersReducedMotion,
+    webglAvailable: input.webglAvailable,
+    hasTrustedModel: input.hasTrustedModel,
   });
+  return resolved.mayMountProduct3d;
 }
 
 /** Clamp hero numeric knobs from CMS (no arbitrary unbounded values). */

@@ -7,7 +7,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import SearchIcon from "@mui/icons-material/Search";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { cartQueryKey } from "@/features/cart/query-keys";
 import { formatMoney } from "@/features/catalog/money";
@@ -20,6 +20,11 @@ import {
 } from "@/features/wishlist/actions";
 import { wishlistQueryKey } from "@/features/wishlist/query-keys";
 import { cn } from "@/lib/cn";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
+
+const EMPTY_VARIANT_OPTIONS: NonNullable<
+  StorefrontProductCard["variantOptions"]
+> = [];
 
 interface ProductCardProps {
   product: StorefrontProductCard;
@@ -41,14 +46,31 @@ export function ProductCard({
   const isList = layout === "list";
   const compact = density === "compact";
   const queryClient = useQueryClient();
+  const hydrated = useHasHydrated();
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [quickOpen, setQuickOpen] = useState(false);
 
-  const variantOptions = product.variantOptions ?? [];
+  const variantOptions = product.variantOptions ?? EMPTY_VARIANT_OPTIONS;
+  const defaultVariantId =
+    product.defaultVariantId ?? variantOptions[0]?.id ?? null;
+
+  const [productScope, setProductScope] = useState(product.id);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
-    product.defaultVariantId ?? variantOptions[0]?.id ?? null,
+    defaultVariantId,
   );
+  const [activeImage, setActiveImage] = useState(0);
+  const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
+
+  if (productScope !== product.id) {
+    setProductScope(product.id);
+    setSelectedVariantId(
+      product.defaultVariantId ??
+        (product.variantOptions?.[0]?.id ?? null),
+    );
+    setActiveImage(0);
+    setFailedUrls(new Set());
+  }
 
   const selectedOption = useMemo(
     () =>
@@ -77,12 +99,6 @@ export function ProductCard({
 
   const wishlistVariantId =
     selectedOption?.id ?? product.defaultVariantId ?? null;
-  /** Avoid SSR/client mismatch while wishlist query resolves. */
-  const [wishlistReady, setWishlistReady] = useState(false);
-
-  useEffect(() => {
-    setWishlistReady(true);
-  }, []);
 
   const wishlistQuery = useQuery({
     queryKey: [...wishlistQueryKey, product.id, wishlistVariantId],
@@ -91,7 +107,7 @@ export function ProductCard({
         productId: product.id,
         variantId: wishlistVariantId!,
       }),
-    enabled: isAuthenticated && Boolean(wishlistVariantId),
+    enabled: hydrated && isAuthenticated && Boolean(wishlistVariantId),
     staleTime: 60_000,
   });
 
@@ -141,7 +157,7 @@ export function ProductCard({
         : formatMoney(displayPrice, currency);
 
   const inWishlist =
-    wishlistReady && isAuthenticated && Boolean(wishlistQuery.data);
+    hydrated && isAuthenticated && Boolean(wishlistQuery.data);
 
   const gallery = useMemo(() => {
     const fromField = product.imageUrls?.filter(Boolean) ?? [];
@@ -150,14 +166,6 @@ export function ProductCard({
       (url): url is string => Boolean(url),
     );
   }, [product.imageUrls, product.primaryImageUrl, product.secondaryImageUrl]);
-
-  const [activeImage, setActiveImage] = useState(0);
-  const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
-
-  useEffect(() => {
-    setActiveImage(0);
-    setFailedUrls(new Set());
-  }, [product.id]);
 
   const visibleGallery = useMemo(
     () => gallery.filter((url) => !failedUrls.has(url)),
@@ -268,7 +276,7 @@ export function ProductCard({
         </Link>
       ) : (
       <div
-        className="relative aspect-square w-full overflow-hidden bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))]"
+        className="group relative aspect-[4/5] w-full overflow-hidden bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))]"
         onMouseLeave={() => setActiveImage(0)}
       >
         {visibleGallery.length > 0 ? (
@@ -282,7 +290,7 @@ export function ProductCard({
               fill
               sizes="(max-width: 640px) 42vw, (max-width: 1024px) 22vw, 200px"
               className={cn(
-                "object-contain transition-opacity duration-200",
+                "object-contain transition-opacity duration-200 motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-105",
                 compact ? "p-1.5" : "p-2 sm:p-2.5",
                 index === safeActive ? "opacity-100" : "opacity-0",
               )}

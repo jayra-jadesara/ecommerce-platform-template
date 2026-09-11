@@ -10,6 +10,7 @@ import {
   STOREFRONT_PAGES_CACHE_TAG,
 } from "@/features/cms/cache";
 import {
+  ABOUT_PAGE_SLUG,
   HOMEPAGE_SLUG,
   pageFormSchema,
   type PageFormValues,
@@ -108,6 +109,45 @@ export async function getOrCreateHomepagePage(): Promise<ContentPage | null> {
   return mapPage(data);
 }
 
+export async function getOrCreateAboutPage(): Promise<ContentPage | null> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return null;
+  const supabase = await createSupabaseServerClient();
+  const { data: existing } = await supabase
+    .from("pages")
+    .select("*")
+    .eq("store_id", storeId)
+    .eq("slug", ABOUT_PAGE_SLUG)
+    .maybeSingle();
+  if (existing) return mapPage(existing);
+
+  const user = await getCurrentUser();
+  const { data, error } = await supabase
+    .from("pages")
+    .insert({
+      store_id: storeId,
+      title: "About",
+      slug: ABOUT_PAGE_SLUG,
+      status: "draft",
+      content: null,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) return null;
+
+  await writeContentAudit({
+    storeId,
+    userId: user?.id ?? null,
+    action: "PAGE_CREATED",
+    entityType: "page",
+    entityId: data.id,
+    metadata: { slug: ABOUT_PAGE_SLUG, title: "About" },
+  });
+
+  return mapPage(data);
+}
+
 export type PageMutationResult =
   | { ok: true; page: ContentPage; message?: string }
   | { ok: false; error: string };
@@ -122,6 +162,9 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
   }
   if (parsed.data.slug === HOMEPAGE_SLUG) {
     return { ok: false, error: "The homepage is managed under Content → Homepage." };
+  }
+  if (parsed.data.slug === ABOUT_PAGE_SLUG) {
+    return { ok: false, error: "The about page is managed under Content → About." };
   }
 
   const values = parsed.data;
@@ -202,6 +245,9 @@ export async function updateAdminPage(
 
   if (current.slug === HOMEPAGE_SLUG && values.slug !== HOMEPAGE_SLUG) {
     return { ok: false, error: "The homepage URL cannot be changed." };
+  }
+  if (current.slug === ABOUT_PAGE_SLUG && values.slug !== ABOUT_PAGE_SLUG) {
+    return { ok: false, error: "The about page URL cannot be changed." };
   }
 
   const wasPublished = current.status === "published";

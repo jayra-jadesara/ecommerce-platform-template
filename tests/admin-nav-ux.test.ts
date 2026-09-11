@@ -49,8 +49,10 @@ describe("admin navigation structure", () => {
     if (content?.kind !== "group") return;
     expect(content.children.map((child) => child.label)).toEqual([
       "Homepage",
+      "About",
       "Pages",
       "Banners",
+      "Blog",
       "Images & Files",
     ]);
     expect(content.children.map((child) => child.href)).toContain(

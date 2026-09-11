@@ -9,7 +9,6 @@ import type {
 import {
   sfBtn,
   sfDisplay,
-  sfEyebrow,
   sfSectionInner,
 } from "@/components/ui/storefront-classes";
 import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";

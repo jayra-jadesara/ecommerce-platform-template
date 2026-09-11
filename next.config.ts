@@ -64,15 +64,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       ...buildSecurityHeaders(),
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
+      // Note: do not set Cache-Control on /_next/static — Next.js owns hashed
+      // asset caching. A custom immutable header can interfere with `next dev`.
       {
         source: "/sw.js",
         headers: [

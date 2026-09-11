@@ -11,7 +11,7 @@ import {
   unpublishPageAction,
 } from "@/features/cms/actions";
 import type { ContentPage } from "@/features/cms/types";
-import { HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import { ABOUT_PAGE_SLUG, HOMEPAGE_SLUG } from "@/features/cms/schemas";
 import { formatDate } from "@/lib/format-date";
 
 export function PagesListClient({
@@ -31,7 +31,9 @@ export function PagesListClient({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const visible = pages.filter((p) => p.slug !== HOMEPAGE_SLUG);
+  const visible = pages.filter(
+    (p) => p.slug !== HOMEPAGE_SLUG && p.slug !== ABOUT_PAGE_SLUG,
+  );
 
   return (
     <div className="space-y-4">

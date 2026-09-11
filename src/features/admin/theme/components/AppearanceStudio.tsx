@@ -36,11 +36,22 @@ import {
   themeEditorFormSchema,
   type ThemeEditorFormValues,
 } from "@/features/admin/theme/editor-schema";
+import {
+  MOTION_STYLE_LABELS,
+  MOTION_STYLE_PRESETS,
+  THREE_STYLE_LABELS,
+  THREE_STYLE_PRESETS,
+  applyMotionStylePreset,
+  applyThreeStylePreset,
+  inferMotionStyle,
+  inferThreeStyle,
+} from "@/features/motion-3d";
 import { VISUAL_3D_PRESET_LABELS } from "@/features/visual-effects/schemas";
 import { defaultPlatformConfig } from "@/config/defaults";
 import { getAdminPath } from "@/config/admin-route";
 import type {
   AnimationConfig,
+  AnimationIntensity,
   BrandConfig,
   ResolvedThemeMode,
   ThemeConfig,
@@ -48,13 +59,20 @@ import type {
   VisualEffectsConfig,
 } from "@/types";
 
+function formIntensityToConfig(
+  intensity: ThemeEditorFormValues["animationIntensity"],
+): AnimationIntensity {
+  if (intensity === "high") return "strong";
+  if (intensity === "subtle") return "subtle";
+  return "medium";
+}
+
 const APPEARANCE_TABS = [
   "Overview",
   "Colors",
-  "Header & Footer",
+  "Layout",
   "Typography",
-  "Animation",
-  "3D",
+  "Motion & 3D",
   "Branding",
 ] as const;
 
@@ -145,6 +163,8 @@ export function AppearanceStudio({
   const [previewMode, setPreviewMode] = useState<ResolvedThemeMode>(
     initialTheme.defaultMode === "dark" ? "dark" : "light",
   );
+  const [previewMotion, setPreviewMotion] = useState(true);
+  const [preview3d, setPreview3d] = useState(false);
   const [paletteSide, setPaletteSide] = useState<"light" | "dark">("light");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -167,6 +187,7 @@ export function AppearanceStudio({
     reset,
     setValue,
     getValues,
+    watch,
     formState: { errors, isDirty },
   } = useForm<ThemeEditorFormValues>({
     resolver: zodResolver(themeEditorFormSchema),
@@ -356,8 +377,7 @@ export function AppearanceStudio({
                   "Pick a palette, then fine-tune brand, surface, text, and status colors.",
                   "Header and footer chrome colors used by the live storefront shell.",
                   "Safe font families with live previews for headings and body text.",
-                  "Motion intensity options that respect reduced-motion preferences.",
-                  "Optional decorative 3D presets — never required for a working storefront.",
+                  "Control animations, interactions and 3D effects across your entire store.",
                   "Read-only branding snapshot used in the live preview panel.",
                 ][tab]
               }
@@ -814,265 +834,449 @@ export function AppearanceStudio({
             ) : null}
 
             {tab === 4 ? (
-              <section className="space-y-5" aria-labelledby="animation-heading">
-                <h2 id="animation-heading" className="text-lg font-semibold">
-                  Animation
-                </h2>
-                <Controller
-                  control={control}
-                  name="animationEnabled"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Enable animations"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="animationIntensity"
-                  render={({ field }) => (
-                    <div className={adminFieldsGrid(2)}>
-                      {(
-                        [
-                          ["none", "None", "No motion"],
-                          ["subtle", "Subtle", "Light, professional motion"],
-                          ["medium", "Smooth", "Balanced storefront motion"],
-                          ["high", "Dynamic", "More expressive transitions"],
-                        ] as const
-                      ).map(([value, label, hint]) => {
-                        const selected = field.value === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
+              <section className="space-y-6" aria-labelledby="motion-3d-heading">
+                <div>
+                  <h2 id="motion-3d-heading" className="text-lg font-semibold">
+                    Motion & 3D
+                  </h2>
+                  <p className="mt-1 text-sm text-[var(--color-muted)]">
+                    Control animations, interactions and 3D effects across your
+                    entire store.
+                  </p>
+                  <p className="mt-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
+                    These settings apply to your entire store. Sections use them
+                    by default — no per-section setup required.
+                  </p>
+                </div>
+
+                {/* Status summary */}
+                <dl className="grid gap-2 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-[var(--color-muted)]">Motion</dt>
+                    <dd className="font-semibold capitalize">
+                      {inferMotionStyle({
+                        enabled: Boolean(watch("animationEnabled")),
+                        intensity: formIntensityToConfig(
+                          watch("animationIntensity"),
+                        ),
+                        defaultPreset: watch("animationPreset"),
+                      }).toLowerCase()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-muted)]">3D</dt>
+                    <dd className="font-semibold">
+                      {watch("visual3dEnabled") ? "On" : "Off"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-muted)]">Mobile</dt>
+                    <dd className="font-semibold">
+                      {watch("visual3dMobileEnabled") ? "Lightweight" : "Off"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[var(--color-muted)]">Reduced motion</dt>
+                    <dd className="font-semibold">
+                      {watch("visual3dRespectReducedMotion")
+                        ? "Respect"
+                        : "Ignore"}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold">Store-wide motion</h3>
+                  <Controller
+                    control={control}
+                    name="animationEnabled"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
                             disabled={!canUpdate || pending}
-                            aria-pressed={selected}
-                            onClick={() => field.onChange(value)}
-                            className={cn(
-                              "rounded-2xl border p-4 text-left transition-colors motion-safe:hover:-translate-y-0.5",
-                              selected
-                                ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-                                : "border-[var(--color-border)]",
-                            )}
+                          />
+                        }
+                        label="Animations"
+                      />
+                    )}
+                  />
+                  <p className="text-xs font-medium text-[var(--color-muted)]">
+                    Motion style
+                  </p>
+                  <div className={adminFieldsGrid(2)}>
+                    {MOTION_STYLE_PRESETS.map((style) => {
+                      const current = inferMotionStyle({
+                        enabled: Boolean(watched.animationEnabled),
+                        intensity: formIntensityToConfig(
+                          watched.animationIntensity ?? "medium",
+                        ),
+                        defaultPreset: watched.animationPreset ?? "fade-up",
+                      });
+                      const selected = current === style;
+                      return (
+                        <button
+                          key={style}
+                          type="button"
+                          disabled={!canUpdate || pending}
+                          aria-pressed={selected}
+                          onClick={() => {
+                            const next = applyMotionStylePreset(style);
+                            setValue("animationEnabled", next.enabled, {
+                              shouldDirty: true,
+                            });
+                            setValue(
+                              "animationIntensity",
+                              !next.enabled
+                                ? "none"
+                                : next.intensity === "strong"
+                                  ? "high"
+                                  : next.intensity,
+                              { shouldDirty: true },
+                            );
+                            setValue("animationPreset", next.defaultPreset, {
+                              shouldDirty: true,
+                            });
+                          }}
+                          className={cn(
+                            "rounded-2xl border p-4 text-left",
+                            selected
+                              ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
+                              : "border-[var(--color-border)]",
+                          )}
+                        >
+                          <p className="text-sm font-semibold capitalize">
+                            {style.toLowerCase()}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--color-muted)]">
+                            {MOTION_STYLE_LABELS[style]}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Controller
+                    control={control}
+                    name="animationPreset"
+                    render={({ field }) => (
+                      <TextField
+                        select
+                        slotProps={{ select: { native: true } }}
+                        label="Scroll reveal style"
+                        fullWidth
+                        disabled={!canUpdate || pending || !watch("animationEnabled")}
+                        value={field.value}
+                        onChange={field.onChange}
+                        helperText="Used when sections follow store defaults."
+                      >
+                        <option value="fade">Fade</option>
+                        <option value="fade-up">Rise</option>
+                        <option value="fade-down">Settle</option>
+                        <option value="slide-up">Slide up</option>
+                        <option value="slide-down">Slide down</option>
+                        <option value="scale">Scale</option>
+                        <option value="none">None</option>
+                      </TextField>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-3 border-t border-[var(--color-border)] pt-5">
+                  <h3 className="text-sm font-semibold">Store-wide 3D</h3>
+                  <Controller
+                    control={control}
+                    name="visual3dEnabled"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={!canUpdate || pending}
+                          />
+                        }
+                        label="3D effects"
+                      />
+                    )}
+                  />
+                  <p className="text-xs font-medium text-[var(--color-muted)]">
+                    3D style
+                  </p>
+                  <div className={adminFieldsGrid(2)}>
+                    {THREE_STYLE_PRESETS.map((style) => {
+                      const current = inferThreeStyle({
+                        enabled: Boolean(watch("visual3dEnabled")),
+                        heroEnabled: Boolean(watch("visual3dHeroEnabled")),
+                        productEnabled: Boolean(watch("visual3dProductEnabled")),
+                        quality: watch("visual3dQuality"),
+                        heroPreset: watch("visual3dHeroPreset"),
+                        mobileEnabled: Boolean(watch("visual3dMobileEnabled")),
+                        respectReducedMotion: Boolean(
+                          watch("visual3dRespectReducedMotion"),
+                        ),
+                      });
+                      const selected = current === style;
+                      return (
+                        <button
+                          key={style}
+                          type="button"
+                          disabled={!canUpdate || pending}
+                          aria-pressed={selected}
+                          onClick={() => {
+                            const next = applyThreeStylePreset(style);
+                            setValue("visual3dEnabled", next.enabled, {
+                              shouldDirty: true,
+                            });
+                            setValue("visual3dHeroEnabled", next.heroEnabled, {
+                              shouldDirty: true,
+                            });
+                            setValue(
+                              "visual3dProductEnabled",
+                              next.productEnabled,
+                              { shouldDirty: true },
+                            );
+                            setValue("visual3dQuality", next.quality, {
+                              shouldDirty: true,
+                            });
+                            setValue("visual3dHeroPreset", next.heroPreset, {
+                              shouldDirty: true,
+                            });
+                            setValue(
+                              "visual3dMobileEnabled",
+                              next.mobileEnabled,
+                              { shouldDirty: true },
+                            );
+                          }}
+                          className={cn(
+                            "rounded-2xl border p-4 text-left",
+                            selected
+                              ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
+                              : "border-[var(--color-border)]",
+                          )}
+                        >
+                          <p className="text-sm font-semibold capitalize">
+                            {style.toLowerCase()}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--color-muted)]">
+                            {THREE_STYLE_LABELS[style]}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <Controller
+                    control={control}
+                    name="visual3dHeroEnabled"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={
+                              !canUpdate || pending || !watch("visual3dEnabled")
+                            }
+                          />
+                        }
+                        label="Hero 3D"
+                      />
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="visual3dProductEnabled"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={
+                              !canUpdate || pending || !watch("visual3dEnabled")
+                            }
+                          />
+                        }
+                        label="Product 3D"
+                      />
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="visual3dQuality"
+                    render={({ field }) => (
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        {(
+                          [
+                            ["LOW", "Low", "Faster on older devices"],
+                            ["MEDIUM", "Balanced", "Good for most stores"],
+                            ["HIGH", "High", "Richer detail when devices allow"],
+                          ] as const
+                        ).map(([value, label, hint]) => {
+                          const selected = field.value === value;
+                          return (
+                            <button
+                              key={value}
+                              type="button"
+                              disabled={
+                                !canUpdate ||
+                                pending ||
+                                !watch("visual3dEnabled")
+                              }
+                              aria-pressed={selected}
+                              onClick={() => field.onChange(value)}
+                              className={cn(
+                                "rounded-2xl border p-4 text-left",
+                                selected
+                                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
+                                  : "border-[var(--color-border)]",
+                              )}
+                            >
+                              <p className="text-sm font-semibold">{label}</p>
+                              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                                {hint}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="visual3dMobileEnabled"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={
+                              !canUpdate || pending || !watch("visual3dEnabled")
+                            }
+                          />
+                        }
+                        label="Mobile 3D (off recommended)"
+                      />
+                    )}
+                  />
+                  <Controller
+                    control={control}
+                    name="visual3dRespectReducedMotion"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={!canUpdate || pending}
+                          />
+                        }
+                        label="Respect reduced motion"
+                      />
+                    )}
+                  />
+                  <details className="rounded-xl border border-[var(--color-border)] p-3">
+                    <summary className="cursor-pointer text-sm font-medium">
+                      Advanced
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      <Controller
+                        control={control}
+                        name="visual3dHeroPreset"
+                        render={({ field }) => (
+                          <TextField
+                            select
+                            slotProps={{ select: { native: true } }}
+                            label="Default hero scene"
+                            fullWidth
+                            disabled={
+                              !canUpdate ||
+                              pending ||
+                              !watch("visual3dEnabled")
+                            }
+                            value={field.value}
+                            onChange={field.onChange}
                           >
-                            <p className="text-sm font-semibold">{label}</p>
-                            <p className="mt-1 text-xs text-[var(--color-muted)]">
-                              {hint}
-                            </p>
-                          </button>
-                        );
-                      })}
+                            {(
+                              Object.keys(VISUAL_3D_PRESET_LABELS) as Array<
+                                keyof typeof VISUAL_3D_PRESET_LABELS
+                              >
+                            ).map((preset) => (
+                              <option key={preset} value={preset}>
+                                {VISUAL_3D_PRESET_LABELS[preset]}
+                              </option>
+                            ))}
+                          </TextField>
+                        )}
+                      />
+                      <button
+                        type="button"
+                        className={cn(adminBtn("secondary"), "!min-h-9")}
+                        disabled={!canUpdate || pending}
+                        onClick={() => {
+                          const motion = applyMotionStylePreset("MODERN");
+                          const three = applyThreeStylePreset("NONE");
+                          setValue("animationEnabled", motion.enabled, {
+                            shouldDirty: true,
+                          });
+                          setValue("animationIntensity", "medium", {
+                            shouldDirty: true,
+                          });
+                          setValue("animationPreset", motion.defaultPreset, {
+                            shouldDirty: true,
+                          });
+                          setValue("visual3dEnabled", three.enabled, {
+                            shouldDirty: true,
+                          });
+                          setValue("visual3dHeroEnabled", three.heroEnabled, {
+                            shouldDirty: true,
+                          });
+                          setValue(
+                            "visual3dProductEnabled",
+                            three.productEnabled,
+                            { shouldDirty: true },
+                          );
+                          setValue("visual3dQuality", three.quality, {
+                            shouldDirty: true,
+                          });
+                          setValue("visual3dHeroPreset", three.heroPreset, {
+                            shouldDirty: true,
+                          });
+                          setValue("visual3dMobileEnabled", false, {
+                            shouldDirty: true,
+                          });
+                          setValue("visual3dRespectReducedMotion", true, {
+                            shouldDirty: true,
+                          });
+                        }}
+                      >
+                        Reset to recommended
+                      </button>
+                      <p className="text-xs text-[var(--color-muted)]">
+                        Loads Modern motion and 3D Off into the form. Save to
+                        publish.
+                      </p>
                     </div>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="animationPreset"
-                  render={({ field }) => (
-                    <TextField
-                      select
-                      slotProps={{ select: { native: true } }}
-                      label="Default preset"
-                      fullWidth
-                      required
-                      disabled={!canUpdate || pending}
-                      value={field.value}
-                      onChange={field.onChange}
-                    >
-                      <option value="fade">Fade</option>
-                      <option value="fade-up">Fade up</option>
-                      <option value="fade-down">Fade down</option>
-                      <option value="slide-up">Slide up</option>
-                      <option value="slide-down">Slide down</option>
-                      <option value="scale">Scale</option>
-                      <option value="none">None</option>
-                    </TextField>
-                  )}
-                />
-                <p className="text-xs text-[var(--color-muted)]">
-                  Prefers-reduced-motion is always respected on the storefront.
-                </p>
+                  </details>
+                </div>
               </section>
             ) : null}
 
             {tab === 5 ? (
-              <section
-                className="space-y-4"
-                aria-labelledby="visual-effects-heading"
-              >
-                <h2 id="visual-effects-heading" className="text-lg font-semibold">
-                  3D effects
-                </h2>
-                <p className="text-sm text-[var(--color-muted)]">
-                  Optional decorative depth for heroes and products. Your store
-                  always works without these effects.
-                </p>
-                <Controller
-                  control={control}
-                  name="visual3dEnabled"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="3D effects"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dHeroEnabled"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Hero scene"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dProductEnabled"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Product 3D"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dQuality"
-                  render={({ field }) => (
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      {(
-                        [
-                          ["LOW", "Basic", "Faster on older devices"],
-                          ["MEDIUM", "Balanced", "Good quality for most stores"],
-                          ["HIGH", "High Quality", "Richer detail when devices allow"],
-                        ] as const
-                      ).map(([value, label, hint]) => {
-                        const selected = field.value === value;
-                        return (
-                          <button
-                            key={value}
-                            type="button"
-                            disabled={!canUpdate || pending}
-                            aria-pressed={selected}
-                            onClick={() => field.onChange(value)}
-                            className={cn(
-                              "rounded-2xl border p-4 text-left",
-                              selected
-                                ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-                                : "border-[var(--color-border)]",
-                            )}
-                          >
-                            <p className="text-sm font-semibold">{label}</p>
-                            <p className="mt-1 text-xs text-[var(--color-muted)]">
-                              {hint}
-                            </p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dHeroPreset"
-                  render={({ field }) => (
-                    <TextField
-                      select
-                      slotProps={{ select: { native: true } }}
-                      label="Default hero scene"
-                      fullWidth
-                      disabled={!canUpdate || pending}
-                      value={field.value}
-                      onChange={field.onChange}
-                      helperText="Homepage hero sections can override this."
-                    >
-                      {(
-                        Object.keys(VISUAL_3D_PRESET_LABELS) as Array<
-                          keyof typeof VISUAL_3D_PRESET_LABELS
-                        >
-                      ).map((preset) => (
-                        <option key={preset} value={preset}>
-                          {VISUAL_3D_PRESET_LABELS[preset]}
-                        </option>
-                      ))}
-                    </TextField>
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dMobileEnabled"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Mobile 3D (off recommended)"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="visual3dRespectReducedMotion"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Respect reduced motion"
-                    />
-                  )}
-                />
-              </section>
-            ) : null}
-
-            {tab === 6 ? (
               <section className="space-y-4" aria-labelledby="branding-heading">
                 <h2 id="branding-heading" className="text-lg font-semibold">
                   Branding preview
@@ -1129,7 +1333,7 @@ export function AppearanceStudio({
             </h2>
             <TextField
               select
-                      slotProps={{ select: { native: true } }}
+              slotProps={{ select: { native: true } }}
               size="small"
               label="Preview mode"
               value={previewMode}
@@ -1142,10 +1346,36 @@ export function AppearanceStudio({
               <option value="dark">Dark</option>
             </TextField>
           </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={cn(
+                adminBtn(previewMotion ? "primary" : "outline"),
+                "!min-h-9",
+              )}
+              onClick={() => setPreviewMotion((v) => !v)}
+            >
+              Preview Motion
+            </button>
+            <button
+              type="button"
+              className={cn(
+                adminBtn(preview3d ? "primary" : "outline"),
+                "!min-h-9",
+              )}
+              onClick={() => setPreview3d((v) => !v)}
+            >
+              Preview 3D
+            </button>
+          </div>
           <ThemeEditorPreviewCanvas
             theme={liveTheme}
             mode={previewMode}
             brand={brand}
+            previewMotion={previewMotion}
+            preview3d={preview3d}
+            motionActive={Boolean(watch("animationEnabled"))}
+            threeActive={Boolean(watch("visual3dEnabled"))}
           />
         </aside>
       </div>

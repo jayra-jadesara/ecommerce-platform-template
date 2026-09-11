@@ -17,6 +17,7 @@ import RestartAltIcon from "@mui/icons-material/RestartAlt";
 import ViewListIcon from "@mui/icons-material/ViewList";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
@@ -100,14 +101,10 @@ export function ProductsCatalog({
   const router = useRouter();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [mounted, setMounted] = useState(false);
+  const hydrated = useHasHydrated();
   const filterWrapRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  const filtersVisible = mounted && filtersOpen;
+  const filtersVisible = hydrated && filtersOpen;
   const current = { q, categoryId, sort, page, basePath, lockCategory };
 
   const selectedCount = useMemo(

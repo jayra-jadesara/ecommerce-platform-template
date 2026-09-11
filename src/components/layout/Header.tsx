@@ -104,9 +104,16 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
   const hydrated = useHasHydrated();
   const [menuPath, setMenuPath] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchPath, setSearchPath] = useState(pathname);
   const [scrolled, setScrolled] = useState(false);
   const { resolvedMode } = useThemeMode();
   const open = menuPath === pathname;
+
+  // Close search when the route changes (React-recommended props→state adjust).
+  if (searchPath !== pathname) {
+    setSearchPath(pathname);
+    if (searchOpen) setSearchOpen(false);
+  }
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -117,10 +124,6 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
-
-  useEffect(() => {
-    setSearchOpen(false);
-  }, [pathname]);
 
   const logoSrc =
     hydrated && resolvedMode === "dark" && brand.logoDarkUrl

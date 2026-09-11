@@ -13,6 +13,7 @@ import type { StorefrontProductDetail } from "@/features/catalog/types";
 import type { VisualEffectsConfig, AnimationConfig } from "@/types";
 import { sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
+import { resolve3DConfig } from "@/features/motion-3d";
 
 const Product3DViewer = dynamic(
   () =>
@@ -109,10 +110,14 @@ export function ProductDetailClient({
     </div>
   );
 
-  const product3dEligible =
-    Boolean(product.modelPath) &&
-    visualEffects.enabled &&
-    visualEffects.productEnabled;
+  const product3dEligible = resolve3DConfig({
+    global: visualEffects,
+    animationEnabled: animation.enabled,
+    isMobile: false,
+    reducedMotion: false,
+    webglAvailable: true,
+    hasTrustedModel: Boolean(product.modelPath),
+  }).mayMountProduct3d;
 
   const galleryShellClass =
     "sf-pdp-media relative overflow-hidden rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)]";

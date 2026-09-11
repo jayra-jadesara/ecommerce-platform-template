@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { getProductsBySlugsAction } from "@/features/catalog/products-by-slugs-action";
 import {
   getRecentlyViewedSlugs,
   recordRecentlyViewedSlug,
 } from "@/features/catalog/recently-viewed";
-import type { StorefrontProductCard } from "@/features/catalog/storefront";
 import { ProductRail } from "@/features/catalog/components/ProductRail";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 
 type RecentlyViewedProductsProps = {
   currentSlug: string;
@@ -20,25 +21,25 @@ export function RecentlyViewedProducts({
   currency,
   isAuthenticated = false,
 }: RecentlyViewedProductsProps) {
-  const [products, setProducts] = useState<StorefrontProductCard[]>([]);
+  const hydrated = useHasHydrated();
 
   useEffect(() => {
     recordRecentlyViewedSlug(currentSlug);
-    const slugs = getRecentlyViewedSlugs(currentSlug).slice(0, 5);
-    if (!slugs.length) {
-      setProducts([]);
-      return;
-    }
-
-    let cancelled = false;
-    void getProductsBySlugsAction(slugs).then((items) => {
-      if (!cancelled) setProducts(items.slice(0, 5));
-    });
-
-    return () => {
-      cancelled = true;
-    };
   }, [currentSlug]);
+
+  const slugs = hydrated
+    ? getRecentlyViewedSlugs(currentSlug).slice(0, 5)
+    : [];
+
+  const { data: products = [] } = useQuery({
+    queryKey: ["recently-viewed", currentSlug, slugs.join("|")],
+    queryFn: async () => {
+      const items = await getProductsBySlugsAction(slugs);
+      return items.slice(0, 5);
+    },
+    enabled: hydrated && slugs.length > 0,
+    staleTime: 30_000,
+  });
 
   if (!products.length) return null;
 

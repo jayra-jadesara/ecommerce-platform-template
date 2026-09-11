@@ -43,8 +43,9 @@ describe("phase 22 commerce experience", () => {
     const suggest = readSrc(
       "src/features/admin/theme/components/LogoThemeSuggest.tsx",
     );
-    expect(suggest).toContain("useEffect");
-    expect(suggest).toContain("readLogoThemeSuggestion()");
+    expect(suggest).toContain("useSyncExternalStore");
+    expect(suggest).toContain("readLogoThemeSuggestion");
+    expect(suggest).toContain("subscribeLogoThemeSuggestion");
     expect(suggest).not.toContain(
       'typeof window === "undefined" ? null : readLogoThemeSuggestion()',
     );
@@ -53,10 +54,13 @@ describe("phase 22 commerce experience", () => {
   it("upgrades storefront discovery chrome", () => {
     const header = readSrc("src/components/layout/Header.tsx");
     const products = readSrc("src/app/(storefront)/products/page.tsx");
+    const catalog = readSrc("src/features/catalog/components/ProductsCatalog.tsx");
     const home = readSrc("src/app/(storefront)/home-view.tsx");
     expect(header).toContain("Search products");
     expect(header).toContain("searchOpen");
-    expect(products).toContain('name="sort"');
+    expect(products).toContain("ProductsCatalog");
+    expect(catalog).toContain('id="catalog-sort"');
+    expect(catalog).toContain('name="sort"');
     expect(home).toContain("productHeroImages");
     expect(home).toContain("loading=\"eager\"");
     expect(home).toContain("Featured products");

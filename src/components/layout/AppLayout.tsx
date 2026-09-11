@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
+import { DeveloperCredit } from "@/components/layout/DeveloperCredit";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
@@ -29,6 +30,7 @@ export function AppLayout({ config, children }: AppLayoutProps) {
         contact={config.contact}
         social={config.social}
       />
+      <DeveloperCredit />
       <ScrollToTop />
     </div>
   );

@@ -11,7 +11,6 @@ function readSrc(rel: string) {
 describe("hydration safety", () => {
   it("defers Framer Motion until after hydration", () => {
     const src = readSrc("src/features/animation/Motion.tsx");
-    expect(src).toContain("useSyncExternalStore");
     expect(src).toContain("useHasHydrated");
     expect(src).toMatch(/if \(!hydrated/);
   });

@@ -26,8 +26,10 @@ function read(rel: string) {
 
 describe("phase 21.1 — admin design system", () => {
   it("exposes reusable admin spacing / card helpers", () => {
-    expect(adminFormStack()).toContain("gap-5");
-    expect(adminFormGrid()).toContain("md:grid-cols-2");
+    expect(adminFormStack()).toBe("admin-form-stack");
+    expect(adminFormGrid()).toContain("admin-form-stack");
+    expect(adminFormGrid()).toContain("admin-fields-grid");
+    expect(adminFormGrid()).toContain("admin-fields-grid--2-md");
     expect(adminCard()).toContain("var(--color-card)");
     expect(adminScrollHide()).toBe("admin-scroll-hide");
   });
@@ -130,7 +132,10 @@ describe("phase 21.1 — product form sections + nav IA", () => {
   it("product form sections use shared field rhythm", () => {
     const src = read("src/features/catalog/components/ProductForm.tsx");
     expect(src).toContain("admin-form-stack");
-    expect(src).toContain("gap-5");
+    expect(src).toContain("adminFieldsGrid");
+    const css = read("src/styles/admin.css");
+    expect(css).toContain(".admin-form-stack");
+    expect(css).toContain("gap: 1.25rem");
   });
 
   it("keeps business-friendly top-level nav groups", () => {

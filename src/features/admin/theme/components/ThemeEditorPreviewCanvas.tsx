@@ -2,6 +2,7 @@
 
 import type { BrandConfig, ResolvedThemeMode, ThemeConfig } from "@/types";
 import { ThemePreview } from "@/features/theme/ThemePreview";
+import { cn } from "@/lib/cn";
 
 const PREVIEW_NAV = ["Home", "Shop", "About", "Contact"];
 
@@ -20,16 +21,26 @@ export function ThemeEditorPreviewCanvas({
   theme,
   mode,
   brand,
+  previewMotion = false,
+  preview3d = false,
+  motionActive = true,
+  threeActive = false,
 }: {
   theme: ThemeConfig;
   mode: ResolvedThemeMode;
   brand: BrandConfig;
+  previewMotion?: boolean;
+  preview3d?: boolean;
+  motionActive?: boolean;
+  threeActive?: boolean;
 }) {
   const logo =
     mode === "dark" && brand.logoDarkUrl ? brand.logoDarkUrl : brand.logoUrl;
   const tagline = meaningfulTagline(brand.tagline);
   /** Lifestyle / OG image only — never fall back to logo for cover. */
   const lifestyleImage = brand.socialImageUrl?.trim() || null;
+  const motionOn = previewMotion && motionActive;
+  const threeOn = preview3d && threeActive;
 
   return (
     <ThemePreview
@@ -41,13 +52,18 @@ export function ThemeEditorPreviewCanvas({
         className="text-[var(--color-foreground)]"
         style={{ background: "var(--color-background)" }}
       >
-        {/* Header */}
         <header
-          className="flex items-center gap-2 border-b px-3 py-2.5"
+          className={cn(
+            "flex items-center gap-2 border-b px-3 py-2.5",
+            motionOn && "sf-motion-preview-in",
+          )}
           style={{
             background: "var(--color-header-background)",
             color: "var(--color-header-foreground)",
             borderColor: "var(--color-border)",
+            ...(motionOn
+              ? { animation: "sf-motion-preview-in 0.55s ease both" }
+              : {}),
           }}
         >
           <div className="flex min-w-0 flex-1 items-center gap-2">
@@ -94,7 +110,8 @@ export function ThemeEditorPreviewCanvas({
                 key={icon}
                 className="inline-flex h-6 min-w-6 items-center justify-center rounded-full border text-[9px] font-semibold"
                 style={{
-                  borderColor: "color-mix(in srgb, var(--color-header-foreground) 18%, transparent)",
+                  borderColor:
+                    "color-mix(in srgb, var(--color-header-foreground) 18%, transparent)",
                 }}
               >
                 {icon === "BAG" ? "1" : icon}
@@ -103,12 +120,14 @@ export function ThemeEditorPreviewCanvas({
           </div>
         </header>
 
-        {/* Hero — split: copy + visual. Logo stays in a card, not as cover. */}
         <section
           className="relative overflow-hidden"
           style={{
             background:
               "linear-gradient(145deg, color-mix(in srgb, var(--color-primary) 12%, var(--color-surface)), var(--color-background) 55%, color-mix(in srgb, var(--color-accent) 14%, var(--color-surface)))",
+            ...(motionOn
+              ? { animation: "sf-motion-preview-rise 0.7s ease both" }
+              : {}),
           }}
         >
           <div
@@ -119,6 +138,17 @@ export function ThemeEditorPreviewCanvas({
                 "radial-gradient(ellipse 60% 50% at 90% 10%, color-mix(in srgb, var(--color-accent) 45%, transparent), transparent 60%), radial-gradient(ellipse 50% 60% at 0% 100%, color-mix(in srgb, var(--color-primary) 30%, transparent), transparent 55%)",
             }}
           />
+          {threeOn ? (
+            <div
+              className="pointer-events-none absolute inset-0"
+              aria-hidden
+              style={{
+                background:
+                  "radial-gradient(circle at 72% 42%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 42%), radial-gradient(circle at 30% 70%, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent 45%)",
+                opacity: 0.85,
+              }}
+            />
+          ) : null}
 
           <div className="relative grid gap-4 px-3 py-5 sm:grid-cols-[1.1fr_0.9fr] sm:items-center sm:gap-3 sm:px-4 sm:py-6">
             <div className="space-y-2.5">
@@ -166,6 +196,13 @@ export function ThemeEditorPreviewCanvas({
                   background: "var(--color-card)",
                   borderColor: "var(--color-border)",
                   borderRadius: "var(--radius-default, 12px)",
+                  ...(threeOn
+                    ? {
+                        boxShadow:
+                          "0 12px 28px color-mix(in srgb, var(--color-primary) 22%, transparent)",
+                        transform: "translateY(-2px)",
+                      }
+                    : {}),
                 }}
               >
                 {logo || lifestyleImage ? (
@@ -220,7 +257,6 @@ export function ThemeEditorPreviewCanvas({
           </div>
         </section>
 
-        {/* Categories — forced 3 columns for narrow preview pane */}
         <section className="px-3 py-4">
           <p
             className="text-[9px] font-semibold uppercase tracking-[0.14em]"
@@ -250,6 +286,17 @@ export function ThemeEditorPreviewCanvas({
                     background: "var(--color-card)",
                     borderColor: "var(--color-border)",
                     borderRadius: "var(--radius-default, 10px)",
+                    ...(motionOn
+                      ? {
+                          animation: `sf-motion-preview-rise 0.55s ease ${0.08 * i}s both`,
+                        }
+                      : {}),
+                    ...(threeOn
+                      ? {
+                          boxShadow:
+                            "0 8px 18px color-mix(in srgb, var(--color-foreground) 8%, transparent)",
+                        }
+                      : {}),
                   }}
                 >
                   <div
@@ -275,7 +322,6 @@ export function ThemeEditorPreviewCanvas({
           </div>
         </section>
 
-        {/* Products */}
         <section
           className="gap-2.5 px-3 pb-4"
           style={{
@@ -291,6 +337,11 @@ export function ThemeEditorPreviewCanvas({
                 background: "var(--color-card)",
                 borderColor: "var(--color-border)",
                 borderRadius: "var(--radius-default, 10px)",
+                ...(motionOn
+                  ? {
+                      animation: `sf-motion-preview-rise 0.6s ease ${0.12 + 0.08 * i}s both`,
+                    }
+                  : {}),
               }}
             >
               <div
@@ -328,6 +379,33 @@ export function ThemeEditorPreviewCanvas({
               </div>
             </article>
           ))}
+        </section>
+
+        <section className="px-3 pb-4">
+          <div
+            className="rounded-xl border px-3 py-3 text-center"
+            style={{
+              borderColor: "var(--color-border)",
+              background:
+                "color-mix(in srgb, var(--color-primary) 8%, var(--color-card))",
+              ...(motionOn
+                ? { animation: "sf-motion-preview-in 0.65s ease 0.2s both" }
+                : {}),
+            }}
+          >
+            <p
+              className="font-[family-name:var(--font-display)] text-sm font-semibold"
+              style={{ color: "var(--color-foreground)" }}
+            >
+              Ready to shop?
+            </p>
+            <p
+              className="mt-1 text-[10px]"
+              style={{ color: "var(--color-muted)" }}
+            >
+              Your store motion and 3D settings apply store-wide.
+            </p>
+          </div>
         </section>
 
         <footer

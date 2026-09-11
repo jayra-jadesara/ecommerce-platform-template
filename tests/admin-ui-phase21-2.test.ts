@@ -98,7 +98,8 @@ describe("phase 21.2 — color studio library", () => {
     expect(src).toContain("Preview Dark");
     expect(src).toContain("packsByCategory");
     expect(src).toContain("Heading font");
-    expect(src).toContain("High Quality");
+    expect(src).toContain("Motion & 3D");
+    expect(src).toContain("High");
     expect(src).toContain("sticky top-0");
     expect(src).toContain("APPEARANCE_TABS");
     expect(src).not.toContain('from "@mui/material/Tabs"');

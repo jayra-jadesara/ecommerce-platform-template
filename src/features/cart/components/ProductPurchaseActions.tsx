@@ -4,7 +4,8 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
@@ -49,12 +50,7 @@ export function ProductPurchaseActions({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [buyPending, setBuyPending] = useState(false);
-  /** Avoid SSR/client mismatch while wishlist query resolves. */
-  const [wishlistReady, setWishlistReady] = useState(false);
-
-  useEffect(() => {
-    setWishlistReady(true);
-  }, []);
+  const hydrated = useHasHydrated();
 
   const maxQty = Math.min(
     CART_MAX_QUANTITY,
@@ -64,7 +60,7 @@ export function ProductPurchaseActions({
   const wishlistQuery = useQuery({
     queryKey: [...wishlistQueryKey, productId, variantId],
     queryFn: () => isInWishlistAction({ productId, variantId }),
-    enabled: isAuthenticated,
+    enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
   });
 
@@ -121,7 +117,7 @@ export function ProductPurchaseActions({
 
   const busy = addMutation.isPending || buyPending;
   const inWishlist =
-    wishlistReady && isAuthenticated && Boolean(wishlistQuery.data);
+    hydrated && isAuthenticated && Boolean(wishlistQuery.data);
 
   const railBtn = "min-h-10 justify-center !px-3 !text-sm";
   const stackBtn =

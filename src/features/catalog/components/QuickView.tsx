@@ -9,7 +9,7 @@ import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
@@ -221,17 +221,23 @@ function QuickViewBody({
     [product.images, selected?.id],
   );
 
-  const [activeImageId, setActiveImageId] = useState<string | null>(
-    () => gallery.find((img) => img.isPrimary)?.id ?? gallery[0]?.id ?? null,
-  );
-
-  useEffect(() => {
+  const preferredImageId = useMemo(() => {
     const preferred =
       gallery.find((img) => img.variantId === selected?.id) ??
       gallery.find((img) => img.isPrimary) ??
       gallery[0];
-    setActiveImageId(preferred?.id ?? null);
+    return preferred?.id ?? null;
   }, [gallery, selected?.id]);
+
+  const [pickedImageId, setPickedImageId] = useState<string | null>(null);
+  const [imageScope, setImageScope] = useState(selected?.id ?? null);
+
+  if (imageScope !== (selected?.id ?? null)) {
+    setImageScope(selected?.id ?? null);
+    setPickedImageId(null);
+  }
+
+  const activeImageId = pickedImageId ?? preferredImageId;
 
   const image =
     gallery.find((img) => img.id === activeImageId) ?? gallery[0] ?? null;
@@ -368,7 +374,7 @@ function QuickViewBody({
                     type="button"
                     aria-label={`Show image of ${product.name}`}
                     aria-pressed={active}
-                    onClick={() => setActiveImageId(thumb.id)}
+                    onClick={() => setPickedImageId(thumb.id)}
                     className={cn(
                       "relative h-11 w-11 overflow-hidden rounded-md border-2 bg-white transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
                       active

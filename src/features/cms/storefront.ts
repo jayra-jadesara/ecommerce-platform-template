@@ -9,6 +9,7 @@ import {
   STOREFRONT_PAGES_CACHE_TAG,
 } from "@/features/cms/cache";
 import {
+  ABOUT_PAGE_SLUG,
   HOMEPAGE_SLUG,
   parseSectionConfig,
   type SectionConfigMap,
@@ -95,7 +96,10 @@ async function loadPublishedPageUncached(
   const sections: StorefrontSection[] = [];
   for (const row of sectionRows ?? []) {
     const parsed = parseSectionConfig(row.section_type, row.config);
-    if (!parsed.ok) continue;
+    if (!parsed.ok) {
+      // Keep unsupported/custom rows out of the storefront without aborting the page.
+      continue;
+    }
     sections.push({
       id: row.id,
       pageId: row.page_id,
@@ -164,6 +168,11 @@ export async function getPublishedStorefrontPage(
 ): Promise<StorefrontPagePayload | null> {
   const storeId = await resolveActiveStoreId();
   if (!storeId) return null;
+
+  // About is edited often in admin — skip Data Cache so publish/save shows immediately.
+  if (slug === ABOUT_PAGE_SLUG) {
+    return loadPublishedPageUncached(storeId, slug);
+  }
 
   const cached = unstable_cache(
     () => loadPublishedPageUncached(storeId, slug),

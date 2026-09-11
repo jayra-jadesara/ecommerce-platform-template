@@ -20,11 +20,11 @@ import {
   nextThemeMode,
   sanitizeStoredMode,
 } from "@/features/theme/modes";
+import { motionDesignTokens, resolveMotionConfig } from "@/features/motion-3d";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import type {
   PlatformConfig,
   ResolvedThemeMode,
-  ThemeConfig,
   ThemeMode,
 } from "@/types";
 
@@ -42,9 +42,6 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const modeListeners = new Set<() => void>();
-
-/** Latest theme config for getSnapshot — avoid closing over a new object each render. */
-let latestThemeConfig: ThemeConfig | null = null;
 
 function subscribeMode(listener: () => void) {
   modeListeners.add(listener);
@@ -68,16 +65,6 @@ function writeStoredMode(mode: ThemeMode) {
   modeListeners.forEach((listener) => listener());
 }
 
-function getModeSnapshot(): ThemeMode {
-  const cfg = latestThemeConfig;
-  if (!cfg) return "light";
-  return sanitizeStoredMode(readRawStoredMode(), cfg);
-}
-
-function getModeServerSnapshot(): ThemeMode {
-  return latestThemeConfig?.defaultMode ?? "light";
-}
-
 function subscribeSystem(listener: () => void) {
   const mq = window.matchMedia("(prefers-color-scheme: dark)");
   mq.addEventListener("change", listener);
@@ -88,11 +75,6 @@ function getSystemSnapshot(): ResolvedThemeMode {
   return window.matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
-}
-
-function getSystemServerSnapshot(): ResolvedThemeMode {
-  const defaultMode = latestThemeConfig?.defaultMode ?? "light";
-  return defaultMode === "dark" ? "dark" : "light";
 }
 
 /** Stable light/dark used for SSR + first client paint (never reads OS/localStorage). */
@@ -110,7 +92,6 @@ export function PlatformThemeProvider({
   children,
 }: PlatformThemeProviderProps) {
   const { theme: themeConfig, typography } = config;
-  latestThemeConfig = themeConfig;
 
   const availableModes = useMemo(
     () => getAvailableThemeModes(themeConfig),
@@ -126,14 +107,14 @@ export function PlatformThemeProvider({
 
   const mode = useSyncExternalStore(
     subscribeMode,
-    getModeSnapshot,
-    getModeServerSnapshot,
+    () => sanitizeStoredMode(readRawStoredMode(), themeConfig),
+    () => themeConfig.defaultMode,
   );
 
   const systemMode = useSyncExternalStore(
     subscribeSystem,
     getSystemSnapshot,
-    getSystemServerSnapshot,
+    () => ssrSafeResolvedMode(themeConfig.defaultMode),
   );
 
   const resolvedMode: ResolvedThemeMode = useMemo(() => {
@@ -183,6 +164,18 @@ export function PlatformThemeProvider({
       );
     }
   }, [tokensKey, resolvedMode, themeConfig]);
+
+  useEffect(() => {
+    const effective = resolveMotionConfig({
+      global: config.animation,
+      reducedMotion: false,
+    });
+    const vars = motionDesignTokens(effective);
+    const root = document.documentElement;
+    for (const [key, value] of Object.entries(vars)) {
+      root.style.setProperty(key, value);
+    }
+  }, [config.animation]);
 
   const setMode = useCallback(
     (next: ThemeMode) => {

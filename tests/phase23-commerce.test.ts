@@ -14,7 +14,7 @@ describe("phase 23 commerce redesign", () => {
     const card = readSrc("src/features/catalog/components/ProductCard.tsx");
     expect(quick).toContain("addToCartAction");
     expect(quick).toContain("getProductQuickViewAction");
-    expect(quick).toContain("View details");
+    expect(quick).toContain("View full details");
     expect(card).toContain("QuickView");
     expect(card).toContain("Quick view");
   });
@@ -27,15 +27,16 @@ describe("phase 23 commerce redesign", () => {
     expect(card).toContain("selectedVariantId");
   });
 
-  it("provides mobile collection filter drawer", () => {
-    const drawer = readSrc(
-      "src/features/catalog/components/CollectionFilterDrawer.tsx",
+  it("provides collection filters inlined in ProductsCatalog", () => {
+    const catalog = readSrc(
+      "src/features/catalog/components/ProductsCatalog.tsx",
     );
     const products = readSrc("src/app/(storefront)/products/page.tsx");
-    expect(drawer).toContain("Filter & sort");
-    expect(drawer).toContain("Apply");
-    expect(drawer).toContain("Reset");
-    expect(products).toContain("CollectionFilterDrawer");
+    expect(products).toContain("ProductsCatalog");
+    expect(catalog).toContain('aria-label="Product filters"');
+    expect(catalog).toContain("Show filter");
+    expect(catalog).toContain('id="catalog-sort"');
+    expect(catalog).toContain("resetFilters");
   });
 
   it("wires free-shipping progress into cart surfaces", () => {
@@ -58,8 +59,10 @@ describe("phase 23 commerce redesign", () => {
     expect(pdp).toContain("DeliveryInfoBlock");
     expect(pdp).toContain("Limited stock");
     expect(pdp).not.toContain("SKU {selected.sku}");
-    expect(purchase).toContain("Buy now");
+    expect(purchase).toContain("Buy it now");
     expect(purchase).toContain("/checkout");
+    expect(purchase).not.toMatch(/in stock:\s*\{/i);
+    expect(purchase).not.toContain("inventoryQuantity");
   });
 
   it("redesigns contact from configured store data only", () => {

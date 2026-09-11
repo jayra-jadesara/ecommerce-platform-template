@@ -24,19 +24,19 @@ describe("admin required field markers", () => {
 
   it("marks store settings required fields", () => {
     expect(read("features/admin/settings/components/GeneralSettingsForm.tsx")).toMatch(
-      /label="Display name"[\s\S]*?required/,
+      /label="Store name shoppers see"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/BrandingSettingsForm.tsx")).toMatch(
       /label="Brand name"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/SeoSettingsForm.tsx")).toMatch(
-      /label="Site title"[\s\S]*?required/,
+      /label="Store name in Google"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/NavigationSettingsForm.tsx")).toMatch(
-      /label="Label"[\s\S]*?required/,
+      /label="Button text"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/ShippingSettingsForm.tsx")).toMatch(
-      /label="Delivery charge"[\s\S]*?required/,
+      /label=\{\`Delivery fee[\s\S]*?required/,
     );
   });
 

@@ -4,7 +4,7 @@ import Alert from "@mui/material/Alert";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deleteMediaAction,
   uploadMediaAction,
@@ -85,14 +85,17 @@ export function MediaLibraryClient({
   );
   const [filterQ, setFilterQ] = useState(q);
   const [filterFolder, setFilterFolder] = useState<MediaFolder | "all">(folder);
+  const [urlFilters, setUrlFilters] = useState({ q, folder });
+
+  // Keep draft inputs aligned when the URL/search params change (back/forward).
+  if (urlFilters.q !== q || urlFilters.folder !== folder) {
+    setUrlFilters({ q, folder });
+    setFilterQ(q);
+    setFilterFolder(folder);
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = useMemo(() => initialItems, [initialItems]);
-
-  useEffect(() => {
-    setFilterQ(q);
-    setFilterFolder(folder);
-  }, [q, folder]);
 
   return (
     <div style={adminStackStyle}>

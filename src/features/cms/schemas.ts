@@ -81,7 +81,7 @@ export const SECTION_TYPE_DESCRIPTIONS: Record<SupportedSectionType, string> = {
   products: "Show products from your catalog",
   banner: "Promotional image with optional button",
   text_image: "Story block with text beside an image",
-  about: "Tell customers about your business",
+  about: "Founder story — heading, quote, portrait, and timeline",
   features: "Highlight why customers choose you",
   statistics: "Key numbers about your business",
   testimonials: "Customer quotes",
@@ -134,8 +134,11 @@ export const shortTextSchema = z
 export const sectionCommonSettingsSchema = z.object({
   backgroundStyle: z.enum(SECTION_BACKGROUND_STYLES).default("default"),
   spacingPreset: z.enum(SECTION_SPACING_PRESETS).default("normal"),
+  /** Use store Motion & 3D defaults unless explicitly customized. */
+  motionSource: z.enum(["global", "custom"]).default("global"),
   animationPreset: z.enum(SECTION_ANIMATION_PRESETS).default("fade-up"),
   animationEnabled: z.boolean().default(true),
+  animationIntensity: z.enum(["subtle", "smooth"]).default("smooth"),
 });
 
 export type SectionCommonSettings = z.infer<typeof sectionCommonSettingsSchema>;
@@ -171,6 +174,8 @@ export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   alignment: z.enum(["left", "center", "right"]).default("left"),
   /** Safe layout presets — never arbitrary CSS/JS from the database. */
   layoutPreset: z.enum(HERO_LAYOUT_PRESETS).default("SPLIT"),
+  /** Use store 3D defaults unless explicitly customized. */
+  threeSource: z.enum(["global", "custom"]).default("global"),
   /** Optional decorative 3D — allow-listed preset only; never arbitrary code. */
   enable3d: z.boolean().default(false),
   scene3dPreset: z
@@ -228,10 +233,33 @@ export const textImageSectionConfigSchema = sectionCommonSettingsSchema.extend({
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
 
+/** Timeline row for Priya-style about / founder story. */
+export const aboutTimelineItemSchema = z.object({
+  label: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(z.string().max(200)),
+  year: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(z.string().max(40)),
+  logoPath: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === "" ? null : String(v)))
+    .pipe(z.string().max(500).nullable()),
+});
+
 export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   heading: shortTextSchema.default(""),
+  /** Word in the heading to accent (underline). Empty = last word. */
+  headingHighlight: z.string().max(80).optional().default(""),
   description: z.string().max(4000).optional().default(""),
+  quote: z.string().max(1000).optional().default(""),
+  quoteAuthor: z.string().max(120).optional().default(""),
   imagePath: z.string().max(500).nullable().optional().default(null),
+  imageCaptionName: z.string().max(120).optional().default(""),
+  imageCaptionRole: z.string().max(120).optional().default(""),
+  timelineItems: z.array(aboutTimelineItemSchema).max(6).default([]),
   buttonText: z.string().max(80).optional().default(""),
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
@@ -352,14 +380,37 @@ export function parseSectionConfig(
     return { ok: false, error: "Unsupported section type." };
   }
   const schema = sectionConfigByType[sectionType];
-  const parsed = schema.safeParse(config ?? {});
-  if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid section settings.",
-    };
+  const cleaned = sanitizeSectionConfigInput(config);
+  const parsed = schema.safeParse(cleaned);
+  if (parsed.success) {
+    return { ok: true, type: sectionType, config: parsed.data };
   }
-  return { ok: true, type: sectionType, config: parsed.data };
+
+  // Retry with defaults merged — older drafts / editor-only keys should not hide sections.
+  const merged = schema.safeParse({
+    ...defaultConfigForType(sectionType),
+    ...cleaned,
+  });
+  if (merged.success) {
+    return { ok: true, type: sectionType, config: merged.data };
+  }
+
+  return {
+    ok: false,
+    error: parsed.error.issues[0]?.message ?? "Invalid section settings.",
+  };
+}
+
+/**
+ * Drop unknown keys that must not fail storefront parse.
+ * Allow-listed motion/3D fields (including optional overrides) pass through
+ * section schemas — never strip enable3d / scene3dPreset here.
+ */
+function sanitizeSectionConfigInput(config: unknown): Record<string, unknown> {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return {};
+  }
+  return { ...(config as Record<string, unknown>) };
 }
 
 export function defaultConfigForType(
@@ -426,3 +477,5 @@ export const bannerFormSchema = z
 export type BannerFormValues = z.infer<typeof bannerFormSchema>;
 
 export const HOMEPAGE_SLUG = "home";
+/** Dedicated storefront About route (`/about`) — sections managed under Content → About. */
+export const ABOUT_PAGE_SLUG = "about";

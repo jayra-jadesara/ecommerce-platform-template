@@ -98,10 +98,12 @@ describe("phase 21 — storefront chrome", () => {
 describe("phase 21 — product card & empty states", () => {
   it("product card uses theme tokens and hover treatments", () => {
     const src = readSrc("src/features/catalog/components/ProductCard.tsx");
+    const css = readSrc("src/styles/storefront.css");
     expect(src).toContain("secondaryImageUrl");
     expect(src).toContain("compareAtPrice");
     expect(src).toContain("motion-safe:group-hover:scale-105");
     expect(src).toContain("sfBtn");
+    expect(css).toContain(".sf-product-tile:hover");
     expect(src).not.toMatch(/#[0-9a-fA-F]{6}/);
   });
 
@@ -116,7 +118,9 @@ describe("phase 21 — product card & empty states", () => {
     const src = readSrc("src/features/cart/components/HeaderCartControl.tsx");
     expect(src).toContain("removeFromCartAction");
     expect(src).toContain("updateCartItemQuantityAction");
-    expect(src).toContain("Checkout");
+    // Platform commerce CTA is intentionally "Buy it now" → /checkout.
+    expect(src).toContain("Buy it now");
+    expect(src).toContain('href="/checkout"');
     expect(src).toContain("Your cart is empty");
   });
 });

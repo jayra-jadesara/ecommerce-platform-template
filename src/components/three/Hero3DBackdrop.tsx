@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { Visual3dQuality } from "@/features/visual-effects/schemas";
 import { resolveHeroPreset } from "@/features/visual-effects/schemas";
 
@@ -24,7 +24,11 @@ function computeAllowMotion(input: {
   respectReducedMotion: boolean;
   mobileEnabled: boolean;
 }): boolean {
-  if (!input.enabled || input.resolvedPreset === "NONE" || !input.animationStoreEnabled) {
+  if (
+    !input.enabled ||
+    input.resolvedPreset === "NONE" ||
+    !input.animationStoreEnabled
+  ) {
     return false;
   }
   if (typeof window === "undefined") return false;
@@ -33,6 +37,17 @@ function computeAllowMotion(input: {
   if (input.respectReducedMotion && reduced) return false;
   if (mobile && !input.mobileEnabled) return false;
   return true;
+}
+
+function subscribeMotionMedia(onStoreChange: () => void) {
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const mobile = window.matchMedia("(max-width: 767px)");
+  reduced.addEventListener("change", onStoreChange);
+  mobile.addEventListener("change", onStoreChange);
+  return () => {
+    reduced.removeEventListener("change", onStoreChange);
+    mobile.removeEventListener("change", onStoreChange);
+  };
 }
 
 /**
@@ -52,24 +67,19 @@ export function Hero3DBackdrop({
   fallback = null,
 }: Hero3DProps) {
   const resolvedPreset = resolveHeroPreset(preset);
-  const [allowMotion, setAllowMotion] = useState(false);
 
-  useEffect(() => {
-    const next = computeAllowMotion({
-      enabled,
-      resolvedPreset,
-      animationStoreEnabled,
-      respectReducedMotion,
-      mobileEnabled,
-    });
-    setAllowMotion((prev) => (prev === next ? prev : next));
-  }, [
-    enabled,
-    resolvedPreset,
-    animationStoreEnabled,
-    respectReducedMotion,
-    mobileEnabled,
-  ]);
+  const allowMotion = useSyncExternalStore(
+    subscribeMotionMedia,
+    () =>
+      computeAllowMotion({
+        enabled,
+        resolvedPreset,
+        animationStoreEnabled,
+        respectReducedMotion,
+        mobileEnabled,
+      }),
+    () => false,
+  );
 
   if (!enabled || resolvedPreset === "NONE") {
     return <>{fallback}</>;

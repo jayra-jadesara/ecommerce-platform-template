@@ -185,6 +185,32 @@ export async function updateStoreThemeSettings(
   const visualChanged = changedFields.some((key) =>
     key.startsWith("visualEffects."),
   );
+  const motionChanged = changedFields.some(
+    (key) =>
+      key.startsWith("animation.") || key.startsWith("visualEffects."),
+  );
+
+  if (motionChanged) {
+    await supabase.from("audit_logs").insert({
+      store_id: storeId,
+      user_id: admin.user.id,
+      action: "MOTION_3D_SETTINGS_UPDATED",
+      entity_type: "store_motion_3d_settings",
+      entity_id: storeId,
+      metadata: {
+        changed_fields: changedFields.filter(
+          (key) =>
+            key.startsWith("animation.") || key.startsWith("visualEffects."),
+        ),
+        motion_enabled: values.animationEnabled,
+        motion_intensity: values.animationIntensity,
+        three_enabled: values.visual3dEnabled,
+        mobile_3d: values.visual3dMobileEnabled,
+        respect_reduced_motion: values.visual3dRespectReducedMotion,
+      },
+    });
+  }
+
   if (visualChanged) {
     await supabase.from("audit_logs").insert({
       store_id: storeId,

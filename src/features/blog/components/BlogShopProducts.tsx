@@ -5,12 +5,12 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import {
   isInWishlistAction,
   toggleWishlistAction,
 } from "@/features/wishlist/actions";
 import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import { useHasHydrated } from "@/lib/use-has-hydrated";
 
 export type BlogShopProduct = {
   id: string;
@@ -26,16 +26,12 @@ function ProductWishlistButton({
   productName: string;
 }) {
   const queryClient = useQueryClient();
-  /** Avoid SSR/client mismatch while wishlist query resolves. */
-  const [wishlistReady, setWishlistReady] = useState(false);
-
-  useEffect(() => {
-    setWishlistReady(true);
-  }, []);
+  const hydrated = useHasHydrated();
 
   const wishlistQuery = useQuery({
     queryKey: [...wishlistQueryKey, "contains", productId],
     queryFn: () => isInWishlistAction({ productId }),
+    enabled: hydrated,
     staleTime: 30_000,
   });
 
@@ -47,7 +43,7 @@ function ProductWishlistButton({
     },
   });
 
-  const inWishlist = wishlistReady && Boolean(wishlistQuery.data);
+  const inWishlist = hydrated && Boolean(wishlistQuery.data);
 
   return (
     <button

@@ -6,17 +6,18 @@ type SectionAccentHeadingProps = {
   accentWord?: string;
   className?: string;
   as?: "h1" | "h2" | "h3";
+  align?: "center" | "left";
 };
 
 /**
- * Centered section title like “Explore our Collections”
- * with a brush-stroke underline under the accent word.
+ * Section title with a brush-stroke underline under the accent word.
  */
 export function SectionAccentHeading({
   title,
   accentWord,
   className,
   as: Tag = "h2",
+  align = "center",
 }: SectionAccentHeadingProps) {
   const trimmed = title.trim();
   const parts = trimmed.split(/\s+/).filter(Boolean);
@@ -42,10 +43,16 @@ export function SectionAccentHeading({
 
   return (
     <Tag
-        className={cn(
-        "text-center font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)] sm:text-2xl md:text-[1.75rem]",
+      className={cn(
+        "font-[family-name:var(--font-display)] font-semibold tracking-tight text-[var(--color-foreground)]",
         className,
       )}
+      style={{
+        textAlign: align === "center" ? "center" : "left",
+        fontSize: "clamp(1.5rem, 2.4vw, 1.75rem)",
+        lineHeight: 1.2,
+        margin: 0,
+      }}
     >
       {before ? <span>{before}</span> : null}
       <span className="relative inline-block text-[var(--color-primary)]">

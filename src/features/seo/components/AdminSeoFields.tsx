@@ -1,7 +1,7 @@
 "use client";
 
 import TextField from "@mui/material/TextField";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import {
   buildSeoDescription,
   buildSeoTitle,
@@ -40,40 +40,46 @@ export function AdminSeoFields({
   descriptionLabel?: string;
   resetKey?: string | number | null;
 }) {
-  const titleManual = useRef(false);
-  const descriptionManual = useRef(false);
   const autoTitle = buildSeoTitle(sourceTitle);
   const autoDescription = buildSeoDescription(
     sourceDescription || sourceTitle,
   );
 
-  useEffect(() => {
-    titleManual.current = false;
-    descriptionManual.current = false;
-  }, [resetKey]);
+  const [titleForcedManual, setTitleForcedManual] = useState(false);
+  const [descriptionForcedManual, setDescriptionForcedManual] = useState(false);
+  const [seenResetKey, setSeenResetKey] = useState(resetKey);
+
+  if (seenResetKey !== resetKey) {
+    setSeenResetKey(resetKey);
+    setTitleForcedManual(false);
+    setDescriptionForcedManual(false);
+  }
+
+  const titleLooksManual =
+    seoTitle.trim() !== "" && !shouldKeepAutoSeo(seoTitle, autoTitle);
+  const descriptionLooksManual =
+    seoDescription.trim() !== "" &&
+    !shouldKeepAutoSeo(seoDescription, autoDescription);
+
+  const titleManual = titleForcedManual || titleLooksManual;
+  const descriptionManual = descriptionForcedManual || descriptionLooksManual;
 
   useEffect(() => {
-    if (titleManual.current) return;
-    if (!shouldKeepAutoSeo(seoTitle, autoTitle) && seoTitle.trim()) {
-      titleManual.current = true;
-      return;
-    }
+    if (titleManual) return;
     if (autoTitle !== seoTitle) onSeoTitleChange(autoTitle);
-  }, [autoTitle, seoTitle, onSeoTitleChange]);
+  }, [autoTitle, seoTitle, titleManual, onSeoTitleChange]);
 
   useEffect(() => {
-    if (descriptionManual.current) return;
-    if (
-      !shouldKeepAutoSeo(seoDescription, autoDescription) &&
-      seoDescription.trim()
-    ) {
-      descriptionManual.current = true;
-      return;
-    }
+    if (descriptionManual) return;
     if (autoDescription !== seoDescription) {
       onSeoDescriptionChange(autoDescription);
     }
-  }, [autoDescription, seoDescription, onSeoDescriptionChange]);
+  }, [
+    autoDescription,
+    seoDescription,
+    descriptionManual,
+    onSeoDescriptionChange,
+  ]);
 
   const previewTitle = seoTitle.trim() || autoTitle || sourceTitle;
   const previewDescription =
@@ -91,11 +97,11 @@ export function AdminSeoFields({
         disabled={disabled}
         value={seoTitle}
         onChange={(event) => {
-          titleManual.current = true;
+          setTitleForcedManual(true);
           onSeoTitleChange(event.target.value);
         }}
         helperText={
-          titleManual.current
+          titleManual
             ? `${seoTitle.length}/60 · Customized`
             : `${seoTitle.length}/60 · Auto from name`
         }
@@ -108,19 +114,19 @@ export function AdminSeoFields({
         disabled={disabled}
         value={seoDescription}
         onChange={(event) => {
-          descriptionManual.current = true;
+          setDescriptionForcedManual(true);
           onSeoDescriptionChange(event.target.value);
         }}
         helperText={
-          descriptionManual.current
+          descriptionManual
             ? `${seoDescription.length}/155 · Customized`
             : `${seoDescription.length}/155 · Auto from description`
         }
       />
       <GoogleSeoPreview
         title={previewTitle}
-        url={previewUrl}
         description={previewDescription}
+        url={previewUrl}
       />
     </div>
   );

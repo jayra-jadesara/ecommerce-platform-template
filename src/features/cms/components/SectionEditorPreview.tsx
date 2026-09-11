@@ -6,7 +6,6 @@ import { SECTION_TYPE_LABELS } from "@/features/cms/schemas";
 import { sfBtn, sfDisplay } from "@/components/ui/storefront-classes";
 import {
   pageOptionLabel,
-  STORE_PAGE_OPTIONS,
 } from "@/features/admin/ui/StorePageLinkField";
 
 export { STORE_PAGE_OPTIONS } from "@/features/admin/ui/StorePageLinkField";
@@ -359,7 +358,60 @@ export function SectionEditorPreview({
     return <CategoriesPreview config={config} />;
   }
 
-  if (sectionType === "about" || sectionType === "cta" || sectionType === "text_image") {
+  if (sectionType === "about") {
+    const portrait = resolveCmsImageUrl(config.imagePath as string | null);
+    return (
+      <PreviewShell>
+        <div className="grid gap-4 p-4 sm:grid-cols-2">
+          <div className="space-y-2 text-left">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+              About
+            </p>
+            <h3 className={`${sfDisplay()} text-lg`}>
+              {text(config.heading, "A Visionary Beyond Generations")}
+            </h3>
+            {text(config.description) ? (
+              <p className="text-xs leading-relaxed text-[var(--color-muted)] line-clamp-4">
+                {text(config.description)}
+              </p>
+            ) : null}
+            {text(config.quote) ? (
+              <p className="text-xs italic text-[var(--color-primary)]">
+                “{text(config.quote)}”
+                {text(config.quoteAuthor)
+                  ? ` — ${text(config.quoteAuthor)}`
+                  : ""}
+              </p>
+            ) : null}
+          </div>
+          <div className="relative min-h-[8rem] overflow-hidden rounded-lg bg-[var(--color-primary)]">
+            {portrait ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={portrait}
+                alt=""
+                className="absolute inset-0 h-full w-full object-cover object-top"
+              />
+            ) : (
+              <p className="flex h-full items-center justify-center p-3 text-center text-xs text-[var(--color-button-foreground)] opacity-80">
+                Portrait image
+              </p>
+            )}
+            {text(config.imageCaptionName) ? (
+              <div className="absolute bottom-2 left-2 rounded bg-[color-mix(in_srgb,var(--color-accent)_90%,#fff)] px-2 py-1 text-[0.65rem] font-semibold text-white">
+                {text(config.imageCaptionName)}
+                {text(config.imageCaptionRole)
+                  ? ` · ${text(config.imageCaptionRole)}`
+                  : ""}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </PreviewShell>
+    );
+  }
+
+  if (sectionType === "cta" || sectionType === "text_image") {
     return (
       <SimpleBlockPreview
         eyebrow={SECTION_TYPE_LABELS[sectionType]}

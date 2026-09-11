@@ -57,6 +57,8 @@ type Props = {
   canUpdate: boolean;
   canDelete: boolean;
   canPublish: boolean;
+  /** Shown in helper copy (default: Homepage). */
+  pageLabel?: string;
 };
 
 type EditableConfig = Record<string, unknown>;
@@ -68,6 +70,7 @@ export function HomepageBuilder({
   canUpdate,
   canDelete,
   canPublish,
+  pageLabel = "Homepage",
 }: Props) {
   const router = useRouter();
   const [sections, setSections] = useState(initialSections);
@@ -107,8 +110,14 @@ export function HomepageBuilder({
     setEditConfig({
       ...defaults,
       ...section.config,
-      enable3d: false,
-      scene3dPreset: "NONE",
+      motionSource:
+        (section.config as { motionSource?: string }).motionSource === "custom"
+          ? "custom"
+          : "global",
+      threeSource:
+        (section.config as { threeSource?: string }).threeSource === "custom"
+          ? "custom"
+          : "global",
     });
   }
 
@@ -117,7 +126,7 @@ export function HomepageBuilder({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
         <div>
           <p className="text-sm text-[var(--color-muted)]">
-            Your homepage is made of sections. Changes stay in draft until you publish.
+            Your {pageLabel.toLowerCase()} is made of sections. Changes stay in draft until you publish.
           </p>
           <p className="mt-1 text-sm">
             Status:{" "}
@@ -146,7 +155,7 @@ export function HomepageBuilder({
                       return;
                     }
                     setStatus("draft");
-                    setMessage("Homepage unpublished (draft).");
+                    setMessage(`${pageLabel} unpublished (draft).`);
                     refresh();
                   });
                 }}
@@ -166,7 +175,7 @@ export function HomepageBuilder({
                       return;
                     }
                     setStatus("published");
-                    setMessage("Homepage published.");
+                    setMessage(`${pageLabel} published.`);
                     refresh();
                   });
                 }}
@@ -495,9 +504,12 @@ export function HomepageBuilder({
                       null,
                     config: {
                       ...editConfig,
-                      // Decorative WebGL backdrop disabled — CSS glow is automatic.
-                      enable3d: false,
-                      scene3dPreset: "NONE",
+                      motionSource: editConfig.motionSource ?? "global",
+                      threeSource: editConfig.threeSource ?? "global",
+                      // When using store defaults, clear section-level 3D flags.
+                      ...(editConfig.threeSource === "custom"
+                        ? {}
+                        : { enable3d: false, scene3dPreset: "NONE" }),
                     },
                   });
                   if (!result.ok) {
@@ -517,8 +529,11 @@ export function HomepageBuilder({
                               null,
                             config: {
                               ...editConfig,
-                              enable3d: false,
-                              scene3dPreset: "NONE",
+                              motionSource: editConfig.motionSource ?? "global",
+                              threeSource: editConfig.threeSource ?? "global",
+                              ...(editConfig.threeSource === "custom"
+                                ? {}
+                                : { enable3d: false, scene3dPreset: "NONE" }),
                             },
                           }
                         : s,
@@ -542,10 +557,27 @@ export function HomepageBuilder({
         onClose={() => setMediaField(null)}
         onSelect={(selection) => {
           if (!mediaField) return;
-          setEditConfig((prev) => ({
-            ...prev,
-            [mediaField]: selection.storagePath,
-          }));
+          setEditConfig((prev) => {
+            const nested = mediaField.match(
+              /^timelineItems\.(\d+)\.logoPath$/,
+            );
+            if (nested) {
+              const index = Number(nested[1]);
+              const items = [
+                ...((prev.timelineItems as Array<Record<string, unknown>>) ??
+                  []),
+              ];
+              items[index] = {
+                ...(items[index] ?? {}),
+                logoPath: selection.storagePath,
+              };
+              return { ...prev, timelineItems: items };
+            }
+            return {
+              ...prev,
+              [mediaField]: selection.storagePath,
+            };
+          });
           setMediaField(null);
         }}
       />
@@ -786,7 +818,7 @@ function SectionConfigFields({
         </>
       ) : null}
 
-      {sectionType === "about" || sectionType === "cta" || sectionType === "text_image" ? (
+      {sectionType === "cta" || sectionType === "text_image" ? (
         <>
           <div className={adminFieldGroup()} style={adminStackStyle}>
             <p className="admin-field-group__title">1. Content</p>
@@ -848,15 +880,195 @@ function SectionConfigFields({
               />
               <StorePageLinkField
                 value={config.buttonLink as string | null}
-                fallback={sectionType === "about" ? "/contact" : "/products"}
+                fallback="/products"
                 onChange={(v) => setField("buttonLink", v)}
                 helperText={
                   config.buttonText
-                    ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.buttonLink ?? (sectionType === "about" ? "/contact" : "/products")))}`
+                    ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.buttonLink ?? "/products"))}`
                     : "Pick where the button should send shoppers"
                 }
               />
             </div>
+          </div>
+        </>
+      ) : null}
+
+      {sectionType === "about" ? (
+        <>
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">1. Story</p>
+            <p className="admin-field-group__hint">
+              Priya-style founder block: heading, story, quote, and portrait.
+            </p>
+            <TextField
+              label="Heading"
+              fullWidth
+              value={String(config.heading ?? "")}
+              onChange={(e) => setField("heading", e.target.value)}
+              helperText='Example: "A Visionary Beyond Generations"'
+            />
+            <TextField
+              label="Highlighted word"
+              fullWidth
+              value={String(config.headingHighlight ?? "")}
+              onChange={(e) => setField("headingHighlight", e.target.value)}
+              helperText="Word in the heading to accent (e.g. Visionary). Leave blank for the last word."
+            />
+            <TextField
+              label="Description"
+              fullWidth
+              multiline
+              minRows={5}
+              value={String(config.description ?? "")}
+              onChange={(e) => setField("description", e.target.value)}
+            />
+            <TextField
+              label="Quote"
+              fullWidth
+              multiline
+              minRows={2}
+              value={String(config.quote ?? "")}
+              onChange={(e) => setField("quote", e.target.value)}
+            />
+            <TextField
+              label="Quote author"
+              fullWidth
+              value={String(config.quoteAuthor ?? "")}
+              onChange={(e) => setField("quoteAuthor", e.target.value)}
+            />
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">2. Portrait</p>
+            <ImageField
+              label="Portrait image"
+              value={config.imagePath as string | null}
+              onPick={() => onPickMedia("imagePath")}
+              onClear={() => setField("imagePath", null)}
+            />
+            <TextField
+              label="Caption name"
+              fullWidth
+              value={String(config.imageCaptionName ?? "")}
+              onChange={(e) => setField("imageCaptionName", e.target.value)}
+              helperText="Shown on the photo badge"
+            />
+            <TextField
+              label="Caption role"
+              fullWidth
+              value={String(config.imageCaptionRole ?? "")}
+              onChange={(e) => setField("imageCaptionRole", e.target.value)}
+              helperText='Example: "Founder"'
+            />
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">3. Timeline</p>
+            <p className="admin-field-group__hint">
+              Optional milestones (logo, label, year) under the story.
+            </p>
+            {(
+              (config.timelineItems as Array<{
+                label?: string;
+                year?: string;
+                logoPath?: string | null;
+              }>) ?? []
+            ).map((item, index) => (
+              <div
+                key={`timeline-${index}`}
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3"
+                style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">Milestone {index + 1}</p>
+                  <button
+                    type="button"
+                    className="text-xs text-[var(--color-error)]"
+                    onClick={() => {
+                      const next = [
+                        ...((config.timelineItems as unknown[]) ?? []),
+                      ];
+                      next.splice(index, 1);
+                      setField("timelineItems", next);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <TextField
+                  label="Label"
+                  fullWidth
+                  size="small"
+                  value={String(item.label ?? "")}
+                  onChange={(e) => {
+                    const next = [
+                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], label: e.target.value };
+                    setField("timelineItems", next);
+                  }}
+                />
+                <TextField
+                  label="Year / note"
+                  fullWidth
+                  size="small"
+                  value={String(item.year ?? "")}
+                  onChange={(e) => {
+                    const next = [
+                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], year: e.target.value };
+                    setField("timelineItems", next);
+                  }}
+                />
+                <ImageField
+                  label="Logo (optional)"
+                  value={(item.logoPath as string | null) ?? null}
+                  onPick={() => onPickMedia(`timelineItems.${index}.logoPath`)}
+                  onClear={() => {
+                    const next = [
+                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], logoPath: null };
+                    setField("timelineItems", next);
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-foreground)] hover:border-[var(--color-primary)]"
+              onClick={() => {
+                const current =
+                  (config.timelineItems as unknown[]) ?? [];
+                if (current.length >= 6) return;
+                setField("timelineItems", [
+                  ...current,
+                  { label: "", year: "", logoPath: null },
+                ]);
+              }}
+            >
+              Add milestone
+            </button>
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">4. Button (optional)</p>
+            <TextField
+              label="Button text"
+              fullWidth
+              value={String(config.buttonText ?? "")}
+              onChange={(e) => setField("buttonText", e.target.value)}
+              helperText="Leave blank to hide"
+            />
+            <StorePageLinkField
+              value={config.buttonLink as string | null}
+              fallback="/contact"
+              onChange={(v) => setField("buttonLink", v)}
+            />
           </div>
         </>
       ) : null}
@@ -1105,60 +1317,144 @@ function SectionConfigFields({
 
       <details className="admin-field-group">
         <summary className="cursor-pointer text-sm font-medium">
-          Advanced (optional)
+          Motion &amp; 3D (optional)
         </summary>
         <p className="admin-field-group__hint mt-2">
-          Defaults work for most stores — change only if needed.
+          Uses your store Appearance → Motion &amp; 3D settings by default. Only
+          customize this section if you need something different.
         </p>
-        <div className={`mt-3 ${adminFieldsGrid(2)}`}>
+        <div className={`mt-3 space-y-4`}>
           <TextField
             select
-            label="Background"
+            label="Motion"
             fullWidth
-            value={String(config.backgroundStyle ?? "default")}
-            onChange={(e) => setField("backgroundStyle", e.target.value)}
+            value={String(config.motionSource ?? "global")}
+            onChange={(e) => setField("motionSource", e.target.value)}
+            helperText="Use store default for most sections."
           >
-            {SECTION_BACKGROUND_STYLES.map((style) => (
-              <MenuItem key={style} value={style}>
-                {style}
-              </MenuItem>
-            ))}
+            <MenuItem value="global">Use store default</MenuItem>
+            <MenuItem value="custom">Customize for this section</MenuItem>
           </TextField>
-          <TextField
-            select
-            label="Spacing"
-            fullWidth
-            value={String(config.spacingPreset ?? "normal")}
-            onChange={(e) => setField("spacingPreset", e.target.value)}
-          >
-            {SECTION_SPACING_PRESETS.map((style) => (
-              <MenuItem key={style} value={style}>
-                {style}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            select
-            label="Animation"
-            fullWidth
-            value={String(config.animationPreset ?? "fade-up")}
-            onChange={(e) => setField("animationPreset", e.target.value)}
-          >
-            {SECTION_ANIMATION_PRESETS.map((style) => (
-              <MenuItem key={style} value={style}>
-                {style}
-              </MenuItem>
-            ))}
-          </TextField>
-          <FormControlLabel
-            control={
-              <Switch
-                checked={config.animationEnabled !== false}
-                onChange={(_, checked) => setField("animationEnabled", checked)}
+          {(config.motionSource ?? "global") === "custom" ? (
+            <div className={adminFieldsGrid(2)}>
+              <TextField
+                select
+                label="Animation"
+                fullWidth
+                value={String(config.animationPreset ?? "fade-up")}
+                onChange={(e) => setField("animationPreset", e.target.value)}
+              >
+                {SECTION_ANIMATION_PRESETS.map((style) => (
+                  <MenuItem key={style} value={style}>
+                    {style === "none"
+                      ? "None"
+                      : style === "fade"
+                        ? "Fade"
+                        : style === "fade-up"
+                          ? "Rise"
+                          : style === "scale"
+                            ? "Scale"
+                            : style.startsWith("slide")
+                              ? "Slide"
+                              : style}
+                  </MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Intensity"
+                fullWidth
+                value={String(config.animationIntensity ?? "smooth")}
+                onChange={(e) => setField("animationIntensity", e.target.value)}
+              >
+                <MenuItem value="subtle">Subtle</MenuItem>
+                <MenuItem value="smooth">Smooth</MenuItem>
+              </TextField>
+              <FormControlLabel
+                control={
+                  <Switch
+                    checked={config.animationEnabled !== false}
+                    onChange={(_, checked) =>
+                      setField("animationEnabled", checked)
+                    }
+                  />
+                }
+                label="Play entrance animation"
               />
-            }
-            label="Play entrance animation"
-          />
+            </div>
+          ) : null}
+
+          {sectionType === "hero" ? (
+            <>
+              <TextField
+                select
+                label="3D"
+                fullWidth
+                value={String(config.threeSource ?? "global")}
+                onChange={(e) => setField("threeSource", e.target.value)}
+                helperText="Store default keeps Hero 3D aligned with Appearance."
+              >
+                <MenuItem value="global">Use store default</MenuItem>
+                <MenuItem value="custom">Customize for this section</MenuItem>
+              </TextField>
+              {(config.threeSource ?? "global") === "custom" ? (
+                <div className={adminFieldsGrid(2)}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={Boolean(config.enable3d)}
+                        onChange={(_, checked) => setField("enable3d", checked)}
+                      />
+                    }
+                    label="Enable 3D"
+                  />
+                  <TextField
+                    select
+                    label="Preset"
+                    fullWidth
+                    value={String(config.scene3dPreset ?? "NONE")}
+                    onChange={(e) => setField("scene3dPreset", e.target.value)}
+                    disabled={!config.enable3d}
+                  >
+                    <MenuItem value="NONE">None</MenuItem>
+                    <MenuItem value="SOFT_GEOMETRY">Soft</MenuItem>
+                    <MenuItem value="FLOATING_SHAPES">Floating</MenuItem>
+                    <MenuItem value="ABSTRACT_PARTICLES">Particles</MenuItem>
+                    <MenuItem value="PRODUCT_ORBIT">Orbit</MenuItem>
+                  </TextField>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          <div className={adminFieldsGrid(2)}>
+            <TextField
+              select
+              label="Background"
+              fullWidth
+              value={String(config.backgroundStyle ?? "default")}
+              onChange={(e) => setField("backgroundStyle", e.target.value)}
+            >
+              {SECTION_BACKGROUND_STYLES.map((style) => (
+                <MenuItem key={style} value={style}>
+                  {style}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
+              select
+              label="Spacing"
+              fullWidth
+              value={String(config.spacingPreset ?? "normal")}
+              onChange={(e) => setField("spacingPreset", e.target.value)}
+            >
+              {SECTION_SPACING_PRESETS.map((style) => (
+                <MenuItem key={style} value={style}>
+                  {style}
+                </MenuItem>
+              ))}
+            </TextField>
+          </div>
         </div>
       </details>
     </div>

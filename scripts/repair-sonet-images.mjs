@@ -4,8 +4,8 @@
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { basename, extname, join } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { extname, join } from "node:path";
 import { loadEnvFiles, normalizeSupabaseUrl } from "./lib/env.mjs";
 
 const IMAGES_DIR =

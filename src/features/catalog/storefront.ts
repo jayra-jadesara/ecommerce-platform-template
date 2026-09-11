@@ -332,9 +332,9 @@ async function listStorefrontProductsUncached(
     return { items: [], total: 0, page: query.page, pageSize: query.pageSize };
   }
 
-  let items: StorefrontProductCard[] = data.map((row) =>
-    mapProductListRowToCard(row),
-  );
+  let items: StorefrontProductCard[] = (
+    data as unknown as ProductListRow[]
+  ).map((row) => mapProductListRowToCard(row));
 
   if (priceSort) {
     items.sort((a, b) => {
@@ -639,7 +639,7 @@ export async function listSimilarStorefrontProducts(input: {
       })
     : { items: [] as StorefrontProductCard[] };
 
-  let items = byCategory.items.filter((p) => p.id !== input.productId);
+  const items = byCategory.items.filter((p) => p.id !== input.productId);
 
   if (items.length < Math.min(3, limit)) {
     const featured = await listStorefrontProducts({
@@ -699,7 +699,9 @@ export async function listStorefrontProductsBySlugs(
 
   if (error || !data) return [];
 
-  const cards = (data as ProductListRow[]).map(mapProductListRowToCard);
+  const cards = (data as unknown as ProductListRow[]).map(
+    mapProductListRowToCard,
+  );
   const bySlug = new Map(cards.map((c) => [c.slug, c]));
   return unique
     .map((slug) => bySlug.get(slug))

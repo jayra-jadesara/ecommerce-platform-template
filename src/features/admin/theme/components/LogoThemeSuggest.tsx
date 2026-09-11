@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { getAdminPath } from "@/config/admin-route";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
@@ -42,11 +42,20 @@ export function writeLogoThemeSuggestion(theme: GeneratedBrandTheme): void {
     updatedAt: Date.now(),
   };
   sessionStorage.setItem(LOGO_THEME_SUGGESTION_KEY, JSON.stringify(payload));
+  logoThemeSuggestionListeners.forEach((listener) => listener());
 }
 
 export function clearLogoThemeSuggestion(): void {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(LOGO_THEME_SUGGESTION_KEY);
+  logoThemeSuggestionListeners.forEach((listener) => listener());
+}
+
+const logoThemeSuggestionListeners = new Set<() => void>();
+
+function subscribeLogoThemeSuggestion(onStoreChange: () => void) {
+  logoThemeSuggestionListeners.add(onStoreChange);
+  return () => logoThemeSuggestionListeners.delete(onStoreChange);
 }
 
 interface LogoThemeSuggestProps {
@@ -64,12 +73,11 @@ export function LogoThemeSuggest({
 }: LogoThemeSuggestProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Always null on first paint so SSR matches the client; restore session after mount.
-  const [suggestion, setSuggestion] = useState<LogoThemeSuggestion | null>(null);
-
-  useEffect(() => {
-    setSuggestion(readLogoThemeSuggestion());
-  }, []);
+  const suggestion = useSyncExternalStore(
+    subscribeLogoThemeSuggestion,
+    readLogoThemeSuggestion,
+    () => null,
+  );
 
   const generate = useCallback(
     async (source?: string | File) => {
@@ -90,8 +98,6 @@ export function LogoThemeSuggest({
           return null;
         }
         writeLogoThemeSuggestion(theme);
-        const stored = readLogoThemeSuggestion();
-        setSuggestion(stored);
         return theme;
       } catch {
         setError(

@@ -12,9 +12,15 @@ const SECTIONS = [
     description: "Hero, products, categories, and other homepage sections.",
   },
   {
+    href: "/content/about",
+    title: "About",
+    description:
+      "Founder story for /about — heading, quote, portrait, and timeline (Priya-style).",
+  },
+  {
     href: "/content/pages",
     title: "Pages",
-    description: "About, Shipping, Privacy, and other store pages (not the Homepage).",
+    description: "Shipping, Privacy, and other store pages (not Homepage or About).",
   },
   {
     href: "/content/banners",

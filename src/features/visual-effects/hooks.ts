@@ -66,7 +66,7 @@ function getMobile768ServerSnapshot() {
 }
 
 /** Storefront mobile breakpoint (768px). */
-export function useIsMobileViewport(_breakpointPx = 768): boolean {
+export function useIsMobileViewport(): boolean {
   return useSyncExternalStore(
     subscribeMobile768,
     getMobile768Snapshot,

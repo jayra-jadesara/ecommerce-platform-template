@@ -31,10 +31,12 @@ describe("storefront UX polish", () => {
     const shell = readSrc("src/components/layout/PageShell.tsx");
     const back = readSrc("src/components/layout/BackLink.tsx");
     const products = readSrc("src/app/(storefront)/products/page.tsx");
+    const catalog = readSrc("src/features/catalog/components/ProductsCatalog.tsx");
     expect(shell).toContain("pt-8");
     expect(shell).toContain("md:pt-10");
     expect(back).toContain("rounded-full");
     expect(back).toContain("router.back");
-    expect(products).toContain("grid grid-cols-2");
+    expect(products).toContain("ProductsCatalog");
+    expect(catalog).toContain("grid-cols-2");
   });
 });

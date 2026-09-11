@@ -19,10 +19,25 @@ describe("theme boot script", () => {
     expect(script.endsWith("})();")).toBe(true);
   });
 
-  it("root layout injects boot via server-only inline script", () => {
+  it("injects boot via ThemeBootScript + useServerInsertedHTML", () => {
+    const boot = readFileSync(
+      join(process.cwd(), "src/features/theme/ThemeBootScript.tsx"),
+      "utf8",
+    );
+    const providers = readFileSync(
+      join(process.cwd(), "src/providers/AppProviders.tsx"),
+      "utf8",
+    );
     const layout = readFileSync(join(process.cwd(), "src/app/layout.tsx"), "utf8");
-    expect(layout).toContain("platform-theme-boot");
-    expect(layout).toContain("dangerouslySetInnerHTML");
+    expect(boot).toContain("useServerInsertedHTML");
+    expect(boot).toContain('id="platform-theme-boot"');
+    expect(boot).toContain("dangerouslySetInnerHTML");
+    expect(providers).toContain("ThemeBootScript");
+    expect(providers).toContain("buildThemeBootScript");
+    expect(layout).toContain("AppProviders");
+    expect(layout).toContain("ThemeBootScript");
     expect(layout).not.toContain('from "next/script"');
+    // Boot markup is owned by ThemeBootScript, not the root layout tree.
+    expect(layout).not.toMatch(/dangerouslySetInnerHTML[\s\S]*platform-theme-boot/);
   });
 });

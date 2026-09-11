@@ -23,7 +23,7 @@ describe("food-brand storefront redesign", () => {
     const home = readSrc("src/app/(storefront)/home-view.tsx");
     const page = readSrc("src/app/(storefront)/page.tsx");
     expect(home).toContain("productHeroImages");
-    expect(home).toContain("Shop by category");
+    expect(home).toContain("Explore our Collections");
     expect(home).toContain("Featured products");
     expect(home).toContain("ProductCard");
     expect(home).not.toContain("Bring authentic flavour home");

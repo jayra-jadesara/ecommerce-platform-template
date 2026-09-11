@@ -4,7 +4,7 @@ import ContentCopyIcon from "@mui/icons-material/ContentCopy";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import IosShareIcon from "@mui/icons-material/IosShare";
 import CheckIcon from "@mui/icons-material/Check";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 type BlogShareButtonsProps = {
@@ -93,21 +93,32 @@ function ShareChip({
   );
 }
 
+function subscribeShareCapability() {
+  return () => {};
+}
+
+function getNativeShareSnapshot() {
+  return (
+    typeof navigator !== "undefined" && typeof navigator.share === "function"
+  );
+}
+
+function getNativeShareServerSnapshot() {
+  return false;
+}
+
 export function BlogShareButtons({
   url,
   title,
   className,
 }: BlogShareButtonsProps) {
   const [copied, setCopied] = useState(false);
-  /** Detect after mount — navigator.share differs between SSR and client. */
-  const [canNativeShare, setCanNativeShare] = useState(false);
+  const canNativeShare = useSyncExternalStore(
+    subscribeShareCapability,
+    getNativeShareSnapshot,
+    getNativeShareServerSnapshot,
+  );
   const safeUrl = isSafeAbsoluteUrl(url) ? url : "";
-
-  useEffect(() => {
-    setCanNativeShare(
-      typeof navigator !== "undefined" && typeof navigator.share === "function",
-    );
-  }, []);
 
   const shareNative = useCallback(async () => {
     if (!safeUrl || typeof navigator.share !== "function") return;

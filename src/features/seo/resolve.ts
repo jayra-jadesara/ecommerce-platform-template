@@ -166,7 +166,6 @@ export function resolveProductsListingSeo(input: {
   page?: number;
 }): ResolvedPageSeo {
   const page = input.page && input.page > 1 ? input.page : 1;
-  const path = page > 1 ? `/products?page=${page}` : "/products";
   return {
     title: firstNonEmpty(input.seo.title) || "Products",
     description: firstNonEmpty(input.seo.description),

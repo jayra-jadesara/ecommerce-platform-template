@@ -22,7 +22,7 @@ describe("client-safe site config boundary", () => {
     expect(server).toContain("theme/service");
   });
 
-  it("client catalog forms import getSiteUrl from client-safe site module", () => {
+  it("client catalog forms stay free of server site config", () => {
     const product = readFileSync(
       join(process.cwd(), "src/features/catalog/components/ProductForm.tsx"),
       "utf8",
@@ -31,10 +31,13 @@ describe("client-safe site config boundary", () => {
       join(process.cwd(), "src/features/catalog/components/CategoryManager.tsx"),
       "utf8",
     );
-    expect(product).toContain('from "@/config/site"');
+    // Relative storefront preview paths — no @/config/site or site.server needed.
+    expect(product).toContain("previewUrl={`/products/");
     expect(product).not.toContain("site.server");
+    expect(product).not.toContain('from "@/config/site"');
     expect(product).not.toContain("typeof window");
-    expect(category).toContain('from "@/config/site"');
+    expect(category).toContain("previewUrl={`/categories/");
     expect(category).not.toContain("site.server");
+    expect(category).not.toContain('from "@/config/site"');
   });
 });

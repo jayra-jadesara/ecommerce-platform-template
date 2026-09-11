@@ -24,6 +24,12 @@ import {
 } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
 import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
+import {
+  resolve3DConfig,
+  resolveMotionConfig,
+  section3dOverrideFromConfig,
+  sectionMotionOverrideFromConfig,
+} from "@/features/motion-3d";
 
 type Props = {
   section: StorefrontSection;
@@ -46,10 +52,14 @@ function SectionMotion({
 }) {
   const cfg = section.config as SectionConfigMap[SupportedSectionType];
   const common = cfg as SectionConfigMap["hero"];
-  const enabled = common.animationEnabled !== false;
-  const preset = common.animationPreset ?? "fade-up";
+  const override = sectionMotionOverrideFromConfig(common);
+  const effective = resolveMotionConfig({
+    global: animation,
+    section: override,
+    reducedMotion: false,
+  });
 
-  if (!enabled || preset === "none") {
+  if (!effective.shouldAnimate) {
     return <section className={className}>{children}</section>;
   }
 
@@ -57,7 +67,7 @@ function SectionMotion({
     <Motion
       as="section"
       animation={animation}
-      preset={preset}
+      sectionOverride={override}
       className={className}
     >
       {children}
@@ -157,12 +167,14 @@ function HeroCopy({
 function HeroVisual({
   fg,
   hero3dOn,
+  hero3dPreset,
   c,
   visualEffects,
   animation,
 }: {
   fg: string | null;
   hero3dOn: boolean;
+  hero3dPreset: string;
   c: SectionConfigMap["hero"];
   visualEffects: VisualEffectsConfig;
   animation: AnimationConfig;
@@ -172,7 +184,7 @@ function HeroVisual({
       {hero3dOn ? (
         <Hero3DSlot
           className="absolute inset-0"
-          preset={c.scene3dPreset || visualEffects.heroPreset}
+          preset={hero3dPreset}
           quality={visualEffects.quality}
           enabled={hero3dOn}
           mobileEnabled={visualEffects.mobileEnabled}
@@ -247,10 +259,16 @@ export function SectionRenderer({
           : c.alignment === "right"
             ? "justify-end"
             : "justify-start";
-      const hero3dOn =
-        Boolean(c.enable3d) &&
-        visualEffects.enabled &&
-        visualEffects.heroEnabled;
+      const hero3dResolved = resolve3DConfig({
+        global: visualEffects,
+        animationEnabled: animation.enabled,
+        section: section3dOverrideFromConfig(c),
+        isMobile: false,
+        reducedMotion: false,
+        webglAvailable: true,
+      });
+      const hero3dOn = hero3dResolved.mayMountHero3d;
+      const hero3dPreset = hero3dResolved.heroPreset;
 
       const isFullBleed = preset === "FULL_BLEED" || preset === "CENTERED";
       const imageLeft = preset === "IMAGE_LEFT";
@@ -291,7 +309,7 @@ export function SectionRenderer({
               {isFullBleed && hero3dOn ? (
                 <Hero3DSlot
                   className="pointer-events-none absolute inset-0 opacity-70"
-                  preset={c.scene3dPreset || visualEffects.heroPreset}
+                  preset={hero3dPreset}
                   quality={visualEffects.quality}
                   enabled={hero3dOn}
                   mobileEnabled={visualEffects.mobileEnabled}
@@ -342,6 +360,7 @@ export function SectionRenderer({
                     <HeroVisual
                       fg={fg}
                       hero3dOn={hero3dOn}
+                      hero3dPreset={hero3dPreset}
                       c={c}
                       visualEffects={visualEffects}
                       animation={animation}
@@ -534,23 +553,15 @@ export function SectionRenderer({
       );
     }
 
-    case "text_image":
-    case "about": {
-      const c = cfg as SectionConfigMap["text_image"] | SectionConfigMap["about"];
-      const heading = "heading" in c ? c.heading : "";
+    case "text_image": {
+      const c = cfg as SectionConfigMap["text_image"];
+      const heading = c.heading ?? "";
       const description = c.description ?? "";
-      const imagePath = c.imagePath;
-      const url = resolveCmsImageUrl(imagePath);
-      const imageLeft =
-        section.sectionType === "text_image" &&
-        (c as SectionConfigMap["text_image"]).imagePosition === "left";
+      const url = resolveCmsImageUrl(c.imagePath);
+      const imageLeft = c.imagePosition === "left";
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div
-            className={`mx-auto grid max-w-6xl items-center gap-8 px-4 md:grid-cols-2 ${
-              imageLeft ? "" : ""
-            }`}
-          >
+          <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 md:grid-cols-2">
             <div className={imageLeft ? "md:order-2" : ""}>
               {heading ? <SectionAccentHeading title={heading} /> : null}
               {description ? (
@@ -558,7 +569,7 @@ export function SectionRenderer({
                   {description}
                 </p>
               ) : null}
-              {"buttonText" in c && c.buttonText && c.buttonLink ? (
+              {c.buttonText && c.buttonLink ? (
                 <div className="mt-5">
                   <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
                     {c.buttonText}
@@ -567,8 +578,217 @@ export function SectionRenderer({
               ) : null}
             </div>
             {url ? (
-              <div className={`relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--color-border)] ${imageLeft ? "md:order-1" : ""}`}>
+              <div
+                className={`relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--color-border)] ${imageLeft ? "md:order-1" : ""}`}
+              >
                 <Image src={url} alt="" fill className="object-cover" sizes="480px" />
+              </div>
+            ) : null}
+          </div>
+        </SectionMotion>
+      );
+    }
+
+    case "about": {
+      const c = cfg as SectionConfigMap["about"];
+      const heading = c.heading?.trim() ?? "";
+      const description = c.description?.trim() ?? "";
+      const quote = c.quote?.trim() ?? "";
+      const quoteAuthor = c.quoteAuthor?.trim() ?? "";
+      const portraitUrl = resolveCmsImageUrl(c.imagePath);
+      const captionName = c.imageCaptionName?.trim() ?? "";
+      const captionRole = c.imageCaptionRole?.trim() ?? "";
+      const timeline = (c.timelineItems ?? []).filter(
+        (item) => item.label?.trim() || item.year?.trim() || item.logoPath,
+      );
+
+      return (
+        <SectionMotion section={section} animation={animation} className={shell}>
+          <div
+            className="sf-about-visionary"
+            style={{
+              width: "100%",
+              maxWidth: "40rem",
+              marginLeft: "auto",
+              marginRight: "auto",
+              paddingLeft: "1rem",
+              paddingRight: "1rem",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <div
+              style={{
+                width: "100%",
+                maxWidth: "36rem",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: "1.25rem",
+              }}
+            >
+              {heading ? (
+                <SectionAccentHeading
+                  title={heading}
+                  accentWord={c.headingHighlight || undefined}
+                  align="center"
+                />
+              ) : null}
+              {description ? (
+                <p
+                  className="whitespace-pre-wrap text-sm leading-[1.85] text-[var(--color-muted)] md:text-[0.95rem] md:leading-[1.9]"
+                  style={{ margin: 0, textAlign: "center", width: "100%" }}
+                >
+                  {description}
+                </p>
+              ) : null}
+              {quote ? (
+                <blockquote style={{ margin: 0, maxWidth: "32rem", width: "100%" }}>
+                  <p
+                    className="font-[family-name:var(--font-display)] text-base italic leading-relaxed text-[var(--color-primary)] md:text-lg"
+                    style={{ margin: 0, textAlign: "center" }}
+                  >
+                    “{quote}”
+                    {quoteAuthor ? (
+                      <span className="not-italic"> — {quoteAuthor}</span>
+                    ) : null}
+                  </p>
+                </blockquote>
+              ) : null}
+              {c.buttonText && c.buttonLink ? (
+                <div style={{ display: "flex", justifyContent: "center" }}>
+                  <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
+                    {c.buttonText}
+                  </SafeLink>
+                </div>
+              ) : null}
+
+              {timeline.length > 0 ? (
+                <ul
+                  className="sf-about-timeline"
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                    alignItems: "flex-start",
+                    gap: "1.5rem",
+                    margin: "0.5rem 0 0",
+                    padding: 0,
+                    listStyle: "none",
+                    width: "100%",
+                  }}
+                >
+                  {timeline.map((item, index) => {
+                    const logoUrl = resolveCmsImageUrl(item.logoPath);
+                    return (
+                      <li
+                        key={`${item.label}-${item.year}-${index}`}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          textAlign: "center",
+                          minWidth: "5.5rem",
+                          maxWidth: "8rem",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            height: "3.5rem",
+                            width: "3.5rem",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            overflow: "hidden",
+                            borderRadius: "999px",
+                            border: "1px solid var(--color-border)",
+                            background: "var(--color-card)",
+                          }}
+                        >
+                          {logoUrl ? (
+                            <Image
+                              src={logoUrl}
+                              alt=""
+                              width={48}
+                              height={48}
+                              className="object-contain p-1.5"
+                            />
+                          ) : (
+                            <span className="text-[0.65rem] font-semibold text-[var(--color-primary)]">
+                              {(item.label || "?").slice(0, 2).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        {item.label ? (
+                          <p className="mt-2 text-xs font-semibold text-[var(--color-foreground)]">
+                            {item.label}
+                          </p>
+                        ) : null}
+                        {item.year ? (
+                          <p className="mt-0.5 text-[0.65rem] text-[var(--color-muted)]">
+                            {item.year}
+                          </p>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+            </div>
+
+            {portraitUrl ? (
+              <div
+                style={{
+                  position: "relative",
+                  width: "100%",
+                  maxWidth: "22rem",
+                  marginTop: "2.5rem",
+                }}
+              >
+                <div
+                  className="relative overflow-hidden rounded-[var(--radius-default,1rem)]"
+                  style={{
+                    background: "var(--color-primary)",
+                    aspectRatio: "4 / 5",
+                  }}
+                >
+                  <Image
+                    src={portraitUrl}
+                    alt={captionName || heading || "About"}
+                    fill
+                    className="object-cover object-top"
+                    sizes="(max-width: 768px) 90vw, 352px"
+                  />
+                  {captionName || captionRole ? (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "1rem",
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        maxWidth: "85%",
+                        borderRadius: "0.4rem",
+                        padding: "0.5rem 0.75rem",
+                        textAlign: "center",
+                        background:
+                          "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 88%, #fff), color-mix(in srgb, var(--color-primary) 55%, var(--color-accent)))",
+                        color: "var(--color-button-foreground, #fff)",
+                        boxShadow: "0 8px 20px color-mix(in srgb, #000 18%, transparent)",
+                      }}
+                    >
+                      {captionName ? (
+                        <p className="text-sm font-bold leading-tight">
+                          {captionName}
+                        </p>
+                      ) : null}
+                      {captionRole ? (
+                        <p className="mt-0.5 text-xs opacity-95">{captionRole}</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
