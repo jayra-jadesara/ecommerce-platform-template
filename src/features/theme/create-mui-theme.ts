@@ -173,6 +173,59 @@ export function createAppMuiTheme(
           },
         },
       },
+      MuiSelect: {
+        defaultProps: {
+          // Non-native menus can use theme colors for hover / selected.
+          native: false,
+        },
+      },
+      MuiMenu: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: "var(--color-surface)",
+            color: "var(--color-foreground)",
+            border: "1px solid var(--color-border)",
+            backgroundImage: "none",
+            boxShadow:
+              "0 12px 32px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
+          },
+          list: {
+            paddingTop: 6,
+            paddingBottom: 6,
+          },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: {
+          root: {
+            fontSize: "0.875rem",
+            minHeight: 40,
+            color: "var(--color-foreground)",
+            "&:hover": {
+              backgroundColor:
+                "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+            },
+            "&.Mui-focusVisible": {
+              backgroundColor:
+                "color-mix(in srgb, var(--color-primary) 14%, transparent)",
+            },
+            "&.Mui-selected": {
+              backgroundColor:
+                "color-mix(in srgb, var(--color-primary) 18%, transparent)",
+              color: "var(--color-foreground)",
+              fontWeight: 600,
+              "&:hover": {
+                backgroundColor:
+                  "color-mix(in srgb, var(--color-primary) 26%, transparent)",
+              },
+              "&.Mui-focusVisible": {
+                backgroundColor:
+                  "color-mix(in srgb, var(--color-primary) 26%, transparent)",
+              },
+            },
+          },
+        },
+      },
       MuiDialog: {
         styleOverrides: {
           paper: {

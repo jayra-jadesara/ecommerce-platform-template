@@ -36,6 +36,8 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [64, 96, 128, 256, 384],
+    // Successful optimized images (heroes/detail) stay warm; grids use unoptimized.
+    minimumCacheTTL: 86400,
     remotePatterns: supabaseHost
       ? [
           {

@@ -425,6 +425,44 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   --sf-dev-muted: var(--color-muted);
   --sf-dev-fg: var(--color-foreground);
   --sf-dev-border: color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  /* Compact by default (phones) */
+  --sf-dev-tab-width: 1.45rem;
+  --sf-dev-tab-min-height: 4.35rem;
+  --sf-dev-tab-pad-y: 0.4rem;
+  --sf-dev-tab-pad-x: 0.18rem;
+  --sf-dev-tab-gap: 0.22rem;
+  --sf-dev-icon-size: 0.7rem;
+  --sf-dev-label-size: 0.48rem;
+  --sf-dev-label-tracking: 0.14em;
+  --sf-dev-panel-width: 12.25rem;
+}
+
+@media (min-width: 640px) {
+  .sf-dev-credit {
+    --sf-dev-tab-width: 1.75rem;
+    --sf-dev-tab-min-height: 5.5rem;
+    --sf-dev-tab-pad-y: 0.55rem;
+    --sf-dev-tab-pad-x: 0.25rem;
+    --sf-dev-tab-gap: 0.3rem;
+    --sf-dev-icon-size: 0.8rem;
+    --sf-dev-label-size: 0.54rem;
+    --sf-dev-label-tracking: 0.16em;
+    --sf-dev-panel-width: 13rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sf-dev-credit {
+    --sf-dev-tab-width: 2.1rem;
+    --sf-dev-tab-min-height: 7.25rem;
+    --sf-dev-tab-pad-y: 0.7rem;
+    --sf-dev-tab-pad-x: 0.3rem;
+    --sf-dev-tab-gap: 0.4rem;
+    --sf-dev-icon-size: 0.9rem;
+    --sf-dev-label-size: 0.58rem;
+    --sf-dev-label-tracking: 0.2em;
+    --sf-dev-panel-width: 13.75rem;
+  }
 }
 
 .sf-dev-credit__tab {
@@ -432,11 +470,14 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  min-width: 2.15rem;
-  padding: 0.85rem 0.4rem;
+  box-sizing: border-box;
+  gap: var(--sf-dev-tab-gap);
+  width: var(--sf-dev-tab-width);
+  min-width: var(--sf-dev-tab-width);
+  min-height: var(--sf-dev-tab-min-height);
+  padding: var(--sf-dev-tab-pad-y) var(--sf-dev-tab-pad-x);
   border: 0;
-  border-radius: 0.55rem 0 0 0.55rem;
+  border-radius: 0.5rem 0 0 0.5rem;
   background:
     linear-gradient(
       180deg,
@@ -446,7 +487,7 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   color: var(--sf-dev-ink);
   cursor: pointer;
   box-shadow:
-    -4px 0 18px color-mix(in srgb, var(--color-foreground) 12%, transparent),
+    -3px 4px 14px color-mix(in srgb, var(--color-foreground) 12%, transparent),
     inset 0 1px 0 color-mix(in srgb, white 22%, transparent);
   transition:
     background 0.2s ease,
@@ -469,19 +510,25 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
 
 .sf-dev-credit__icon {
   flex-shrink: 0;
-  font-size: 0.95rem !important;
+  font-size: var(--sf-dev-icon-size) !important;
+  width: 1em !important;
+  height: 1em !important;
+  color: inherit;
   opacity: 0.95;
 }
 
 .sf-dev-credit__label {
+  display: block;
   writing-mode: vertical-rl;
+  text-orientation: mixed;
   transform: rotate(180deg);
-  font-size: 0.62rem;
+  font-size: var(--sf-dev-label-size);
   font-weight: 700;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--sf-dev-label-tracking);
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
+  color: inherit;
 }
 
 .sf-dev-credit__panel {

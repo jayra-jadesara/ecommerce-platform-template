@@ -5,11 +5,16 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useMemo } from "react";
 import {
-  isInWishlistAction,
+  getWishlistMembershipKeysAction,
   toggleWishlistAction,
 } from "@/features/wishlist/actions";
-import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import {
+  wishlistMembershipKey,
+  wishlistMembershipQueryKey,
+  wishlistQueryKey,
+} from "@/features/wishlist/query-keys";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 
 export type BlogShopProduct = {
@@ -28,22 +33,30 @@ function ProductWishlistButton({
   const queryClient = useQueryClient();
   const hydrated = useHasHydrated();
 
-  const wishlistQuery = useQuery({
-    queryKey: [...wishlistQueryKey, "contains", productId],
-    queryFn: () => isInWishlistAction({ productId }),
+  const membershipQuery = useQuery({
+    queryKey: wishlistMembershipQueryKey,
+    queryFn: () => getWishlistMembershipKeysAction(),
     enabled: hydrated,
     staleTime: 30_000,
   });
 
+  const membershipSet = useMemo(
+    () => new Set(membershipQuery.data ?? []),
+    [membershipQuery.data],
+  );
+
   const mutation = useMutation({
     mutationFn: () => toggleWishlistAction({ productId }),
     onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: wishlistMembershipQueryKey,
+      });
       await queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
-      await wishlistQuery.refetch();
     },
   });
 
-  const inWishlist = hydrated && Boolean(wishlistQuery.data);
+  const inWishlist =
+    hydrated && membershipSet.has(wishlistMembershipKey(productId, null));
 
   return (
     <button
@@ -60,12 +73,16 @@ function ProductWishlistButton({
         event.stopPropagation();
         mutation.mutate();
       }}
-      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
     >
       {inWishlist ? (
-        <FavoriteIcon fontSize="small" className="!text-[var(--color-primary)]" />
+        <FavoriteIcon
+          fontSize="small"
+          className="!text-[var(--color-primary)]"
+          aria-hidden
+        />
       ) : (
-        <FavoriteBorderIcon fontSize="small" />
+        <FavoriteBorderIcon fontSize="small" aria-hidden />
       )}
     </button>
   );
@@ -76,40 +93,27 @@ export function BlogShopProducts({
 }: {
   products: BlogShopProduct[];
 }) {
-  if (!products.length) return null;
+  if (products.length === 0) return null;
 
   return (
-    <section className="mt-12" aria-labelledby="blog-shop-article">
-      <h2
-        id="blog-shop-article"
-        className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)]"
-      >
-        Shop this article
-      </h2>
-      <p className="mt-1 text-sm text-[var(--color-muted)]">
-        Products mentioned in this story
-      </p>
-      <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {products.map((product) => (
-          <li key={product.id}>
-            <div className="flex items-center gap-2 rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,transparent)] p-2 pl-3">
-              <Link
-                href={`/products/${product.slug}`}
-                className="flex min-h-12 min-w-0 flex-1 items-center gap-3 text-sm font-semibold text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-              >
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
-                  <ShoppingBagOutlinedIcon fontSize="small" />
-                </span>
-                <span className="min-w-0 truncate">{product.name}</span>
-              </Link>
-              <ProductWishlistButton
-                productId={product.id}
-                productName={product.name}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <ul className="mt-4 space-y-2">
+      {products.map((product) => (
+        <li key={product.id}>
+          <div className="flex items-center gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2">
+            <Link
+              href={`/products/${product.slug}`}
+              className="flex min-w-0 flex-1 items-center gap-2 text-sm font-medium text-[var(--color-foreground)] hover:text-[var(--color-primary)]"
+            >
+              <ShoppingBagOutlinedIcon fontSize="small" aria-hidden />
+              <span className="truncate">{product.name}</span>
+            </Link>
+            <ProductWishlistButton
+              productId={product.id}
+              productName={product.name}
+            />
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

@@ -101,6 +101,7 @@ export function WishlistPageClient({
                   src={item.imageUrl}
                   alt={item.imageAlt}
                   fill
+                  unoptimized
                   className="object-cover"
                   sizes="96px"
                 />

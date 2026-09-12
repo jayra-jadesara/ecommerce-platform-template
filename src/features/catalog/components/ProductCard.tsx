@@ -7,7 +7,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import SearchIcon from "@mui/icons-material/Search";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { cartQueryKey } from "@/features/cart/query-keys";
 import { formatMoney } from "@/features/catalog/money";
@@ -15,10 +15,14 @@ import type { StorefrontProductCard } from "@/features/catalog/storefront";
 import { QuickView } from "@/features/catalog/components/QuickView";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import {
-  isInWishlistAction,
+  getWishlistMembershipKeysAction,
   toggleWishlistAction,
 } from "@/features/wishlist/actions";
-import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import {
+  wishlistMembershipKey,
+  wishlistMembershipQueryKey,
+  wishlistQueryKey,
+} from "@/features/wishlist/query-keys";
 import { cn } from "@/lib/cn";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 
@@ -100,16 +104,17 @@ export function ProductCard({
   const wishlistVariantId =
     selectedOption?.id ?? product.defaultVariantId ?? null;
 
-  const wishlistQuery = useQuery({
-    queryKey: [...wishlistQueryKey, product.id, wishlistVariantId],
-    queryFn: () =>
-      isInWishlistAction({
-        productId: product.id,
-        variantId: wishlistVariantId!,
-      }),
-    enabled: hydrated && isAuthenticated && Boolean(wishlistVariantId),
+  const membershipQuery = useQuery({
+    queryKey: wishlistMembershipQueryKey,
+    queryFn: () => getWishlistMembershipKeysAction(),
+    enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
   });
+
+  const membershipSet = useMemo(
+    () => new Set(membershipQuery.data ?? []),
+    [membershipQuery.data],
+  );
 
   const addMutation = useMutation({
     mutationFn: addToCartAction,
@@ -140,7 +145,7 @@ export function ProductCard({
       setError(null);
       setMessage(result.message ?? "Wishlist updated.");
       void queryClient.invalidateQueries({
-        queryKey: [...wishlistQueryKey, product.id, wishlistVariantId],
+        queryKey: wishlistMembershipQueryKey,
       });
       void queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
     },
@@ -157,7 +162,12 @@ export function ProductCard({
         : formatMoney(displayPrice, currency);
 
   const inWishlist =
-    hydrated && isAuthenticated && Boolean(wishlistQuery.data);
+    hydrated &&
+    isAuthenticated &&
+    Boolean(wishlistVariantId) &&
+    membershipSet.has(
+      wishlistMembershipKey(product.id, wishlistVariantId),
+    );
 
   const gallery = useMemo(() => {
     const fromField = product.imageUrls?.filter(Boolean) ?? [];
@@ -179,6 +189,18 @@ export function ProductCard({
 
   const showSegments = visibleGallery.length > 1;
 
+  const activeUrl = visibleGallery[safeActive] ?? null;
+
+  // Prefetch the next gallery URL without mounting extra Next/Image optimizers.
+  useEffect(() => {
+    if (typeof window === "undefined" || visibleGallery.length < 2) return;
+    const nextIndex = (safeActive + 1) % visibleGallery.length;
+    const nextUrl = visibleGallery[nextIndex];
+    if (!nextUrl) return;
+    const img = new window.Image();
+    img.src = nextUrl;
+  }, [safeActive, visibleGallery]);
+
   const iconBtn =
     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
   const iconSize = "!text-[0.95rem]";
@@ -196,7 +218,7 @@ export function ProductCard({
     });
   }
 
-  const listThumbUrl = visibleGallery[safeActive] ?? null;
+  const listThumbUrl = activeUrl;
   const primaryIconBtn =
     "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-[var(--color-button-foreground)] shadow-sm transition-[filter,transform] hover:brightness-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-safe:active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
 
@@ -263,6 +285,7 @@ export function ProductCard({
               height={112}
               className="h-full w-full object-contain p-1.5"
               loading="lazy"
+              unoptimized
               onError={() => markFailed(listThumbUrl)}
             />
           ) : (
@@ -279,26 +302,21 @@ export function ProductCard({
         className="group relative aspect-[4/5] w-full overflow-hidden sf-product-tile-media bg-[color-mix(in_srgb,var(--color-accent)_8%,var(--color-surface))]"
         onMouseLeave={() => setActiveImage(0)}
       >
-        {visibleGallery.length > 0 ? (
-          visibleGallery.map((url, index) => (
-            <Image
-              key={`${product.id}-${url}-${index}`}
-              src={url}
-              alt={
-                index === 0 ? product.primaryImageAlt || product.name : ""
-              }
-              fill
-              sizes="(max-width: 640px) 42vw, (max-width: 1024px) 22vw, 200px"
-              className={cn(
-                "sf-product-tile-image object-contain",
-                compact ? "p-1.5" : "p-2 sm:p-2.5",
-                index === safeActive ? "opacity-100" : "opacity-0",
-              )}
-              loading="lazy"
-              aria-hidden={index !== safeActive}
-              onError={() => markFailed(url)}
-            />
-          ))
+        {activeUrl ? (
+          <Image
+            key={`${product.id}-${activeUrl}`}
+            src={activeUrl}
+            alt={product.primaryImageAlt || product.name}
+            fill
+            sizes="(max-width: 640px) 42vw, (max-width: 1024px) 22vw, 200px"
+            className={cn(
+              "sf-product-tile-image object-contain",
+              compact ? "p-1.5" : "p-2 sm:p-2.5",
+            )}
+            loading="lazy"
+            unoptimized
+            onError={() => markFailed(activeUrl)}
+          />
         ) : (
           <span
             className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(ellipse_at_30%_20%,color-mix(in_srgb,var(--color-primary)_22%,transparent),transparent_55%)] text-sm font-medium text-[var(--color-muted)]"

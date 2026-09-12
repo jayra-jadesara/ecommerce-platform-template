@@ -426,6 +426,81 @@ export async function isInWishlist(input: {
   return Boolean(data);
 }
 
+/**
+ * Batch membership check for product grids — one wishlist + one items query.
+ * Returns keys `${productId}:${variantId ?? ""}` that are on the wishlist.
+ */
+export async function getWishlistMembershipKeys(
+  items: { productId: string; variantId?: string | null }[],
+): Promise<string[]> {
+  if (items.length === 0) return [];
+
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return [];
+
+  const client = await createSupabaseServerClient();
+  const { data: wishlist } = await client
+    .from("wishlists")
+    .select("id")
+    .eq("store_id", storeId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!wishlist) return [];
+
+  const productIds = [...new Set(items.map((item) => item.productId))];
+  const { data: rows } = await client
+    .from("wishlist_items")
+    .select("product_id, variant_id")
+    .eq("wishlist_id", wishlist.id)
+    .in("product_id", productIds);
+
+  if (!rows?.length) return [];
+
+  const wanted = new Set(
+    items.map(
+      (item) => `${item.productId}:${item.variantId ?? ""}`,
+    ),
+  );
+
+  const found: string[] = [];
+  for (const row of rows) {
+    const key = `${row.product_id}:${row.variant_id ?? ""}`;
+    if (wanted.has(key)) found.push(key);
+  }
+  return found;
+}
+
+/**
+ * All membership keys for the current user's wishlist (for shared card cache).
+ */
+export async function getAllWishlistMembershipKeys(): Promise<string[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return [];
+
+  const client = await createSupabaseServerClient();
+  const { data: wishlist } = await client
+    .from("wishlists")
+    .select("id")
+    .eq("store_id", storeId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!wishlist) return [];
+
+  const { data: rows } = await client
+    .from("wishlist_items")
+    .select("product_id, variant_id")
+    .eq("wishlist_id", wishlist.id);
+
+  if (!rows?.length) return [];
+  return rows.map(
+    (row) => `${row.product_id}:${row.variant_id ?? ""}`,
+  );
+}
+
 export async function toggleWishlist(input: {
   productId: string;
   variantId?: string | null;

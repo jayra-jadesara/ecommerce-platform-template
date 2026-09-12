@@ -27,34 +27,13 @@ const tabStyle: CSSProperties = {
   flexDirection: "column",
   alignItems: "center",
   justifyContent: "center",
-  gap: "0.4rem",
-  boxSizing: "border-box",
-  width: "2.1rem",
-  minHeight: "7.25rem",
-  padding: "0.7rem 0.3rem",
   margin: 0,
   border: "none",
-  borderRadius: "0.5rem 0 0 0.5rem",
   background: "var(--color-primary)",
   color: "var(--color-button-foreground, #fff)",
   cursor: "pointer",
-  boxShadow: "-3px 4px 14px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
   WebkitAppearance: "none",
   appearance: "none",
-};
-
-const labelStyle: CSSProperties = {
-  display: "block",
-  writingMode: "vertical-rl",
-  textOrientation: "mixed",
-  transform: "rotate(180deg)",
-  fontSize: "0.58rem",
-  fontWeight: 700,
-  letterSpacing: "0.2em",
-  textTransform: "uppercase",
-  lineHeight: 1,
-  whiteSpace: "nowrap",
-  color: "inherit",
 };
 
 function subscribeCoarsePointer(onStoreChange: () => void) {
@@ -137,11 +116,8 @@ export function DeveloperCredit() {
           }
         }}
       >
-        <CodeIcon
-          aria-hidden
-          style={{ fontSize: "0.9rem", color: "inherit" }}
-        />
-        <span style={labelStyle}>{credit.label}</span>
+        <CodeIcon aria-hidden className="sf-dev-credit__icon" />
+        <span className="sf-dev-credit__label">{credit.label}</span>
       </button>
 
       <div
@@ -149,8 +125,8 @@ export function DeveloperCredit() {
         className="sf-dev-credit__panel"
         style={{
           boxSizing: "border-box",
-          width: open ? "13.75rem" : 0,
-          maxWidth: open ? "13.75rem" : 0,
+          width: open ? "var(--sf-dev-panel-width)" : 0,
+          maxWidth: open ? "var(--sf-dev-panel-width)" : 0,
           opacity: open ? 1 : 0,
           visibility: open ? "visible" : "hidden",
           overflow: "hidden",
@@ -177,7 +153,7 @@ export function DeveloperCredit() {
         <div
           style={{
             boxSizing: "border-box",
-            width: "13.75rem",
+            width: "var(--sf-dev-panel-width)",
             padding: "0.95rem 1rem 1.05rem",
             display: "flex",
             flexDirection: "column",

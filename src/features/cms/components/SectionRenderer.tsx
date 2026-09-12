@@ -417,6 +417,7 @@ export function SectionRenderer({
                           src={cat.imageUrl}
                           alt=""
                           fill
+                          unoptimized
                           className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
                           sizes="240px"
                         />
@@ -588,7 +589,14 @@ export function SectionRenderer({
               <div
                 className={`relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--color-border)] ${imageLeft ? "md:order-1" : ""}`}
               >
-                <Image src={url} alt="" fill className="object-cover" sizes="480px" />
+                <Image
+                  src={url}
+                  alt=""
+                  fill
+                  unoptimized
+                  className="object-cover"
+                  sizes="480px"
+                />
               </div>
             ) : null}
           </div>
@@ -720,6 +728,7 @@ export function SectionRenderer({
                               alt=""
                               width={48}
                               height={48}
+                              unoptimized
                               className="object-contain p-1.5"
                             />
                           ) : (

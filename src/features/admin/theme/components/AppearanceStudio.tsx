@@ -12,6 +12,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import FormGroup from "@mui/material/FormGroup";
 import FormHelperText from "@mui/material/FormHelperText";
 import FormLabel from "@mui/material/FormLabel";
+import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Link from "next/link";
@@ -425,7 +426,6 @@ export function AppearanceStudio({
                     <div>
                       <TextField
                         select
-                        slotProps={{ select: { native: true } }}
                         label="Default mode"
                         fullWidth
                         required
@@ -435,9 +435,9 @@ export function AppearanceStudio({
                         error={Boolean(errors.defaultMode)}
                         helperText={undefined}
                       >
-                        <option value="light">Light</option>
-                        <option value="dark">Dark</option>
-                        <option value="system">System</option>
+                        <MenuItem value="light">Light</MenuItem>
+                        <MenuItem value="dark">Dark</MenuItem>
+                        <MenuItem value="system">System</MenuItem>
                       </TextField>
                       <FieldError message={errors.defaultMode?.message} />
                     </div>
@@ -512,18 +512,17 @@ export function AppearanceStudio({
                   render={({ field }) => (
                     <TextField
                       select
-                      slotProps={{ select: { native: true } }}
                       label="Border radius"
                       fullWidth
                       disabled={!canUpdate || pending}
                       value={field.value}
                       onChange={field.onChange}
                     >
-                      <option value="none">None</option>
-                      <option value="small">Small</option>
-                      <option value="medium">Medium</option>
-                      <option value="large">Large</option>
-                      <option value="xlarge">X-Large</option>
+                      <MenuItem value="none">None</MenuItem>
+                      <MenuItem value="small">Small</MenuItem>
+                      <MenuItem value="medium">Medium</MenuItem>
+                      <MenuItem value="large">Large</MenuItem>
+                      <MenuItem value="xlarge">X-Large</MenuItem>
                     </TextField>
                   )}
                 />
@@ -650,7 +649,6 @@ export function AppearanceStudio({
                     </p>
                     <TextField
                       select
-                      slotProps={{ select: { native: true } }}
                       size="small"
                       label="Edit palette"
                       value={paletteSide}
@@ -659,8 +657,8 @@ export function AppearanceStudio({
                       }
                       sx={{ minWidth: 140 }}
                     >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
+                      <MenuItem value="light">Light</MenuItem>
+                      <MenuItem value="dark">Dark</MenuItem>
                     </TextField>
                   </div>
                   <div className="mt-5 space-y-6">
@@ -714,7 +712,6 @@ export function AppearanceStudio({
                   </h2>
                   <TextField
                     select
-                      slotProps={{ select: { native: true } }}
                     size="small"
                     label="Palette"
                     value={paletteSide}
@@ -723,8 +720,8 @@ export function AppearanceStudio({
                     }
                     sx={{ minWidth: 140 }}
                   >
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
+                    <MenuItem value="light">Light</MenuItem>
+                    <MenuItem value="dark">Dark</MenuItem>
                   </TextField>
                 </div>
                 <div className="space-y-6">

@@ -123,6 +123,7 @@ export function HeaderCartControl() {
                           src={item.imageUrl}
                           alt={item.imageAlt}
                           fill
+                          unoptimized
                           className="object-cover"
                           sizes="64px"
                         />

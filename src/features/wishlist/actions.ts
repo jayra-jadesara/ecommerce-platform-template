@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import {
   addToWishlist,
+  getAllWishlistMembershipKeys,
   getWishlist,
+  getWishlistMembershipKeys,
   isInWishlist,
   removeFromWishlist,
   toggleWishlist,
@@ -13,6 +15,7 @@ import {
   addToWishlistSchema,
   removeFromWishlistSchema,
   wishlistContainsSchema,
+  wishlistMembershipSchema,
 } from "@/features/wishlist/validation";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
@@ -109,4 +112,18 @@ export async function isInWishlistAction(raw: unknown): Promise<boolean> {
   const parsed = wishlistContainsSchema.safeParse(raw);
   if (!parsed.success) return false;
   return isInWishlist(parsed.data);
+}
+
+/** One round-trip for product grids — membership keys for the given items. */
+export async function getWishlistMembershipAction(
+  raw: unknown,
+): Promise<string[]> {
+  const parsed = wishlistMembershipSchema.safeParse(raw);
+  if (!parsed.success) return [];
+  return getWishlistMembershipKeys(parsed.data.items);
+}
+
+/** Shared cache for all ProductCards — entire wishlist membership keys. */
+export async function getWishlistMembershipKeysAction(): Promise<string[]> {
+  return getAllWishlistMembershipKeys();
 }

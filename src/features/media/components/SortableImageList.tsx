@@ -64,6 +64,7 @@ export function SortableImageList({
                   src={item.url}
                   alt={item.altText || "Product image"}
                   fill
+                  unoptimized
                   className="object-contain p-2"
                   sizes="(max-width: 640px) 50vw, 160px"
                 />

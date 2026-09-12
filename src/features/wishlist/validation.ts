@@ -16,4 +16,15 @@ export const wishlistContainsSchema = z.object({
   variantId: uuid.nullable().optional(),
 });
 
+export const wishlistMembershipSchema = z.object({
+  items: z
+    .array(
+      z.object({
+        productId: uuid,
+        variantId: uuid.nullable().optional(),
+      }),
+    )
+    .max(100),
+});
+
 export type AddToWishlistInput = z.infer<typeof addToWishlistSchema>;

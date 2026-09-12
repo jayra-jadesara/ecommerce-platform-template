@@ -115,9 +115,19 @@ describe("phase 21.1 — branding & appearance polish", () => {
     expect(src).toContain("CHROME_GROUPS");
     expect(src).toContain("aria-pressed");
     expect(src).toContain("admin-scroll-hide");
-    expect(src).toContain("native: true");
+    expect(src).toContain("MenuItem");
+    expect(src).not.toContain("native: true");
     expect(src).toContain("APPEARANCE_TABS");
     expect(src).not.toContain('from "@mui/material/Tabs"');
+  });
+
+  it("select menus use theme primary for hover and selected", () => {
+    const theme = read("src/features/theme/create-mui-theme.ts");
+    const css = read("src/styles/admin.css");
+    expect(theme).toContain("MuiMenuItem");
+    expect(theme).toContain("var(--color-primary)");
+    expect(css).toContain(".MuiMenuItem-root.Mui-selected");
+    expect(css).toContain("var(--color-primary)");
   });
 
   it("save bar confirms reset and does not auto-save", () => {

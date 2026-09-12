@@ -144,6 +144,7 @@ export function HomeView({
                           fill
                           priority={index === 0}
                           loading={index === 0 ? "eager" : "lazy"}
+                          unoptimized={index !== 0}
                           className="object-contain p-3"
                           sizes="220px"
                         />
@@ -187,6 +188,7 @@ export function HomeView({
                           src={category.imageUrl}
                           alt=""
                           fill
+                          unoptimized
                           className="object-cover transition-transform duration-500 motion-safe:group-hover:scale-105"
                           sizes="240px"
                         />

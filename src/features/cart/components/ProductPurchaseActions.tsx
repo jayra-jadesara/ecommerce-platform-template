@@ -4,17 +4,21 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
 import { CART_MAX_QUANTITY } from "@/features/cart/types";
 import {
-  isInWishlistAction,
+  getWishlistMembershipKeysAction,
   toggleWishlistAction,
 } from "@/features/wishlist/actions";
-import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import {
+  wishlistMembershipKey,
+  wishlistMembershipQueryKey,
+  wishlistQueryKey,
+} from "@/features/wishlist/query-keys";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
@@ -57,12 +61,21 @@ export function ProductPurchaseActions({
     maxAvailable == null ? CART_MAX_QUANTITY : Math.max(1, maxAvailable),
   );
 
-  const wishlistQuery = useQuery({
-    queryKey: [...wishlistQueryKey, productId, variantId],
-    queryFn: () => isInWishlistAction({ productId, variantId }),
+  const membershipQuery = useQuery({
+    queryKey: wishlistMembershipQueryKey,
+    queryFn: () => getWishlistMembershipKeysAction(),
     enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
   });
+
+  const membershipSet = useMemo(
+    () => new Set(membershipQuery.data ?? []),
+    [membershipQuery.data],
+  );
+
+  const inWishlist = membershipSet.has(
+    wishlistMembershipKey(productId, variantId),
+  );
 
   const addMutation = useMutation({
     mutationFn: addToCartAction,
@@ -89,7 +102,7 @@ export function ProductPurchaseActions({
       setError(null);
       setMessage(result.message ?? "Wishlist updated.");
       void queryClient.invalidateQueries({
-        queryKey: [...wishlistQueryKey, productId, variantId],
+        queryKey: wishlistMembershipQueryKey,
       });
       void queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
     },
@@ -116,8 +129,6 @@ export function ProductPurchaseActions({
   }
 
   const busy = addMutation.isPending || buyPending;
-  const inWishlist =
-    hydrated && isAuthenticated && Boolean(wishlistQuery.data);
 
   const railBtn = "min-h-10 justify-center !px-3 !text-sm";
   const stackBtn =

@@ -214,3 +214,38 @@ describe("Three.js mount gates (lazy / mobile / reduced-motion)", () => {
     ).toBe(false);
   });
 });
+
+describe("Image + wishlist performance contracts", () => {
+  const root = process.cwd();
+  function read(rel: string) {
+    return readFileSync(resolve(root, rel), "utf8");
+  }
+
+  it("caches optimized images longer and skips optimizer on ProductCard thumbs", () => {
+    const config = read("next.config.ts");
+    expect(config).toContain("minimumCacheTTL: 86400");
+
+    const card = read("src/features/catalog/components/ProductCard.tsx");
+    expect(card).toContain("unoptimized");
+    expect(card).toContain("activeUrl");
+    expect(card).not.toContain("isInWishlistAction");
+    expect(card).toContain("getWishlistMembershipKeysAction");
+    expect(card).toContain("wishlistMembershipQueryKey");
+  });
+
+  it("exposes batch wishlist membership actions", () => {
+    const actions = read("src/features/wishlist/actions.ts");
+    expect(actions).toContain("getWishlistMembershipAction");
+    expect(actions).toContain("getWishlistMembershipKeysAction");
+    const service = read("src/features/wishlist/service.ts");
+    expect(service).toContain("getWishlistMembershipKeys");
+    expect(service).toContain("getAllWishlistMembershipKeys");
+  });
+
+  it("uses unoptimized thumbs on homepage categories and admin media list", () => {
+    expect(read("src/app/(storefront)/home-view.tsx")).toContain("unoptimized");
+    expect(
+      read("src/features/media/components/SortableImageList.tsx"),
+    ).toContain("unoptimized");
+  });
+});
