@@ -26,6 +26,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 function sanitizePaymentValues(
   values: PaymentSettingsFormValues,
@@ -92,6 +98,8 @@ export function PaymentSettingsForm({
     control,
     handleSubmit,
     reset,
+    setError: setFieldError,
+    setFocus,
     formState: { errors, isDirty },
   } = useForm<PaymentSettingsFormValues>({
     resolver: zodResolver(
@@ -172,6 +180,14 @@ export function PaymentSettingsForm({
     startTransition(async () => {
       const result = await savePaymentSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -304,26 +320,30 @@ export function PaymentSettingsForm({
                     </TextField>
                   )}
                 />
-                <TextField
-                  label={
-                    feeType === "PERCENTAGE"
-                      ? "Fee percent"
-                      : `Fee amount (${currency})`
-                  }
-                  type="number"
-                  fullWidth
-                  required
-                  slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-                  disabled={!canUpdate || pending}
-                  error={Boolean(errors.feeValue)}
-                  helperText={
-                    errors.feeValue?.message ||
-                    (feeType === "PERCENTAGE"
-                      ? "Example: 2 means a 2% fee"
-                      : `Amount added in ${currency}`)
-                  }
-                  {...register("feeValue")}
-                />
+                <div>
+                  <TextField
+                    label={
+                      feeType === "PERCENTAGE"
+                        ? "Fee percent"
+                        : `Fee amount (${currency})`
+                    }
+                    type="number"
+                    fullWidth
+                    required
+                    slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                    disabled={!canUpdate || pending}
+                    error={Boolean(errors.feeValue)}
+                    helperText={
+                      errors.feeValue
+                        ? undefined
+                        : feeType === "PERCENTAGE"
+                          ? "Example: 2 means a 2% fee"
+                          : `Amount added in ${currency}`
+                    }
+                    {...register("feeValue")}
+                  />
+                  <FieldError message={errors.feeValue?.message} />
+                </div>
               </div>
               <Controller
                 name="feeBasis"
@@ -419,26 +439,30 @@ export function PaymentSettingsForm({
                   </TextField>
                 )}
               />
-              <TextField
-                label={
-                  taxType === "PERCENTAGE"
-                    ? "Tax percent"
-                    : `Tax amount (${currency})`
-                }
-                type="number"
-                fullWidth
-                required
-                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-                disabled={!canUpdate || pending}
-                error={Boolean(errors.taxValue)}
-                helperText={
-                  errors.taxValue?.message ||
-                  (taxType === "PERCENTAGE"
-                    ? "Example: 18 for 18% GST"
-                    : `Fixed tax in ${currency}`)
-                }
-                {...register("taxValue")}
-              />
+              <div>
+                <TextField
+                  label={
+                    taxType === "PERCENTAGE"
+                      ? "Tax percent"
+                      : `Tax amount (${currency})`
+                  }
+                  type="number"
+                  fullWidth
+                  required
+                  slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                  disabled={!canUpdate || pending}
+                  error={Boolean(errors.taxValue)}
+                  helperText={
+                    errors.taxValue
+                      ? undefined
+                      : taxType === "PERCENTAGE"
+                        ? "Example: 18 for 18% GST"
+                        : `Fixed tax in ${currency}`
+                  }
+                  {...register("taxValue")}
+                />
+                <FieldError message={errors.taxValue?.message} />
+              </div>
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)]">

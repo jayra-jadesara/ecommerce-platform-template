@@ -1,8 +1,4 @@
-/**
- * Central platform configuration contracts.
- * Designed to be populated from Supabase (or other backends).
- * Do not hardcode client-specific brand content into reusable components.
- */
+import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 
 export interface BrandConfig {
   name: string;
@@ -57,6 +53,8 @@ export interface TypographyConfig {
   baseSizePx: number;
   headingWeight: number;
   bodyWeight: number;
+  /** Store-wide page/section heading accent decoration. */
+  headingHighlightStyle?: HeadingHighlightStyle;
 }
 
 export interface LayoutConfig {

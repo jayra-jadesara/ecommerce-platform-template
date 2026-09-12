@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { ProductsCatalog } from "@/features/catalog/components/ProductsCatalog";
 import {
   countStorefrontProductsByCategory,
@@ -100,9 +101,12 @@ export default async function CategoryPage({ params, searchParams }: Props) {
     <PageShell showBack={false} className="!pt-3 md:!pt-5">
       <JsonLdScript data={breadcrumbs} />
       <header className="mx-auto mb-3 max-w-5xl md:mb-4">
-        <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-2xl">
-          {category.name}
-        </h1>
+        <StorefrontHeading
+          title={category.name}
+          as="h1"
+          align="center"
+          className="!text-xl md:!text-2xl"
+        />
         {category.description ? (
           <p className="mx-auto mt-1 max-w-2xl text-center text-xs text-[var(--color-muted)]">
             {category.description}

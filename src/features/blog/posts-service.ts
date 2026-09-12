@@ -28,6 +28,7 @@ import type {
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
 
 function mapPostRow(
@@ -84,7 +85,7 @@ export function toBlogPostFormValues(post: BlogPost): BlogPostFormValues {
 
 export type BlogPostMutationResult =
   | { ok: true; post: BlogPost; message?: string; id?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export type AdminBlogPostListResult = {
   items: AdminBlogPostListItem[];
@@ -326,10 +327,7 @@ export async function createAdminBlogPost(
 
   const parsed = blogPostFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid post.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid post.");
   }
 
   const values = parsed.data;
@@ -366,7 +364,11 @@ export async function createAdminBlogPost(
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A post with this URL already exists." };
+      return {
+        ok: false,
+        error: "A post with this URL already exists.",
+        fieldErrors: { slug: "A post with this URL already exists." },
+      };
     }
     return unexpectedFailure({
       type: "CMS",
@@ -431,10 +433,7 @@ export async function updateAdminBlogPost(
 
   const parsed = blogPostFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid post.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid post.");
   }
 
   const values = parsed.data;
@@ -484,7 +483,11 @@ export async function updateAdminBlogPost(
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A post with this URL already exists." };
+      return {
+        ok: false,
+        error: "A post with this URL already exists.",
+        fieldErrors: { slug: "A post with this URL already exists." },
+      };
     }
     const operation =
       !wasPublished && willPublish

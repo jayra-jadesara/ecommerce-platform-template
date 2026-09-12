@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { BackLink } from "@/components/layout/BackLink";
 import { Container } from "@/components/layout/Container";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { cn } from "@/lib/cn";
 
 interface PageShellProps {
@@ -38,9 +39,12 @@ export function PageShell({
       {(title || description) && (
         <header className="mb-6 md:mb-8">
           {title ? (
-            <h1 className="font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-3xl">
-              {title}
-            </h1>
+            <StorefrontHeading
+              title={title}
+              as="h1"
+              align="left"
+              className="!text-2xl md:!text-3xl"
+            />
           ) : null}
           {description ? (
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">

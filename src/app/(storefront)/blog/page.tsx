@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { BlogBreadcrumb } from "@/features/blog/components/BlogBreadcrumb";
 import { BlogListing } from "@/features/blog/components/BlogListing";
@@ -98,9 +99,12 @@ export default async function BlogListingPage({
     >
       <BlogBreadcrumb categoryLabel={categoryLabel} />
       <header className="mb-6 max-w-2xl md:mb-8">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-[2.35rem] md:leading-tight">
-          {settings.pageTitle || "Blog"}
-        </h1>
+        <StorefrontHeading
+          title={settings.pageTitle || "Blog"}
+          as="h1"
+          align="left"
+          className="!text-3xl md:!text-[2.35rem] md:!leading-tight"
+        />
         {settings.pageDescription?.trim() ? (
           <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
             {settings.pageDescription.trim()}

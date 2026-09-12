@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Metadata } from "next";
 import { BackLink } from "@/components/layout/BackLink";
 import { Container } from "@/components/layout/Container";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { requireUser } from "@/features/auth/session";
 import { LogoutButton } from "@/features/auth/components/LogoutButton";
 import { cn } from "@/lib/cn";
@@ -34,9 +35,12 @@ export default async function AccountLayout({
         <div className="mb-3">
           <BackLink href="/" label="Back to store" />
         </div>
-        <h1 className="font-[family-name:var(--font-display)] text-xl font-semibold">
-          My account
-        </h1>
+        <StorefrontHeading
+          title="My account"
+          as="h1"
+          align="left"
+          className="!text-xl"
+        />
         <nav className="mt-4 flex flex-row gap-1 overflow-x-auto md:flex-col" aria-label="Account">
           {NAV.map((item) => (
             <Link

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
@@ -58,9 +59,12 @@ export default async function CmsContentPage({ params }: Props) {
   return (
     <PageShell backHref="/" backLabel="Back to home">
       <article className="mx-auto max-w-3xl py-6 md:py-10">
-        <h1 className="font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight md:text-4xl">
-          {payload.page.title}
-        </h1>
+        <StorefrontHeading
+          title={payload.page.title}
+          as="h1"
+          align="left"
+          className="!text-3xl md:!text-4xl"
+        />
         {payload.page.content ? (
           <div className="mt-6 whitespace-pre-wrap text-[var(--color-muted)]">
             {payload.page.content}
@@ -74,6 +78,7 @@ export default async function CmsContentPage({ params }: Props) {
           visualEffects={config.visualEffects}
           currency={config.store.currency}
           isAuthenticated={Boolean(user)}
+          headingHighlightStyle={config.typography.headingHighlightStyle}
         />
       ) : null}
     </PageShell>

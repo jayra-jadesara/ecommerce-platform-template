@@ -16,10 +16,16 @@ import {
 } from "@/features/admin/theme/map-to-db";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import type { FieldErrors } from "@/lib/validation";
 
 export type ThemeUpdateResult =
   | { ok: true; message: string }
-  | { ok: false; error: string; referenceId?: string };
+  | {
+      ok: false;
+      error: string;
+      referenceId?: string;
+      fieldErrors?: FieldErrors;
+    };
 
 const THEME_ROUTE = getAdminPath("/settings/theme");
 

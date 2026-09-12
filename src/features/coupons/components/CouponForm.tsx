@@ -31,6 +31,12 @@ import {
   AdminDateTimeField,
   isoToAdminDateTimeLocal,
 } from "@/features/admin/ui/AdminDateTimeField";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 interface CouponFormProps {
   mode: "create" | "edit";
@@ -56,6 +62,8 @@ export function CouponForm({
     register,
     control,
     handleSubmit,
+    setError: setFieldError,
+    setFocus,
     formState: { errors },
   } = useForm<CouponFormValues>({
     resolver: zodResolver(couponFormSchema) as Resolver<CouponFormValues>,
@@ -123,6 +131,14 @@ export function CouponForm({
           ? await createCouponAction(payload)
           : await updateCouponAction(couponId!, payload);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -159,34 +175,50 @@ export function CouponForm({
           <p className="admin-field-group__hint">
             This is what shoppers enter — for example WELCOME10.
           </p>
-          <TextField
-            label="Code shoppers type"
-            fullWidth
-            required
-            disabled={!canSubmit || pending}
-            error={Boolean(errors.code)}
-            helperText={
-              errors.code?.message ??
-              "Letters and numbers only. Saved in CAPITALS."
-            }
-            placeholder="WELCOME10"
-            slotProps={{ htmlInput: { style: { textTransform: "uppercase" } } }}
-            {...register("code")}
-          />
-          <TextField
-            label="Note for your team (optional)"
-            fullWidth
-            multiline
-            minRows={2}
-            disabled={!canSubmit || pending}
-            error={Boolean(errors.description)}
-            helperText={
-              errors.description?.message ??
-              "Not shown to customers — just for your records."
-            }
-            placeholder="Example: Launch offer for first-time buyers"
-            {...register("description")}
-          />
+          <div>
+            <TextField
+              label="Code shoppers type"
+              fullWidth
+              required
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.code)}
+              helperText={
+                errors.code
+                  ? undefined
+                  : "Letters and numbers only. Saved in CAPITALS."
+              }
+              placeholder="WELCOME10"
+              slotProps={{
+                htmlInput: {
+                  style: { textTransform: "uppercase" },
+                  "aria-invalid": Boolean(errors.code),
+                  "aria-describedby": errors.code
+                    ? "coupon-code-error"
+                    : undefined,
+                },
+              }}
+              {...register("code")}
+            />
+            <FieldError id="coupon-code-error" message={errors.code?.message} />
+          </div>
+          <div>
+            <TextField
+              label="Note for your team (optional)"
+              fullWidth
+              multiline
+              minRows={2}
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.description)}
+              helperText={
+                errors.description
+                  ? undefined
+                  : "Not shown to customers — just for your records."
+              }
+              placeholder="Example: Launch offer for first-time buyers"
+              {...register("description")}
+            />
+            <FieldError message={errors.description?.message} />
+          </div>
         </div>
         </section>
 
@@ -223,68 +255,80 @@ export function CouponForm({
                 </TextField>
               )}
             />
-            <TextField
-              label={
-                discountType === "percentage"
-                  ? "Percent off"
-                  : `Amount off (${currency})`
-              }
-              type="number"
-              fullWidth
-              required
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.discountValue)}
-              helperText={
-                errors.discountValue?.message ||
-                (discountType === "percentage"
-                  ? "Example: 10 means 10% off"
-                  : `Example: 100 means ${formatMoney(100, currency)} off`)
-              }
-              slotProps={{ htmlInput: { step: "any", min: 0 } }}
-              {...register("discountValue", { valueAsNumber: true })}
-            />
+            <div>
+              <TextField
+                label={
+                  discountType === "percentage"
+                    ? "Percent off"
+                    : `Amount off (${currency})`
+                }
+                type="number"
+                fullWidth
+                required
+                disabled={!canSubmit || pending}
+                error={Boolean(errors.discountValue)}
+                helperText={
+                  errors.discountValue
+                    ? undefined
+                    : discountType === "percentage"
+                      ? "Example: 10 means 10% off"
+                      : `Example: 100 means ${formatMoney(100, currency)} off`
+                }
+                slotProps={{ htmlInput: { step: "any", min: 0 } }}
+                {...register("discountValue", { valueAsNumber: true })}
+              />
+              <FieldError message={errors.discountValue?.message} />
+            </div>
           </div>
 
           <div className={adminFieldsGrid(2)}>
-            <TextField
-              label={`Minimum order (${currency})`}
-              type="number"
-              fullWidth
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.minimumOrderAmount)}
-              helperText={
-                errors.minimumOrderAmount?.message ??
-                "Leave blank for no minimum. Checked against cart total."
-              }
-              placeholder="Optional"
-              slotProps={{ htmlInput: { step: "any", min: 0 } }}
-              {...register("minimumOrderAmount", {
-                setValueAs: (v) =>
-                  v === "" || v == null || Number.isNaN(Number(v))
-                    ? null
-                    : Number(v),
-              })}
-            />
-            {discountType === "percentage" ? (
+            <div>
               <TextField
-                label={`Max discount (${currency})`}
+                label={`Minimum order (${currency})`}
                 type="number"
                 fullWidth
                 disabled={!canSubmit || pending}
-                error={Boolean(errors.maximumDiscountAmount)}
+                error={Boolean(errors.minimumOrderAmount)}
                 helperText={
-                  errors.maximumDiscountAmount?.message ??
-                  "Optional cap so a big cart does not get unlimited off."
+                  errors.minimumOrderAmount
+                    ? undefined
+                    : "Leave blank for no minimum. Checked against cart total."
                 }
                 placeholder="Optional"
                 slotProps={{ htmlInput: { step: "any", min: 0 } }}
-                {...register("maximumDiscountAmount", {
+                {...register("minimumOrderAmount", {
                   setValueAs: (v) =>
                     v === "" || v == null || Number.isNaN(Number(v))
                       ? null
                       : Number(v),
                 })}
               />
+              <FieldError message={errors.minimumOrderAmount?.message} />
+            </div>
+            {discountType === "percentage" ? (
+              <div>
+                <TextField
+                  label={`Max discount (${currency})`}
+                  type="number"
+                  fullWidth
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.maximumDiscountAmount)}
+                  helperText={
+                    errors.maximumDiscountAmount
+                      ? undefined
+                      : "Optional cap so a big cart does not get unlimited off."
+                  }
+                  placeholder="Optional"
+                  slotProps={{ htmlInput: { step: "any", min: 0 } }}
+                  {...register("maximumDiscountAmount", {
+                    setValueAs: (v) =>
+                      v === "" || v == null || Number.isNaN(Number(v))
+                        ? null
+                        : Number(v),
+                  })}
+                />
+                <FieldError message={errors.maximumDiscountAmount?.message} />
+              </div>
             ) : (
               <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)] self-center">
                 Max discount only applies to percentage coupons.
@@ -304,80 +348,96 @@ export function CouponForm({
             Control how many times the code can be used, and when it works.
           </p>
           <div className={adminFieldsGrid(2)}>
-            <TextField
-              label="Total uses allowed"
-              type="number"
-              fullWidth
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.usageLimit)}
-              helperText={
-                errors.usageLimit?.message ??
-                "Leave blank for unlimited uses across all customers."
-              }
-              placeholder="Optional"
-              slotProps={{ htmlInput: { step: 1, min: 1 } }}
-              {...register("usageLimit", {
-                setValueAs: (v) =>
-                  v === "" || v == null || Number.isNaN(Number(v))
-                    ? null
-                    : Math.trunc(Number(v)),
-              })}
-            />
-            <TextField
-              label="Uses per customer"
-              type="number"
-              fullWidth
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.perUserLimit)}
-              helperText={
-                errors.perUserLimit?.message ??
-                "Leave blank for no per-person limit (signed-in customers)."
-              }
-              placeholder="Optional"
-              slotProps={{ htmlInput: { step: 1, min: 1 } }}
-              {...register("perUserLimit", {
-                setValueAs: (v) =>
-                  v === "" || v == null || Number.isNaN(Number(v))
-                    ? null
-                    : Math.trunc(Number(v)),
-              })}
-            />
+            <div>
+              <TextField
+                label="Total uses allowed"
+                type="number"
+                fullWidth
+                disabled={!canSubmit || pending}
+                error={Boolean(errors.usageLimit)}
+                helperText={
+                  errors.usageLimit
+                    ? undefined
+                    : "Leave blank for unlimited uses across all customers."
+                }
+                placeholder="Optional"
+                slotProps={{ htmlInput: { step: 1, min: 1 } }}
+                {...register("usageLimit", {
+                  setValueAs: (v) =>
+                    v === "" || v == null || Number.isNaN(Number(v))
+                      ? null
+                      : Math.trunc(Number(v)),
+                })}
+              />
+              <FieldError message={errors.usageLimit?.message} />
+            </div>
+            <div>
+              <TextField
+                label="Uses per customer"
+                type="number"
+                fullWidth
+                disabled={!canSubmit || pending}
+                error={Boolean(errors.perUserLimit)}
+                helperText={
+                  errors.perUserLimit
+                    ? undefined
+                    : "Leave blank for no per-person limit (signed-in customers)."
+                }
+                placeholder="Optional"
+                slotProps={{ htmlInput: { step: 1, min: 1 } }}
+                {...register("perUserLimit", {
+                  setValueAs: (v) =>
+                    v === "" || v == null || Number.isNaN(Number(v))
+                      ? null
+                      : Math.trunc(Number(v)),
+                })}
+              />
+              <FieldError message={errors.perUserLimit?.message} />
+            </div>
             <Controller
               name="startsAt"
               control={control}
               render={({ field }) => (
-                <AdminDateTimeField
-                  label="Starts"
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.startsAt)}
-                  helperText={
-                    errors.startsAt?.message ??
-                    "Leave blank to start as soon as you save."
-                  }
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                />
+                <div>
+                  <AdminDateTimeField
+                    label="Starts"
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.startsAt)}
+                    helperText={
+                      errors.startsAt
+                        ? undefined
+                        : "Leave blank to start as soon as you save."
+                    }
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
+                  <FieldError message={errors.startsAt?.message} />
+                </div>
               )}
             />
             <Controller
               name="expiresAt"
               control={control}
               render={({ field }) => (
-                <AdminDateTimeField
-                  label="Ends"
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.expiresAt)}
-                  helperText={
-                    errors.expiresAt?.message ??
-                    "Leave blank if the code should not expire."
-                  }
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                />
+                <div>
+                  <AdminDateTimeField
+                    label="Ends"
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.expiresAt)}
+                    helperText={
+                      errors.expiresAt
+                        ? undefined
+                        : "Leave blank if the code should not expire."
+                    }
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
+                  <FieldError message={errors.expiresAt?.message} />
+                </div>
               )}
             />
           </div>

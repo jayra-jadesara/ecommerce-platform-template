@@ -21,6 +21,7 @@ import {
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 const BRANDING_ROUTE = getAdminPath("/settings/branding");
 
@@ -42,10 +43,7 @@ export async function updateBrandingSettings(
 
   const parsed = brandingSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid branding settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid branding settings.");
   }
 
   const values: BrandingSettingsFormValues = parsed.data;

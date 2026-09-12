@@ -25,6 +25,11 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import type { BrandConfig } from "@/types";
 
 const DEFAULT_TAGLINE = "your store, your brand.";
@@ -67,6 +72,8 @@ export function FooterSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<FooterSettingsFormValues>({
     resolver: zodResolver(footerSettingsSchema),
@@ -90,6 +97,14 @@ export function FooterSettingsForm({
     startTransition(async () => {
       const result = await saveFooterSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }

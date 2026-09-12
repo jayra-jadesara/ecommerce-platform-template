@@ -14,6 +14,7 @@ import {
 } from "@/features/admin/settings/store-context";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 const NAVIGATION_ROUTE = getAdminPath("/settings/navigation");
 
@@ -61,10 +62,7 @@ export async function updateNavigationSettings(
 
   const parsed = navigationSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid navigation settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid navigation settings.");
   }
 
   const supabase = await createSupabaseServerClient();

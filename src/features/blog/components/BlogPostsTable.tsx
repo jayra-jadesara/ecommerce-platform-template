@@ -21,6 +21,7 @@ import {
   adminCard,
   adminCardPadding,
 } from "@/features/admin/ui/admin-classes";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { formatDateTime } from "@/lib/format-date";
 
 interface BlogPostsTableProps {
@@ -81,6 +82,8 @@ export function BlogPostsTable({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<AdminBlogPostListItem | null>(null);
   const pageCount = Math.max(1, Math.ceil(total / query.pageSize));
 
   return (
@@ -371,21 +374,8 @@ export function BlogPostsTable({
                             disabled={pending}
                             className="text-red-700 underline"
                             onClick={() => {
-                              if (
-                                !window.confirm(
-                                  `Delete “${item.title}”? This cannot be undone.`,
-                                )
-                              ) {
-                                return;
-                              }
                               setError(null);
-                              startTransition(async () => {
-                                const result = await deleteBlogPostAction(
-                                  item.id,
-                                );
-                                if (!result.ok) setError(result.error);
-                                router.refresh();
-                              });
+                              setDeleteTarget(item);
                             }}
                           >
                             Delete
@@ -426,6 +416,27 @@ export function BlogPostsTable({
           </div>
         </div>
       ) : null}
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title="Delete article?"
+        message={`Delete “${deleteTarget?.title ?? "this article"}”? This cannot be undone.`}
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await deleteBlogPostAction(deleteTarget.id);
+            if (!result.ok) setError(result.error);
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { formatMoney } from "@/features/catalog/money";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import {
   adminMarkOrderRefundedAction,
   adminUpdateOrderStatusAction,
@@ -20,6 +21,8 @@ const ACTION_FLOW: Array<{ label: string; status: OrderStatus }> = [
   { label: "Cancel order", status: "CANCELLED" },
 ];
 
+type ConfirmAction = { kind: "cancel" } | { kind: "refund" };
+
 export function AdminOrderDetailClient({
   initialOrder,
   canUpdate,
@@ -36,6 +39,7 @@ export function AdminOrderDetailClient({
   const [provider, setProvider] = useState(order.shippingProvider ?? "");
   const [tracking, setTracking] = useState(order.trackingNumber ?? "");
   const [pending, startTransition] = useTransition();
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
 
   function run(action: () => Promise<{ ok: boolean; error?: string; order?: OrderDetail; message?: string }>) {
     setError(null);
@@ -101,7 +105,8 @@ export function AdminOrderDetailClient({
                     disabled={!allowed || pending}
                     onClick={() => {
                       if (action.status === "CANCELLED") {
-                        if (!window.confirm("Cancel this order?")) return;
+                        setConfirmAction({ kind: "cancel" });
+                        return;
                       }
                       if (action.status === "SHIPPED") {
                         run(() =>
@@ -131,18 +136,7 @@ export function AdminOrderDetailClient({
                 <button
                   type="button"
                   disabled={pending}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        "Mark this order as refunded locally? This does not automatically refund via the payment provider.",
-                      )
-                    ) {
-                      return;
-                    }
-                    run(() =>
-                      adminMarkOrderRefundedAction({ orderId: order.id }),
-                    );
-                  }}
+                  onClick={() => setConfirmAction({ kind: "refund" })}
                   className="rounded-md border border-red-300 px-3 py-2 text-left text-sm text-red-700"
                 >
                   Mark refunded (local)
@@ -301,6 +295,46 @@ export function AdminOrderDetailClient({
           </ol>
         )}
       </section>
+
+      <ConfirmDeleteDialog
+        open={Boolean(confirmAction)}
+        title={
+          confirmAction?.kind === "refund"
+            ? "Mark order refunded?"
+            : "Cancel order?"
+        }
+        message={
+          confirmAction?.kind === "refund"
+            ? "Mark this order as refunded locally? This does not automatically refund via the payment provider."
+            : "Cancel this order?"
+        }
+        confirmTone="danger"
+        confirmLabel={
+          confirmAction?.kind === "refund" ? "Mark refunded" : "Cancel order"
+        }
+        cancelLabel="Keep order"
+        pending={pending}
+        pendingLabel="Working…"
+        onClose={() => {
+          if (pending) return;
+          setConfirmAction(null);
+        }}
+        onConfirm={() => {
+          if (!confirmAction) return;
+          const action = confirmAction;
+          setConfirmAction(null);
+          if (action.kind === "refund") {
+            run(() => adminMarkOrderRefundedAction({ orderId: order.id }));
+            return;
+          }
+          run(() =>
+            adminUpdateOrderStatusAction({
+              orderId: order.id,
+              nextStatus: "CANCELLED",
+            }),
+          );
+        }}
+      />
     </div>
   );
 }

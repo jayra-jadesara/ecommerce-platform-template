@@ -13,11 +13,19 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import {
   archiveProductAction,
+  checkProductDependenciesAction,
   createProductAction,
   deleteProductAction,
   updateProductAction,
 } from "@/features/catalog/actions";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
 import { adminFieldsGrid } from "@/features/admin/ui/admin-classes";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import type { CategoryRow } from "@/features/catalog/categories-service";
 import { autoSkuFromSlug, slugify } from "@/features/catalog/slug";
 import {
@@ -101,6 +109,9 @@ export function ProductForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
 
   const listHref = getAdminPath("/catalog/products");
   const isView = mode === "view";
@@ -111,6 +122,8 @@ export function ProductForm({
     handleSubmit,
     setValue,
     getValues,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productFormSchema) as Resolver<ProductFormValues>,
@@ -179,6 +192,14 @@ export function ProductForm({
           : await updateProductAction(productId!, payload);
       if (!result.ok) {
         setError(friendlyError(result.error));
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         return;
       }
       if (mode === "create" && result.id) {
@@ -247,17 +268,25 @@ export function ProductForm({
                   color="error"
                   disabled={!canDelete || pending}
                   onClick={() => {
-                    if (
-                      !window.confirm(
-                        "Delete this product?\n\nThis action cannot be undone.",
-                      )
-                    ) {
-                      return;
-                    }
+                    setError(null);
+                    setDeleteOpen(true);
+                    setDeleteBlocked(false);
+                    setDeleteMessage(
+                      "Delete this product? This action cannot be undone.",
+                    );
                     startTransition(async () => {
-                      const result = await deleteProductAction(productId!);
-                      if (!result.ok) setError(friendlyError(result.error));
-                      else router.push(listHref);
+                      const check = await checkProductDependenciesAction(
+                        productId!,
+                      );
+                      if (!check.ok) {
+                        setError(friendlyError(check.error));
+                        setDeleteOpen(false);
+                        return;
+                      }
+                      if (!check.deps.canDelete) {
+                        setDeleteBlocked(true);
+                        setDeleteMessage(check.deps.message);
+                      }
                     });
                   }}
                 >
@@ -316,20 +345,34 @@ export function ProductForm({
             name="name"
             control={control}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Product name"
-                placeholder="e.g. Garam Masala"
-                fullWidth
-                required
-                disabled={!fieldsEditable}
-                error={Boolean(fieldState.error)}
-                helperText={fieldState.error?.message}
-                onChange={(event) => {
-                  field.onChange(event);
-                  syncAutoCodesFromName(event.target.value);
-                }}
-              />
+              <div>
+                <TextField
+                  {...field}
+                  label="Product name"
+                  placeholder="e.g. Garam Masala"
+                  fullWidth
+                  required
+                  disabled={!fieldsEditable}
+                  error={Boolean(fieldState.error)}
+                  helperText={undefined}
+                  slotProps={{
+                    htmlInput: {
+                      "aria-invalid": Boolean(fieldState.error),
+                      "aria-describedby": fieldState.error
+                        ? "product-name-error"
+                        : undefined,
+                    },
+                  }}
+                  onChange={(event) => {
+                    field.onChange(event);
+                    syncAutoCodesFromName(event.target.value);
+                  }}
+                />
+                <FieldError
+                  id="product-name-error"
+                  message={fieldState.error?.message}
+                />
+              </div>
             )}
           />
           <Controller
@@ -887,6 +930,48 @@ export function ProductForm({
           })}
         </div>
       </details>
+
+      <ConfirmDeleteDialog
+        open={deleteOpen}
+        title={
+          deleteBlocked ? "Can't delete this product" : "Delete product?"
+        }
+        message={deleteMessage}
+        blocked={deleteBlocked}
+        warningTone={deleteBlocked}
+        safeActionLabel="Archive"
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteOpen(false);
+        }}
+        onConfirm={() => {
+          startTransition(async () => {
+            const result = await deleteProductAction(productId!);
+            if (!result.ok) {
+              setError(friendlyError(result.error));
+              setDeleteOpen(false);
+              return;
+            }
+            setDeleteOpen(false);
+            router.push(listHref);
+          });
+        }}
+        onSafeAction={() => {
+          startTransition(async () => {
+            const result = await archiveProductAction(productId!);
+            if (!result.ok) {
+              setError(friendlyError(result.error));
+              setDeleteOpen(false);
+              return;
+            }
+            setSuccess("Product archived.");
+            setDeleteOpen(false);
+            router.push(listHref);
+            router.refresh();
+          });
+        }}
+      />
     </form>
   );
 }

@@ -9,6 +9,7 @@ import {
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 import type { BrandConfig, ResolvedThemeMode, ThemeConfig } from "@/types";
+import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import { ThemeEditorPreviewCanvas } from "@/features/admin/theme/components/ThemeEditorPreviewCanvas";
 import { ThemePreviewErrorBoundary } from "@/features/admin/theme/components/ThemePreviewErrorBoundary";
 import type {
@@ -30,6 +31,7 @@ type Props = {
   mode: ResolvedThemeMode;
   brand: BrandConfig;
   fonts?: { sans?: string; display?: string };
+  headingHighlightStyle?: HeadingHighlightStyle;
   showMotionControls?: boolean;
   previewMotion: boolean;
   preview3d: boolean;
@@ -59,6 +61,7 @@ export function AppearanceSplitLayout({
   mode,
   brand,
   fonts,
+  headingHighlightStyle,
   showMotionControls = false,
   previewMotion,
   preview3d,
@@ -225,6 +228,7 @@ export function AppearanceSplitLayout({
                 mode={mode}
                 brand={brand}
                 fonts={fonts}
+                headingHighlightStyle={headingHighlightStyle}
                 previewMotion={previewMotion}
                 preview3d={preview3d}
                 motionActive={motionActive}

@@ -18,6 +18,7 @@ import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import type { Database } from "@/types/database";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 type StoreSettingsUpdate = Database["public"]["Tables"]["store_settings"]["Update"];
 
@@ -103,10 +104,7 @@ export async function updateHeaderSettings(
 ): Promise<SettingsUpdateResult> {
   const parsed = headerSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid header settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid header settings.");
   }
 
   const values: HeaderSettingsFormValues = parsed.data;
@@ -137,10 +135,7 @@ export async function updateFooterSettings(
 ): Promise<SettingsUpdateResult> {
   const parsed = footerSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid footer settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid footer settings.");
   }
 
   const values: FooterSettingsFormValues = parsed.data;

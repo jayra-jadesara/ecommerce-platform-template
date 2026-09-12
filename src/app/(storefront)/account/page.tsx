@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getCurrentUser } from "@/features/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -14,12 +15,16 @@ export default async function AccountPage() {
     : { data: null };
 
   const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ");
+  const welcome = name ? `Welcome, ${name}` : "Welcome";
 
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Welcome{name ? `, ${name}` : ""}
-      </h2>
+      <StorefrontHeading
+        title={welcome}
+        as="h2"
+        align="left"
+        className="!text-2xl"
+      />
       <p className="mt-2 text-sm text-[var(--color-muted)]">{user?.email}</p>
       <ul className="mt-8 grid gap-3 sm:grid-cols-2">
         {[

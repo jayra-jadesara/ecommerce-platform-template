@@ -19,6 +19,7 @@ import {
 } from "@/features/admin/settings/shipping-payment-schemas";
 import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 const SHIPPING_ROUTE = getAdminPath("/settings/shipping");
 const PAYMENTS_ROUTE = getAdminPath("/settings/payments");
@@ -150,10 +151,7 @@ export async function updateShippingSettings(
 
   const parsed = shippingSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid shipping settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid shipping settings.");
   }
 
   const values = parsed.data;
@@ -244,10 +242,7 @@ export async function updatePaymentSettings(
 
   const parsed = paymentSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid payment settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid payment settings.");
   }
 
   const values = parsed.data;

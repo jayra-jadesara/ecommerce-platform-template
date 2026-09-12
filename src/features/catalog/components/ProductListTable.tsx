@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
@@ -10,9 +10,14 @@ import type { AdminProductListItem } from "@/features/catalog/products-service";
 import type { CategoryRow } from "@/features/catalog/categories-service";
 import type { ProductListQuery } from "@/features/catalog/validation";
 import { PRODUCT_SORT_OPTIONS } from "@/features/catalog/validation";
-import { deleteProductAction } from "@/features/catalog/actions";
+import {
+  archiveProductAction,
+  checkProductDependenciesAction,
+  deleteProductAction,
+} from "@/features/catalog/actions";
 import { formatMoney } from "@/features/catalog/money";
 import { getAdminPath } from "@/config/admin-route";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import {
   adminBtn,
   adminCard,
@@ -127,6 +132,12 @@ export function ProductListTable({
 }: ProductListTableProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<AdminProductListItem | null>(
+    null,
+  );
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [listError, setListError] = useState<string | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
   const emptyFilters =
     !query.q &&
@@ -135,19 +146,36 @@ export function ProductListTable({
     query.featured === "all" &&
     query.stock === "all";
 
-  function confirmDelete(item: AdminProductListItem) {
-    if (!window.confirm(`Delete “${item.name}”? This cannot be undone.`)) {
-      return;
-    }
+  function openDelete(item: AdminProductListItem) {
+    setListError(null);
+    setDeleteTarget(item);
+    setDeleteBlocked(false);
+    setDeleteMessage(`Delete “${item.name}”? This cannot be undone.`);
     startTransition(async () => {
-      const result = await deleteProductAction(item.id);
-      if (result.ok) router.refresh();
-      else window.alert(result.error);
+      const check = await checkProductDependenciesAction(item.id);
+      if (!check.ok) {
+        setListError(check.error);
+        setDeleteTarget(null);
+        return;
+      }
+      if (!check.deps.canDelete) {
+        setDeleteBlocked(true);
+        setDeleteMessage(check.deps.message);
+      }
     });
+  }
+
+  function confirmDelete(item: AdminProductListItem) {
+    openDelete(item);
   }
 
   return (
     <div style={adminStackStyle}>
+      {listError ? (
+        <p className="text-sm text-[var(--color-error)]" role="alert">
+          {listError}
+        </p>
+      ) : null}
       <div
         className={`${adminCard()} ${adminCardPadding()}`}
         style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
@@ -470,6 +498,48 @@ export function ProductListTable({
           </Link>
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title={
+          deleteBlocked ? "Can't delete this product" : "Delete product?"
+        }
+        message={deleteMessage}
+        blocked={deleteBlocked}
+        warningTone={deleteBlocked}
+        safeActionLabel="Archive"
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await deleteProductAction(deleteTarget.id);
+            if (!result.ok) {
+              setListError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+        onSafeAction={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await archiveProductAction(deleteTarget.id);
+            if (!result.ok) {
+              setListError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

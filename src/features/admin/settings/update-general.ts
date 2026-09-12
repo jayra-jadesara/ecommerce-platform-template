@@ -15,6 +15,7 @@ import {
 import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 const GENERAL_ROUTE = getAdminPath("/settings/general");
 
@@ -36,10 +37,7 @@ export async function updateGeneralStoreSettings(
 
   const parsed = generalSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid settings.");
   }
 
   const values: GeneralSettingsFormValues = parsed.data;

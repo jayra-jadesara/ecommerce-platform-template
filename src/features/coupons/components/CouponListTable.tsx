@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import Chip from "@mui/material/Chip";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { getAdminPath } from "@/config/admin-route";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { formatMoney } from "@/features/catalog/money";
 import { deleteCouponAction } from "@/features/coupons/actions";
 import type { AdminCouponListItem } from "@/features/coupons/admin-service";
@@ -72,7 +73,13 @@ export function CouponListTable({
 }: CouponListTableProps) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<AdminCouponListItem | null>(
+    null,
+  );
   const pageCount = Math.max(1, Math.ceil(total / query.pageSize));
+  const deleteBlocked = Boolean(
+    deleteTarget && deleteTarget.redemptionCount > 0,
+  );
 
   return (
     <div className="space-y-4">
@@ -217,21 +224,7 @@ export function CouponListTable({
                           type="button"
                           disabled={pending}
                           className="text-sm font-medium text-red-700 underline disabled:opacity-50"
-                          onClick={() => {
-                            if (
-                              !window.confirm(
-                                item.redemptionCount > 0
-                                  ? "This coupon has usage history and will be deactivated. Continue?"
-                                  : "Delete this coupon?",
-                              )
-                            ) {
-                              return;
-                            }
-                            startTransition(async () => {
-                              await deleteCouponAction(item.id);
-                              router.refresh();
-                            });
-                          }}
+                          onClick={() => setDeleteTarget(item)}
                         >
                           {item.redemptionCount > 0 ? "Deactivate" : "Delete"}
                         </button>
@@ -274,6 +267,42 @@ export function CouponListTable({
           </Link>
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title={
+          deleteBlocked ? "Can't delete this coupon" : "Delete coupon?"
+        }
+        message={
+          deleteBlocked
+            ? "This coupon has usage history and will be deactivated instead of deleted."
+            : `Delete “${deleteTarget?.code ?? "this coupon"}”? This cannot be undone.`
+        }
+        blocked={deleteBlocked}
+        warningTone={deleteBlocked}
+        safeActionLabel="Deactivate"
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            await deleteCouponAction(deleteTarget.id);
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+        onSafeAction={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            await deleteCouponAction(deleteTarget.id);
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

@@ -24,6 +24,12 @@ import {
   adminFormStack,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 export function PageForm({
   mode,
@@ -51,6 +57,8 @@ export function PageForm({
     register,
     handleSubmit,
     setValue,
+    setError: setFieldError,
+    setFocus,
     watch,
     formState: { errors },
   } = useForm<PageFormValues>({
@@ -98,6 +106,14 @@ export function PageForm({
                 ? await createPageAction(payload)
                 : await updatePageAction(pageId!, payload);
             if (!result.ok) {
+              const serverFieldErrors = resultFieldErrors(result);
+              if (serverFieldErrors) {
+                applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+                focusFirstFieldError({
+                  fieldErrors: serverFieldErrors,
+                  setFocus: setFocus as (name: string) => void,
+                });
+              }
               setError(result.error);
               return;
             }
@@ -121,18 +137,22 @@ export function PageForm({
             Privacy, and similar. The Homepage is edited separately under Content
             → Homepage.
           </p>
-          <TextField
-            label="Page title"
-            fullWidth
-            required
-            disabled={!canSubmit || pending}
-            error={Boolean(errors.title)}
-            helperText={
-              errors.title?.message ??
-              "Shown in the browser tab and usually as the page heading."
-            }
-            {...register("title")}
-          />
+          <div>
+            <TextField
+              label="Page title"
+              fullWidth
+              required
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.title)}
+              helperText={
+                errors.title
+                  ? undefined
+                  : "Shown in the browser tab and usually as the page heading."
+              }
+              {...register("title")}
+            />
+            <FieldError message={errors.title?.message} />
+          </div>
 
           <div
             className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
@@ -164,9 +184,7 @@ export function PageForm({
               {pagePath}
             </p>
 
-            {errors.slug?.message ? (
-              <p className="text-sm text-red-700">{errors.slug.message}</p>
-            ) : null}
+            <FieldError message={errors.slug?.message} />
 
             {mode === "create" && showAddressEditor ? (
               <TextField
@@ -184,6 +202,7 @@ export function PageForm({
                     shouldDirty: true,
                   });
                 }}
+                name="slug"
               />
             ) : null}
 
@@ -197,19 +216,23 @@ export function PageForm({
           <p className="admin-field-group__hint">
             Write what shoppers should read on this page.
           </p>
-          <TextField
-            label="Content"
-            fullWidth
-            multiline
-            minRows={10}
-            disabled={!canSubmit || pending}
-            error={Boolean(errors.content)}
-            helperText={
-              errors.content?.message ??
-              "Plain text for now — formatting tools can come later."
-            }
-            {...register("content")}
-          />
+          <div>
+            <TextField
+              label="Content"
+              fullWidth
+              multiline
+              minRows={10}
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.content)}
+              helperText={
+                errors.content
+                  ? undefined
+                  : "Plain text for now — formatting tools can come later."
+              }
+              {...register("content")}
+            />
+            <FieldError message={errors.content?.message} />
+          </div>
         </div>
 
         <div className={adminFieldGroup()} style={adminStackStyle}>

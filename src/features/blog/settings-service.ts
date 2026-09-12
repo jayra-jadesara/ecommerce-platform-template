@@ -18,10 +18,11 @@ import { normalizeSidebarPreset } from "@/features/blog/settings-normalize";
 import type { BlogSettings } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 
 export type BlogSettingsMutationResult =
   | { ok: true; settings: BlogSettings; message?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function loadAdminBlogSettings(): Promise<BlogSettings | null> {
   const storeId = await resolveActiveStoreId();
@@ -87,10 +88,7 @@ export async function upsertAdminBlogSettings(
 
   const parsed = blogSettingsFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid settings.");
   }
 
   const values = parsed.data;
@@ -108,6 +106,10 @@ export async function upsertAdminBlogSettings(
       return {
         ok: false,
         error: "Featured article must be a published post from this store.",
+        fieldErrors: {
+          featuredPostId:
+            "Featured article must be a published post from this store.",
+        },
       };
     }
   }

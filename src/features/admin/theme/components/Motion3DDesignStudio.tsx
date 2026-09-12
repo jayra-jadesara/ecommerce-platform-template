@@ -2,8 +2,6 @@
 
 import type { Control, UseFormSetValue, UseFormWatch } from "react-hook-form";
 import { Controller } from "react-hook-form";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import type { ThemeEditorFormValues } from "@/features/admin/theme/editor-schema";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
@@ -87,6 +85,64 @@ function StudioSection({
       </div>
       {children}
     </section>
+  );
+}
+
+/** Compact on/off row — avoids broken MUI Switch stretch under Tailwind. */
+function ToggleRow({
+  checked,
+  disabled,
+  title,
+  description,
+  onChange,
+}: {
+  checked: boolean;
+  disabled?: boolean;
+  title: string;
+  description: string;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors",
+        disabled
+          ? "cursor-not-allowed border-[var(--color-border)] opacity-55"
+          : checked
+            ? "border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))]"
+            : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))]",
+      )}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-[var(--color-foreground)]">
+          {title}
+        </span>
+        <span className="mt-0.5 block text-xs text-[var(--color-muted)]">
+          {description}
+        </span>
+      </span>
+      <span
+        aria-hidden
+        className={cn(
+          "relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors",
+          checked
+            ? "bg-[var(--color-primary)]"
+            : "bg-[color-mix(in_srgb,var(--color-muted)_35%,var(--color-border))]",
+        )}
+      >
+        <span
+          className={cn(
+            "absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform",
+            checked && "translate-x-5",
+          )}
+        />
+      </span>
+    </button>
   );
 }
 
@@ -389,15 +445,12 @@ export function Motion3DDesignStudio({
           control={control}
           name="visual3dEnabled"
           render={({ field }) => (
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={field.value}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  disabled={disabled}
-                />
-              }
-              label="3D effects"
+            <ToggleRow
+              checked={field.value}
+              disabled={disabled}
+              title="3D effects"
+              description="Master switch for storefront 3D. Turn off to keep the store flat and fast."
+              onChange={field.onChange}
             />
           )}
         />
@@ -434,20 +487,17 @@ export function Motion3DDesignStudio({
             );
           })}
         </div>
-        <div className="mt-2 space-y-1">
+        <div className="mt-2 space-y-2">
           <Controller
             control={control}
             name="visual3dHeroEnabled"
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(event) => field.onChange(event.target.checked)}
-                    disabled={disabled || !watch("visual3dEnabled")}
-                  />
-                }
-                label="Hero 3D — add a 3D visual effect to your homepage hero"
+              <ToggleRow
+                checked={field.value}
+                disabled={disabled || !watch("visual3dEnabled")}
+                title="Hero 3D"
+                description="Add a 3D visual effect to your homepage hero."
+                onChange={field.onChange}
               />
             )}
           />
@@ -455,15 +505,12 @@ export function Motion3DDesignStudio({
             control={control}
             name="visual3dProductEnabled"
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(event) => field.onChange(event.target.checked)}
-                    disabled={disabled || !watch("visual3dEnabled")}
-                  />
-                }
-                label="Product 3D — show a 3D model when a product has one"
+              <ToggleRow
+                checked={field.value}
+                disabled={disabled || !watch("visual3dEnabled")}
+                title="Product 3D"
+                description="Show a 3D model when a product has one."
+                onChange={field.onChange}
               />
             )}
           />
@@ -502,16 +549,12 @@ export function Motion3DDesignStudio({
           control={control}
           name="visual3dRespectReducedMotion"
           render={({ field }) => (
-            <FormControlLabel
-              className="mt-2"
-              control={
-                <Switch
-                  checked={true}
-                  onChange={() => field.onChange(true)}
-                  disabled
-                />
-              }
-              label="Respect reduced motion — customers who prefer less motion will see a calmer experience"
+            <ToggleRow
+              checked
+              disabled
+              title="Respect reduced motion"
+              description="Customers who prefer less motion will see a calmer experience. Always on for accessibility."
+              onChange={() => field.onChange(true)}
             />
           )}
         />
@@ -615,13 +658,12 @@ export function Motion3DDesignStudio({
           </div>
           <div>
             <p className="mb-2 text-xs font-semibold">Fallback behavior</p>
-            <p className="mb-2 text-[11px] text-[var(--color-muted)]">
-              When 3D is unavailable, shoppers always see a polished 2D
-              experience.
-            </p>
-            <FormControlLabel
-              control={<Switch checked disabled />}
-              label="Prefer simple visuals when needed"
+            <ToggleRow
+              checked
+              disabled
+              title="Prefer simple visuals when needed"
+              description="When 3D is unavailable, shoppers always see a polished 2D experience."
+              onChange={() => undefined}
             />
           </div>
           <button

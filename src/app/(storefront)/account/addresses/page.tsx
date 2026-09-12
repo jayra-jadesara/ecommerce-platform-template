@@ -1,3 +1,4 @@
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { AddressBookClient } from "@/features/addresses/components/AddressBookClient";
 import { getCustomerAddresses } from "@/features/addresses/service";
 
@@ -8,9 +9,7 @@ export default async function AccountAddressesPage() {
 
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Addresses
-      </h2>
+      <StorefrontHeading title="Addresses" as="h2" align="left" className="!text-2xl" />
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         Manage shipping addresses for your orders. At most one address is marked
         default.

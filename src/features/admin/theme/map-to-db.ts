@@ -13,6 +13,7 @@ export type ThemeDbWrite = {
   font_sans: string;
   font_display: string;
   font_mono: string;
+  heading_highlight_style: string;
   light_primary: string;
   light_secondary: string;
   light_accent: string;
@@ -63,6 +64,7 @@ export function formValuesToThemeDbRow(
     font_sans: fontIdToCss(values.fontSans),
     font_display: fontIdToCss(values.fontDisplay),
     font_mono: "var(--font-mono)",
+    heading_highlight_style: values.headingHighlightStyle,
     light_primary: light.primary,
     light_secondary: light.secondary,
     light_accent: light.accent,

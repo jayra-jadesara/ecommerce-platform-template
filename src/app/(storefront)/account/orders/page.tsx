@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getCurrentUser } from "@/features/auth/session";
 import { formatMoney } from "@/features/catalog/money";
 import { listCustomerOrders } from "@/features/orders/queries";
@@ -29,9 +30,7 @@ export default async function AccountOrdersPage({
 
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Orders
-      </h2>
+      <StorefrontHeading title="Orders" as="h2" align="left" className="!text-2xl" />
       <div className="mt-6">
         {!result.items.length ? (
           <EmptyState

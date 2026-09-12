@@ -12,6 +12,7 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import {
   archiveCategoryAction,
+  checkCategoryDependenciesAction,
   createCategoryAction,
   deleteCategoryAction,
   updateCategoryAction,
@@ -25,6 +26,13 @@ import {
 } from "@/features/catalog/validation";
 import { MediaPicker } from "@/features/media/components/MediaPicker";
 import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import {
   adminBtn,
   adminCard,
@@ -82,6 +90,13 @@ export function CategoryManager({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
+  const [deleteChecking, setDeleteChecking] = useState(false);
 
   const defaults = useMemo(() => {
     if (!editingId) return DEFAULT_CATEGORY_FORM;
@@ -100,7 +115,7 @@ export function CategoryManager({
     } satisfies CategoryFormValues;
   }, [editingId, initialCategories]);
 
-  const { control, handleSubmit, reset, setValue } =
+  const { control, handleSubmit, reset, setValue, setError: setFieldError, setFocus } =
     useForm<CategoryFormValues>({
       resolver: zodResolver(categoryFormSchema) as Resolver<CategoryFormValues>,
       values: defaults,
@@ -123,6 +138,14 @@ export function CategoryManager({
         : await createCategoryAction(values);
       if (!result.ok) {
         setError(result.error);
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         return;
       }
       setSuccess(result.message);
@@ -187,28 +210,43 @@ export function CategoryManager({
               name="name"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Category name"
-                  fullWidth
-                  required
-                  disabled={!canEditForm}
-                  error={Boolean(fieldState.error)}
-                  helperText={
-                    fieldState.error?.message ??
-                    (editingId
-                      ? undefined
-                      : `Store address: /categories/${slugify(field.value) || "…"}`)
-                  }
-                  onChange={(event) => {
-                    field.onChange(event);
-                    if (!editingId) {
-                      setValue("slug", slugify(event.target.value), {
-                        shouldValidate: true,
-                      });
+                <div>
+                  <TextField
+                    {...field}
+                    label="Category name"
+                    fullWidth
+                    required
+                    disabled={!canEditForm}
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : editingId
+                          ? undefined
+                          : `Store address: /categories/${slugify(field.value) || "…"}`
                     }
-                  }}
-                />
+                    slotProps={{
+                      htmlInput: {
+                        "aria-invalid": Boolean(fieldState.error),
+                        "aria-describedby": fieldState.error
+                          ? "category-name-error"
+                          : undefined,
+                      },
+                    }}
+                    onChange={(event) => {
+                      field.onChange(event);
+                      if (!editingId) {
+                        setValue("slug", slugify(event.target.value), {
+                          shouldValidate: true,
+                        });
+                      }
+                    }}
+                  />
+                  <FieldError
+                    id="category-name-error"
+                    message={fieldState.error?.message}
+                  />
+                </div>
               )}
             />
             <Controller
@@ -473,24 +511,36 @@ export function CategoryManager({
                     <button
                       type="button"
                       className={adminBtn("danger")}
-                      disabled={!canDelete}
+                      disabled={!canDelete || pending || deleteChecking}
                       onClick={() => {
-                        if (
-                          !window.confirm(
-                            "Delete this category? Blocked if products or child categories still use it.",
-                          )
-                        ) {
-                          return;
-                        }
+                        setError(null);
+                        setDeleteTarget({
+                          id: category.id,
+                          name: category.name,
+                        });
+                        setDeleteBlocked(false);
+                        setDeleteMessage(
+                          `Delete “${category.name}”? This cannot be undone.`,
+                        );
+                        setDeleteChecking(true);
                         startTransition(async () => {
-                          const result = await deleteCategoryAction(
+                          const check = await checkCategoryDependenciesAction(
                             category.id,
                           );
-                          if (!result.ok) setError(result.error);
-                          else {
-                            setSuccess(result.message);
-                            if (editingId === category.id) setEditingId(null);
-                            router.refresh();
+                          setDeleteChecking(false);
+                          if (!check.ok) {
+                            setError(check.error);
+                            setDeleteTarget(null);
+                            return;
+                          }
+                          if (!check.deps.canDelete) {
+                            setDeleteBlocked(true);
+                            setDeleteMessage(check.deps.message);
+                          } else {
+                            setDeleteBlocked(false);
+                            setDeleteMessage(
+                              `Delete “${category.name}”? This cannot be undone.`,
+                            );
                           }
                         });
                       }}
@@ -504,6 +554,53 @@ export function CategoryManager({
           </ul>
         )}
       </section>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title={
+          deleteBlocked
+            ? "Can't delete this category"
+            : "Delete category?"
+        }
+        message={deleteMessage}
+        blocked={deleteBlocked}
+        warningTone={deleteBlocked}
+        safeActionLabel="Deactivate"
+        pending={pending || deleteChecking}
+        onClose={() => {
+          if (pending || deleteChecking) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await deleteCategoryAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setSuccess(result.message);
+            if (editingId === deleteTarget.id) setEditingId(null);
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+        onSafeAction={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await archiveCategoryAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setSuccess(result.message);
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

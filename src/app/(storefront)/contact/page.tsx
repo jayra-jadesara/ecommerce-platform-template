@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { PageShell } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
-import { sfBtn, sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
+import { sfBtn, sfEyebrow } from "@/components/ui/storefront-classes";
 
 export default async function ContactPage() {
   const { contact, store, brand, social } = await getPlatformConfigAsync();
@@ -35,7 +36,12 @@ export default async function ContactPage() {
     <PageShell showBack backHref="/" backLabel="Back to home">
       <div className="overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[radial-gradient(ellipse_at_20%_0%,color-mix(in_srgb,var(--color-primary)_18%,transparent),transparent_55%),radial-gradient(ellipse_at_90%_80%,color-mix(in_srgb,var(--color-accent)_14%,transparent),transparent_50%),var(--color-surface)] px-6 py-10 md:px-10 md:py-14">
         <p className={sfEyebrow()}>{brand.name}</p>
-        <h1 className={`${sfDisplay()} mt-2 text-3xl md:text-4xl`}>Contact us</h1>
+        <StorefrontHeading
+          title="Contact us"
+          as="h1"
+          align="left"
+          className="mt-2 !text-3xl md:!text-4xl"
+        />
         <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--color-muted)] md:text-base">
           Reach the store using the details configured for this brand.
         </p>
@@ -44,7 +50,12 @@ export default async function ContactPage() {
       {hasAny ? (
         <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_1fr]">
           <section className="space-y-5">
-            <h2 className={`${sfDisplay()} text-2xl`}>Get in touch</h2>
+            <StorefrontHeading
+              title="Get in touch"
+              as="h2"
+              align="left"
+              className="!text-2xl"
+            />
             <dl className="space-y-4 text-sm">
               {email ? (
                 <div>
@@ -114,7 +125,12 @@ export default async function ContactPage() {
           </section>
 
           <section className="rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-6">
-            <h2 className={`${sfDisplay()} text-2xl`}>Send a message</h2>
+            <StorefrontHeading
+              title="Send a message"
+              as="h2"
+              align="left"
+              className="!text-2xl"
+            />
             <p className="mt-2 text-sm text-[var(--color-muted)]">
               Prefer email? Use the address above — we do not claim messages are
               delivered through this page.

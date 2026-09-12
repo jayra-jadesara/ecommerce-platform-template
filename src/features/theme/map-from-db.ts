@@ -68,6 +68,10 @@ export type ThemeRow = {
   dark_button_background?: string | null;
   dark_button_foreground?: string | null;
   border_radius?: string | null;
+  font_sans?: string | null;
+  font_mono?: string | null;
+  font_display?: string | null;
+  heading_highlight_style?: string | null;
 };
 
 export type BrandingRow = {

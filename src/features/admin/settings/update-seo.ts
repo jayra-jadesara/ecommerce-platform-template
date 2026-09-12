@@ -16,6 +16,7 @@ import {
 import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure } from "@/lib/validation";
 
 const SEO_ROUTE = getAdminPath("/settings/seo");
 
@@ -37,10 +38,7 @@ export async function updateSeoSettings(
 
   const parsed = seoSettingsSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid SEO settings.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid SEO settings.");
   }
 
   const values: SeoSettingsFormValues = parsed.data;

@@ -28,6 +28,9 @@ import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import type { ProductStatus } from "@/types/database";
 import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { checkProductDependencies } from "@/features/admin/validation/dependencies";
+import { zodValidationFailure } from "@/lib/validation";
+import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
 
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
 
@@ -146,7 +149,7 @@ async function assertUniqueProductSlug(
     .limit(1);
   if (excludeId) query = query.neq("id", excludeId);
   const { data } = await query;
-  if (data?.[0]) return "A product with this slug already exists.";
+  if (data?.[0]) return "This slug is already in use.";
   return null;
 }
 
@@ -157,7 +160,7 @@ async function assertUniqueSkus(
   const active = variants.filter((v) => !v._delete);
   const skus = active.map((v) => v.sku.trim().toUpperCase());
   if (new Set(skus).size !== skus.length) {
-    return "Variant SKUs must be unique within the product.";
+    return "SKU already exists.";
   }
 
   const supabase = await createSupabaseServerClient();
@@ -173,7 +176,7 @@ async function assertUniqueSkus(
     }
     const { data } = await query;
     if (data?.[0] && data[0].id !== variant.id) {
-      return `SKU "${variant.sku}" is already in use.`;
+      return "SKU already exists.";
     }
   }
   return null;
@@ -564,7 +567,13 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
 
   const parsed = productFormSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid product." };
+    const failure = zodValidationFailure(parsed.error, "Invalid product.");
+    return {
+      ok: false,
+      kind: "validation",
+      error: failure.error,
+      fieldErrors: failure.fieldErrors,
+    };
   }
 
   const values = parsed.data;
@@ -673,7 +682,13 @@ export async function updateProduct(
 
   const parsed = productFormSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid product." };
+    const failure = zodValidationFailure(parsed.error, "Invalid product.");
+    return {
+      ok: false,
+      kind: "validation",
+      error: failure.error,
+      fieldErrors: failure.fieldErrors,
+    };
   }
 
   const values = parsed.data;
@@ -868,6 +883,16 @@ export async function deleteProduct(id: string): Promise<CatalogResult> {
     .maybeSingle();
   if (!existing) return { ok: false, error: "Product not found." };
 
+  const deps = await checkProductDependencies(id);
+  if (deps && !deps.canDelete) {
+    return {
+      ok: false,
+      kind: "dependency",
+      error: deps.message,
+      suggestion: "archive",
+    };
+  }
+
   const { error } = await supabase
     .from("products")
     .delete()
@@ -875,6 +900,19 @@ export async function deleteProduct(id: string): Promise<CatalogResult> {
     .eq("store_id", storeId);
 
   if (error) {
+    const mapped = mapDatabaseConstraintError(error, {
+      entity: "product",
+      dependencyHint:
+        "Can't delete this product because it is currently being used. Archive it instead so order history stays intact.",
+    });
+    if (mapped) {
+      return {
+        ok: false,
+        kind: mapped.kind === "dependency" ? "dependency" : "validation",
+        error: mapped.message,
+        suggestion: mapped.suggestion === "deactivate" ? "archive" : mapped.suggestion,
+      };
+    }
     return unexpectedFailure({
       type: "DATABASE",
       source: "DATABASE",

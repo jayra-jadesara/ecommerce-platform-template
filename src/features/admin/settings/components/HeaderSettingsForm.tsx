@@ -25,6 +25,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import {
   pageOptionLabel,
   StorePageLinkField,
@@ -71,6 +77,8 @@ export function HeaderSettingsForm({
     control,
     handleSubmit,
     reset,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<HeaderSettingsFormValues>({
     resolver: zodResolver(headerSettingsSchema),
@@ -97,6 +105,14 @@ export function HeaderSettingsForm({
     startTransition(async () => {
       const result = await saveHeaderSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -260,20 +276,24 @@ export function HeaderSettingsForm({
                 name="announcementUrl"
                 control={control}
                 render={({ field, fieldState }) => (
-                  <StorePageLinkField
-                    label="Opens this page when clicked"
-                    value={field.value}
-                    fallback="/"
-                    allowEmpty
-                    emptyLabel="No link (text only)"
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    onChange={(value) => field.onChange(value ?? "")}
-                    helperText={
-                      fieldState.error?.message ??
-                      "Pick a store page — no need to type a URL"
-                    }
-                  />
+                  <div>
+                    <StorePageLinkField
+                      label="Opens this page when clicked"
+                      value={field.value}
+                      fallback="/"
+                      allowEmpty
+                      emptyLabel="No link (text only)"
+                      disabled={!canUpdate || pending}
+                      error={Boolean(fieldState.error)}
+                      onChange={(value) => field.onChange(value ?? "")}
+                      helperText={
+                        fieldState.error
+                          ? undefined
+                          : "Pick a store page — no need to type a URL"
+                      }
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
               <Controller

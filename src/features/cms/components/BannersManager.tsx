@@ -36,6 +36,13 @@ import {
   pageOptionLabel,
   StorePageLinkField,
 } from "@/features/admin/ui/StorePageLinkField";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import { formatDateTime } from "@/lib/format-date";
 import dayjs from "dayjs";
 
@@ -62,6 +69,7 @@ export function BannersManager({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [deleteTarget, setDeleteTarget] = useState<BannerRow | null>(null);
 
   const formOpen = creating || Boolean(editing);
 
@@ -209,20 +217,7 @@ export function BannersManager({
                       type="button"
                       disabled={pending}
                       className={adminBtn("danger")}
-                      onClick={() => {
-                        if (!window.confirm("Delete this banner?")) return;
-                        startTransition(async () => {
-                          const result = await deleteBannerAction(banner.id);
-                          if (!result.ok) {
-                            setError(result.error);
-                            return;
-                          }
-                          setBanners((prev) =>
-                            prev.filter((b) => b.id !== banner.id),
-                          );
-                          router.refresh();
-                        });
-                      }}
+                      onClick={() => setDeleteTarget(banner)}
                     >
                       Delete
                     </button>
@@ -233,6 +228,33 @@ export function BannersManager({
           })
         )}
       </ul>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title="Delete banner?"
+        message={`Delete “${deleteTarget?.title ?? "this banner"}”? This cannot be undone.`}
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await deleteBannerAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setBanners((prev) =>
+              prev.filter((b) => b.id !== deleteTarget.id),
+            );
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }
@@ -262,6 +284,8 @@ function BannerForm({
     control,
     handleSubmit,
     setValue,
+    setError: setFieldError,
+    setFocus,
     watch,
     formState: { errors },
   } = useForm<BannerFormValues>({
@@ -298,6 +322,14 @@ function BannerForm({
                 ? await createBannerAction(payload)
                 : await updateBannerAction(bannerId!, payload);
             if (!result.ok) {
+              const serverFieldErrors = resultFieldErrors(result);
+              if (serverFieldErrors) {
+                applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+                focusFirstFieldError({
+                  fieldErrors: serverFieldErrors,
+                  setFocus: setFocus as (name: string) => void,
+                });
+              }
               onError(result.error);
               return;
             }
@@ -319,15 +351,20 @@ function BannerForm({
 
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">1. Banner text</p>
-          <TextField
-            label="Title shoppers see"
-            fullWidth
-            required
-            disabled={!canSubmit || pending}
-            error={Boolean(errors.title)}
-            helperText={errors.title?.message ?? "Short headline on the banner."}
-            {...register("title")}
-          />
+          <div>
+            <TextField
+              label="Title shoppers see"
+              fullWidth
+              required
+              disabled={!canSubmit || pending}
+              error={Boolean(errors.title)}
+              helperText={
+                errors.title ? undefined : "Short headline on the banner."
+              }
+              {...register("title")}
+            />
+            <FieldError message={errors.title?.message} />
+          </div>
           <TextField
             label="Supporting text (optional)"
             fullWidth
@@ -405,21 +442,25 @@ function BannerForm({
               name="linkUrl"
               control={control}
               render={({ field }) => (
-                <StorePageLinkField
-                  value={field.value}
-                  fallback="/products"
-                  allowEmpty
-                  emptyLabel="No page (banner not clickable)"
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.linkUrl)}
-                  onChange={field.onChange}
-                  helperText={
-                    errors.linkUrl?.message ??
-                    (buttonText
-                      ? `“${buttonText}” opens ${pageOptionLabel(String(linkUrl ?? "/products"))}`
-                      : "Pick where the button should send shoppers")
-                  }
-                />
+                <div>
+                  <StorePageLinkField
+                    value={field.value}
+                    fallback="/products"
+                    allowEmpty
+                    emptyLabel="No page (banner not clickable)"
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.linkUrl)}
+                    onChange={field.onChange}
+                    helperText={
+                      errors.linkUrl
+                        ? undefined
+                        : buttonText
+                          ? `“${buttonText}” opens ${pageOptionLabel(String(linkUrl ?? "/products"))}`
+                          : "Pick where the button should send shoppers"
+                    }
+                  />
+                  <FieldError message={errors.linkUrl?.message} />
+                </div>
               )}
             />
           </div>
@@ -449,16 +490,19 @@ function BannerForm({
               name="endsAt"
               control={control}
               render={({ field }) => (
-                <AdminDateTimeField
-                  label="Show until (optional)"
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.endsAt)}
-                  helperText={errors.endsAt?.message}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                />
+                <div>
+                  <AdminDateTimeField
+                    label="Show until (optional)"
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.endsAt)}
+                    helperText={undefined}
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    name={field.name}
+                  />
+                  <FieldError message={errors.endsAt?.message} />
+                </div>
               )}
             />
           </div>

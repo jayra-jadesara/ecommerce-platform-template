@@ -15,9 +15,29 @@ import {
   updateProduct,
 } from "@/features/catalog/products-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import {
+  checkCategoryDependencies,
+  checkProductDependencies,
+} from "@/features/admin/validation/dependencies";
 
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
 const CATEGORIES_ROUTE = getAdminPath("/catalog/categories");
+
+export async function checkCategoryDependenciesAction(id: string) {
+  const deps = await checkCategoryDependencies(id);
+  if (!deps) {
+    return { ok: false as const, error: "Unable to check category usage." };
+  }
+  return { ok: true as const, deps };
+}
+
+export async function checkProductDependenciesAction(id: string) {
+  const deps = await checkProductDependencies(id);
+  if (!deps) {
+    return { ok: false as const, error: "Unable to check product usage." };
+  }
+  return { ok: true as const, deps };
+}
 
 export async function createCategoryAction(input: unknown) {
   return runLoggedMutation(

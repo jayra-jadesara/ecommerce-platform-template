@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getCurrentUser } from "@/features/auth/session";
 import { formatMoney } from "@/features/catalog/money";
 import { getOrderDetail } from "@/features/orders/queries";
@@ -32,9 +33,12 @@ export default async function AccountOrderDetailPage({
             </Link>{" "}
             / {order.orderNumber}
           </p>
-          <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl font-semibold">
-            {order.orderNumber}
-          </h2>
+          <StorefrontHeading
+            title={`Order ${order.orderNumber}`}
+            as="h2"
+            align="left"
+            className="mt-1 !text-2xl"
+          />
           <p className="mt-1 text-sm text-[var(--color-muted)]">
             {formatDateTime(order.createdAt)} ·{" "}
             {orderStatusLabel(order.status)}

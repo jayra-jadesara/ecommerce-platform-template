@@ -12,6 +12,7 @@ import {
 } from "@/features/cms/actions";
 import type { ContentPage } from "@/features/cms/types";
 import { ABOUT_PAGE_SLUG, HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { formatDate } from "@/lib/format-date";
 
 export function PagesListClient({
@@ -30,6 +31,7 @@ export function PagesListClient({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [archiveTarget, setArchiveTarget] = useState<ContentPage | null>(null);
 
   const visible = pages.filter(
     (p) => p.slug !== HOMEPAGE_SLUG && p.slug !== ABOUT_PAGE_SLUG,
@@ -124,13 +126,7 @@ export function PagesListClient({
                           type="button"
                           disabled={pending}
                           className="text-red-700 underline"
-                          onClick={() => {
-                            startTransition(async () => {
-                              const result = await archivePageAction(page.id);
-                              if (!result.ok) setError(result.error);
-                              router.refresh();
-                            });
-                          }}
+                          onClick={() => setArchiveTarget(page)}
                         >
                           Archive
                         </button>
@@ -148,6 +144,29 @@ export function PagesListClient({
           </tbody>
         </table>
       </div>
+
+      <ConfirmDeleteDialog
+        open={Boolean(archiveTarget)}
+        title="Archive page?"
+        message={`Archive “${archiveTarget?.title ?? "this page"}”? It will no longer be published on the storefront.`}
+        confirmTone="default"
+        confirmLabel="Archive"
+        pending={pending}
+        pendingLabel="Archiving…"
+        onClose={() => {
+          if (pending) return;
+          setArchiveTarget(null);
+        }}
+        onConfirm={() => {
+          if (!archiveTarget) return;
+          startTransition(async () => {
+            const result = await archivePageAction(archiveTarget.id);
+            if (!result.ok) setError(result.error);
+            setArchiveTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

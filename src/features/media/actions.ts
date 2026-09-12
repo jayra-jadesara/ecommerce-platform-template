@@ -1,6 +1,7 @@
 "use server";
 
 import { getAdminPath } from "@/config/admin-route";
+import { checkMediaDependencies } from "@/features/admin/validation/dependencies";
 import {
   deleteMedia,
   listMedia,
@@ -16,9 +17,33 @@ import {
   updateProductImageAlt,
 } from "@/features/media/product-images-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 
 const MEDIA_ROUTE = getAdminPath("/media");
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
+
+export async function checkMediaDependenciesAction(id: string) {
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) {
+    return { ok: false as const, error: "Unable to check media usage." };
+  }
+  const { data: row } = await supabase
+    .from("media")
+    .select("storage_path")
+    .eq("id", id)
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (!row?.storage_path) {
+    return { ok: false as const, error: "Media item not found." };
+  }
+  const deps = await checkMediaDependencies(row.storage_path as string);
+  if (!deps) {
+    return { ok: false as const, error: "Unable to check media usage." };
+  }
+  return { ok: true as const, deps };
+}
 
 export async function uploadMediaAction(formData: FormData) {
   return runLoggedMutation(

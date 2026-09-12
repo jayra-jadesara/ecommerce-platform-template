@@ -24,6 +24,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 type FeaturedOption = { id: string; title: string };
 
@@ -42,12 +48,13 @@ export function BlogSettingsForm({
   const [pending, startTransition] = useTransition();
   const listHref = getAdminPath("/content/blog");
 
-  const { control, handleSubmit, watch } = useForm<BlogSettingsFormValues>({
-    resolver: zodResolver(
-      blogSettingsFormSchema,
-    ) as Resolver<BlogSettingsFormValues>,
-    defaultValues: initialValues,
-  });
+  const { control, handleSubmit, setError: setFieldError, setFocus, watch } =
+    useForm<BlogSettingsFormValues>({
+      resolver: zodResolver(
+        blogSettingsFormSchema,
+      ) as Resolver<BlogSettingsFormValues>,
+      defaultValues: initialValues,
+    });
 
   const showFeaturedPost = watch("showFeaturedPost");
   const sidebarPreset = watch("sidebarPreset");
@@ -75,6 +82,14 @@ export function BlogSettingsForm({
           startTransition(async () => {
             const result = await saveBlogSettingsAction(values);
             if (!result.ok) {
+              const serverFieldErrors = resultFieldErrors(result);
+              if (serverFieldErrors) {
+                applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+                focusFirstFieldError({
+                  fieldErrors: serverFieldErrors,
+                  setFocus: setFocus as (name: string) => void,
+                });
+              }
               setError(result.error);
               return;
             }
@@ -110,15 +125,18 @@ export function BlogSettingsForm({
                 name="pageTitle"
                 control={control}
                 render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="Blog title"
-                    fullWidth
-                    required
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      label="Blog title"
+                      fullWidth
+                      required
+                      disabled={!canUpdate || pending}
+                      error={Boolean(fieldState.error)}
+                      helperText={undefined}
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
               <Controller
@@ -140,43 +158,52 @@ export function BlogSettingsForm({
                 name="postsPerPage"
                 control={control}
                 render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    type="number"
-                    label="Posts per page"
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={
-                      fieldState.error?.message ?? "Between 1 and 48."
-                    }
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      type="number"
+                      label="Posts per page"
+                      fullWidth
+                      disabled={!canUpdate || pending}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        fieldState.error ? undefined : "Between 1 and 48."
+                      }
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
               <Controller
                 name="featuredPostId"
                 control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    value={field.value ?? ""}
-                    select
-                    label="Featured article"
-                    fullWidth
-                    disabled={!canUpdate || pending || !showFeaturedPost}
-                    helperText={
-                      showFeaturedPost
-                        ? "Optional. Leave blank to use a marked featured post or the latest article."
-                        : "Turn on Featured below to choose an article."
-                    }
-                  >
-                    <MenuItem value="">Automatic</MenuItem>
-                    {featuredOptions.map((option) => (
-                      <MenuItem key={option.id} value={option.id}>
-                        {option.title}
-                      </MenuItem>
-                    ))}
-                  </TextField>
+                render={({ field, fieldState }) => (
+                  <div>
+                    <TextField
+                      {...field}
+                      value={field.value ?? ""}
+                      select
+                      label="Featured article"
+                      fullWidth
+                      disabled={!canUpdate || pending || !showFeaturedPost}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        fieldState.error
+                          ? undefined
+                          : showFeaturedPost
+                            ? "Optional. Leave blank to use a marked featured post or the latest article."
+                            : "Turn on Featured below to choose an article."
+                      }
+                    >
+                      <MenuItem value="">Automatic</MenuItem>
+                      {featuredOptions.map((option) => (
+                        <MenuItem key={option.id} value={option.id}>
+                          {option.title}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
             </div>

@@ -33,6 +33,13 @@ import {
   adminFieldGroup,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 type CategoryRow = BlogCategory & { postCount?: number };
 
@@ -54,6 +61,7 @@ export function BlogCategoriesPanel({
   const [pending, startTransition] = useTransition();
   const [mediaOpen, setMediaOpen] = useState(false);
   const [slugLocked, setSlugLocked] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
   const listHref = getAdminPath("/content/blog");
 
   const defaults = useMemo(() => {
@@ -75,6 +83,8 @@ export function BlogCategoriesPanel({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     watch,
     formState: { errors },
   } = useForm<BlogCategoryFormValues>({
@@ -106,6 +116,14 @@ export function BlogCategoriesPanel({
         ? await updateBlogCategoryAction(editingId, values)
         : await createBlogCategoryAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -179,34 +197,40 @@ export function BlogCategoriesPanel({
                 name="name"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Name"
-                    fullWidth
-                    required
-                    disabled={!canEditForm || pending}
-                    error={Boolean(errors.name)}
-                    helperText={errors.name?.message}
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      label="Name"
+                      fullWidth
+                      required
+                      disabled={!canEditForm || pending}
+                      error={Boolean(errors.name)}
+                      helperText={undefined}
+                    />
+                    <FieldError message={errors.name?.message} />
+                  </div>
                 )}
               />
               <Controller
                 name="slug"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...field}
-                    label="Slug"
-                    fullWidth
-                    required
-                    disabled={!canEditForm || pending}
-                    error={Boolean(errors.slug)}
-                    helperText={errors.slug?.message}
-                    onChange={(event) => {
-                      setSlugLocked(false);
-                      field.onChange(slugify(event.target.value));
-                    }}
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      label="Slug"
+                      fullWidth
+                      required
+                      disabled={!canEditForm || pending}
+                      error={Boolean(errors.slug)}
+                      helperText={undefined}
+                      onChange={(event) => {
+                        setSlugLocked(false);
+                        field.onChange(slugify(event.target.value));
+                      }}
+                    />
+                    <FieldError message={errors.slug?.message} />
+                  </div>
                 )}
               />
               <Controller
@@ -468,29 +492,8 @@ export function BlogCategoriesPanel({
                         className="text-red-700 underline"
                         disabled={pending}
                         onClick={() => {
-                          if (
-                            !window.confirm(
-                              `Delete “${category.name}”? Articles keep their other categories.`,
-                            )
-                          ) {
-                            return;
-                          }
                           setError(null);
-                          startTransition(async () => {
-                            const result = await deleteBlogCategoryAction(
-                              category.id,
-                            );
-                            if (!result.ok) {
-                              setError(result.error);
-                              return;
-                            }
-                            if (editingId === category.id) {
-                              setEditingId(null);
-                              reset(DEFAULT_BLOG_CATEGORY_FORM);
-                            }
-                            setSuccess(result.message ?? "Deleted.");
-                            router.refresh();
-                          });
+                          setDeleteTarget(category);
                         }}
                       >
                         Delete
@@ -512,6 +515,36 @@ export function BlogCategoriesPanel({
         onSelect={(selection) => {
           setValue("imagePath", selection.storagePath, { shouldDirty: true });
           setMediaOpen(false);
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title="Delete category?"
+        message={`Delete “${deleteTarget?.name ?? "this category"}”? Articles keep their other categories.`}
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await deleteBlogCategoryAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            if (editingId === deleteTarget.id) {
+              setEditingId(null);
+              reset(DEFAULT_BLOG_CATEGORY_FORM);
+            }
+            setSuccess(result.message ?? "Deleted.");
+            setDeleteTarget(null);
+            router.refresh();
+          });
         }}
       />
     </div>

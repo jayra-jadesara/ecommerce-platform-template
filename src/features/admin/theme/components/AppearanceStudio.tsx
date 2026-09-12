@@ -23,15 +23,22 @@ import { ColorField } from "@/features/admin/theme/components/ColorField";
 import { LogoThemeSuggest } from "@/features/admin/theme/components/LogoThemeSuggest";
 import { Motion3DDesignStudio } from "@/features/admin/theme/components/Motion3DDesignStudio";
 import { AppearanceSplitLayout } from "@/features/admin/theme/components/AppearanceSplitLayout";
+import { TypographyStudioPanel } from "@/features/admin/theme/components/TypographyStudioPanel";
 import {
   findMatchingThemePackId,
   packsByCategory,
 } from "@/features/admin/theme/color-packs";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
 import { adminBtn, adminFieldsGrid } from "@/features/admin/ui/admin-classes";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import { cn } from "@/lib/cn";
 import {
-  SAFE_FONT_OPTIONS,
   fontIdToCss,
   formValuesToThemeConfig,
   themeConfigToFormValues,
@@ -135,7 +142,11 @@ interface AppearanceStudioProps {
   initialAnimation: AnimationConfig;
   initialVisualEffects: VisualEffectsConfig;
   brand: BrandConfig;
-  fonts?: { fontSans?: string; fontDisplay?: string };
+  fonts?: {
+    fontSans?: string;
+    fontDisplay?: string;
+    headingHighlightStyle?: string;
+  };
   canUpdate: boolean;
 }
 
@@ -161,6 +172,7 @@ export function AppearanceStudio({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [discardOpen, setDiscardOpen] = useState(false);
 
   const defaults = useMemo(
     () =>
@@ -180,6 +192,8 @@ export function AppearanceStudio({
     setValue,
     getValues,
     watch,
+    setError: setFieldError,
+    setFocus,
     formState: { errors, isDirty },
   } = useForm<ThemeEditorFormValues>({
     resolver: zodResolver(themeEditorFormSchema),
@@ -221,6 +235,14 @@ export function AppearanceStudio({
     startTransition(async () => {
       const result = await saveThemeSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -293,7 +315,10 @@ export function AppearanceStudio({
               className={cn(adminBtn("outline"), "!min-h-9")}
               disabled={!isDirty || pending}
               onClick={() => {
-                if (isDirty && !window.confirm("Discard unsaved changes?")) return;
+                if (isDirty) {
+                  setDiscardOpen(true);
+                  return;
+                }
                 reset(defaults);
                 setError(null);
                 setSuccess(null);
@@ -397,74 +422,89 @@ export function AppearanceStudio({
                   control={control}
                   name="defaultMode"
                   render={({ field }) => (
-                    <TextField
-                      select
-                      slotProps={{ select: { native: true } }}
-                      label="Default mode"
-                      fullWidth
-                      required
-                      disabled={!canUpdate || pending}
-                      value={field.value}
-                      onChange={field.onChange}
-                      error={Boolean(errors.defaultMode)}
-                      helperText={errors.defaultMode?.message}
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                      <option value="system">System</option>
-                    </TextField>
+                    <div>
+                      <TextField
+                        select
+                        slotProps={{ select: { native: true } }}
+                        label="Default mode"
+                        fullWidth
+                        required
+                        disabled={!canUpdate || pending}
+                        value={field.value}
+                        onChange={field.onChange}
+                        error={Boolean(errors.defaultMode)}
+                        helperText={undefined}
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="system">System</option>
+                      </TextField>
+                      <FieldError message={errors.defaultMode?.message} />
+                    </div>
                   )}
                 />
 
-                <FormControl
-                  component="fieldset"
-                  required
-                  error={Boolean(errors.enabledModes)}
-                  disabled={!canUpdate || pending}
-                >
-                  <FormLabel component="legend" required>
-                    Enabled modes
-                  </FormLabel>
-                  <FormGroup row>
-                    {(["light", "dark", "system"] as ThemeMode[]).map((mode) => (
-                      <FormControlLabel
-                        key={mode}
-                        control={
-                          <Checkbox
-                            checked={(watched.enabledModes ?? []).includes(mode)}
-                            onChange={(event) =>
-                              toggleMode(mode, event.target.checked)
+                <div className="flex w-full flex-col gap-4">
+                  <FormControl
+                    component="fieldset"
+                    fullWidth
+                    required
+                    error={Boolean(errors.enabledModes)}
+                    disabled={!canUpdate || pending}
+                  >
+                    <FormLabel component="legend" required>
+                      Enabled modes
+                    </FormLabel>
+                    <FormGroup row>
+                      {(["light", "dark", "system"] as ThemeMode[]).map(
+                        (mode) => (
+                          <FormControlLabel
+                            key={mode}
+                            control={
+                              <Checkbox
+                                checked={(watched.enabledModes ?? []).includes(
+                                  mode,
+                                )}
+                                onChange={(event) =>
+                                  toggleMode(mode, event.target.checked)
+                                }
+                              />
+                            }
+                            label={
+                              mode.charAt(0).toUpperCase() + mode.slice(1)
                             }
                           />
-                        }
-                        label={mode.charAt(0).toUpperCase() + mode.slice(1)}
-                      />
-                    ))}
-                  </FormGroup>
-                  <FormHelperText>
-                    {errors.enabledModes?.message ??
-                      "At least one mode must stay enabled."}
-                  </FormHelperText>
-                </FormControl>
+                        ),
+                      )}
+                    </FormGroup>
+                    {errors.enabledModes ? (
+                      <FieldError message={errors.enabledModes?.message} />
+                    ) : (
+                      <FormHelperText>
+                        At least one mode must stay enabled.
+                      </FormHelperText>
+                    )}
+                  </FormControl>
 
-                <Controller
-                  control={control}
-                  name="allowUserToggle"
-                  render={({ field }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={field.value}
-                          onChange={(event) =>
-                            field.onChange(event.target.checked)
-                          }
-                          disabled={!canUpdate || pending}
-                        />
-                      }
-                      label="Allow customer theme toggle"
-                    />
-                  )}
-                />
+                  <Controller
+                    control={control}
+                    name="allowUserToggle"
+                    render={({ field }) => (
+                      <FormControlLabel
+                        control={
+                          <Switch
+                            checked={field.value}
+                            onChange={(event) =>
+                              field.onChange(event.target.checked)
+                            }
+                            disabled={!canUpdate || pending}
+                          />
+                        }
+                        label="Allow customer theme toggle"
+                      />
+                    )}
+                  />
+                </div>
 
                 <Controller
                   control={control}
@@ -730,103 +770,12 @@ export function AppearanceStudio({
             ) : null}
 
             {tab === 3 ? (
-              <section className="space-y-6" aria-labelledby="type-heading">
-                <h2 id="type-heading" className="text-lg font-semibold">
-                  Typography
-                </h2>
-                <div>
-                  <p className="mb-3 text-sm font-medium">Heading font</p>
-                  <Controller
-                    control={control}
-                    name="fontDisplay"
-                    render={({ field }) => (
-                      <div className={adminFieldsGrid(2)}>
-                        {SAFE_FONT_OPTIONS.map((font) => {
-                          const selected = field.value === font.id;
-                          return (
-                            <button
-                              key={`display-${font.id}`}
-                              type="button"
-                              disabled={!canUpdate || pending}
-                              aria-pressed={selected}
-                              onClick={() =>
-                                setValue("fontDisplay", font.id, {
-                                  shouldDirty: true,
-                                  shouldValidate: true,
-                                })
-                              }
-                              className={cn(
-                                "rounded-2xl border p-4 text-left transition-colors",
-                                selected
-                                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-                                  : "border-[var(--color-border)] hover:border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))]",
-                              )}
-                            >
-                              <p
-                                className="text-3xl font-semibold tracking-tight"
-                                style={{ fontFamily: font.css }}
-                              >
-                                Aa
-                              </p>
-                              <p className="mt-2 text-sm font-semibold">
-                                {font.label}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  />
-                </div>
-                <div>
-                  <p className="mb-3 text-sm font-medium">Body font</p>
-                  <Controller
-                    control={control}
-                    name="fontSans"
-                    render={({ field }) => (
-                      <div className={adminFieldsGrid(2)}>
-                        {SAFE_FONT_OPTIONS.map((font) => {
-                          const selected = field.value === font.id;
-                          return (
-                            <button
-                              key={`sans-${font.id}`}
-                              type="button"
-                              disabled={!canUpdate || pending}
-                              aria-pressed={selected}
-                              onClick={() =>
-                                setValue("fontSans", font.id, {
-                                  shouldDirty: true,
-                                  shouldValidate: true,
-                                })
-                              }
-                              className={cn(
-                                "rounded-2xl border p-4 text-left transition-colors",
-                                selected
-                                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-                                  : "border-[var(--color-border)] hover:border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))]",
-                              )}
-                            >
-                              <p
-                                className="text-base leading-relaxed"
-                                style={{ fontFamily: font.css }}
-                              >
-                                The quick brown fox jumps over the lazy dog.
-                              </p>
-                              <p className="mt-2 text-sm font-semibold">
-                                {font.label}
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  />
-                </div>
-                <p className="text-sm text-[var(--color-muted)]">
-                  Only predefined safe fonts are available. Arbitrary remote font
-                  URLs are not allowed.
-                </p>
-              </section>
+              <TypographyStudioPanel
+                control={control}
+                setValue={setValue}
+                canUpdate={canUpdate}
+                pending={pending}
+              />
             ) : null}
 
             {tab === 5 ? (
@@ -886,6 +835,7 @@ export function AppearanceStudio({
           sans: fontIdToCss(draftValues.fontSans),
           display: fontIdToCss(draftValues.fontDisplay),
         }}
+        headingHighlightStyle={draftValues.headingHighlightStyle}
         showMotionControls
         previewMotion={previewMotion}
         preview3d={preview3d}
@@ -903,6 +853,22 @@ export function AppearanceStudio({
         threeFeel={inferThreeFeel(draftValues)}
         buttonStyle={inferButtonStyle(draftValues)}
         buttonHover={inferButtonHover(draftValues)}
+      />
+
+      <ConfirmDeleteDialog
+        open={discardOpen}
+        title="Discard unsaved changes?"
+        message="Reset will discard all unsaved appearance edits."
+        confirmTone="default"
+        confirmLabel="Discard"
+        cancelLabel="Stay"
+        onClose={() => setDiscardOpen(false)}
+        onConfirm={() => {
+          reset(defaults);
+          setError(null);
+          setSuccess(null);
+          setDiscardOpen(false);
+        }}
       />
     </form>
   );

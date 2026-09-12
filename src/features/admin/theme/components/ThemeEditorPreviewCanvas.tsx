@@ -3,6 +3,11 @@
 import type { CSSProperties } from "react";
 import type { BrandConfig, ResolvedThemeMode, ThemeConfig } from "@/types";
 import { ThemePreview } from "@/features/theme/ThemePreview";
+import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
+import {
+  coerceHeadingHighlightStyle,
+  type HeadingHighlightStyle,
+} from "@/features/theme/heading-highlight";
 import type {
   ButtonHoverOption,
   ButtonStyleOption,
@@ -163,6 +168,7 @@ export function ThemeEditorPreviewCanvas({
   buttonHover = "glow",
   device = "desktop",
   fonts,
+  headingHighlightStyle,
 }: {
   theme: ThemeConfig;
   mode: ResolvedThemeMode;
@@ -180,6 +186,7 @@ export function ThemeEditorPreviewCanvas({
   buttonHover?: ButtonHoverOption;
   device?: "desktop" | "mobile";
   fonts?: { sans?: string; display?: string };
+  headingHighlightStyle?: HeadingHighlightStyle;
 }) {
   const logo =
     mode === "dark" && brand.logoDarkUrl ? brand.logoDarkUrl : brand.logoUrl;
@@ -194,6 +201,8 @@ export function ThemeEditorPreviewCanvas({
   const ctaStyle = previewButtonStyle(buttonStyle, buttonHover, showHover);
   const cardStyle = cardShellStyle(cardMotion, motionActive);
   const isMobilePreview = device === "mobile";
+  const highlightStyle = coerceHeadingHighlightStyle(headingHighlightStyle);
+  const heroTitle = tagline || "Explore Collection";
 
   return (
     <div
@@ -310,15 +319,13 @@ export function ThemeEditorPreviewCanvas({
               >
                 {brand.name}
               </p>
-              <p
-                className="text-lg font-semibold leading-tight sm:text-xl"
-                style={{
-                  fontFamily:
-                    "var(--font-display), var(--font-sans), ui-sans-serif, sans-serif",
-                }}
-              >
-                {tagline || "Explore Collection"}
-              </p>
+              <SectionAccentHeading
+                title={heroTitle}
+                highlightStyle={highlightStyle}
+                align="left"
+                as="h2"
+                className="!text-lg sm:!text-xl"
+              />
               <div className="flex flex-wrap gap-2 pt-1">
                 <span className="px-2.5 py-1.5 text-[10px]" style={ctaStyle}>
                   Shop Now
@@ -337,7 +344,13 @@ export function ThemeEditorPreviewCanvas({
             >
               Shop
             </p>
-            <p className="mt-1 text-sm font-semibold">Shop by category</p>
+            <SectionAccentHeading
+              title="Shop by category"
+              highlightStyle={highlightStyle}
+              align="left"
+              as="h3"
+              className="mt-1 !text-sm"
+            />
             <div
               className="mt-2 gap-2"
               style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}

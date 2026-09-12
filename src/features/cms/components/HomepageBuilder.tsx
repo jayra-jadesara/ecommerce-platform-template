@@ -40,12 +40,16 @@ import {
   pageOptionLabel,
   StorePageLinkField,
 } from "@/features/admin/ui/StorePageLinkField";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import { focusFirstFieldError } from "@/features/admin/validation/form-errors";
 import {
   adminFieldGroup,
   adminFieldsGrid,
   adminFormStack,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import type { FieldErrors } from "@/lib/validation";
 
 type Props = {
   page: ContentPage;
@@ -79,8 +83,10 @@ export function HomepageBuilder({
   const [editId, setEditId] = useState<string | null>(null);
   const [editConfig, setEditConfig] = useState<EditableConfig>({});
   const [editTitle, setEditTitle] = useState("");
+  const [sectionFieldErrors, setSectionFieldErrors] = useState<FieldErrors>({});
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mediaField, setMediaField] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ContentSection | null>(null);
 
   const editing = useMemo(
     () => sections.find((s) => s.id === editId) ?? null,
@@ -99,6 +105,7 @@ export function HomepageBuilder({
         : "text",
     );
     setEditId(section.id);
+    setSectionFieldErrors({});
     setEditTitle(
       section.title?.trim() ||
         SECTION_TYPE_LABELS[section.sectionType as SupportedSectionType] ||
@@ -107,14 +114,9 @@ export function HomepageBuilder({
     setEditConfig({
       ...defaults,
       ...section.config,
-      motionSource:
-        (section.config as { motionSource?: string }).motionSource === "custom"
-          ? "custom"
-          : "global",
-      threeSource:
-        (section.config as { threeSource?: string }).threeSource === "custom"
-          ? "custom"
-          : "global",
+      // Always inherit Appearance → Motion & 3D (no per-section UI).
+      motionSource: "global",
+      threeSource: "global",
     });
   }
 
@@ -372,20 +374,7 @@ export function HomepageBuilder({
                         type="button"
                         disabled={pending}
                         className="rounded-md border border-red-200 px-2 py-1 text-sm text-red-700"
-                        onClick={() => {
-                          if (!window.confirm("Delete this section?")) return;
-                          startTransition(async () => {
-                            const result = await deleteSectionAction(section.id);
-                            if (!result.ok) {
-                              setError(result.error);
-                              return;
-                            }
-                            setSections((prev) =>
-                              prev.filter((s) => s.id !== section.id),
-                            );
-                            refresh();
-                          });
-                        }}
+                        onClick={() => setDeleteTarget(section)}
                       >
                         Delete
                       </button>
@@ -446,7 +435,10 @@ export function HomepageBuilder({
 
       <Dialog
         open={Boolean(editing)}
-        onClose={() => setEditId(null)}
+        onClose={() => {
+          setEditId(null);
+          setSectionFieldErrors({});
+        }}
         fullWidth
         maxWidth="lg"
       >
@@ -474,13 +466,21 @@ export function HomepageBuilder({
                   onTitleChange={setEditTitle}
                   onChange={setEditConfig}
                   onPickMedia={(field) => setMediaField(field)}
+                  fieldErrors={sectionFieldErrors}
                 />
               </div>
             </div>
           ) : null}
         </DialogContent>
         <DialogActions>
-          <button type="button" className="px-3 py-2 text-sm" onClick={() => setEditId(null)}>
+          <button
+            type="button"
+            className="px-3 py-2 text-sm"
+            onClick={() => {
+              setEditId(null);
+              setSectionFieldErrors({});
+            }}
+          >
             Cancel
           </button>
           {canUpdate ? (
@@ -501,18 +501,30 @@ export function HomepageBuilder({
                       null,
                     config: {
                       ...editConfig,
-                      motionSource: editConfig.motionSource ?? "global",
-                      threeSource: editConfig.threeSource ?? "global",
-                      // When using store defaults, clear section-level 3D flags.
-                      ...(editConfig.threeSource === "custom"
-                        ? {}
-                        : { enable3d: false, scene3dPreset: "NONE" }),
+                      // Motion & 3D are store-wide (Appearance only).
+                      motionSource: "global",
+                      threeSource: "global",
+                      enable3d: false,
+                      scene3dPreset: "NONE",
                     },
                   });
                   if (!result.ok) {
-                    setError(result.error);
+                    const fieldErrors =
+                      "fieldErrors" in result && result.fieldErrors
+                        ? result.fieldErrors
+                        : undefined;
+                    setSectionFieldErrors(fieldErrors ?? {});
+                    setError(
+                      fieldErrors
+                        ? "Please check the section settings."
+                        : result.error,
+                    );
+                    if (fieldErrors) {
+                      focusFirstFieldError({ fieldErrors });
+                    }
                     return;
                   }
+                  setSectionFieldErrors({});
                   setSections((prev) =>
                     prev.map((s) =>
                       s.id === editing.id
@@ -526,11 +538,10 @@ export function HomepageBuilder({
                               null,
                             config: {
                               ...editConfig,
-                              motionSource: editConfig.motionSource ?? "global",
-                              threeSource: editConfig.threeSource ?? "global",
-                              ...(editConfig.threeSource === "custom"
-                                ? {}
-                                : { enable3d: false, scene3dPreset: "NONE" }),
+                              motionSource: "global",
+                              threeSource: "global",
+                              enable3d: false,
+                              scene3dPreset: "NONE",
                             },
                           }
                         : s,
@@ -579,6 +590,33 @@ export function HomepageBuilder({
         }}
       />
 
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title="Delete section?"
+        message="Delete this section? This cannot be undone."
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await deleteSectionAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setSections((prev) =>
+              prev.filter((s) => s.id !== deleteTarget.id),
+            );
+            setDeleteTarget(null);
+            refresh();
+          });
+        }}
+      />
+
       <HomepagePreview
         open={previewOpen}
         onClose={() => setPreviewOpen(false)}
@@ -595,6 +633,7 @@ function SectionConfigFields({
   onTitleChange: _onTitleChange,
   onChange,
   onPickMedia,
+  fieldErrors = {},
 }: {
   sectionType: SupportedSectionType;
   config: EditableConfig;
@@ -602,10 +641,14 @@ function SectionConfigFields({
   onTitleChange: (value: string) => void;
   onChange: (value: EditableConfig) => void;
   onPickMedia: (field: string) => void;
+  fieldErrors?: FieldErrors;
 }) {
   void _onTitleChange;
   function setField(key: string, value: unknown) {
     onChange({ ...config, [key]: value });
+  }
+  function err(key: string) {
+    return fieldErrors[key];
   }
 
   const typeLabel = SECTION_TYPE_LABELS[sectionType];
@@ -628,6 +671,13 @@ function SectionConfigFields({
 
   return (
     <div className={adminFormStack()} style={adminStackStyle}>
+      {Object.keys(fieldErrors).length > 0 ? (
+        <div className="space-y-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+          {Object.entries(fieldErrors).map(([key, message]) => (
+            <FieldError key={key} message={message} className="mt-0" />
+          ))}
+        </div>
+      ) : null}
       <TextField
         label="Section name (in admin list)"
         fullWidth
@@ -641,20 +691,31 @@ function SectionConfigFields({
           <p className="admin-field-group__title">Section heading</p>
           <p className="admin-field-group__hint">
             Shown on the live storefront above this block. Watch the preview.
+            Accent style is set in Appearance → Typography (last word).
           </p>
-          <TextField
-            label="Heading customers see"
-            fullWidth
-            value={String(config.title ?? config.heading ?? "")}
-            onChange={(e) => {
-              if (sectionType === "text") {
-                setField("heading", e.target.value);
-              } else {
-                setField("title", e.target.value);
+          <div>
+            <TextField
+              label="Heading customers see"
+              fullWidth
+              name={sectionType === "text" ? "heading" : "title"}
+              value={String(config.title ?? config.heading ?? "")}
+              error={Boolean(
+                err(sectionType === "text" ? "heading" : "title"),
+              )}
+              onChange={(e) => {
+                if (sectionType === "text") {
+                  setField("heading", e.target.value);
+                } else {
+                  setField("title", e.target.value);
+                }
+              }}
+              helperText={
+                err(sectionType === "text" ? "heading" : "title")
+                  ? undefined
+                  : "Example: Featured products"
               }
-            }}
-            helperText="Example: Featured products"
-          />
+            />
+          </div>
         </div>
       ) : null}
 
@@ -665,29 +726,53 @@ function SectionConfigFields({
             <p className="admin-field-group__hint">
               Write what shoppers read first — preview updates instantly.
             </p>
-            <TextField
-              label="Main headline"
-              fullWidth
-              value={String(config.title ?? "")}
-              onChange={(e) => setField("title", e.target.value)}
-              helperText="Big title — keep it short (about 6–10 words)."
-            />
-            <TextField
-              label="Small line above headline (optional)"
-              fullWidth
-              value={String(config.subtitle ?? "")}
-              onChange={(e) => setField("subtitle", e.target.value)}
-              helperText="Example: LEADING MANUFACTURER OF SEASONING SPICES"
-            />
-            <TextField
-              label="Short supporting text"
-              fullWidth
-              multiline
-              minRows={3}
-              value={String(config.description ?? "")}
-              onChange={(e) => setField("description", e.target.value)}
-              helperText="1–2 sentences under the headline."
-            />
+            <div>
+              <TextField
+                label="Main headline"
+                fullWidth
+                name="title"
+                value={String(config.title ?? "")}
+                error={Boolean(err("title"))}
+                onChange={(e) => setField("title", e.target.value)}
+                helperText={
+                  err("title")
+                    ? undefined
+                    : "Big title — keep it short (about 6–10 words)."
+                }
+              />
+            </div>
+            <div>
+              <TextField
+                label="Small line above headline (optional)"
+                fullWidth
+                name="subtitle"
+                value={String(config.subtitle ?? "")}
+                error={Boolean(err("subtitle"))}
+                onChange={(e) => setField("subtitle", e.target.value)}
+                helperText={
+                  err("subtitle")
+                    ? undefined
+                    : "Example: LEADING MANUFACTURER OF SEASONING SPICES"
+                }
+              />
+            </div>
+            <div>
+              <TextField
+                label="Short supporting text"
+                fullWidth
+                multiline
+                minRows={3}
+                name="description"
+                value={String(config.description ?? "")}
+                error={Boolean(err("description"))}
+                onChange={(e) => setField("description", e.target.value)}
+                helperText={
+                  err("description")
+                    ? undefined
+                    : "1–2 sentences under the headline."
+                }
+              />
+            </div>
           </div>
 
           <div className={adminFieldGroup()} style={adminStackStyle}>
@@ -903,13 +988,6 @@ function SectionConfigFields({
               value={String(config.heading ?? "")}
               onChange={(e) => setField("heading", e.target.value)}
               helperText='Example: "A Visionary Beyond Generations"'
-            />
-            <TextField
-              label="Highlighted word"
-              fullWidth
-              value={String(config.headingHighlight ?? "")}
-              onChange={(e) => setField("headingHighlight", e.target.value)}
-              helperText="Word in the heading to accent (e.g. Visionary). Leave blank for the last word."
             />
             <TextField
               label="Description"
@@ -1314,89 +1392,13 @@ function SectionConfigFields({
 
       <details className="admin-field-group">
         <summary className="cursor-pointer text-sm font-medium">
-          Motion &amp; 3D (optional)
+          Layout (optional)
         </summary>
         <p className="admin-field-group__hint mt-2">
-          Default: use store settings from Appearance → Motion &amp; 3D. Only
-          customize this section if you need something different.
+          Background and spacing for this section. Motion &amp; 3D are managed
+          store-wide in Appearance → Motion &amp; 3D.
         </p>
         <div className={`mt-3 space-y-4`}>
-          <TextField
-            select
-            label="Animation"
-            fullWidth
-            value={
-              (config.motionSource ?? "global") === "global"
-                ? "store"
-                : String(config.animationPreset ?? "fade-up") === "none"
-                  ? "none"
-                  : String(config.animationIntensity ?? "smooth") === "subtle"
-                    ? "subtle"
-                    : "smooth"
-            }
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "store") {
-                setField("motionSource", "global");
-                return;
-              }
-              setField("motionSource", "custom");
-              setField("animationEnabled", v !== "none");
-              setField(
-                "animationPreset",
-                v === "none" ? "none" : "fade-up",
-              );
-              setField(
-                "animationIntensity",
-                v === "subtle" ? "subtle" : "smooth",
-              );
-            }}
-            helperText="Use store settings for most sections."
-          >
-            <MenuItem value="store">Use store settings</MenuItem>
-            <MenuItem value="none">None</MenuItem>
-            <MenuItem value="subtle">Subtle</MenuItem>
-            <MenuItem value="smooth">Smooth</MenuItem>
-          </TextField>
-
-          {sectionType === "hero" ? (
-            <TextField
-              select
-              label="3D"
-              fullWidth
-              value={
-                (config.threeSource ?? "global") === "global"
-                  ? "store"
-                  : config.enable3d
-                    ? String(config.scene3dPreset ?? "SOFT_GEOMETRY")
-                    : "off"
-              }
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v === "store") {
-                  setField("threeSource", "global");
-                  return;
-                }
-                setField("threeSource", "custom");
-                if (v === "off") {
-                  setField("enable3d", false);
-                  setField("scene3dPreset", "NONE");
-                  return;
-                }
-                setField("enable3d", true);
-                setField("scene3dPreset", v);
-              }}
-              helperText="Store setting keeps Hero 3D aligned with Appearance."
-            >
-              <MenuItem value="store">Use store setting</MenuItem>
-              <MenuItem value="off">Off</MenuItem>
-              <MenuItem value="SOFT_GEOMETRY">Soft</MenuItem>
-              <MenuItem value="FLOATING_SHAPES">Floating</MenuItem>
-              <MenuItem value="ABSTRACT_PARTICLES">Particles</MenuItem>
-              <MenuItem value="PRODUCT_ORBIT">Orbit</MenuItem>
-            </TextField>
-          ) : null}
-
           <div className={adminFieldsGrid(2)}>
             <TextField
               select

@@ -42,6 +42,12 @@ import {
   AdminDateTimeField,
   isoToAdminDateTimeLocal,
 } from "@/features/admin/ui/AdminDateTimeField";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 export function BlogPostForm({
   mode,
@@ -73,6 +79,8 @@ export function BlogPostForm({
     control,
     handleSubmit,
     setValue,
+    setError: setFieldError,
+    setFocus,
     watch,
     formState: { errors },
   } = useForm<BlogPostFormValues>({
@@ -145,6 +153,14 @@ export function BlogPostForm({
             ? await createBlogPostAction(payload)
             : await updateBlogPostAction(postId!, payload);
         if (!result.ok) {
+          const serverFieldErrors = resultFieldErrors(result);
+          if (serverFieldErrors) {
+            applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+            focusFirstFieldError({
+              fieldErrors: serverFieldErrors,
+              setFocus: setFocus as (name: string) => void,
+            });
+          }
           setError(result.error);
           return;
         }
@@ -182,47 +198,59 @@ export function BlogPostForm({
                   Give your post a clear name and a short summary for the blog
                   list.
                 </p>
-                <TextField
-                  label="Article title"
-                  fullWidth
-                  required
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.title)}
-                  helperText={errors.title?.message}
-                  {...register("title")}
-                />
-                <TextField
-                  label="Web address"
-                  fullWidth
-                  required
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.slug)}
-                  helperText={
-                    errors.slug?.message ??
-                    `Appears as ${postPath} on your store`
-                  }
-                  value={slug}
-                  onChange={(event) => {
-                    setSlugLockedToTitle(false);
-                    setValue("slug", slugify(event.target.value), {
-                      shouldValidate: true,
-                      shouldDirty: true,
-                    });
-                  }}
-                />
-                <TextField
-                  label="Short summary"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  disabled={!canSubmit || pending}
-                  error={Boolean(errors.excerpt)}
-                  helperText={
-                    errors.excerpt?.message ??
-                    "Optional. Shown on the blog list and in search results."
-                  }
-                  {...register("excerpt")}
-                />
+                <div>
+                  <TextField
+                    label="Article title"
+                    fullWidth
+                    required
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.title)}
+                    helperText={undefined}
+                    {...register("title")}
+                  />
+                  <FieldError message={errors.title?.message} />
+                </div>
+                <div>
+                  <TextField
+                    label="Web address"
+                    fullWidth
+                    required
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.slug)}
+                    helperText={
+                      errors.slug
+                        ? undefined
+                        : `Appears as ${postPath} on your store`
+                    }
+                    value={slug}
+                    onChange={(event) => {
+                      setSlugLockedToTitle(false);
+                      setValue("slug", slugify(event.target.value), {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      });
+                    }}
+                    name="slug"
+                  />
+                  <FieldError message={errors.slug?.message} />
+                </div>
+                <div>
+                  <TextField
+                    label="Short summary"
+                    fullWidth
+                    multiline
+                    minRows={2}
+                    disabled={!canSubmit || pending}
+                    error={Boolean(errors.excerpt)}
+                    helperText={
+                      errors.excerpt
+                        ? undefined
+                        : "Optional. Shown on the blog list and in search results."
+                    }
+                    {...register("excerpt")}
+                  />
+                  <FieldError message={errors.excerpt?.message} />
+                </div>
               </div>
             </section>
 
@@ -240,15 +268,18 @@ export function BlogPostForm({
                   name="content"
                   control={control}
                   render={({ field }) => (
-                    <BlogMarkdownEditor
-                      value={field.value ?? ""}
-                      onChange={field.onChange}
-                      textareaRef={contentRef}
-                      disabled={!canSubmit || pending}
-                      error={Boolean(errors.content)}
-                      helperText={errors.content?.message}
-                      onRequestImage={() => setMediaOpen("content")}
-                    />
+                    <div>
+                      <BlogMarkdownEditor
+                        value={field.value ?? ""}
+                        onChange={field.onChange}
+                        textareaRef={contentRef}
+                        disabled={!canSubmit || pending}
+                        error={Boolean(errors.content)}
+                        helperText={undefined}
+                        onRequestImage={() => setMediaOpen("content")}
+                      />
+                      <FieldError message={errors.content?.message} />
+                    </div>
                   )}
                 />
               </div>

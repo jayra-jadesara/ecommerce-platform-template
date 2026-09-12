@@ -69,6 +69,7 @@ export default async function HomePage() {
           visualEffects={config.visualEffects}
           currency={config.store.currency}
           isAuthenticated={isAuthenticated}
+          headingHighlightStyle={config.typography.headingHighlightStyle}
         />
       ) : (
         <HomeView

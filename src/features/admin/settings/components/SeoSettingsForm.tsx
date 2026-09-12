@@ -28,6 +28,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 interface SeoSettingsFormProps {
   initialValues: SeoSettingsFormValues;
@@ -50,6 +56,8 @@ export function SeoSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<SeoSettingsFormValues>({
     resolver: zodResolver(seoSettingsSchema),
@@ -96,6 +104,14 @@ export function SeoSettingsForm({
     startTransition(async () => {
       const result = await saveSeoSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -164,52 +180,68 @@ export function SeoSettingsForm({
             name="siteTitle"
             control={control}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Store name in Google"
-                fullWidth
-                required
-                disabled={!canUpdate}
-                error={Boolean(fieldState.error)}
-                helperText={
-                  fieldState.error?.message ||
-                  `${(field.value ?? "").length}/120 characters`
-                }
-              />
+              <div>
+                <TextField
+                  {...field}
+                  label="Store name in Google"
+                  fullWidth
+                  required
+                  disabled={!canUpdate}
+                  error={Boolean(fieldState.error)}
+                  helperText={
+                    fieldState.error
+                      ? undefined
+                      : `${(field.value ?? "").length}/120 characters`
+                  }
+                />
+                <FieldError message={fieldState.error?.message} />
+              </div>
             )}
           />
           <Controller
             name="canonicalUrl"
             control={control}
             render={({ field, fieldState }) => (
-              <TextField
-                {...field}
-                label="Live website address (optional)"
-                fullWidth
-                disabled={!canUpdate}
-                error={Boolean(fieldState.error)}
-                placeholder="https://www.yourstore.com"
-                helperText={
-                  fieldState.error?.message ||
-                  "Full https link to your live store. Leave blank to use the deployment URL."
-                }
-              />
+              <div>
+                <TextField
+                  {...field}
+                  label="Live website address (optional)"
+                  fullWidth
+                  disabled={!canUpdate}
+                  error={Boolean(fieldState.error)}
+                  placeholder="https://www.yourstore.com"
+                  helperText={
+                    fieldState.error
+                      ? undefined
+                      : "Full https link to your live store. Leave blank to use the deployment URL."
+                  }
+                />
+                <FieldError message={fieldState.error?.message} />
+              </div>
             )}
           />
           <div className="md:col-span-2">
             <Controller
               name="metaDescription"
               control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Store description in Google"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  disabled={!canUpdate}
-                  helperText={`${(field.value ?? "").length}/320 characters — aim for about 150`}
-                />
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="Store description in Google"
+                    fullWidth
+                    multiline
+                    minRows={3}
+                    disabled={!canUpdate}
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : `${(field.value ?? "").length}/320 characters — aim for about 150`
+                    }
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
           </div>

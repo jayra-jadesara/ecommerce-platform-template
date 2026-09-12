@@ -16,10 +16,22 @@ import {
 } from "@/features/catalog/validation";
 import { slugify } from "@/features/catalog/slug";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import {
+  checkCategoryDependencies,
+} from "@/features/admin/validation/dependencies";
+import { zodValidationFailure } from "@/lib/validation";
+import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
 
 export type CatalogResult =
   | { ok: true; message: string; id?: string }
-  | { ok: false; error: string; referenceId?: string };
+  | {
+      ok: false;
+      error: string;
+      referenceId?: string;
+      kind?: "validation" | "dependency" | "error";
+      fieldErrors?: Record<string, string>;
+      suggestion?: "archive" | "deactivate" | "disable";
+    };
 
 const CATEGORIES_ROUTE = getAdminPath("/catalog/categories");
 
@@ -83,7 +95,7 @@ async function assertUniqueCategorySlug(
     .limit(1);
   if (excludeId) query = query.neq("id", excludeId);
   const { data } = await query;
-  if (data?.[0]) return "A category with this slug already exists.";
+  if (data?.[0]) return "This slug is already in use.";
   return null;
 }
 
@@ -97,7 +109,13 @@ export async function createCategory(
 
   const parsed = categoryFormSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid category." };
+    const failure = zodValidationFailure(parsed.error, "Invalid category.");
+    return {
+      ok: false,
+      kind: "validation",
+      error: failure.error,
+      fieldErrors: failure.fieldErrors,
+    };
   }
 
   const values: CategoryFormValues = parsed.data;
@@ -176,7 +194,13 @@ export async function updateCategory(
 
   const parsed = categoryFormSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid category." };
+    const failure = zodValidationFailure(parsed.error, "Invalid category.");
+    return {
+      ok: false,
+      kind: "validation",
+      error: failure.error,
+      fieldErrors: failure.fieldErrors,
+    };
   }
 
   const values = parsed.data;
@@ -331,30 +355,13 @@ export async function deleteCategory(id: string): Promise<CatalogResult> {
   const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) return { ok: false, error: "No active store found." };
 
-  const { count: productCount } = await supabase
-    .from("products")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", storeId)
-    .eq("category_id", id);
-
-  if ((productCount ?? 0) > 0) {
+  const deps = await checkCategoryDependencies(id);
+  if (deps && !deps.canDelete) {
     return {
       ok: false,
-      error:
-        "This category has products. Reassign or archive products first, or deactivate the category instead.",
-    };
-  }
-
-  const { count: childCount } = await supabase
-    .from("categories")
-    .select("id", { count: "exact", head: true })
-    .eq("store_id", storeId)
-    .eq("parent_id", id);
-
-  if ((childCount ?? 0) > 0) {
-    return {
-      ok: false,
-      error: "Remove or reassign child categories before deleting this category.",
+      kind: "dependency",
+      error: deps.message,
+      suggestion: "deactivate",
     };
   }
 
@@ -365,6 +372,19 @@ export async function deleteCategory(id: string): Promise<CatalogResult> {
     .eq("store_id", storeId);
 
   if (error) {
+    const mapped = mapDatabaseConstraintError(error, {
+      entity: "category",
+      dependencyHint:
+        "Can't delete this category because it is currently being used. Deactivate it instead.",
+    });
+    if (mapped) {
+      return {
+        ok: false,
+        kind: mapped.kind === "dependency" ? "dependency" : "validation",
+        error: mapped.message,
+        suggestion: mapped.suggestion,
+      };
+    }
     return unexpectedFailure({
       type: "DATABASE",
       source: "DATABASE",

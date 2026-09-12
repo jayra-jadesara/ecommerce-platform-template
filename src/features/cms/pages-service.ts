@@ -18,6 +18,7 @@ import {
 import type { ContentPage } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
 
 function mapPage(row: Tables<"pages">): ContentPage {
@@ -151,7 +152,7 @@ export async function getOrCreateAboutPage(): Promise<ContentPage | null> {
 
 export type PageMutationResult =
   | { ok: true; page: ContentPage; message?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function createAdminPage(raw: unknown): Promise<PageMutationResult> {
   const storeId = await resolveActiveStoreId();
@@ -159,13 +160,25 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
 
   const parsed = pageFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid page." };
+    return zodValidationFailure(parsed.error, "Invalid page.");
   }
   if (parsed.data.slug === HOMEPAGE_SLUG) {
-    return { ok: false, error: "The homepage is managed under Content → Homepage." };
+    return {
+      ok: false,
+      error: "The homepage is managed under Content → Homepage.",
+      fieldErrors: {
+        slug: "The homepage is managed under Content → Homepage.",
+      },
+    };
   }
   if (parsed.data.slug === ABOUT_PAGE_SLUG) {
-    return { ok: false, error: "The about page is managed under Content → About." };
+    return {
+      ok: false,
+      error: "The about page is managed under Content → About.",
+      fieldErrors: {
+        slug: "The about page is managed under Content → About.",
+      },
+    };
   }
 
   const values = parsed.data;
@@ -192,7 +205,11 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A page with this URL already exists." };
+      return {
+        ok: false,
+        error: "A page with this URL already exists.",
+        fieldErrors: { slug: "A page with this URL already exists." },
+      };
     }
     return unexpectedFailure({
       type: "CMS",
@@ -238,7 +255,7 @@ export async function updateAdminPage(
 
   const parsed = pageFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid page." };
+    return zodValidationFailure(parsed.error, "Invalid page.");
   }
 
   const values = parsed.data;
@@ -255,10 +272,18 @@ export async function updateAdminPage(
   if (!current) return { ok: false, error: "Page not found." };
 
   if (current.slug === HOMEPAGE_SLUG && values.slug !== HOMEPAGE_SLUG) {
-    return { ok: false, error: "The homepage URL cannot be changed." };
+    return {
+      ok: false,
+      error: "The homepage URL cannot be changed.",
+      fieldErrors: { slug: "The homepage URL cannot be changed." },
+    };
   }
   if (current.slug === ABOUT_PAGE_SLUG && values.slug !== ABOUT_PAGE_SLUG) {
-    return { ok: false, error: "The about page URL cannot be changed." };
+    return {
+      ok: false,
+      error: "The about page URL cannot be changed.",
+      fieldErrors: { slug: "The about page URL cannot be changed." },
+    };
   }
 
   const wasPublished = current.status === "published";
@@ -287,7 +312,11 @@ export async function updateAdminPage(
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A page with this URL already exists." };
+      return {
+        ok: false,
+        error: "A page with this URL already exists.",
+        fieldErrors: { slug: "A page with this URL already exists." },
+      };
     }
     const operation =
       !wasPublished && willPublish

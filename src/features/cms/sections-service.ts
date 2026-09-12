@@ -19,6 +19,7 @@ import {
 import type { ContentSection } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { FieldErrors } from "@/lib/validation";
 import type { Json, Tables, TablesUpdate } from "@/types/database";
 
 function mapSection(row: Tables<"page_sections">): ContentSection {
@@ -84,7 +85,7 @@ export async function listPageSections(
 
 export type SectionMutationResult =
   | { ok: true; section?: ContentSection; message?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function createPageSection(input: {
   pageId: string;
@@ -181,7 +182,13 @@ export async function updatePageSection(input: {
 
   if (input.config !== undefined) {
     const parsed = parseSectionConfig(current.section_type, input.config);
-    if (!parsed.ok) return { ok: false, error: parsed.error };
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        error: parsed.error,
+        ...(parsed.fieldErrors ? { fieldErrors: parsed.fieldErrors } : {}),
+      };
+    }
     patch.config = parsed.config as unknown as Json;
   }
 

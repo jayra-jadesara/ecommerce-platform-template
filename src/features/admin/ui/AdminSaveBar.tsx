@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
@@ -17,6 +18,8 @@ export interface AdminSaveBarProps {
   /** Sticky top (settings) or bottom (long editors). */
   position?: "top" | "bottom";
 }
+
+type PendingAction = "discard" | "reset" | null;
 
 /**
  * Shared save experience for Admin settings & long forms.
@@ -34,6 +37,8 @@ export function AdminSaveBar({
   onResetDefaults,
   position = "top",
 }: AdminSaveBarProps) {
+  const [confirmAction, setConfirmAction] = useState<PendingAction>(null);
+
   useEffect(() => {
     if (!isDirty) return;
     const handler = (event: BeforeUnloadEvent) => {
@@ -50,76 +55,99 @@ export function AdminSaveBar({
       : "sticky bottom-0 z-20 -mx-1 mt-6 border-t";
 
   return (
-    <div
-      className={`${sticky} space-y-3 border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_88%,var(--color-surface)_12%)] px-1 py-3 backdrop-blur-md`}
-    >
-      <div className="flex flex-wrap items-center gap-2">
-        {isDirty ? (
-          <AdminStatusBadge tone="warning">Unsaved changes</AdminStatusBadge>
-        ) : (
-          <AdminStatusBadge tone="neutral">All changes saved</AdminStatusBadge>
-        )}
-        {!canUpdate ? (
-          <AdminStatusBadge tone="neutral">View only</AdminStatusBadge>
-        ) : null}
-        <div className="ml-auto flex flex-wrap gap-2">
-          {onResetDefaults ? (
+    <>
+      <div
+        className={`${sticky} space-y-3 border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_88%,var(--color-surface)_12%)] px-1 py-3 backdrop-blur-md`}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {isDirty ? (
+            <AdminStatusBadge tone="warning">Unsaved changes</AdminStatusBadge>
+          ) : (
+            <AdminStatusBadge tone="neutral">All changes saved</AdminStatusBadge>
+          )}
+          {!canUpdate ? (
+            <AdminStatusBadge tone="neutral">View only</AdminStatusBadge>
+          ) : null}
+          <div className="ml-auto flex flex-wrap gap-2">
+            {onResetDefaults ? (
+              <button
+                type="button"
+                className={cn(adminBtn("ghost"), "!min-h-9")}
+                disabled={!canUpdate || pending}
+                onClick={() => setConfirmAction("reset")}
+              >
+                Reset to default
+              </button>
+            ) : null}
             <button
               type="button"
-              className={cn(adminBtn("ghost"), "!min-h-9")}
-              disabled={!canUpdate || pending}
+              className={cn(adminBtn("outline"), "!min-h-9")}
+              disabled={!isDirty || pending}
               onClick={() => {
-                if (
-                  !window.confirm(
-                    "Reset this form to defaults? Unsaved changes will be discarded. Nothing is saved until you click Save.",
-                  )
-                ) {
-                  return;
-                }
-                onResetDefaults();
+                if (isDirty) setConfirmAction("discard");
+                else onCancel();
               }}
             >
-              Reset to default
+              Cancel
             </button>
-          ) : null}
-          <button
-            type="button"
-            className={cn(adminBtn("outline"), "!min-h-9")}
-            disabled={!isDirty || pending}
-            onClick={() => {
-              if (isDirty && !window.confirm("Discard unsaved changes?")) return;
-              onCancel();
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={cn(adminBtn("primary"), "!min-h-9")}
-            disabled={!canUpdate || !isDirty || pending}
-            onClick={onSave}
-          >
-            {pending ? "Saving…" : "Save changes"}
-          </button>
+            <button
+              type="button"
+              className={cn(adminBtn("primary"), "!min-h-9")}
+              disabled={!canUpdate || !isDirty || pending}
+              onClick={onSave}
+            >
+              {pending ? "Saving…" : "Save changes"}
+            </button>
+          </div>
         </div>
+        {error ? (
+          <p
+            className="rounded-xl border border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)] px-3 py-2 text-sm text-[var(--color-error)]"
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
+        {success ? (
+          <p
+            className="rounded-xl border border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] px-3 py-2 text-sm text-[var(--color-success)]"
+            role="status"
+          >
+            {success}
+          </p>
+        ) : null}
       </div>
-      {error ? (
-        <p
-          className="rounded-xl border border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)] px-3 py-2 text-sm text-[var(--color-error)]"
-          role="alert"
-        >
-          {error}
-        </p>
-      ) : null}
-      {success ? (
-        <p
-          className="rounded-xl border border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,transparent)] px-3 py-2 text-sm text-[var(--color-success)]"
-          role="status"
-        >
-          {success}
-        </p>
-      ) : null}
-    </div>
+
+      <ConfirmDeleteDialog
+        open={confirmAction === "discard"}
+        title="Unsaved changes"
+        message="Discard unsaved changes? Your edits will be lost."
+        confirmTone="default"
+        confirmLabel="Leave"
+        cancelLabel="Stay"
+        pendingLabel="Working…"
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          onCancel();
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={confirmAction === "reset"}
+        title="Reset to defaults?"
+        message="Reset this form to defaults? Unsaved changes will be discarded. Nothing is saved until you click Save."
+        confirmTone="default"
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        pendingLabel="Working…"
+        onClose={() => setConfirmAction(null)}
+        onConfirm={() => {
+          setConfirmAction(null);
+          onResetDefaults?.();
+        }}
+      />
+    </>
   );
 }
 

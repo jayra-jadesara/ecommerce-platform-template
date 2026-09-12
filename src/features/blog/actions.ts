@@ -15,6 +15,18 @@ import {
 } from "@/features/blog/posts-service";
 import { upsertAdminBlogSettings } from "@/features/blog/settings-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import type { FieldErrors } from "@/lib/validation";
+
+function failureWithFieldErrors(result: {
+  error: string;
+  fieldErrors?: FieldErrors;
+}) {
+  return {
+    ok: false as const,
+    error: result.error,
+    ...(result.fieldErrors ? { fieldErrors: result.fieldErrors } : {}),
+  };
+}
 
 export async function createBlogPostAction(raw: unknown) {
   await requirePermission("blog.create");
@@ -29,7 +41,7 @@ export async function createBlogPostAction(raw: unknown) {
     },
     async () => {
       const result = await createAdminBlogPost(raw);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,
@@ -53,7 +65,7 @@ export async function updateBlogPostAction(id: string, raw: unknown) {
     },
     async () => {
       const result = await updateAdminBlogPost(id, raw);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,
@@ -172,7 +184,7 @@ export async function createBlogCategoryAction(raw: unknown) {
     },
     async () => {
       const result = await createAdminBlogCategory(raw);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,
@@ -196,7 +208,7 @@ export async function updateBlogCategoryAction(id: string, raw: unknown) {
     },
     async () => {
       const result = await updateAdminBlogCategory(id, raw);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,
@@ -270,7 +282,7 @@ export async function saveBlogSettingsAction(raw: unknown) {
     },
     async () => {
       const result = await upsertAdminBlogSettings(raw);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,

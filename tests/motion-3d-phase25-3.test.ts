@@ -267,10 +267,11 @@ describe("Phase 25.3 — two-column studio UI contracts", () => {
     expect(css).toContain("35%");
   });
 
-  it("HomepageBuilder keeps compact section overrides", () => {
+  it("HomepageBuilder has no per-section Motion & 3D overrides", () => {
     const src = read("src/features/cms/components/HomepageBuilder.tsx");
-    expect(src).toContain("Use store settings");
+    expect(src).not.toContain("Use store settings");
     expect(src).not.toContain("Motion3DDesignStudio");
+    expect(src).toContain("Appearance → Motion &amp; 3D");
   });
 
   it("storefront product tiles use motion image tokens", () => {

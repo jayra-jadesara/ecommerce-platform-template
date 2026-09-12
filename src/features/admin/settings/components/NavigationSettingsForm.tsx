@@ -25,6 +25,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import {
   pageOptionLabel,
   StorePageLinkField,
@@ -79,6 +85,8 @@ export function NavigationSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<NavigationSettingsFormValues>({
     resolver: zodResolver(navigationSettingsSchema),
@@ -99,6 +107,14 @@ export function NavigationSettingsForm({
     startTransition(async () => {
       const result = await saveNavigationSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -338,35 +354,44 @@ function NavLinkCard({
             name={`items.${index}.label`}
             control={control}
             render={({ field: f, fieldState }) => (
-              <TextField
-                {...f}
-                label="Button text"
-                fullWidth
-                required
-                disabled={!canUpdate || pending}
-                error={Boolean(fieldState.error)}
-                helperText={
-                  fieldState.error?.message ?? "Example: Products, About, Contact"
-                }
-              />
+              <div>
+                <TextField
+                  {...f}
+                  label="Button text"
+                  fullWidth
+                  required
+                  disabled={!canUpdate || pending}
+                  error={Boolean(fieldState.error)}
+                  helperText={
+                    fieldState.error
+                      ? undefined
+                      : "Example: Products, About, Contact"
+                  }
+                />
+                <FieldError message={fieldState.error?.message} />
+              </div>
             )}
           />
           <Controller
             name={`items.${index}.href`}
             control={control}
             render={({ field: f, fieldState }) => (
-              <StorePageLinkField
-                label="Goes to this page"
-                value={f.value}
-                fallback="/"
-                disabled={!canUpdate || pending}
-                error={Boolean(fieldState.error)}
-                onChange={f.onChange}
-                helperText={
-                  fieldState.error?.message ??
-                  "Pick a store page from the list"
-                }
-              />
+              <div>
+                <StorePageLinkField
+                  label="Goes to this page"
+                  value={f.value}
+                  fallback="/"
+                  disabled={!canUpdate || pending}
+                  error={Boolean(fieldState.error)}
+                  onChange={f.onChange}
+                  helperText={
+                    fieldState.error
+                      ? undefined
+                      : "Pick a store page from the list"
+                  }
+                />
+                <FieldError message={fieldState.error?.message} />
+              </div>
             )}
           />
           <Controller

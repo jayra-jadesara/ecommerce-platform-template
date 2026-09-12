@@ -16,6 +16,7 @@ import {
 import type { BlogCategory } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
 
 function mapCategory(row: Tables<"blog_categories">): BlogCategory {
@@ -53,7 +54,7 @@ export function toBlogCategoryFormValues(
 
 export type BlogCategoryMutationResult =
   | { ok: true; category: BlogCategory; message?: string; id?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function listAdminBlogCategories(): Promise<BlogCategory[]> {
   const storeId = await resolveActiveStoreId();
@@ -119,10 +120,7 @@ export async function createAdminBlogCategory(
 
   const parsed = blogCategoryFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid category.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid category.");
   }
 
   const values = parsed.data;
@@ -145,7 +143,11 @@ export async function createAdminBlogCategory(
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A category with this URL already exists." };
+      return {
+        ok: false,
+        error: "A category with this URL already exists.",
+        fieldErrors: { slug: "A category with this URL already exists." },
+      };
     }
     return unexpectedFailure({
       type: "CMS",
@@ -187,10 +189,7 @@ export async function updateAdminBlogCategory(
 
   const parsed = blogCategoryFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid category.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid category.");
   }
 
   const values = parsed.data;
@@ -223,7 +222,11 @@ export async function updateAdminBlogCategory(
 
   if (error || !data) {
     if (error?.code === "23505") {
-      return { ok: false, error: "A category with this URL already exists." };
+      return {
+        ok: false,
+        error: "A category with this URL already exists.",
+        fieldErrors: { slug: "A category with this URL already exists." },
+      };
     }
     return unexpectedFailure({
       type: "CMS",

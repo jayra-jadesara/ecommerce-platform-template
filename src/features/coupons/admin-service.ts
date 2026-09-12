@@ -18,6 +18,7 @@ import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/features/auth/session";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 
 export type AdminCouponListItem = CouponRow & {
   status: CouponDisplayStatus;
@@ -195,7 +196,7 @@ export async function getAdminCoupon(
 
 export type CouponMutationResult =
   | { ok: true; id: string; message?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function createAdminCoupon(
   raw: unknown,
@@ -205,10 +206,7 @@ export async function createAdminCoupon(
 
   const parsed = couponFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid coupon.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid coupon.");
   }
   const values = parsed.data;
   const supabase = await createSupabaseServerClient();
@@ -225,7 +223,8 @@ export async function createAdminCoupon(
   if (existing) {
     return {
       ok: false,
-      error: "A coupon with this code already exists for this store.",
+      error: "That coupon code is already in use.",
+      fieldErrors: { code: "That coupon code is already in use." },
     };
   }
 
@@ -252,7 +251,8 @@ export async function createAdminCoupon(
     if (error?.code === "23505") {
       return {
         ok: false,
-        error: "A coupon with this code already exists for this store.",
+        error: "That coupon code is already in use.",
+        fieldErrors: { code: "That coupon code is already in use." },
       };
     }
     return unexpectedFailure({
@@ -288,10 +288,7 @@ export async function updateAdminCoupon(
 
   const parsed = couponFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid coupon.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid coupon.");
   }
   const values = parsed.data;
   const supabase = await createSupabaseServerClient();
@@ -318,7 +315,8 @@ export async function updateAdminCoupon(
     if (clash) {
       return {
         ok: false,
-        error: "A coupon with this code already exists for this store.",
+        error: "That coupon code is already in use.",
+        fieldErrors: { code: "That coupon code is already in use." },
       };
     }
   }
@@ -345,7 +343,8 @@ export async function updateAdminCoupon(
     if (error.code === "23505") {
       return {
         ok: false,
-        error: "A coupon with this code already exists for this store.",
+        error: "That coupon code is already in use.",
+        fieldErrors: { code: "That coupon code is already in use." },
       };
     }
     return unexpectedFailure({

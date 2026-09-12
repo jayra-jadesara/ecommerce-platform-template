@@ -149,6 +149,30 @@ export function createAppMuiTheme(
           },
         },
       },
+      MuiSwitch: {
+        styleOverrides: {
+          root: {
+            flexShrink: 0,
+          },
+          track: {
+            borderRadius: 999,
+            opacity: 1,
+          },
+        },
+      },
+      MuiFormControlLabel: {
+        styleOverrides: {
+          root: {
+            marginLeft: 0,
+            marginRight: 12,
+            alignItems: "center",
+          },
+          label: {
+            fontSize: "0.875rem",
+            lineHeight: 1.35,
+          },
+        },
+      },
       MuiDialog: {
         styleOverrides: {
           paper: {

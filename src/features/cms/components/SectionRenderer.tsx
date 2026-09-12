@@ -3,6 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { Motion } from "@/features/animation";
 import type { AnimationConfig, VisualEffectsConfig } from "@/types";
+import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
+import { coerceHeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import type { StorefrontSection } from "@/features/cms/storefront";
 import type {
   HeroLayoutPreset,
@@ -37,6 +39,7 @@ type Props = {
   visualEffects?: VisualEffectsConfig;
   currency?: string;
   isAuthenticated?: boolean;
+  headingHighlightStyle?: HeadingHighlightStyle;
 };
 
 function SectionMotion({
@@ -237,9 +240,17 @@ export function SectionRenderer({
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
   isAuthenticated = false,
+  headingHighlightStyle: highlightStyleProp,
 }: Props) {
   const cfg = section.config;
   const shell = sectionShellClassName(cfg as SectionConfigMap["hero"]);
+  const highlightStyle = coerceHeadingHighlightStyle(
+    highlightStyleProp ??
+      defaultPlatformConfig.typography.headingHighlightStyle,
+  );
+  const accentFromConfig = () => ({
+    highlightStyle,
+  });
 
   switch (section.sectionType) {
     case "hero": {
@@ -385,13 +396,7 @@ export function SectionRenderer({
             <div className="mx-auto max-w-3xl text-center">
               <SectionAccentHeading
                 title={heading}
-                accentWord={
-                  /\bcollections?\b/i.test(heading)
-                    ? "Collections"
-                    : /\brange\b/i.test(heading)
-                      ? "range"
-                      : undefined
-                }
+                {...accentFromConfig()}
               />
               {c.description ? (
                 <p className="mx-auto mt-3 max-w-2xl text-center text-sm text-[var(--color-muted)] sm:text-base">
@@ -456,7 +461,7 @@ export function SectionRenderer({
           <div className={sfSectionInner()}>
             {c.title ? (
               <div className="mx-auto max-w-3xl text-center">
-                <SectionAccentHeading title={c.title} />
+                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
                 {c.description ? (
                   <p className="mt-3 text-sm text-[var(--color-muted)] sm:text-base">
                     {c.description}
@@ -563,7 +568,9 @@ export function SectionRenderer({
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 md:grid-cols-2">
             <div className={imageLeft ? "md:order-2" : ""}>
-              {heading ? <SectionAccentHeading title={heading} /> : null}
+              {heading ? (
+                <SectionAccentHeading title={heading} {...accentFromConfig()} />
+              ) : null}
               {description ? (
                 <p className="mt-3 whitespace-pre-wrap text-[var(--color-muted)]">
                   {description}
@@ -632,7 +639,7 @@ export function SectionRenderer({
               {heading ? (
                 <SectionAccentHeading
                   title={heading}
-                  accentWord={c.headingHighlight || undefined}
+                  {...accentFromConfig()}
                   align="center"
                 />
               ) : null}
@@ -804,7 +811,7 @@ export function SectionRenderer({
           <div className={sfSectionInner()}>
             {c.title ? (
               <div className="mx-auto max-w-3xl text-center">
-                <SectionAccentHeading title={c.title} />
+                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
                 {c.description ? (
                   <p className="mt-3 text-sm text-[var(--color-muted)] sm:text-base">
                     {c.description}
@@ -849,7 +856,7 @@ export function SectionRenderer({
           <div className="mx-auto max-w-6xl px-4">
             {c.title ? (
               <div className="mb-6 text-center">
-                <SectionAccentHeading title={c.title} />
+                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
               </div>
             ) : null}
             <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -875,7 +882,7 @@ export function SectionRenderer({
           <div className="mx-auto max-w-6xl px-4">
             {c.title ? (
               <div className="text-center">
-                <SectionAccentHeading title={c.title} />
+                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
               </div>
             ) : null}
             <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -914,7 +921,7 @@ export function SectionRenderer({
           <div className="mx-auto max-w-3xl px-4">
             {c.title ? (
               <div className="text-center">
-                <SectionAccentHeading title={c.title} />
+                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
               </div>
             ) : null}
             <dl className="mt-6 space-y-4">
@@ -951,7 +958,10 @@ export function SectionRenderer({
               />
               <div className="relative">
                 {c.heading ? (
-                  <SectionAccentHeading title={c.heading} />
+                  <SectionAccentHeading
+                    title={c.heading}
+                    {...accentFromConfig()}
+                  />
                 ) : null}
                 {c.description ? (
                   <p className="mx-auto mt-3 max-w-xl text-[var(--color-muted)]">
@@ -977,7 +987,9 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className="mx-auto max-w-xl px-4 text-center">
-            {c.heading ? <SectionAccentHeading title={c.heading} /> : null}
+            {c.heading ? (
+              <SectionAccentHeading title={c.heading} {...accentFromConfig()} />
+            ) : null}
             {c.description ? (
               <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
             ) : null}
@@ -997,7 +1009,10 @@ export function SectionRenderer({
           <div className="mx-auto max-w-3xl px-4">
             {c.heading ? (
               <div className="text-center">
-                <SectionAccentHeading title={c.heading} />
+                <SectionAccentHeading
+                  title={c.heading}
+                  {...accentFromConfig()}
+                />
               </div>
             ) : null}
             {c.body ? (
@@ -1019,12 +1034,14 @@ export function HomepageSections({
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
   isAuthenticated = false,
+  headingHighlightStyle,
 }: {
   sections: StorefrontSection[];
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
   currency?: string;
   isAuthenticated?: boolean;
+  headingHighlightStyle?: HeadingHighlightStyle;
 }) {
   return (
     <div className="space-y-0">
@@ -1036,6 +1053,7 @@ export function HomepageSections({
           visualEffects={visualEffects}
           currency={currency}
           isAuthenticated={isAuthenticated}
+          headingHighlightStyle={headingHighlightStyle}
         />
       ))}
     </div>

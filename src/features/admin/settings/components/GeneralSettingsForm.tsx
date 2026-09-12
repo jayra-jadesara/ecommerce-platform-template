@@ -34,6 +34,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 interface GeneralSettingsFormProps {
   initialValues: GeneralSettingsFormValues;
@@ -154,6 +160,8 @@ export function GeneralSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<GeneralSettingsFormValues>({
     resolver: zodResolver(generalSettingsSchema),
@@ -175,6 +183,14 @@ export function GeneralSettingsForm({
     startTransition(async () => {
       const result = await saveGeneralSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -231,17 +247,20 @@ export function GeneralSettingsForm({
               name="displayName"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Store name shoppers see"
-                  fullWidth
-                  required
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={
-                    fieldState.error?.message ?? "Example: Sonet Spices"
-                  }
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="Store name shoppers see"
+                    fullWidth
+                    required
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error ? undefined : "Example: Sonet Spices"
+                    }
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
@@ -272,16 +291,23 @@ export function GeneralSettingsForm({
               name="currency"
               control={control}
               render={({ field, fieldState }) => (
-                <SelectField
-                  label="Currency"
-                  required
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message ?? "Used on product prices and checkout"}
-                  value={field.value}
-                  options={[...STORE_CURRENCIES]}
-                  onChange={field.onChange}
-                />
+                <div>
+                  <SelectField
+                    label="Currency"
+                    required
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : "Used on product prices and checkout"
+                    }
+                    value={field.value}
+                    options={[...STORE_CURRENCIES]}
+                    onChange={field.onChange}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
@@ -331,42 +357,51 @@ export function GeneralSettingsForm({
               name="contactEmail"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Email customers can write to"
-                  fullWidth
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="Email customers can write to"
+                    fullWidth
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
               name="contactPhone"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Main phone number"
-                  fullWidth
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="Main phone number"
+                    fullWidth
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
               name="contactPhoneSecondary"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Second phone (optional)"
-                  fullWidth
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="Second phone (optional)"
+                    fullWidth
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
@@ -398,15 +433,17 @@ export function GeneralSettingsForm({
               name="addressLine1"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Street address"
-                  fullWidth
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                  className="md:col-span-2"
-                />
+                <div className="md:col-span-2">
+                  <TextField
+                    {...field}
+                    label="Street address"
+                    fullWidth
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller
@@ -509,14 +546,17 @@ export function GeneralSettingsForm({
               name="postalCode"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="PIN / postal code"
-                  fullWidth
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="PIN / postal code"
+                    fullWidth
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
           </div>
@@ -616,15 +656,18 @@ export function GeneralSettingsForm({
                 name={name}
                 control={control}
                 render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label={label}
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={fieldState.error?.message}
-                    placeholder="https://"
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      label={label}
+                      fullWidth
+                      disabled={!canUpdate || pending}
+                      error={Boolean(fieldState.error)}
+                      helperText={undefined}
+                      placeholder="https://"
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
             ))}

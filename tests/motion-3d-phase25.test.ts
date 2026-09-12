@@ -234,9 +234,53 @@ describe("Phase 25 — theme tokens + CMS defaults", () => {
     expect(hero.threeSource).toBe("global");
   });
 
-  it("section helper maps global by default", () => {
+  it("section helpers always inherit Appearance (ignore legacy custom JSON)", () => {
     expect(sectionMotionOverrideFromConfig({}).source).toBe("global");
     expect(section3dOverrideFromConfig({}).source).toBe("global");
+    expect(
+      sectionMotionOverrideFromConfig({
+        motionSource: "custom",
+        animationEnabled: false,
+        animationPreset: "none",
+      }).source,
+    ).toBe("global");
+    expect(
+      section3dOverrideFromConfig({
+        threeSource: "custom",
+        enable3d: true,
+        scene3dPreset: "FLOATING_SHAPES",
+      }).source,
+    ).toBe("global");
+  });
+
+  it("storefront still applies Appearance when section JSON has old custom flags", () => {
+    const soft = applyThreeStylePreset("SOFT");
+    const motion = resolveMotionConfig({
+      global: { enabled: true, intensity: "medium", defaultPreset: "fade-up" },
+      section: sectionMotionOverrideFromConfig({
+        motionSource: "custom",
+        animationEnabled: false,
+        animationPreset: "none",
+      }),
+      reducedMotion: false,
+    });
+    expect(motion.shouldAnimate).toBe(true);
+    expect(motion.defaultPreset).toBe("fade-up");
+
+    const three = resolve3DConfig({
+      global: { ...global3d, ...soft, respectReducedMotion: true },
+      animationEnabled: true,
+      section: section3dOverrideFromConfig({
+        threeSource: "custom",
+        enable3d: false,
+        scene3dPreset: "NONE",
+      }),
+      isMobile: false,
+      reducedMotion: false,
+      webglAvailable: true,
+    });
+    expect(three.mayMountHero3d).toBe(true);
+    expect(three.heroPreset).not.toBe("NONE");
   });
 
   it("infer presets stay compatible with stored DB shapes", () => {

@@ -23,6 +23,7 @@ import {
   type SettingsRow,
   type ThemeRow,
 } from "@/features/theme/map-from-db";
+import { coerceHeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import type {
   AnimationConfig,
   BrandConfig,
@@ -158,6 +159,10 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
       fontMono: themeResult.data?.font_mono || fallback.typography.fontMono,
       fontDisplay:
         themeResult.data?.font_display || fallback.typography.fontDisplay,
+      headingHighlightStyle: coerceHeadingHighlightStyle(
+        themeResult.data?.heading_highlight_style,
+        fallback.typography.headingHighlightStyle ?? "double",
+      ),
     },
     layout: {
       ...fallback.layout,

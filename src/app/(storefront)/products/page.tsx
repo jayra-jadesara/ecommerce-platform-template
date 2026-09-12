@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageShell } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { ProductsCatalog } from "@/features/catalog/components/ProductsCatalog";
 import {
   countStorefrontProductsByCategory,
@@ -59,9 +60,12 @@ export default async function ProductsPage({
   return (
     <PageShell showBack={false} className="!pt-3 md:!pt-5">
       <header className="mx-auto mb-3 max-w-5xl md:mb-4">
-        <h1 className="text-center font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-2xl">
-          Products
-        </h1>
+        <StorefrontHeading
+          title="Products"
+          as="h1"
+          align="center"
+          className="!text-xl md:!text-2xl"
+        />
         <nav
           className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-muted)]"
           aria-label="Breadcrumb"

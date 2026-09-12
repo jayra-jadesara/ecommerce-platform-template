@@ -1,3 +1,4 @@
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { ProfileForm } from "@/features/auth/components/ProfileForm";
 import { requireUser } from "@/features/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -13,9 +14,7 @@ export default async function AccountProfilePage() {
 
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Profile
-      </h2>
+      <StorefrontHeading title="Profile" as="h2" align="left" className="!text-2xl" />
       <p className="mt-2 text-sm text-[var(--color-muted)]">{user.email}</p>
       <div className="mt-6">
         <ProfileForm

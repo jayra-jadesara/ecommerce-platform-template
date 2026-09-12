@@ -23,6 +23,12 @@ import {
   adminCardsGrid,
   adminFormGrid,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import {
   LogoThemeSuggest,
   suggestThemeFromLogoFile,
@@ -99,6 +105,8 @@ export function BrandingSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    setError: setFieldError,
+    setFocus,
     formState: { isDirty },
   } = useForm<BrandingSettingsFormValues>({
     resolver: zodResolver(brandingSettingsSchema),
@@ -131,6 +139,14 @@ export function BrandingSettingsForm({
     startTransition(async () => {
       const result = await saveBrandingSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -207,15 +223,18 @@ export function BrandingSettingsForm({
               name="brandName"
               control={control}
               render={({ field, fieldState }) => (
-                <TextField
-                  {...field}
-                  label="Brand name"
-                  fullWidth
-                  required
-                  disabled={!canUpdate}
-                  error={Boolean(fieldState.error)}
-                  helperText={fieldState.error?.message}
-                />
+                <div>
+                  <TextField
+                    {...field}
+                    label="Brand name"
+                    fullWidth
+                    required
+                    disabled={!canUpdate}
+                    error={Boolean(fieldState.error)}
+                    helperText={undefined}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
               )}
             />
             <Controller

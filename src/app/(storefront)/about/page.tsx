@@ -1,9 +1,10 @@
 import { PageShell } from "@/components/layout";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { getCurrentUser } from "@/features/auth/session";
-import { sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
+import { sfEyebrow } from "@/components/ui/storefront-classes";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,12 @@ export default async function AboutPage() {
           }}
         />
         <p className={sfEyebrow()}>{brand.name}</p>
-        <h1
-          className={`${sfDisplay()} mx-auto mt-3 max-w-3xl text-4xl leading-[1.12] md:text-5xl`}
-        >
-          {title}
-        </h1>
+        <StorefrontHeading
+          title={title}
+          as="h1"
+          align="center"
+          className="mx-auto mt-3 max-w-3xl !text-4xl md:!text-5xl"
+        />
         {subtitle ? (
           <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-[var(--color-muted)] md:text-base">
             {subtitle}
@@ -57,6 +59,7 @@ export default async function AboutPage() {
           visualEffects={config.visualEffects}
           currency={config.store.currency}
           isAuthenticated={Boolean(user)}
+          headingHighlightStyle={config.typography.headingHighlightStyle}
         />
       ) : (
         <p className="mx-auto max-w-lg rounded-[var(--radius-default,0.75rem)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-10 text-center text-sm leading-relaxed text-[var(--color-muted)]">

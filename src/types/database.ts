@@ -273,6 +273,7 @@ export type Database = {
           font_sans: string | null;
           font_mono: string | null;
           font_display: string | null;
+          heading_highlight_style: string;
           border_radius: string;
         } & Timestamps;
         Insert: {
@@ -319,6 +320,7 @@ export type Database = {
           font_sans?: string | null;
           font_mono?: string | null;
           font_display?: string | null;
+          heading_highlight_style?: string;
           border_radius?: string;
           created_at?: string;
           updated_at?: string;

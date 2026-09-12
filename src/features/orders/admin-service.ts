@@ -6,7 +6,10 @@ import {
   restoreOrderInventory,
 } from "@/features/orders/inventory";
 import { getOrderDetail } from "@/features/orders/queries";
-import { assertOrderTransition } from "@/features/orders/state-machine";
+import {
+  assertOrderTransition,
+  orderStatusLabel,
+} from "@/features/orders/state-machine";
 import type { OrderMutationResult } from "@/features/orders/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
@@ -37,7 +40,7 @@ export async function updateOrderStatus(input: {
   } catch {
     return {
       ok: false,
-      error: `Cannot change status from ${order.status} to ${input.nextStatus}.`,
+      error: `This order can’t move from ${orderStatusLabel(order.status)} to ${orderStatusLabel(input.nextStatus)}.`,
     };
   }
 

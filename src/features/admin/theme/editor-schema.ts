@@ -8,11 +8,17 @@ import {
   VISUAL_3D_PRESETS,
   VISUAL_3D_QUALITY,
 } from "@/features/visual-effects/schemas";
+import {
+  HEADING_HIGHLIGHT_STYLES,
+  coerceHeadingHighlightStyle,
+  type HeadingHighlightStyle,
+} from "@/features/theme/heading-highlight";
 import type {
   AnimationConfig,
   ThemeConfig,
   VisualEffectsConfig,
 } from "@/types";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 
 export const BORDER_RADIUS_PRESETS = {
   none: "0px",
@@ -29,26 +35,113 @@ export const SAFE_FONT_OPTIONS = [
     id: "dm_sans",
     label: "DM Sans",
     css: "var(--font-dm-sans)",
+    mood: "Clean",
+    bestFor: "both" as const,
+    blurb: "Friendly modern store default",
+  },
+  {
+    id: "plus_jakarta",
+    label: "Plus Jakarta",
+    css: "var(--font-plus-jakarta)",
+    mood: "Polished",
+    bestFor: "body" as const,
+    blurb: "Contemporary DTC body text",
+  },
+  {
+    id: "manrope",
+    label: "Manrope",
+    css: "var(--font-manrope)",
+    mood: "Refined",
+    bestFor: "body" as const,
+    blurb: "Soft geometric sans for catalogs",
+  },
+  {
+    id: "outfit",
+    label: "Outfit",
+    css: "var(--font-outfit)",
+    mood: "Modern",
+    bestFor: "both" as const,
+    blurb: "Premium sans for brand + UI",
+  },
+  {
+    id: "space_grotesk",
+    label: "Space Grotesk",
+    css: "var(--font-space-grotesk)",
+    mood: "Bold",
+    bestFor: "heading" as const,
+    blurb: "Distinctive tech / lifestyle titles",
+  },
+  {
+    id: "syne",
+    label: "Syne",
+    css: "var(--font-syne)",
+    mood: "Statement",
+    bestFor: "heading" as const,
+    blurb: "Strong brand display energy",
   },
   {
     id: "fraunces",
     label: "Fraunces",
     css: "var(--font-fraunces)",
+    mood: "Warm",
+    bestFor: "heading" as const,
+    blurb: "Soft serif with personality",
+  },
+  {
+    id: "playfair",
+    label: "Playfair Display",
+    css: "var(--font-playfair)",
+    mood: "Luxury",
+    bestFor: "heading" as const,
+    blurb: "Classic premium ecommerce titles",
+  },
+  {
+    id: "cormorant",
+    label: "Cormorant",
+    css: "var(--font-cormorant)",
+    mood: "Editorial",
+    bestFor: "heading" as const,
+    blurb: "High-end magazine elegance",
+  },
+  {
+    id: "libre_baskerville",
+    label: "Libre Baskerville",
+    css: "var(--font-libre-baskerville)",
+    mood: "Heritage",
+    bestFor: "heading" as const,
+    blurb: "Timeless serif authority",
+  },
+  {
+    id: "lora",
+    label: "Lora",
+    css: "var(--font-lora)",
+    mood: "Readable",
+    bestFor: "body" as const,
+    blurb: "Elegant serif for long copy",
   },
   {
     id: "jetbrains_mono",
     label: "JetBrains Mono",
     css: "var(--font-jetbrains-mono)",
+    mood: "Technical",
+    bestFor: "both" as const,
+    blurb: "Monospace for modern brands",
   },
   {
     id: "system_ui",
     label: "System UI",
     css: "system-ui, sans-serif",
+    mood: "Native",
+    bestFor: "body" as const,
+    blurb: "Device default — fast & familiar",
   },
   {
     id: "georgia",
     label: "Georgia",
     css: "Georgia, 'Times New Roman', serif",
+    mood: "Classic",
+    bestFor: "heading" as const,
+    blurb: "Built-in serif fallback",
   },
 ] as const;
 
@@ -63,13 +156,12 @@ export const ANIMATION_INTENSITY_UI = [
 
 export type AnimationIntensityUi = (typeof ANIMATION_INTENSITY_UI)[number];
 
-const safeFontIdSchema = z.enum([
-  "dm_sans",
-  "fraunces",
-  "jetbrains_mono",
-  "system_ui",
-  "georgia",
-]);
+const safeFontIdSchema = z.enum(
+  SAFE_FONT_OPTIONS.map((option) => option.id) as [
+    SafeFontId,
+    ...SafeFontId[],
+  ],
+);
 
 const borderRadiusPresetSchema = z.enum([
   "none",
@@ -91,6 +183,7 @@ export const themeEditorFormSchema = z
     borderRadiusPreset: borderRadiusPresetSchema,
     fontSans: safeFontIdSchema,
     fontDisplay: safeFontIdSchema,
+    headingHighlightStyle: z.enum(HEADING_HIGHLIGHT_STYLES),
     animationEnabled: z.boolean(),
     animationIntensity: z.enum(["none", "subtle", "medium", "high"]),
     animationPreset: animationPresetSchema,
@@ -146,7 +239,11 @@ export function radiusToPreset(radius: string | undefined): BorderRadiusPreset {
 export function themeConfigToFormValues(
   theme: ThemeConfig,
   animation: AnimationConfig,
-  fonts?: { fontSans?: string; fontDisplay?: string },
+  fonts?: {
+    fontSans?: string;
+    fontDisplay?: string;
+    headingHighlightStyle?: string;
+  },
   visualEffects?: VisualEffectsConfig,
 ): ThemeEditorFormValues {
   const intensityUi: AnimationIntensityUi = !animation.enabled
@@ -174,6 +271,10 @@ export function themeConfigToFormValues(
     borderRadiusPreset: radiusToPreset(theme.borderRadius),
     fontSans: cssToFontId(fonts?.fontSans),
     fontDisplay: cssToFontId(fonts?.fontDisplay),
+    headingHighlightStyle: coerceHeadingHighlightStyle(
+      fonts?.headingHighlightStyle,
+      "double",
+    ) as HeadingHighlightStyle,
     animationEnabled: animation.enabled && intensityUi !== "none",
     animationIntensity: intensityUi,
     animationPreset: animation.defaultPreset,
@@ -238,13 +339,10 @@ export function formValuesToVisualEffectsConfig(
 /** Pure validation used by server action + tests. */
 export function validateThemeEditorPayload(input: unknown):
   | { ok: true; data: ThemeEditorFormValues }
-  | { ok: false; error: string } {
+  | { ok: false; error: string; fieldErrors?: FieldErrors } {
   const parsed = themeEditorFormSchema.safeParse(input);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid theme configuration.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid theme configuration.");
   }
   return { ok: true, data: parsed.data };
 }

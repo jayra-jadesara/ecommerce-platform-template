@@ -84,6 +84,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     baseSizePx: 16,
     headingWeight: 600,
     bodyWeight: 400,
+    headingHighlightStyle: "double",
   },
   layout: {
     maxWidth: "100%",

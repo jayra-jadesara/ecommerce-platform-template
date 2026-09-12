@@ -1,3 +1,4 @@
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { WishlistPageClient } from "@/features/wishlist/components/WishlistPageClient";
 import { getWishlist } from "@/features/wishlist/service";
 
@@ -8,9 +9,7 @@ export default async function WishlistPage() {
 
   return (
     <div>
-      <h2 className="font-[family-name:var(--font-display)] text-2xl font-semibold">
-        Wishlist
-      </h2>
+      <StorefrontHeading title="Wishlist" as="h2" align="left" className="!text-2xl" />
       <p className="mt-1 text-sm text-[var(--color-muted)]">
         Saved products for this store. Availability is checked when you add to
         cart.

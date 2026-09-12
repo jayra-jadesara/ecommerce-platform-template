@@ -12,6 +12,7 @@ import {
 import type { BannerRow } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
 
 function mapBanner(row: Tables<"banners">): BannerRow {
@@ -64,7 +65,7 @@ export async function getAdminBanner(id: string): Promise<BannerRow | null> {
 
 export type BannerMutationResult =
   | { ok: true; banner: BannerRow; message?: string }
-  | { ok: false; error: string };
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
 
 export async function createAdminBanner(
   raw: unknown,
@@ -74,10 +75,7 @@ export async function createAdminBanner(
 
   const parsed = bannerFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid banner.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid banner.");
   }
 
   const values = parsed.data;
@@ -136,10 +134,7 @@ export async function updateAdminBanner(
 
   const parsed = bannerFormSchema.safeParse(raw);
   if (!parsed.success) {
-    return {
-      ok: false,
-      error: parsed.error.issues[0]?.message ?? "Invalid banner.",
-    };
+    return zodValidationFailure(parsed.error, "Invalid banner.");
   }
 
   const values = parsed.data;

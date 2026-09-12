@@ -7,6 +7,15 @@ export const FONT_FACE_VARS = {
   dm_sans: "var(--font-dm-sans)",
   fraunces: "var(--font-fraunces)",
   jetbrains_mono: "var(--font-jetbrains-mono)",
+  playfair: "var(--font-playfair)",
+  cormorant: "var(--font-cormorant)",
+  libre_baskerville: "var(--font-libre-baskerville)",
+  outfit: "var(--font-outfit)",
+  plus_jakarta: "var(--font-plus-jakarta)",
+  manrope: "var(--font-manrope)",
+  lora: "var(--font-lora)",
+  space_grotesk: "var(--font-space-grotesk)",
+  syne: "var(--font-syne)",
 } as const;
 
 const LEGACY_ROLE_TO_FACE: Record<string, string> = {

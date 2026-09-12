@@ -644,3 +644,182 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   }
 }
 
+/* ── Heading highlighter (Appearance → Typography) ── */
+.sf-heading-highlight {
+  position: relative;
+  display: inline-block;
+  color: var(--color-primary);
+}
+
+.sf-heading-highlight--box {
+  padding: 0.08em 0.22em;
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--marker {
+  padding: 0.05em 0.2em;
+  border-radius: 0.15em;
+  background: color-mix(in srgb, var(--color-primary) 18%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--underline {
+  padding-bottom: 0.06em;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% 2px;
+}
+
+.sf-heading-highlight--stripe {
+  padding: 0.06em 0.2em;
+  border-radius: 0.12em;
+  background: repeating-linear-gradient(
+    -28deg,
+    color-mix(in srgb, var(--color-primary) 22%, transparent),
+    color-mix(in srgb, var(--color-primary) 22%, transparent) 0.28em,
+    transparent 0.28em,
+    transparent 0.55em
+  );
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--glow {
+  padding: 0.1em 0.28em;
+  border-radius: 0.35em;
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--color-primary) 28%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+.sf-heading-highlight--stamp {
+  padding: 0.1em 0.28em;
+  border: 2.5px solid var(--color-primary);
+  border-radius: 0.2em;
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--color-primary) 35%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--bracket::before,
+.sf-heading-highlight--bracket::after {
+  position: absolute;
+  top: -0.08em;
+  bottom: -0.08em;
+  width: 0.35em;
+  content: "";
+  border-color: var(--color-primary);
+  border-style: solid;
+  pointer-events: none;
+}
+
+.sf-heading-highlight--bracket::before {
+  left: -0.28em;
+  border-width: 2px 0 2px 2px;
+}
+
+.sf-heading-highlight--bracket::after {
+  right: -0.28em;
+  border-width: 2px 2px 2px 0;
+}
+
+.sf-heading-highlight--ribbon {
+  padding: 0.12em 0.42em 0.16em;
+  border-radius: 0.2em;
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--color-primary) 22%, transparent),
+    color-mix(in srgb, var(--color-accent) 18%, transparent)
+  );
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--capsule {
+  padding: 0.12em 0.45em;
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 65%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.sf-heading-highlight--editorial {
+  padding-bottom: 0.12em;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 72% 0.22em;
+}
+
+.sf-heading-highlight--gradient {
+  background-image: linear-gradient(
+    120deg,
+    var(--color-primary),
+    color-mix(in srgb, var(--color-accent) 70%, var(--color-primary)),
+    var(--color-primary)
+  );
+  background-size: 100% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.sf-heading-highlight--spark::before,
+.sf-heading-highlight--spark::after {
+  position: absolute;
+  width: 0.35em;
+  height: 0.35em;
+  content: "";
+  background: var(--color-primary);
+  clip-path: polygon(
+    50% 0%,
+    61% 35%,
+    98% 35%,
+    68% 57%,
+    79% 91%,
+    50% 70%,
+    21% 91%,
+    32% 57%,
+    2% 35%,
+    39% 35%
+  );
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.sf-heading-highlight--spark::before {
+  top: -0.2em;
+  right: -0.35em;
+}
+
+.sf-heading-highlight--spark::after {
+  bottom: -0.05em;
+  left: -0.3em;
+  width: 0.28em;
+  height: 0.28em;
+  opacity: 0.65;
+}
+
+.sf-heading-highlight__deco {
+  display: block;
+  pointer-events: none;
+}
+
+.sf-heading-highlight[data-highlight-style="none"] .sf-heading-highlight__deco {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-heading-highlight {
+    transition: none;
+  }
+}
+
+

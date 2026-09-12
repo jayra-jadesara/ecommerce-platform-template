@@ -18,6 +18,8 @@ import {
   type MediaFolder,
 } from "@/features/media/validation";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { checkMediaDependencies } from "@/features/admin/validation/dependencies";
+import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
 
 export type MediaResult =
   | { ok: true; message: string; id?: string; path?: string; url?: string }
@@ -325,6 +327,11 @@ export async function deleteMedia(id: string): Promise<MediaResult> {
 
   if (!row) return { ok: false, error: "Media item not found." };
 
+  const deps = await checkMediaDependencies(row.storage_path as string);
+  if (deps && !deps.canDelete) {
+    return { ok: false, error: deps.message };
+  }
+
   const folder = normalizeFolder(row.folder);
   const bucket = bucketForFolder(folder);
 
@@ -342,6 +349,14 @@ export async function deleteMedia(id: string): Promise<MediaResult> {
     .eq("store_id", storeId);
 
   if (error) {
+    const mapped = mapDatabaseConstraintError(error, {
+      entity: "file",
+      dependencyHint:
+        "Can't delete this file because it is currently being used.",
+    });
+    if (mapped) {
+      return { ok: false, error: mapped.message };
+    }
     return unexpectedFailure({
       type: "DATABASE",
       source: "DATABASE",

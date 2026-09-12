@@ -98,8 +98,12 @@ describe("phase 21.2 — color studio library", () => {
     const split = read(
       "src/features/admin/theme/components/AppearanceSplitLayout.tsx",
     );
+    const typography = read(
+      "src/features/admin/theme/components/TypographyStudioPanel.tsx",
+    );
     expect(src).toContain("packsByCategory");
-    expect(src).toContain("Heading font");
+    expect(src).toContain("TypographyStudioPanel");
+    expect(typography).toContain("Heading font");
     expect(src).toContain("Motion & 3D");
     expect(src).toContain("Motion3DDesignStudio");
     expect(src).toContain("AppearanceSplitLayout");

@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
+  checkMediaDependenciesAction,
   deleteMediaAction,
   uploadMediaAction,
 } from "@/features/media/actions";
@@ -13,6 +14,7 @@ import { UploadDropzone } from "@/features/media/components/UploadDropzone";
 import type { MediaRow } from "@/features/media/media-service";
 import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
 import { getAdminPath } from "@/config/admin-route";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import {
   adminBtn,
   adminCard,
@@ -86,6 +88,9 @@ export function MediaLibraryClient({
   const [filterQ, setFilterQ] = useState(q);
   const [filterFolder, setFilterFolder] = useState<MediaFolder | "all">(folder);
   const [urlFilters, setUrlFilters] = useState({ q, folder });
+  const [deleteTarget, setDeleteTarget] = useState<MediaRow | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
 
   // Keep draft inputs aligned when the URL/search params change (back/forward).
   if (urlFilters.q !== q || urlFilters.folder !== folder) {
@@ -96,6 +101,25 @@ export function MediaLibraryClient({
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = useMemo(() => initialItems, [initialItems]);
+
+  function openDelete(item: MediaRow) {
+    setError(null);
+    setDeleteTarget(item);
+    setDeleteBlocked(false);
+    setDeleteMessage(`Delete “${item.file_name}”? This cannot be undone.`);
+    startTransition(async () => {
+      const check = await checkMediaDependenciesAction(item.id);
+      if (!check.ok) {
+        setError(check.error);
+        setDeleteTarget(null);
+        return;
+      }
+      if (!check.deps.canDelete) {
+        setDeleteBlocked(true);
+        setDeleteMessage(check.deps.message);
+      }
+    });
+  }
 
   return (
     <div style={adminStackStyle}>
@@ -284,18 +308,7 @@ export function MediaLibraryClient({
                       type="button"
                       className={adminBtn("danger")}
                       disabled={!canDelete || pending}
-                      onClick={() => {
-                        if (!window.confirm("Delete this image?")) return;
-                        startTransition(async () => {
-                          const result = await deleteMediaAction(item.id);
-                          if (!result.ok) {
-                            setError(result.error);
-                            return;
-                          }
-                          setSuccess("Image deleted.");
-                          router.refresh();
-                        });
-                      }}
+                      onClick={() => openDelete(item)}
                     >
                       Delete
                     </button>
@@ -328,6 +341,35 @@ export function MediaLibraryClient({
           </a>
         </div>
       </div>
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title={
+          deleteBlocked ? "Can't delete this image" : "Delete image?"
+        }
+        message={deleteMessage}
+        blocked={deleteBlocked}
+        warningTone={deleteBlocked}
+        pending={pending}
+        onClose={() => {
+          if (pending) return;
+          setDeleteTarget(null);
+        }}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          startTransition(async () => {
+            const result = await deleteMediaAction(deleteTarget.id);
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setSuccess("Image deleted.");
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

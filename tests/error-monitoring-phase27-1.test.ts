@@ -312,9 +312,8 @@ describe("Phase 27.1 — no noise for expected business failures", () => {
     expect(products).toContain(
       'return { ok: false, error: "You do not have permission to create products." }',
     );
-    expect(products).toContain(
-      'parsed.error.issues[0]?.message ?? "Invalid product."',
-    );
+    expect(products).toContain("zodValidationFailure");
+    expect(products).toContain('zodValidationFailure(parsed.error, "Invalid product.")');
   });
 
   it("coupon apply path is not wrapped with unexpectedFailure", () => {

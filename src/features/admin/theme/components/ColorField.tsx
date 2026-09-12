@@ -5,6 +5,7 @@ import type { Control, FieldPath } from "react-hook-form";
 import { Controller } from "react-hook-form";
 import type { ThemeEditorFormValues } from "@/features/admin/theme/editor-schema";
 import { contrastGuidance } from "@/features/admin/theme/contrast";
+import { FieldError } from "@/features/admin/ui/FieldError";
 
 function toColorInputValue(value: string): string {
   const trimmed = value.trim();
@@ -66,16 +67,18 @@ export function ColorField({
                 onBlur={field.onBlur}
                 error={Boolean(fieldState.error)}
                 helperText={
-                  fieldState.error?.message ??
-                  (guidance
-                    ? `${guidance.label} (${guidance.ratio}:1)`
-                    : "e.g. #1a5f4a")
+                  fieldState.error
+                    ? undefined
+                    : guidance
+                      ? `${guidance.label} (${guidance.ratio}:1)`
+                      : "e.g. #1a5f4a"
                 }
                 slotProps={{
                   htmlInput: { "aria-label": `${label} color value` },
                 }}
               />
             </div>
+            <FieldError message={fieldState.error?.message} />
           </div>
         );
       }}

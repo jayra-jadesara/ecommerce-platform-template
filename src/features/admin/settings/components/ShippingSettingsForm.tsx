@@ -26,6 +26,12 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 
 interface ShippingSettingsFormProps {
   initialValues: ShippingSettingsFormValues;
@@ -67,6 +73,8 @@ export function ShippingSettingsForm({
     control,
     handleSubmit,
     reset,
+    setError: setFieldError,
+    setFocus,
     formState: { errors, isDirty },
   } = useForm<ShippingSettingsFormValues>({
     resolver: zodResolver(
@@ -152,6 +160,14 @@ export function ShippingSettingsForm({
     startTransition(async () => {
       const result = await saveShippingSettingsAction(values);
       if (!result.ok) {
+        const serverFieldErrors = resultFieldErrors(result);
+        if (serverFieldErrors) {
+          applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+          focusFirstFieldError({
+            fieldErrors: serverFieldErrors,
+            setFocus: setFocus as (name: string) => void,
+          });
+        }
         setError(result.error);
         return;
       }
@@ -230,87 +246,107 @@ export function ShippingSettingsForm({
             name="method"
             control={control}
             render={({ field }) => (
-              <TextField
-                select
-                label="Delivery pricing"
-                fullWidth
-                required
-                disabled={!canUpdate || pending || !deliveryOn}
-                error={Boolean(errors.method)}
-                helperText={
-                  errors.method?.message ??
-                  "Most stores use a fixed delivery fee with free delivery on bigger orders."
-                }
-                value={
-                  field.value === "flat_rate" ||
-                  field.value === "free" ||
-                  field.value === "percentage" ||
-                  field.value === "zone"
-                    ? field.value
-                    : "flat_rate"
-                }
-                onChange={(event) => field.onChange(event.target.value)}
-                onBlur={field.onBlur}
-                name={field.name}
-                inputRef={field.ref}
-              >
-                <MenuItem value="flat_rate">
-                  Fixed fee (free above a certain order amount)
-                </MenuItem>
-                <MenuItem value="free">Always free delivery</MenuItem>
-                <MenuItem value="percentage">
-                  Percentage of the order total
-                </MenuItem>
-                <MenuItem value="zone">
-                  Different areas (uses your fixed fee for now)
-                </MenuItem>
-              </TextField>
+              <div>
+                <TextField
+                  select
+                  label="Delivery pricing"
+                  fullWidth
+                  required
+                  disabled={!canUpdate || pending || !deliveryOn}
+                  error={Boolean(errors.method)}
+                  helperText={
+                    errors.method
+                      ? undefined
+                      : "Most stores use a fixed delivery fee with free delivery on bigger orders."
+                  }
+                  value={
+                    field.value === "flat_rate" ||
+                    field.value === "free" ||
+                    field.value === "percentage" ||
+                    field.value === "zone"
+                      ? field.value
+                      : "flat_rate"
+                  }
+                  onChange={(event) => field.onChange(event.target.value)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  inputRef={field.ref}
+                >
+                  <MenuItem value="flat_rate">
+                    Fixed fee (free above a certain order amount)
+                  </MenuItem>
+                  <MenuItem value="free">Always free delivery</MenuItem>
+                  <MenuItem value="percentage">
+                    Percentage of the order total
+                  </MenuItem>
+                  <MenuItem value="zone">
+                    Different areas (uses your fixed fee for now)
+                  </MenuItem>
+                </TextField>
+                <FieldError message={errors.method?.message} />
+              </div>
             )}
           />
 
           {showFlatFields ? (
-            <TextField
-              label={`Delivery fee (${currency})`}
-              type="number"
-              fullWidth
-              required
-              slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-              disabled={!canUpdate || pending || !deliveryOn}
-              error={Boolean(errors.defaultShippingFee)}
-              helperText={
-                errors.defaultShippingFee?.message ||
-                `What customers pay for delivery when free delivery does not apply.`
-              }
-              {...register("defaultShippingFee")}
-            />
+            <div>
+              <TextField
+                label={`Delivery fee (${currency})`}
+                type="number"
+                fullWidth
+                required
+                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                disabled={!canUpdate || pending || !deliveryOn}
+                error={Boolean(errors.defaultShippingFee)}
+                helperText={
+                  errors.defaultShippingFee
+                    ? undefined
+                    : `What customers pay for delivery when free delivery does not apply.`
+                }
+                {...register("defaultShippingFee")}
+              />
+              <FieldError message={errors.defaultShippingFee?.message} />
+            </div>
           ) : null}
 
           {showFreeThreshold ? (
-            <TextField
-              label={`Free delivery starts at (${currency})`}
-              type="number"
-              fullWidth
-              slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-              disabled={!canUpdate || pending || !deliveryOn}
-              error={Boolean(errors.freeShippingThreshold)}
-              helperText={
-                errors.freeShippingThreshold?.message ||
-                `Example: enter 500 so orders of ${formatMoney(500, currency)} or more get free delivery. Leave blank for no free threshold.`
-              }
-              {...register("freeShippingThreshold")}
-            />
+            <div>
+              <TextField
+                label={`Free delivery starts at (${currency})`}
+                type="number"
+                fullWidth
+                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                disabled={!canUpdate || pending || !deliveryOn}
+                error={Boolean(errors.freeShippingThreshold)}
+                helperText={
+                  errors.freeShippingThreshold
+                    ? undefined
+                    : `Example: enter 500 so orders of ${formatMoney(500, currency)} or more get free delivery. Leave blank for no free threshold.`
+                }
+                {...register("freeShippingThreshold")}
+              />
+              <FieldError message={errors.freeShippingThreshold?.message} />
+            </div>
           ) : null}
 
           {showPercentage ? (
-            <TextField
-              label="Delivery percent of order"
-              type="number"
-              fullWidth
-              slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
-              disabled={!canUpdate || pending || !deliveryOn}
-              helperText="Example: 5 means delivery is 5% of the product total."
-              {...register("percentageRate")}
-            />
+            <div>
+              <TextField
+                label="Delivery percent of order"
+                type="number"
+                fullWidth
+                slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
+                disabled={!canUpdate || pending || !deliveryOn}
+                error={Boolean(errors.percentageRate)}
+                helperText={
+                  errors.percentageRate
+                    ? undefined
+                    : "Example: 5 means delivery is 5% of the product total."
+                }
+                {...register("percentageRate")}
+              />
+              <FieldError message={errors.percentageRate?.message} />
+            </div>
           ) : null}
 
           {method === "free" ? (

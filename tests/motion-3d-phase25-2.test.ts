@@ -230,11 +230,12 @@ describe("Phase 25.2 — section inheritance / override", () => {
     expect(hero.threeSource).toBe("global");
   });
 
-  it("HomepageBuilder exposes compact Use store settings controls", () => {
+  it("HomepageBuilder has no per-section Motion & 3D controls", () => {
     const src = read("src/features/cms/components/HomepageBuilder.tsx");
-    expect(src).toContain("Use store settings");
-    expect(src).toContain("Use store setting");
-    expect(src).not.toContain("Customize for this section");
+    expect(src).not.toContain("Use store settings");
+    expect(src).not.toContain("Motion &amp; 3D (optional)");
+    expect(src).toContain("Appearance → Motion &amp; 3D");
+    expect(src).toContain("Layout (optional)");
   });
 });
 

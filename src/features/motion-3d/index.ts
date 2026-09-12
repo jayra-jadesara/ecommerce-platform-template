@@ -4,9 +4,8 @@
  * Precedence (deterministic):
  * 1. Accessibility / prefers-reduced-motion
  * 2. Global platform safety (mobile 3D off, quality ceiling)
- * 3. Section override (only when source = "custom")
- * 4. Global Motion & 3D setting
- * 5. Component fallback
+ * 3. Global Motion & 3D setting (Appearance only — section CMS overrides ignored)
+ * 4. Component fallback
  *
  * Business-facing presets map onto existing store_animation_settings +
  * store_visual_effects_settings. Database values are allow-listed only —
@@ -640,47 +639,27 @@ export function resolve3DConfig(input: Resolve3dInput): Effective3dConfig {
   };
 }
 
-/** Build a section motion override from CMS config fields. */
-export function sectionMotionOverrideFromConfig(config: {
+/** Build a section motion override from CMS config fields.
+ * Motion is store-wide (Appearance → Motion & 3D); section custom is ignored.
+ */
+export function sectionMotionOverrideFromConfig(_config: {
   motionSource?: string | null;
   animationEnabled?: boolean | null;
   animationPreset?: string | null;
   animationIntensity?: string | null;
 }): SectionMotionOverride {
-  const source: MotionSource =
-    config.motionSource === "custom" ? "custom" : "global";
-  const preset =
-    typeof config.animationPreset === "string"
-      ? (config.animationPreset as AnimationPreset)
-      : undefined;
-  const intensity =
-    config.animationIntensity === "subtle" ||
-    config.animationIntensity === "smooth"
-      ? config.animationIntensity
-      : undefined;
-  return {
-    source,
-    enabled: config.animationEnabled ?? undefined,
-    preset,
-    intensity,
-  };
+  return { source: "global" };
 }
 
-/** Build a section 3D override from CMS config fields. */
-export function section3dOverrideFromConfig(config: {
+/** Build a section 3D override from CMS config fields.
+ * 3D is store-wide (Appearance → Motion & 3D); section custom is ignored.
+ */
+export function section3dOverrideFromConfig(_config: {
   threeSource?: string | null;
   enable3d?: boolean | null;
   scene3dPreset?: string | null;
 }): Section3dOverride {
-  const source: MotionSource =
-    config.threeSource === "custom" ? "custom" : "global";
-  return {
-    source,
-    enabled: config.enable3d ?? undefined,
-    preset: config.scene3dPreset
-      ? resolveHeroPreset(config.scene3dPreset)
-      : undefined,
-  };
+  return { source: "global" };
 }
 
 /** Recommended defaults for a fresh store. */

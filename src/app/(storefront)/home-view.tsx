@@ -164,7 +164,11 @@ export function HomeView({
         <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] py-12 md:py-16">
           <div className={sfSectionInner()}>
             <div className="mx-auto mb-8 max-w-3xl text-center">
-              <SectionAccentHeading title="Explore our Collections" />
+              <SectionAccentHeading
+                title="Explore our Collections"
+                accentWord="Collections"
+                highlightStyle={config.typography.headingHighlightStyle}
+              />
               <p className="mt-3 text-sm text-[var(--color-muted)]">
                 Seasoning, grinded, and blended spices for kitchens and food
                 industries.
@@ -214,7 +218,10 @@ export function HomeView({
       <section className="py-12 md:py-16">
         <div className={sfSectionInner()}>
           <div className="mx-auto mb-8 max-w-3xl text-center">
-            <SectionAccentHeading title="Featured products" />
+            <SectionAccentHeading
+              title="Featured products"
+              highlightStyle={config.typography.headingHighlightStyle}
+            />
             <div className="mt-4">
               <Link href="/products" className={sfBtn("outline")}>
                 Shop all
@@ -236,7 +243,10 @@ export function HomeView({
             </ul>
           ) : (
             <div className="rounded-[var(--radius-default,14px)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-6 py-14 text-center">
-              <SectionAccentHeading title="Products coming soon" />
+              <SectionAccentHeading
+                title="Products coming soon"
+                highlightStyle={config.typography.headingHighlightStyle}
+              />
               <p className="mx-auto mt-2 max-w-md text-sm text-[var(--color-muted)]">
                 Publish products with images in the admin catalog to feature them
                 here.

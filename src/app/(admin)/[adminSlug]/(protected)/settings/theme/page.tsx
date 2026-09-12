@@ -50,6 +50,7 @@ export default async function AdminThemeSettingsPage() {
         fonts={{
           fontSans: config.typography.fontSans,
           fontDisplay: config.typography.fontDisplay,
+          headingHighlightStyle: config.typography.headingHighlightStyle,
         }}
         canUpdate={canUpdate}
       />

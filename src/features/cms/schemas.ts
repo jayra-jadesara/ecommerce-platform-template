@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { zodFieldErrors, type FieldErrors } from "@/lib/validation";
 
 /** Allow-listed animation presets — never arbitrary CSS/JS. */
 export const SECTION_ANIMATION_PRESETS = [
@@ -134,11 +135,13 @@ export const shortTextSchema = z
 export const sectionCommonSettingsSchema = z.object({
   backgroundStyle: z.enum(SECTION_BACKGROUND_STYLES).default("default"),
   spacingPreset: z.enum(SECTION_SPACING_PRESETS).default("normal"),
-  /** Use store Motion & 3D defaults unless explicitly customized. */
+  /** Legacy field — ignored at render; Motion comes from Appearance. */
   motionSource: z.enum(["global", "custom"]).default("global"),
   animationPreset: z.enum(SECTION_ANIMATION_PRESETS).default("fade-up"),
   animationEnabled: z.boolean().default(true),
   animationIntensity: z.enum(["subtle", "smooth"]).default("smooth"),
+  /** Legacy field — ignored at render; accent is last word store-wide. */
+  headingHighlight: z.string().max(80).optional().default(""),
 });
 
 export type SectionCommonSettings = z.infer<typeof sectionCommonSettingsSchema>;
@@ -174,9 +177,9 @@ export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   alignment: z.enum(["left", "center", "right"]).default("left"),
   /** Safe layout presets — never arbitrary CSS/JS from the database. */
   layoutPreset: z.enum(HERO_LAYOUT_PRESETS).default("SPLIT"),
-  /** Use store 3D defaults unless explicitly customized. */
+  /** Legacy field — ignored at render; 3D comes from Appearance. */
   threeSource: z.enum(["global", "custom"]).default("global"),
-  /** Optional decorative 3D — allow-listed preset only; never arbitrary code. */
+  /** Legacy section 3D flags — ignored when threeSource is not applied. */
   enable3d: z.boolean().default(false),
   scene3dPreset: z
     .enum([
@@ -251,8 +254,6 @@ export const aboutTimelineItemSchema = z.object({
 
 export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   heading: shortTextSchema.default(""),
-  /** Word in the heading to accent (underline). Empty = last word. */
-  headingHighlight: z.string().max(80).optional().default(""),
   description: z.string().max(4000).optional().default(""),
   quote: z.string().max(1000).optional().default(""),
   quoteAuthor: z.string().max(120).optional().default(""),
@@ -375,7 +376,7 @@ export function parseSectionConfig(
   config: unknown,
 ):
   | { ok: true; type: SupportedSectionType; config: SectionConfigMap[SupportedSectionType] }
-  | { ok: false; error: string } {
+  | { ok: false; error: string; fieldErrors?: FieldErrors } {
   if (sectionType === "custom" || !isSupportedSectionType(sectionType)) {
     return { ok: false, error: "Unsupported section type." };
   }
@@ -395,9 +396,11 @@ export function parseSectionConfig(
     return { ok: true, type: sectionType, config: merged.data };
   }
 
+  const fieldErrors = zodFieldErrors(parsed.error);
   return {
     ok: false,
-    error: parsed.error.issues[0]?.message ?? "Invalid section settings.",
+    error: "Please check the section settings.",
+    fieldErrors,
   };
 }
 
