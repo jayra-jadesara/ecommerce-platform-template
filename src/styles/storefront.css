@@ -869,4 +869,101 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   }
 }
 
+/* Auth pages — WhatsApp-style monochrome doodle wallpaper */
+.sf-auth-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--color-surface) 88%, white 12%),
+      var(--color-background) 55%,
+      color-mix(in srgb, var(--color-background) 94%, var(--color-primary) 6%)
+    );
+}
+
+html.dark .sf-auth-shell {
+  background:
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--color-surface) 90%, var(--color-background) 10%),
+      var(--color-background)
+    );
+}
+
+.sf-auth-doodle {
+  position: absolute;
+  inset: -8%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 22%,
+    var(--color-foreground) 78%
+  );
+  -webkit-mask-image: url("/auth-doodle-wallpaper.svg");
+  mask-image: url("/auth-doodle-wallpaper.svg");
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  -webkit-mask-repeat: repeat;
+  mask-repeat: repeat;
+  -webkit-mask-size: 26rem 26rem;
+  mask-size: 26rem 26rem;
+  -webkit-mask-position: -2rem -3rem;
+  mask-position: -2rem -3rem;
+  transform: rotate(-3deg);
+}
+
+html.dark .sf-auth-doodle {
+  opacity: 0.2;
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 40%,
+    var(--color-foreground) 60%
+  );
+}
+
+.sf-auth-panel {
+  position: relative;
+  z-index: 1;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, var(--color-primary) 18%);
+  background: color-mix(in srgb, var(--color-card) 96%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, white 55%, transparent),
+    0 18px 40px color-mix(in srgb, var(--color-foreground) 7%, transparent);
+  backdrop-filter: blur(8px);
+  animation: sf-auth-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.sf-auth-brand {
+  letter-spacing: -0.03em;
+  background: linear-gradient(
+    120deg,
+    var(--color-foreground) 20%,
+    color-mix(in srgb, var(--color-primary) 72%, var(--color-foreground)) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@keyframes sf-auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-auth-panel {
+    animation: none;
+  }
+}
+
 

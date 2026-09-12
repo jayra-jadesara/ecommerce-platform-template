@@ -7,6 +7,7 @@ import {
 } from "@/features/auth/permissions";
 import { safeAdminNextPath, safeInternalPath } from "@/features/auth/redirect";
 import { mapAuthError } from "@/features/auth/errors";
+import { authEmailSchema } from "@/features/auth/validations";
 
 describe("permissionsForRoles", () => {
   it("grants SUPER_ADMIN every permission", () => {
@@ -95,7 +96,15 @@ describe("mapAuthError", () => {
 
   it("maps existing user", () => {
     expect(mapAuthError({ message: "User already registered" })).toBe(
-      "An account with this email already exists.",
+      "An account with this email already exists. Please sign in.",
+    );
+  });
+
+  it("maps confirmation email failures", () => {
+    expect(
+      mapAuthError({ message: "Error sending confirmation email" }),
+    ).toBe(
+      "We couldn't send the verification email. Try again later or contact support.",
     );
   });
 
@@ -103,5 +112,24 @@ describe("mapAuthError", () => {
     expect(mapAuthError({ message: "weird failure" })).toBe(
       "Something went wrong. Please try again.",
     );
+  });
+});
+
+describe("authEmailSchema", () => {
+  it("requires a non-empty email", () => {
+    const result = authEmailSchema.safeParse("");
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]?.message).toBe("Email is required");
+    }
+  });
+
+  it("rejects incomplete addresses", () => {
+    expect(authEmailSchema.safeParse("not-an-email").success).toBe(false);
+    expect(authEmailSchema.safeParse("name@domain").success).toBe(false);
+  });
+
+  it("accepts a normal email", () => {
+    expect(authEmailSchema.safeParse("name@example.com").success).toBe(true);
   });
 });

@@ -32,11 +32,8 @@
 }
 
 /**
- * Keep MUI Switch compact — Tailwind/base styles can stretch the track into a
- * full-width primary bar (seen in Motion & 3D toggles).
- *
- * Do NOT override Switch padding/thumb/track geometry — mismatched sizes make
- * the thumb and track look like overlapping circles.
+ * Keep MUI Switch compact and on-theme — avoid default black unchecked track.
+ * Do NOT override thumb/track geometry ratios (breaks the knob alignment).
  */
 .admin-shell .MuiSwitch-root {
   flex-shrink: 0 !important;
@@ -50,21 +47,51 @@
   vertical-align: middle;
 }
 
+.admin-shell .MuiSwitch-switchBase.Mui-checked {
+  color: var(--color-primary) !important;
+}
+
+.admin-shell .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track {
+  background-color: var(--color-primary) !important;
+  opacity: 1 !important;
+}
+
 .admin-shell .MuiSwitch-track {
   border-radius: 999px !important;
   opacity: 1 !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-foreground) 22%,
+    var(--color-border)
+  ) !important;
+}
+
+.admin-shell .MuiSwitch-switchBase.Mui-checked.Mui-disabled + .MuiSwitch-track {
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 40%,
+    var(--color-border)
+  ) !important;
 }
 
 /**
  * FormControl defaults to inline-flex — without full width, a checkbox fieldset
  * and the next Switch sit side-by-side and crush labels in narrow admin columns.
+ * Prefer max-width only; fullWidth prop / form stacks still stretch intentionally.
  */
 .admin-shell .MuiFormControl-root {
   display: flex !important;
   flex-direction: column;
-  width: 100% !important;
   max-width: 100%;
   align-items: stretch;
+}
+
+.admin-shell .MuiFormControl-fullWidth,
+.admin-form-stack > .MuiFormControl-root,
+.admin-form-stack > .MuiTextField-root,
+.admin-fields-grid > .MuiFormControl-root,
+.admin-fields-grid > .MuiTextField-root {
+  width: 100% !important;
 }
 
 .admin-shell .MuiFormGroup-root {
@@ -154,6 +181,108 @@
     var(--color-primary) 26%,
     transparent
   ) !important;
+}
+
+/**
+ * Compact admin TextField / Select / native selects everywhere in the shell.
+ * Lock one control height so textboxes and dropdowns always align in grids.
+ */
+.admin-shell .MuiOutlinedInput-root {
+  font-size: 0.8125rem !important;
+  border-radius: 10px !important;
+  background-color: var(--color-card) !important;
+}
+
+.admin-shell .MuiOutlinedInput-root:not(.MuiInputBase-multiline) {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+}
+
+.admin-shell .MuiOutlinedInput-root.MuiInputBase-multiline {
+  min-height: 2.5rem !important;
+  height: auto !important;
+}
+
+.admin-shell .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-border) !important;
+  border-radius: 10px !important;
+}
+
+.admin-shell .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary) 45%,
+    var(--color-border)
+  ) !important;
+}
+
+.admin-shell .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary) !important;
+  border-width: 1.5px !important;
+}
+
+.admin-shell .MuiOutlinedInput-input,
+.admin-shell .MuiSelect-select {
+  min-height: 0 !important;
+  font-size: 0.8125rem !important;
+  line-height: 1.35 !important;
+  box-sizing: border-box !important;
+}
+
+.admin-shell .MuiOutlinedInput-root:not(.MuiInputBase-multiline) .MuiOutlinedInput-input,
+.admin-shell .MuiOutlinedInput-root:not(.MuiInputBase-multiline) .MuiSelect-select {
+  height: 2.5rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.admin-shell .MuiOutlinedInput-root:not(.MuiInputBase-multiline) .MuiSelect-select {
+  padding-right: 32px !important;
+}
+
+.admin-shell .MuiOutlinedInput-root.MuiInputBase-multiline .MuiOutlinedInput-input {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.admin-shell .MuiInputLabel-root {
+  font-size: 0.8125rem !important;
+}
+
+.admin-shell .MuiInputLabel-sizeSmall:not(.MuiInputLabel-shrink) {
+  transform: translate(12px, 9px) scale(1) !important;
+}
+
+.admin-shell .MuiFormHelperText-root {
+  font-size: 0.75rem !important;
+  margin-top: 0.2rem !important;
+}
+
+.admin-shell select:not([multiple]) {
+  min-height: 2.5rem;
+  height: 2.5rem;
+  padding-block: 0;
+  padding-inline: 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  background-color: var(--color-card);
+  color: var(--color-foreground);
+}
+
+.admin-shell select:not([multiple]):focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 1px var(--color-primary);
+}
+
+.MuiMenuItem-root {
+  min-height: 34px !important;
+  font-size: 0.8125rem !important;
 }
 
 .field-error {

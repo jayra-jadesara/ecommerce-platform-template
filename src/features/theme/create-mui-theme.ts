@@ -83,19 +83,24 @@ export function createAppMuiTheme(
       },
       MuiTextField: {
         defaultProps: {
-          size: "medium",
+          size: "small",
           margin: "none",
         },
       },
       MuiFormControl: {
         defaultProps: {
           margin: "none",
+          size: "small",
         },
       },
       MuiOutlinedInput: {
+        defaultProps: {
+          size: "small",
+        },
         styleOverrides: {
           root: {
             backgroundColor: "var(--color-card)",
+            borderRadius: 10,
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
               borderColor: tokens.primary,
             },
@@ -106,18 +111,28 @@ export function createAppMuiTheme(
               borderColor: tokens.error,
             },
           },
-          input: {
-            paddingTop: 12,
-            paddingBottom: 12,
+          // Do not force medium padding on size="small" (was making admin selects huge).
+          inputSizeSmall: {
+            paddingTop: 8,
+            paddingBottom: 8,
+          },
+          notchedOutline: {
+            borderRadius: 10,
           },
         },
       },
       MuiInputLabel: {
+        defaultProps: {
+          size: "small",
+        },
         styleOverrides: {
           root: {
             "&.Mui-focused": {
               color: tokens.primary,
             },
+          },
+          sizeSmall: {
+            fontSize: "0.8125rem",
           },
         },
       },
@@ -154,9 +169,23 @@ export function createAppMuiTheme(
           root: {
             flexShrink: 0,
           },
+          switchBase: {
+            "&.Mui-checked": {
+              color: "var(--color-primary)",
+              "& + .MuiSwitch-track": {
+                backgroundColor: "var(--color-primary)",
+                opacity: 1,
+              },
+            },
+          },
           track: {
             borderRadius: 999,
             opacity: 1,
+            backgroundColor:
+              "color-mix(in srgb, var(--color-foreground) 22%, var(--color-border))",
+          },
+          thumb: {
+            boxShadow: "0 1px 2px color-mix(in srgb, var(--color-foreground) 18%, transparent)",
           },
         },
       },
@@ -177,6 +206,13 @@ export function createAppMuiTheme(
         defaultProps: {
           // Non-native menus can use theme colors for hover / selected.
           native: false,
+          size: "small",
+        },
+        styleOverrides: {
+          select: {
+            fontSize: "0.8125rem",
+            minHeight: "0 !important",
+          },
         },
       },
       MuiMenu: {
@@ -190,16 +226,16 @@ export function createAppMuiTheme(
               "0 12px 32px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
           },
           list: {
-            paddingTop: 6,
-            paddingBottom: 6,
+            paddingTop: 4,
+            paddingBottom: 4,
           },
         },
       },
       MuiMenuItem: {
         styleOverrides: {
           root: {
-            fontSize: "0.875rem",
-            minHeight: 40,
+            fontSize: "0.8125rem",
+            minHeight: 34,
             color: "var(--color-foreground)",
             "&:hover": {
               backgroundColor:

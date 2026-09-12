@@ -82,26 +82,70 @@ export async function registerAction(raw: unknown): Promise<AuthActionResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: {
-        first_name: parsed.data.firstName,
-        last_name: parsed.data.lastName,
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.signUp({
+      email: parsed.data.email,
+      password: parsed.data.password,
+      options: {
+        data: {
+          first_name: parsed.data.firstName,
+          last_name: parsed.data.lastName,
+        },
+        emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/account`,
       },
-      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=/account`,
-    },
-  });
+    });
 
-  if (error) return { ok: false, error: mapAuthError(error) };
+    if (error) return { ok: false, error: mapAuthError(error) };
 
-  return {
-    ok: true,
-    message:
-      "Account created. Check your email to verify your account if verification is enabled.",
-  };
+    // Supabase anti-enumeration: existing emails often return a user with no
+    // identities and no error — treat that as "already registered".
+    const identities = data.user?.identities;
+    if (data.user && Array.isArray(identities) && identities.length === 0) {
+      return {
+        ok: false,
+        error: "An account with this email already exists. Please sign in.",
+      };
+    }
+
+    if (!data.user) {
+      return {
+        ok: false,
+        error: "Unable to create your account. Please try again.",
+      };
+    }
+
+    // Email confirmation disabled → session present → continue into the store.
+    if (data.session) {
+      try {
+        const { mergeGuestCartIntoCustomer } = await import(
+          "@/features/cart/service"
+        );
+        await mergeGuestCartIntoCustomer(data.user.id);
+      } catch {
+        // Cart merge is best-effort; registration must still succeed.
+      }
+      redirect("/account");
+    }
+
+    return {
+      ok: true,
+      message:
+        "Account created. Check your email to verify your account, then sign in.",
+    };
+  } catch (error) {
+    // Next.js redirect() throws a special digest — must not be swallowed.
+    if (
+      error &&
+      typeof error === "object" &&
+      "digest" in error &&
+      typeof (error as { digest: unknown }).digest === "string" &&
+      (error as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+    return { ok: false, error: mapAuthError(error) };
+  }
 }
 
 export async function logoutAction(redirectTo = "/"): Promise<void> {

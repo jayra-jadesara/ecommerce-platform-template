@@ -24,6 +24,8 @@ export function ForgotPasswordForm() {
     formState: { errors },
   } = useForm<ForgotPasswordInput>({
     resolver: zodResolver(forgotPasswordSchema),
+    mode: "onBlur",
+    reValidateMode: "onChange",
     defaultValues: { email: "" },
   });
 
@@ -48,7 +50,9 @@ export function ForgotPasswordForm() {
       <TextField
         label="Email"
         type="email"
+        inputMode="email"
         autoComplete="email"
+        placeholder="name@example.com"
         fullWidth
         disabled={pending}
         error={Boolean(errors.email)}

@@ -32,6 +32,8 @@ export function LoginForm({
     formState: { errors },
   } = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
+    mode: "onBlur",
+    reValidateMode: "onChange",
     defaultValues: { email: "", password: "" },
   });
 
@@ -55,7 +57,9 @@ export function LoginForm({
       <TextField
         label="Email"
         type="email"
+        inputMode="email"
         autoComplete="email"
+        placeholder="name@example.com"
         fullWidth
         disabled={pending}
         error={Boolean(errors.email)}

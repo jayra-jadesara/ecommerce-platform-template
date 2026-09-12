@@ -9,6 +9,7 @@ export {
 export { mapAuthError } from "./errors";
 export { safeInternalPath } from "./redirect";
 export {
+  authEmailSchema,
   loginSchema,
   registerSchema,
   forgotPasswordSchema,

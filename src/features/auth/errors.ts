@@ -24,9 +24,27 @@ export function mapAuthError(error: unknown): string {
   if (
     normalized.includes("already registered") ||
     normalized.includes("user already exists") ||
-    normalized.includes("already been registered")
+    normalized.includes("already been registered") ||
+    normalized.includes("email address is already")
   ) {
-    return "An account with this email already exists.";
+    return "An account with this email already exists. Please sign in.";
+  }
+
+  if (
+    normalized.includes("error sending") ||
+    normalized.includes("confirmation email") ||
+    normalized.includes("unable to send") ||
+    normalized.includes("smtp")
+  ) {
+    return "We couldn't send the verification email. Try again later or contact support.";
+  }
+
+  if (
+    normalized.includes("signups not allowed") ||
+    normalized.includes("signup is disabled") ||
+    normalized.includes("signups disabled")
+  ) {
+    return "New registrations are temporarily unavailable.";
   }
 
   if (normalized.includes("password")) {
