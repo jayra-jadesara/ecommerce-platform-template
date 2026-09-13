@@ -53,12 +53,36 @@ export function mapAuthError(error: unknown): string {
     }
   }
 
-  if (normalized.includes("rate limit") || normalized.includes("too many")) {
+  if (
+    normalized.includes("database") ||
+    normalized.includes("saving new user") ||
+    normalized.includes("database error")
+  ) {
+    return "We couldn't create your account right now. Please try again.";
+  }
+
+  if (
+    normalized.includes("over_email_send_rate_limit") ||
+    normalized.includes("email rate limit") ||
+    normalized.includes("rate limit") ||
+    normalized.includes("too many")
+  ) {
+    if (
+      normalized.includes("email") ||
+      normalized.includes("over_email_send_rate_limit")
+    ) {
+      return "Too many verification emails were sent. Wait a few minutes, then try again — or sign in if this email is already registered.";
+    }
     return "Too many attempts. Please wait a moment and try again.";
   }
 
   if (normalized.includes("network") || normalized.includes("fetch")) {
     return "Network error. Check your connection and try again.";
+  }
+
+  // Never surface Next.js control-flow errors as auth failures.
+  if (normalized.includes("next_redirect") || normalized.includes("next_not_found")) {
+    return "Something went wrong. Please try again.";
   }
 
   return "Something went wrong. Please try again.";

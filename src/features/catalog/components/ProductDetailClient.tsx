@@ -12,6 +12,7 @@ import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
 import type { VisualEffectsConfig, AnimationConfig } from "@/types";
 import { sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
+import { returnPolicyLabel } from "@/features/shipping/policies";
 import { cn } from "@/lib/cn";
 import { resolve3DConfig } from "@/features/motion-3d";
 
@@ -244,9 +245,16 @@ export function ProductDetailClient({
           {product.brand ? (
             <p className="text-sm text-[var(--color-muted)]">{product.brand}</p>
           ) : null}
-          {product.featured ? (
-            <Chip size="small" label="Featured" color="primary" />
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            {product.featured ? (
+              <Chip size="small" label="Featured" color="primary" />
+            ) : null}
+            <Chip
+              size="small"
+              label={returnPolicyLabel(product.returnPolicy)}
+              variant="outlined"
+            />
+          </div>
         </div>
 
         {product.shortDescription ? (

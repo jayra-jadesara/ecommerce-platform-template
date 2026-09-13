@@ -34,6 +34,10 @@ export type CheckoutPaymentSession = {
   amountMinor: number;
   currency: string;
   brandName: string;
+  /** Absolute or site-relative logo URL for Razorpay checkout header. */
+  brandLogoUrl?: string;
+  /** Brand accent as #RRGGBB — Razorpay does not accept CSS variables. */
+  themeColor: string;
   description: string;
   prefill?: {
     name?: string;

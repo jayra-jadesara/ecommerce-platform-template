@@ -59,6 +59,110 @@ body {
 }
 
 /**
+ * Disabled buttons — keep brand tint (soft primary) instead of flat grey.
+ */
+button:disabled,
+button[disabled] {
+  cursor: not-allowed;
+}
+
+.MuiButtonBase-root.Mui-disabled {
+  opacity: 1;
+}
+
+/**
+ * Disabled primary action buttons — keep brand tint instead of flat grey.
+ * Match only real primary fills (`button-background` / `bg-[var(--color-primary)]`).
+ * Do NOT use `class*="color-primary"` — that also hits ChoiceCards with
+ * `border-[var(--color-primary)]` and floods them red while Save is pending.
+ */
+button:disabled[class*="button-background"],
+button:disabled[class*="bg-[var(--color-primary)]"],
+a[aria-disabled="true"][class*="button-background"],
+a[aria-disabled="true"][class*="bg-[var(--color-primary)]"] {
+  opacity: 1;
+  background-color: color-mix(
+    in srgb,
+    var(--color-button-background) 55%,
+    var(--color-border)
+  ) !important;
+  color: color-mix(
+    in srgb,
+    var(--color-button-foreground) 88%,
+    transparent
+  ) !important;
+  box-shadow: none !important;
+  filter: none !important;
+}
+
+/**
+ * Text / content selection — use brand primary instead of browser blue.
+ */
+::selection {
+  background-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  color: var(--color-foreground);
+}
+
+::-moz-selection {
+  background-color: color-mix(in srgb, var(--color-primary) 32%, transparent);
+  color: var(--color-foreground);
+}
+
+/**
+ * Browser autofill paints a bright blue/yellow fill that ignores theme.
+ * Force a soft primary-tinted card fill via the inset box-shadow trick.
+ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus,
+.MuiInputBase-input:-webkit-autofill,
+.MuiInputBase-input:-webkit-autofill:hover,
+.MuiInputBase-input:-webkit-autofill:focus,
+.MuiInputBase-input:-webkit-autofill:active,
+.MuiOutlinedInput-input:-webkit-autofill,
+.MuiOutlinedInput-input:-webkit-autofill:hover,
+.MuiOutlinedInput-input:-webkit-autofill:focus,
+.MuiOutlinedInput-input:-webkit-autofill:active {
+  -webkit-text-fill-color: var(--color-foreground) !important;
+  caret-color: var(--color-primary);
+  border-radius: inherit;
+  background-color: transparent !important;
+  background-image: none !important;
+  filter: none !important;
+  transition: background-color 99999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--color-primary) 10%, var(--color-card)) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--color-primary) 10%, var(--color-card)) inset !important;
+}
+
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill:active,
+html.dark textarea:-webkit-autofill,
+html.dark .MuiInputBase-input:-webkit-autofill,
+html.dark .MuiInputBase-input:-webkit-autofill:hover,
+html.dark .MuiInputBase-input:-webkit-autofill:focus,
+html.dark .MuiInputBase-input:-webkit-autofill:active,
+html.dark .MuiOutlinedInput-input:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-foreground) !important;
+  caret-color: var(--color-primary);
+  box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-card)) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px
+    color-mix(in srgb, var(--color-primary) 16%, var(--color-card)) inset !important;
+}
+
+/**
  * Themed scrollbars (Admin + storefront).
  * Placed LAST (unlayered) so they beat Tailwind/MUI layers.
  *

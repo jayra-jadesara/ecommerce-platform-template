@@ -1,13 +1,27 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type Resolver } from "react-hook-form";
-import { useState, useTransition } from "react";
+import Alert from "@mui/material/Alert";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import MenuItem from "@mui/material/MenuItem";
+import TextField from "@mui/material/TextField";
+import { useEffect, useState, useTransition } from "react";
+import { Controller, useForm, type Resolver } from "react-hook-form";
+import { IndianMobileField } from "@/features/auth/components/IndianMobileField";
+import { toNationalMobileDigits } from "@/features/auth/recovery-crypto";
 import {
   addressFormSchema,
   type AddressFormInput,
 } from "@/features/addresses/validation";
 import type { CustomerAddress } from "@/features/addresses/types";
+import {
+  getIndiaCitiesAction,
+  getIndiaStatesAction,
+  resolveIndiaStateIdAction,
+} from "@/features/geo/actions";
+import type { IndiaCity, IndiaState } from "@/features/geo/service";
+import { sfBtn } from "@/components/ui/storefront-classes";
 
 interface AddressFormProps {
   initial?: CustomerAddress | null;
@@ -24,191 +38,239 @@ export function AddressForm({
 }: AddressFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [states, setStates] = useState<IndiaState[]>([]);
+  const [cities, setCities] = useState<IndiaCity[]>([]);
+  const [selectedStateId, setSelectedStateId] = useState("");
+  const [geoLoading, setGeoLoading] = useState(true);
 
   const {
     register,
+    control,
     handleSubmit,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<AddressFormInput>({
     resolver: zodResolver(addressFormSchema) as Resolver<AddressFormInput>,
+    mode: "onBlur",
     defaultValues: {
       fullName: initial?.fullName ?? "",
-      phone: initial?.phone ?? "",
+      phone: toNationalMobileDigits(initial?.phone ?? ""),
       addressLine1: initial?.addressLine1 ?? "",
       addressLine2: initial?.addressLine2 ?? "",
       city: initial?.city ?? "",
       state: initial?.state ?? "",
       postalCode: initial?.postalCode ?? "",
-      country: initial?.country ?? "",
+      country: "India",
       isDefault: initial?.isDefault ?? false,
     },
   });
 
+  const watchedState = watch("state");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      setGeoLoading(true);
+      const rows = await getIndiaStatesAction();
+      if (cancelled) return;
+      setStates(rows);
+
+      const initialStateName = initial?.state?.trim() ?? "";
+      if (initialStateName) {
+        const match =
+          rows.find(
+            (s) => s.name.toLowerCase() === initialStateName.toLowerCase(),
+          ) ?? null;
+        const stateId =
+          match?.id ?? (await resolveIndiaStateIdAction(initialStateName));
+        if (stateId && !cancelled) {
+          setSelectedStateId(stateId);
+          const cityRows = await getIndiaCitiesAction(stateId);
+          if (!cancelled) setCities(cityRows);
+        }
+      }
+      if (!cancelled) setGeoLoading(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [initial?.state]);
+
+  useEffect(() => {
+    if (!selectedStateId) {
+      setCities([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      const cityRows = await getIndiaCitiesAction(selectedStateId);
+      if (!cancelled) setCities(cityRows);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStateId]);
+
   const submit = handleSubmit((values) => {
     setError(null);
     startTransition(async () => {
-      const result = await onSubmit(values);
+      const result = await onSubmit({ ...values, country: "India" });
       if (!result.ok) setError(result.error ?? "Could not save address.");
     });
   });
 
-  const fieldClass =
-    "w-full rounded-md border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-
   return (
-    <form onSubmit={submit} className="space-y-3" noValidate>
-      {error ? (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
+    <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
+      {error ? <Alert severity="error">{error}</Alert> : null}
 
-      <div>
-        <label htmlFor="fullName" className="mb-1 block text-sm font-medium">
-          Full name
-        </label>
-        <input
-          id="fullName"
-          autoComplete="name"
-          className={fieldClass}
+      <TextField
+        label="Full name"
+        autoComplete="name"
+        fullWidth
+        disabled={pending}
+        error={Boolean(errors.fullName)}
+        helperText={errors.fullName?.message}
+        {...register("fullName")}
+      />
+
+      <IndianMobileField
+        name="phone"
+        control={control}
+        label="Phone"
+        disabled={pending}
+        error={Boolean(errors.phone)}
+        helperText={
+          errors.phone?.message ?? "Enter your 10-digit account number"
+        }
+      />
+
+      <TextField
+        label="Address line 1"
+        autoComplete="address-line1"
+        fullWidth
+        disabled={pending}
+        error={Boolean(errors.addressLine1)}
+        helperText={errors.addressLine1?.message}
+        {...register("addressLine1")}
+      />
+
+      <TextField
+        label="Address line 2 (optional)"
+        autoComplete="address-line2"
+        fullWidth
+        disabled={pending}
+        {...register("addressLine2")}
+      />
+
+      <Controller
+        name="state"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            select
+            label="State"
+            fullWidth
+            disabled={pending || geoLoading}
+            error={Boolean(errors.state)}
+            helperText={
+              errors.state?.message ??
+              (geoLoading ? "Loading states…" : "Select state first")
+            }
+            value={field.value ?? ""}
+            onChange={(e) => {
+              const name = e.target.value;
+              field.onChange(name);
+              const match = states.find((s) => s.name === name);
+              setSelectedStateId(match?.id ?? "");
+              setValue("city", "");
+            }}
+          >
+            <MenuItem value="">
+              <em>Select state</em>
+            </MenuItem>
+            {states.map((state) => (
+              <MenuItem key={state.id} value={state.name}>
+                {state.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+      />
+
+      <Controller
+        name="city"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            select
+            label="City"
+            fullWidth
+            disabled={pending || geoLoading || !watchedState}
+            error={Boolean(errors.city)}
+            helperText={
+              errors.city?.message ??
+              (!watchedState
+                ? "Select a state to see cities"
+                : "Select city / district")
+            }
+            value={field.value ?? ""}
+          >
+            <MenuItem value="">
+              <em>Select city</em>
+            </MenuItem>
+            {cities.map((city) => (
+              <MenuItem key={city.id} value={city.name}>
+                {city.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <TextField
+          label="Postal code"
+          autoComplete="postal-code"
+          fullWidth
           disabled={pending}
-          aria-invalid={Boolean(errors.fullName)}
-          {...register("fullName")}
+          error={Boolean(errors.postalCode)}
+          helperText={errors.postalCode?.message}
+          {...register("postalCode")}
         />
-        {errors.fullName ? (
-          <p className="mt-1 text-xs text-red-700">{errors.fullName.message}</p>
-        ) : null}
-      </div>
-
-      <div>
-        <label htmlFor="phone" className="mb-1 block text-sm font-medium">
-          Phone
-        </label>
-        <input
-          id="phone"
-          type="tel"
-          autoComplete="tel"
-          className={fieldClass}
-          disabled={pending}
-          aria-invalid={Boolean(errors.phone)}
-          {...register("phone")}
-        />
-        {errors.phone ? (
-          <p className="mt-1 text-xs text-red-700">{errors.phone.message}</p>
-        ) : null}
-      </div>
-
-      <div>
-        <label htmlFor="addressLine1" className="mb-1 block text-sm font-medium">
-          Address line 1
-        </label>
-        <input
-          id="addressLine1"
-          autoComplete="address-line1"
-          className={fieldClass}
-          disabled={pending}
-          aria-invalid={Boolean(errors.addressLine1)}
-          {...register("addressLine1")}
-        />
-        {errors.addressLine1 ? (
-          <p className="mt-1 text-xs text-red-700">
-            {errors.addressLine1.message}
-          </p>
-        ) : null}
-      </div>
-
-      <div>
-        <label htmlFor="addressLine2" className="mb-1 block text-sm font-medium">
-          Address line 2 (optional)
-        </label>
-        <input
-          id="addressLine2"
-          autoComplete="address-line2"
-          className={fieldClass}
-          disabled={pending}
-          {...register("addressLine2")}
+        <TextField
+          label="Country"
+          value="India"
+          fullWidth
+          disabled
+          slotProps={{
+            htmlInput: { readOnly: true, "aria-label": "Country" },
+          }}
+          helperText="Fixed for this store"
         />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label htmlFor="city" className="mb-1 block text-sm font-medium">
-            City
-          </label>
-          <input
-            id="city"
-            autoComplete="address-level2"
-            className={fieldClass}
-            disabled={pending}
-            aria-invalid={Boolean(errors.city)}
-            {...register("city")}
+      <FormControlLabel
+        control={
+          <Controller
+            name="isDefault"
+            control={control}
+            render={({ field }) => (
+              <Checkbox
+                checked={Boolean(field.value)}
+                onChange={(e) => field.onChange(e.target.checked)}
+                disabled={pending}
+              />
+            )}
           />
-          {errors.city ? (
-            <p className="mt-1 text-xs text-red-700">{errors.city.message}</p>
-          ) : null}
-        </div>
-        <div>
-          <label htmlFor="state" className="mb-1 block text-sm font-medium">
-            State / region (optional)
-          </label>
-          <input
-            id="state"
-            autoComplete="address-level1"
-            className={fieldClass}
-            disabled={pending}
-            {...register("state")}
-          />
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label htmlFor="postalCode" className="mb-1 block text-sm font-medium">
-            Postal code
-          </label>
-          <input
-            id="postalCode"
-            autoComplete="postal-code"
-            className={fieldClass}
-            disabled={pending}
-            aria-invalid={Boolean(errors.postalCode)}
-            {...register("postalCode")}
-          />
-          {errors.postalCode ? (
-            <p className="mt-1 text-xs text-red-700">
-              {errors.postalCode.message}
-            </p>
-          ) : null}
-        </div>
-        <div>
-          <label htmlFor="country" className="mb-1 block text-sm font-medium">
-            Country
-          </label>
-          <input
-            id="country"
-            autoComplete="country-name"
-            className={fieldClass}
-            disabled={pending}
-            aria-invalid={Boolean(errors.country)}
-            {...register("country")}
-          />
-          {errors.country ? (
-            <p className="mt-1 text-xs text-red-700">{errors.country.message}</p>
-          ) : null}
-        </div>
-      </div>
-
-      <label className="flex items-center gap-2 text-sm">
-        <input type="checkbox" disabled={pending} {...register("isDefault")} />
-        Set as default address
-      </label>
+        }
+        label="Set as default address"
+      />
 
       <div className="flex flex-wrap gap-2 pt-1">
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded-md bg-[var(--color-button-background)] px-4 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-        >
+        <button type="submit" disabled={pending} className={sfBtn("primary")}>
           {pending ? "Saving…" : submitLabel}
         </button>
         {onCancel ? (
@@ -216,7 +278,7 @@ export function AddressForm({
             type="button"
             disabled={pending}
             onClick={onCancel}
-            className="rounded-md border border-[var(--color-border)] px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className={sfBtn("outline")}
           >
             Cancel
           </button>

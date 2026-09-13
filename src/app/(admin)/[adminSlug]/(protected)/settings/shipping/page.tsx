@@ -18,11 +18,11 @@ export default async function AdminShippingSettingsPage() {
   return (
     <div>
       <AdminPageHeader
-        title="Shipping"
-        description="Choose how much customers pay for delivery, and when it becomes free."
+        title="Delivery & returns"
+        description="Set delivery price, how orders become Delivered, and the return policy customers see."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
-          { label: "Shipping" },
+          { label: "Delivery & returns" },
         ]}
       />
       <ShippingSettingsForm

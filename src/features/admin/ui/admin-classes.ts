@@ -82,17 +82,17 @@ export function adminBtn(
   variant: "primary" | "secondary" | "outline" | "ghost" | "danger" = "primary",
 ): string {
   const base =
-    "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex min-h-10 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:pointer-events-none";
   switch (variant) {
     case "secondary":
     case "outline":
-      return `${base} border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:bg-[var(--color-surface)]`;
+      return `${base} border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:bg-[var(--color-surface)] disabled:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-primary)_50%,var(--color-muted))]`;
     case "ghost":
-      return `${base} bg-transparent text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] hover:text-[var(--color-foreground)]`;
+      return `${base} bg-transparent text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] hover:text-[var(--color-foreground)] disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]`;
     case "danger":
-      return `${base} bg-[var(--color-error)] text-white hover:opacity-90`;
+      return `${base} bg-[var(--color-error)] text-white hover:opacity-90 disabled:bg-[color-mix(in_srgb,var(--color-error)_55%,var(--color-border))] disabled:text-white/90`;
     default:
-      return `${base} bg-[var(--color-button-background)] text-[var(--color-button-foreground)] shadow-sm`;
+      return `${base} bg-[var(--color-button-background)] text-[var(--color-button-foreground)] shadow-sm disabled:bg-[color-mix(in_srgb,var(--color-button-background)_55%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-button-foreground)_88%,transparent)] disabled:shadow-none`;
   }
 }
 

@@ -429,6 +429,10 @@ export type Database = {
           estimated_delivery_min_days: number | null;
           estimated_delivery_max_days: number | null;
           estimated_delivery_label: string | null;
+          auto_deliver_after_days: number | null;
+          fulfillment_mode: "auto_days" | "courier_api";
+          return_policy: "no_return_refund" | "no_replace" | "replace_only";
+          replace_photo_required: boolean;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -441,6 +445,10 @@ export type Database = {
           estimated_delivery_min_days?: number | null;
           estimated_delivery_max_days?: number | null;
           estimated_delivery_label?: string | null;
+          auto_deliver_after_days?: number | null;
+          fulfillment_mode?: "auto_days" | "courier_api";
+          return_policy?: "no_return_refund" | "no_replace" | "replace_only";
+          replace_photo_required?: boolean;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -491,6 +499,8 @@ export type Database = {
           last_name: string | null;
           phone: string | null;
           avatar_path: string | null;
+          recovery_question_id: string | null;
+          recovery_answer_hash: string | null;
         } & Timestamps;
         Insert: {
           id: string;
@@ -498,10 +508,44 @@ export type Database = {
           last_name?: string | null;
           phone?: string | null;
           avatar_path?: string | null;
+          recovery_question_id?: string | null;
+          recovery_answer_hash?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["user_profiles"]["Insert"]>;
+        Relationships: [];
+      };
+      india_states: {
+        Row: {
+          id: string;
+          name: string;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["india_states"]["Insert"]>;
+        Relationships: [];
+      };
+      india_cities: {
+        Row: {
+          id: string;
+          state_id: string;
+          name: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          state_id: string;
+          name: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["india_cities"]["Insert"]>;
         Relationships: [];
       };
       user_addresses: {
@@ -630,6 +674,8 @@ export type Database = {
           usage_instructions: string | null;
           status: ProductStatus;
           featured: boolean;
+          returns_allowed: boolean;
+          return_policy: "no_return_refund" | "no_replace" | "replace_only" | null;
           seo_title: string | null;
           seo_description: string | null;
           model_path: string | null;
@@ -647,6 +693,8 @@ export type Database = {
           usage_instructions?: string | null;
           status?: ProductStatus;
           featured?: boolean;
+          returns_allowed?: boolean;
+          return_policy?: "no_return_refund" | "no_replace" | "replace_only" | null;
           seo_title?: string | null;
           seo_description?: string | null;
           model_path?: string | null;
@@ -800,6 +848,8 @@ export type Database = {
           unit_price: number;
           quantity: number;
           line_total: number;
+          returns_allowed: boolean;
+          return_policy: "no_return_refund" | "no_replace" | "replace_only" | null;
           created_at: string;
         };
         Insert: {
@@ -813,9 +863,59 @@ export type Database = {
           unit_price: number;
           quantity: number;
           line_total: number;
+          returns_allowed?: boolean;
+          return_policy?: "no_return_refund" | "no_replace" | "replace_only" | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["order_items"]["Insert"]>;
+        Relationships: [];
+      };
+      order_replace_requests: {
+        Row: {
+          id: string;
+          store_id: string;
+          order_id: string;
+          order_item_id: string;
+          user_id: string;
+          status:
+            | "REQUESTED"
+            | "APPROVED"
+            | "REJECTED"
+            | "FULFILLED"
+            | "CANCELLED";
+          reason: string;
+          customer_note: string | null;
+          admin_note: string | null;
+          photo_storage_path: string | null;
+          quantity: number;
+          reviewed_by: string | null;
+          reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          order_id: string;
+          order_item_id: string;
+          user_id: string;
+          status?:
+            | "REQUESTED"
+            | "APPROVED"
+            | "REJECTED"
+            | "FULFILLED"
+            | "CANCELLED";
+          reason: string;
+          customer_note?: string | null;
+          admin_note?: string | null;
+          photo_storage_path?: string | null;
+          quantity?: number;
+          reviewed_by?: string | null;
+          reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["order_replace_requests"]["Insert"]>;
         Relationships: [];
       };
       payments: {
@@ -1671,6 +1771,10 @@ export type Database = {
           p_discount_amount: number;
         };
         Returns: Json;
+      };
+      lookup_auth_user_id_by_email: {
+        Args: { p_email: string };
+        Returns: string | null;
       };
     };
     Enums: Record<string, never>;

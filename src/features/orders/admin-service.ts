@@ -18,10 +18,12 @@ import type { Database, OrderStatus } from "@/types/database";
 export async function updateOrderStatus(input: {
   orderId: string;
   storeId: string;
-  actorUserId: string;
+  actorUserId?: string | null;
   nextStatus: OrderStatus;
   shippingProvider?: string | null;
   trackingNumber?: string | null;
+  autoDelivered?: boolean;
+  autoDeliverAfterDays?: number;
 }): Promise<OrderMutationResult> {
   const supabase = createSupabaseServiceClient();
   const { data: order } = await supabase
@@ -102,13 +104,19 @@ export async function updateOrderStatus(input: {
     orderId: order.id,
     storeId: input.storeId,
     actorUserId: input.actorUserId,
-    eventType: "ORDER_STATUS_CHANGED",
-    message: `Status changed to ${input.nextStatus}`,
+    eventType: input.autoDelivered
+      ? "ORDER_AUTO_DELIVERED"
+      : "ORDER_STATUS_CHANGED",
+    message: input.autoDelivered
+      ? `Auto-marked delivered after ${input.autoDeliverAfterDays ?? "N"} day(s) since shipment`
+      : `Status changed to ${input.nextStatus}`,
     metadata: {
       from: order.status,
       to: input.nextStatus,
       shippingProvider: input.shippingProvider ?? null,
       trackingNumber: input.trackingNumber ?? null,
+      autoDelivered: Boolean(input.autoDelivered),
+      autoDeliverAfterDays: input.autoDeliverAfterDays ?? null,
     },
   });
 
@@ -118,9 +126,15 @@ export async function updateOrderStatus(input: {
     action:
       input.nextStatus === "CANCELLED"
         ? "ORDER_CANCELLED"
-        : "ORDER_STATUS_CHANGED",
+        : input.autoDelivered
+          ? "ORDER_AUTO_DELIVERED"
+          : "ORDER_STATUS_CHANGED",
     entityId: order.id,
-    metadata: { from: order.status, to: input.nextStatus },
+    metadata: {
+      from: order.status,
+      to: input.nextStatus,
+      autoDelivered: Boolean(input.autoDelivered),
+    },
   });
 
   const detail = await getOrderDetail({
@@ -136,7 +150,9 @@ export async function updateOrderStatus(input: {
   return {
     ok: true,
     order: detail,
-    message: `Order marked as ${input.nextStatus.toLowerCase()}.`,
+    message: input.autoDelivered
+      ? "Order auto-marked as delivered."
+      : `Order marked as ${input.nextStatus.toLowerCase()}.`,
   };
 }
 
@@ -213,6 +229,33 @@ export async function markOrderRefundedLocally(input: {
   actorUserId: string;
   note?: string;
 }): Promise<OrderMutationResult> {
+  const supabaseCheck = createSupabaseServiceClient();
+  const { data: refundPolicyItems } = await supabaseCheck
+    .from("order_items")
+    .select("returns_allowed, return_policy, product_name_snapshot")
+    .eq("order_id", input.orderId);
+
+  const blocked = (refundPolicyItems ?? []).filter((item) => {
+    if (item.return_policy === "no_replace") return false;
+    if (item.return_policy === "no_return_refund" || item.return_policy === "replace_only") {
+      return true;
+    }
+    return item.returns_allowed === false;
+  });
+  if (blocked.length > 0) {
+    const names = blocked
+      .map((item) => item.product_name_snapshot)
+      .filter(Boolean)
+      .slice(0, 3)
+      .join(", ");
+    return {
+      ok: false,
+      error: names
+        ? `No refund/return for this order (${names}). Product policy is final sale.`
+        : "No refund/return for this order. Product policy is final sale.",
+    };
+  }
+
   const result = await updateOrderStatus({
     orderId: input.orderId,
     storeId: input.storeId,

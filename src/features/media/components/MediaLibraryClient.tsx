@@ -140,7 +140,7 @@ export function MediaLibraryClient({
           <UploadDropzone
             disabled={!canUpload || pending}
             label="Drop images here"
-            hint="JPEG, PNG, or WEBP · up to 10 MB each"
+            hint="JPEG, PNG, or WebP · max 10 MB each"
             onFiles={async (files) => {
               setError(null);
               setSuccess(null);

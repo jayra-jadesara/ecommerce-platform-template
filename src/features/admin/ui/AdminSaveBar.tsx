@@ -73,8 +73,12 @@ export function AdminSaveBar({
               <button
                 type="button"
                 className={cn(adminBtn("ghost"), "!min-h-9")}
-                disabled={!canUpdate || pending}
-                onClick={() => setConfirmAction("reset")}
+                disabled={!canUpdate}
+                aria-busy={pending}
+                onClick={() => {
+                  if (pending || !canUpdate) return;
+                  setConfirmAction("reset");
+                }}
               >
                 Reset to default
               </button>
@@ -82,8 +86,10 @@ export function AdminSaveBar({
             <button
               type="button"
               className={cn(adminBtn("outline"), "!min-h-9")}
-              disabled={!isDirty || pending}
+              disabled={!isDirty}
+              aria-busy={pending}
               onClick={() => {
+                if (pending) return;
                 if (isDirty) setConfirmAction("discard");
                 else onCancel();
               }}
@@ -93,8 +99,14 @@ export function AdminSaveBar({
             <button
               type="button"
               className={cn(adminBtn("primary"), "!min-h-9")}
-              disabled={!canUpdate || !isDirty || pending}
-              onClick={onSave}
+              disabled={!canUpdate || !isDirty}
+              aria-busy={pending}
+              onClick={() => {
+                // Keep focus on Save while pending — disabling the focused
+                // button jumps focus onto the first ChoiceCard (blue outline).
+                if (pending || !canUpdate || !isDirty) return;
+                onSave();
+              }}
             >
               {pending ? "Saving…" : "Save changes"}
             </button>

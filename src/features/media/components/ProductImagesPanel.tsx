@@ -93,6 +93,7 @@ export function ProductImagesPanel({
         disabled={!canUpload || pending}
         onFiles={uploadFiles}
         label="Drop product images here"
+        hint="JPEG, PNG, or WebP · max 10 MB each"
       />
 
       <SortableImageList

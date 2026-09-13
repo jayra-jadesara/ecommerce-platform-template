@@ -1,7 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useTransition } from "react";
+import { clearHeaderAuthSnapshot } from "@/components/common/header-auth-store";
 import { logoutAction } from "@/features/auth/actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
 import { cn } from "@/lib/cn";
 
 /**
@@ -16,6 +20,7 @@ export function LogoutControl({
   label?: string;
   variant?: "text" | "outlined" | "contained";
 }) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
 
   const variantClass =
@@ -31,12 +36,26 @@ export function LogoutControl({
       data-admin-logout=""
       disabled={pending}
       className={cn(
-        "inline-flex min-h-9 items-center justify-center rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex min-h-9 items-center justify-center rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]",
         variantClass,
       )}
       onClick={() => {
         startTransition(async () => {
-          await logoutAction(redirectTo);
+          try {
+            if (getSupabasePublicEnvOptional()) {
+              const supabase = createSupabaseBrowserClient();
+              await supabase.auth.signOut();
+            }
+          } catch {
+            // Still clear UI + server session below.
+          }
+          clearHeaderAuthSnapshot();
+          try {
+            await logoutAction(redirectTo);
+          } catch {
+            router.refresh();
+            router.push(redirectTo);
+          }
         });
       }}
     >

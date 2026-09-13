@@ -58,7 +58,7 @@ const MODULES: Array<{
   {
     href: "/settings/shipping",
     title: "Shipping",
-    description: "Delivery charges and free-shipping rules.",
+    description: "Delivery price, auto-deliver or courier, and return policy.",
     permission: "shipping.view",
     icon: LocalShippingOutlinedIcon,
   },

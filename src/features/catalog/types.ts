@@ -19,6 +19,7 @@ export type StorefrontProductDetail = {
   ingredients: string | null;
   usageInstructions: string | null;
   featured: boolean;
+  returnPolicy: "no_return_refund" | "no_replace" | "replace_only";
   seoTitle: string | null;
   seoDescription: string | null;
   /** Trusted store-scoped GLB/GLTF path, or null. */

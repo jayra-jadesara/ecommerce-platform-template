@@ -8,7 +8,7 @@ import { buildPrivatePageMetadata } from "@/features/seo/private-metadata";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = buildPrivatePageMetadata("Buy it now");
+export const metadata: Metadata = buildPrivatePageMetadata("Checkout");
 
 export default async function CheckoutPage() {
   const user = await getCurrentUser();
@@ -19,7 +19,12 @@ export default async function CheckoutPage() {
   const summary = await getCheckoutSummary();
 
   return (
-    <PageShell title="Buy it now" backHref="/cart" backLabel="Back to cart">
+    <PageShell
+      title="Checkout"
+      description="Add your address, confirm details, then complete payment."
+      backHref="/cart"
+      backLabel="Back to cart"
+    >
       <CheckoutClient initialSummary={summary} />
     </PageShell>
   );

@@ -1,73 +1,87 @@
-import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
+import { AccountDateRangeFilter } from "@/features/account/components/AccountDateRangeFilter";
+import { AccountListPagination } from "@/features/account/components/AccountListPagination";
+import {
+  getAccountDateRangeBounds,
+  parseAccountDateRange,
+} from "@/features/account/date-range";
 import { getCurrentUser } from "@/features/auth/session";
-import { formatMoney } from "@/features/catalog/money";
-import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-import { formatDateTime } from "@/lib/format-date";
+import { AccountPaymentsList } from "@/features/payments/components/AccountPaymentsList";
+import { listCustomerPayments } from "@/features/payments/list-customer-payments";
 
 export const dynamic = "force-dynamic";
 
-export default async function AccountPaymentsPage() {
+export default async function AccountPaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    page?: string;
+    range?: string;
+    from?: string;
+    to?: string;
+  }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login?next=/account/payments");
 
-  const supabase = createSupabaseServiceClient();
-  const { data: payments } = await supabase
-    .from("payments")
-    .select(
-      "id, status, amount, currency, created_at, provider, orders!inner(order_number)",
-    )
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false })
-    .limit(50);
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page) || 1);
+  const range = parseAccountDateRange(params.range);
+  const bounds = getAccountDateRangeBounds(range, {
+    customFrom: params.from,
+    customTo: params.to,
+  });
+
+  const result = await listCustomerPayments({
+    userId: user.id,
+    page,
+    pageSize: 10,
+    createdFromIso: bounds.fromIso,
+    createdToIso: bounds.toIso,
+  });
+
+  const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
 
   return (
     <div>
-      <StorefrontHeading title="Payments" as="h2" align="left" className="!text-2xl" />
-      <div className="mt-6">
-        {!payments?.length ? (
+      <StorefrontHeading
+        title="Payments"
+        as="h2"
+        align="left"
+        className="!text-2xl"
+      />
+
+      <div className="mt-4">
+        <Suspense fallback={null}>
+          <AccountDateRangeFilter />
+        </Suspense>
+      </div>
+
+      <div className="mt-5">
+        {!result.items.length ? (
           <EmptyState
-            title="No payments yet"
-            description="Completed payments will appear here."
+            title={range === "all" ? "No payments yet" : "No payments found"}
+            description={
+              range === "all"
+                ? "Completed payments will appear here."
+                : "Try a different date filter."
+            }
           />
         ) : (
-          <ul className="divide-y divide-[var(--color-border)] rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-            {payments.map((payment) => {
-              const order = payment.orders as unknown as {
-                order_number: string;
-              };
-              return (
-                <li
-                  key={payment.id}
-                  className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-medium">{order.order_number}</p>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      {payment.provider} · {payment.status} ·{" "}
-                      {formatDateTime(payment.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <p className="text-sm font-semibold">
-                      {formatMoney(Number(payment.amount), payment.currency)}
-                    </p>
-                    {(payment.status === "CAPTURED" ||
-                      payment.status === "AUTHORIZED") && (
-                      <Link
-                        href={`/payment/success?paymentId=${payment.id}`}
-                        className="text-sm underline"
-                      >
-                        Receipt
-                      </Link>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <>
+            <AccountPaymentsList payments={result.items} />
+            <AccountListPagination
+              page={page}
+              totalPages={totalPages}
+              basePath="/account/payments"
+              range={range}
+              from={params.from}
+              to={params.to}
+            />
+          </>
         )}
       </div>
     </div>

@@ -22,6 +22,7 @@ import type {
 } from "@/features/catalog/types";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { isSafeModelStoragePath } from "@/features/visual-effects/schemas";
+import { resolveReturnPolicy } from "@/features/shipping/policies";
 
 export { formatMoney };
 export type { StorefrontProductDetail };
@@ -507,7 +508,8 @@ async function getProductBySlugUncached(
     .select(
       `
       id, name, slug, short_description, description, brand, ingredients,
-      usage_instructions, featured, seo_title, seo_description, model_path,
+      usage_instructions, featured, returns_allowed, return_policy, seo_title, seo_description,
+      model_path,
       categories ( id, name, slug ),
       product_variants (
         id, name, sku, price, compare_at_price, weight, unit,
@@ -525,6 +527,12 @@ async function getProductBySlugUncached(
     .maybeSingle();
 
   if (!data) return null;
+
+  const { data: shipping } = await supabase
+    .from("shipping_settings")
+    .select("return_policy")
+    .eq("store_id", storeId)
+    .maybeSingle();
 
   const category = Array.isArray(data.categories)
     ? data.categories[0]
@@ -597,6 +605,10 @@ async function getProductBySlugUncached(
     ingredients: data.ingredients,
     usageInstructions: data.usage_instructions,
     featured: data.featured,
+    returnPolicy: resolveReturnPolicy(
+      data.return_policy,
+      shipping?.return_policy,
+    ),
     seoTitle: data.seo_title,
     seoDescription: data.seo_description,
     modelPath: (() => {

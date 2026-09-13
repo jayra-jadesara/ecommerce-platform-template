@@ -2,6 +2,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { hasPermission, requirePermission } from "@/features/auth/session";
 import { AdminOrderListClient } from "@/features/orders/components/AdminOrderListClient";
+import { autoDeliverShippedOrders } from "@/features/orders/auto-deliver";
 import { listAdminOrders } from "@/features/orders/queries";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
@@ -19,6 +20,9 @@ export default async function AdminOrdersPage({
 }) {
   const admin = await requirePermission("orders.view");
   const storeId = await resolveActiveStoreId();
+  if (storeId) {
+    await autoDeliverShippedOrders({ storeId, limit: 50 }).catch(() => null);
+  }
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const status = (params.status as OrderStatus | "ALL" | undefined) ?? "ALL";

@@ -2,12 +2,12 @@ import type { OrderStatus } from "@/types/database";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import { cn } from "@/lib/cn";
 
-const TIMELINE: Array<{ status: OrderStatus; label: string }> = [
-  { status: "PENDING", label: "Order placed" },
-  { status: "CONFIRMED", label: "Payment confirmed" },
-  { status: "PROCESSING", label: "Processing" },
-  { status: "SHIPPED", label: "Shipped" },
-  { status: "DELIVERED", label: "Delivered" },
+const TIMELINE: Array<{ status: OrderStatus; label: string; hint: string }> = [
+  { status: "PENDING", label: "Placed", hint: "Order received" },
+  { status: "CONFIRMED", label: "Paid", hint: "Payment confirmed" },
+  { status: "PROCESSING", label: "Processing", hint: "Packing your order" },
+  { status: "SHIPPED", label: "Shipped", hint: "Handed to courier" },
+  { status: "DELIVERED", label: "Delivered", hint: "Reached you" },
 ];
 
 const RANK: Record<OrderStatus, number> = {
@@ -21,14 +21,14 @@ const RANK: Record<OrderStatus, number> = {
 };
 
 /**
- * Customer-facing fulfillment timeline using only real order statuses.
- * Terminal CANCELLED / REFUNDED are shown as a single status note instead of inventing steps.
+ * Premium O—O—O fulfillment stepper for customer order detail.
+ * Statuses are updated manually by the store admin (no courier API required).
  */
 export function OrderStatusTimeline({ status }: { status: OrderStatus }) {
   if (status === "CANCELLED" || status === "REFUNDED") {
     return (
       <div
-        className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 text-sm"
+        className="rounded-[var(--radius-default,0.85rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-4 text-sm"
         role="status"
       >
         Status: <strong>{orderStatusLabel(status)}</strong>
@@ -37,42 +37,74 @@ export function OrderStatusTimeline({ status }: { status: OrderStatus }) {
   }
 
   const current = RANK[status] ?? 0;
+  const complete = status === "DELIVERED";
+  const accent = complete ? "var(--color-success)" : "var(--color-primary)";
 
   return (
-    <ol className="grid gap-3 sm:grid-cols-5" aria-label="Order progress">
-      {TIMELINE.map((step, index) => {
-        const done = index <= current;
-        const active = index === current;
-        return (
-          <li
-            key={step.status}
-            className={cn(
-              "rounded-[var(--radius-default,0.5rem)] border px-3 py-3 text-center",
-              done
-                ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))]"
-                : "border-[var(--color-border)] bg-[var(--color-card)] opacity-60",
-            )}
-          >
-            <span
-              className={cn(
-                "mx-auto mb-2 flex h-2.5 w-2.5 rounded-full",
-                done ? "bg-[var(--color-primary)]" : "bg-[var(--color-border)]",
-              )}
-              aria-hidden
-            />
-            <p
-              className={cn(
-                "text-xs font-semibold",
-                active
-                  ? "text-[var(--color-foreground)]"
-                  : "text-[var(--color-muted)]",
-              )}
+    <div
+      className="rounded-[var(--radius-default,0.85rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-5 sm:px-6"
+      role="group"
+      aria-label="Order progress"
+      style={{ ["--progress-accent" as string]: accent }}
+    >
+      <p className="sr-only">Current status: {orderStatusLabel(status)}</p>
+      <ol className="flex items-start justify-between gap-1">
+        {TIMELINE.map((step, index) => {
+          const done = index <= current;
+          const active = index === current;
+          const isLast = index === TIMELINE.length - 1;
+          return (
+            <li
+              key={step.status}
+              className="relative flex min-w-0 flex-1 flex-col items-center text-center"
             >
-              {step.label}
-            </p>
-          </li>
-        );
-      })}
-    </ol>
+              {!isLast ? (
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute left-[calc(50%+0.7rem)] right-[calc(-50%+0.7rem)] top-[0.7rem] h-0.5",
+                    index < current
+                      ? "bg-[var(--progress-accent)]"
+                      : "bg-[var(--color-border)]",
+                  )}
+                />
+              ) : null}
+              <span
+                className={cn(
+                  "relative z-[1] flex h-6 w-6 items-center justify-center rounded-full border-2 text-[0.65rem] font-bold transition-colors",
+                  done
+                    ? "border-[var(--progress-accent)] bg-[var(--progress-accent)] text-white"
+                    : "border-[var(--color-border)] bg-[var(--color-card)] text-transparent",
+                  active &&
+                    !complete &&
+                    "ring-4 ring-[color-mix(in_srgb,var(--progress-accent)_18%,transparent)]",
+                  complete &&
+                    done &&
+                    "ring-4 ring-[color-mix(in_srgb,var(--color-success)_18%,transparent)]",
+                )}
+                aria-current={active ? "step" : undefined}
+              >
+                {done ? "✓" : "•"}
+              </span>
+              <p
+                className={cn(
+                  "mt-2.5 text-[0.7rem] font-semibold leading-tight sm:text-xs",
+                  complete && done
+                    ? "text-[var(--color-success)]"
+                    : active || done
+                      ? "text-[var(--color-foreground)]"
+                      : "text-[var(--color-muted)]",
+                )}
+              >
+                {step.label}
+              </p>
+              <p className="mt-0.5 hidden text-[0.65rem] leading-snug text-[var(--color-muted)] sm:block">
+                {step.hint}
+              </p>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }

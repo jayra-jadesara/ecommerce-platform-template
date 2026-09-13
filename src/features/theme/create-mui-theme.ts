@@ -65,6 +65,31 @@ export function createAppMuiTheme(
             textTransform: "none",
             fontWeight: 600,
             minHeight: 40,
+            "&.Mui-disabled": {
+              opacity: 1,
+            },
+          },
+          contained: {
+            "&.Mui-disabled": {
+              backgroundColor:
+                "color-mix(in srgb, var(--color-button-background) 55%, var(--color-border))",
+              color:
+                "color-mix(in srgb, var(--color-button-foreground) 88%, transparent)",
+            },
+          },
+          outlined: {
+            "&.Mui-disabled": {
+              borderColor:
+                "color-mix(in srgb, var(--color-primary) 35%, var(--color-border))",
+              color:
+                "color-mix(in srgb, var(--color-primary) 50%, var(--color-muted))",
+            },
+          },
+          text: {
+            "&.Mui-disabled": {
+              color:
+                "color-mix(in srgb, var(--color-primary) 45%, var(--color-muted))",
+            },
           },
         },
         variants: [
@@ -76,6 +101,12 @@ export function createAppMuiTheme(
               "&:hover": {
                 backgroundColor: "var(--color-button-background)",
                 filter: "brightness(0.92)",
+              },
+              "&.Mui-disabled": {
+                backgroundColor:
+                  "color-mix(in srgb, var(--color-button-background) 55%, var(--color-border))",
+                color:
+                  "color-mix(in srgb, var(--color-button-foreground) 88%, transparent)",
               },
             },
           },

@@ -7,6 +7,7 @@ import {
   type CustomerAddress,
 } from "@/features/addresses/types";
 import type { AddressFormInput } from "@/features/addresses/validation";
+import { formatAddressPhoneForStorage } from "@/features/addresses/validation";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -26,6 +27,10 @@ function mapAddress(row: Tables<"user_addresses">): CustomerAddress {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+function phoneForDb(input: AddressFormInput): string {
+  return formatAddressPhoneForStorage(input.phone);
 }
 
 async function listForUser(userId: string): Promise<CustomerAddress[]> {
@@ -108,7 +113,7 @@ export async function createCustomerAddress(
     .insert({
       user_id: user.id,
       full_name: input.fullName,
-      phone: input.phone,
+      phone: formatAddressPhoneForStorage(input.phone),
       address_line_1: input.addressLine1,
       address_line_2: input.addressLine2,
       city: input.city,
@@ -185,7 +190,7 @@ export async function updateCustomerAddress(
     .from("user_addresses")
     .update({
       full_name: input.fullName,
-      phone: input.phone,
+      phone: formatAddressPhoneForStorage(input.phone),
       address_line_1: input.addressLine1,
       address_line_2: input.addressLine2,
       city: input.city,

@@ -3,12 +3,10 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import {
@@ -20,7 +18,13 @@ import {
 } from "@/features/catalog/actions";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
-import { adminFieldsGrid } from "@/features/admin/ui/admin-classes";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminFieldsGrid,
+} from "@/features/admin/ui/admin-classes";
 import {
   applyServerFieldErrors,
   focusFirstFieldError,
@@ -38,6 +42,11 @@ import {
 } from "@/features/catalog/validation";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
+import {
+  returnPolicyLabel,
+  type ReturnPolicy,
+} from "@/features/shipping/policies";
+import { cn } from "@/lib/cn";
 
 function sizeMenuItems(current: string) {
   const options = PRODUCT_SIZE_OPTIONS as readonly string[];
@@ -54,6 +63,8 @@ interface ProductFormProps {
   categories: CategoryRow[];
   canUpdate: boolean;
   canDelete: boolean;
+  /** Store Delivery & returns default — products inherit this unless overridden. */
+  storeReturnPolicy?: ReturnPolicy;
 }
 
 function friendlyError(message: string) {
@@ -70,26 +81,35 @@ function StepCard({
   step,
   title,
   description,
+  action,
   children,
 }: {
   step: number;
   title: string;
   description: string;
-  children: React.ReactNode;
+  action?: ReactNode;
+  children: ReactNode;
 }) {
   return (
-    <section className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 md:p-6 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]">
-      <div className="mb-5 flex gap-3">
-        <span
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-sm font-semibold text-[var(--color-button-foreground)]"
-          aria-hidden
-        >
-          {step}
-        </span>
-        <div>
-          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">{description}</p>
+    <section className={`${adminCard()} ${adminCardPadding()}`}>
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 gap-3">
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-sm font-semibold text-[var(--color-button-foreground)]"
+            aria-hidden
+          >
+            {step}
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold tracking-tight text-[var(--color-foreground)]">
+              {title}
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+              {description}
+            </p>
+          </div>
         </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       <div className="admin-form-stack">{children}</div>
     </section>
@@ -103,6 +123,7 @@ export function ProductForm({
   categories,
   canUpdate,
   canDelete,
+  storeReturnPolicy = "no_return_refund",
 }: ProductFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -170,13 +191,17 @@ export function ProductForm({
     setSuccess(null);
 
     let payload = values;
+    // Same as store shipping default → store null (inherit), not a duplicate override.
+    if (payload.returnPolicy === storeReturnPolicy) {
+      payload = { ...payload, returnPolicy: null };
+    }
     if (mode === "create") {
       const slug = slugify(values.name);
       let visibleIndex = 0;
       payload = {
-        ...values,
+        ...payload,
         slug,
-        variants: values.variants.map((variant) => {
+        variants: payload.variants.map((variant) => {
           if (variant._delete) return variant;
           const sku = autoSkuFromSlug(slug, visibleIndex);
           visibleIndex += 1;
@@ -327,11 +352,10 @@ export function ProductForm({
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {mode === "create" ? (
-        <ol className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
+        <ol className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
           <li>1. Name the product and add a short description</li>
-          <li>2. Set the price and stock</li>
-          <li>3. Choose Draft or Active</li>
-          <li>4. Save — then add photos</li>
+          <li>2. Set size, price, and stock</li>
+          <li>3. Choose Draft or Active, then Save — photos come next</li>
         </ol>
       ) : null}
 
@@ -439,15 +463,14 @@ export function ProductForm({
         title="Price & stock"
         description={
           productName
-            ? `Add sizes or packs for “${productName}”.`
-            : "Add sizes or packs with their own price and stock."
+            ? `Sizes / packs for “${productName}”.`
+            : "Each size has its own price and stock."
         }
-      >
-        <div className="mb-3 flex justify-end">
-          <Button
+        action={
+          <button
             type="button"
-            variant="outlined"
             disabled={!fieldsEditable}
+            className={cn(adminBtn("outline"), "!min-h-9")}
             onClick={() => {
               const slug = getValues("slug") || slugify(getValues("name") || "");
               const nextIndex = visibleVariants.length;
@@ -460,138 +483,124 @@ export function ProductForm({
             }}
           >
             + Add size / pack
-          </Button>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="border-b border-[var(--color-border)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
-              <tr>
-                <th className="px-2 py-2">Size / pack</th>
-                <th className="px-2 py-2">Price</th>
-                <th className="px-2 py-2">Stock</th>
-                <th className="px-2 py-2">On sale</th>
-                <th className="px-2 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {visibleVariants.map(({ field, index }) => {
-                const variant = variants[index];
-                if (!variant) return null;
-                return (
-                  <tr
-                    key={field.fieldId}
-                    className="border-b border-[var(--color-border)] align-top last:border-0"
-                  >
-                    <td className="px-2 py-3 min-w-[10rem]">
-                      <Controller
-                        name={`variants.${index}.name`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <TextField
-                            {...f}
-                            select
-                            size="small"
-                            label="Size / pack"
-                            fullWidth
-                            required
-                            disabled={!fieldsEditable}
-                            error={Boolean(fieldState.error)}
-                            helperText={
-                              fieldState.error?.message ??
-                              "What customers pick at checkout"
-                            }
-                          >
-                            {sizeMenuItems(f.value).map((option) => (
-                              <MenuItem key={option} value={option}>
-                                {option}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        )}
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Controller
-                        name={`variants.${index}.price`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <TextField
-                            {...f}
-                            size="small"
-                            type="number"
-                            label="Price"
-                            fullWidth
-                            required
-                            disabled={!fieldsEditable}
-                            error={Boolean(fieldState.error)}
-                            helperText={fieldState.error?.message}
-                            onChange={(event) =>
-                              f.onChange(Number(event.target.value))
-                            }
-                          />
-                        )}
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Controller
-                        name={`variants.${index}.quantity`}
-                        control={control}
-                        render={({ field: f, fieldState }) => (
-                          <TextField
-                            {...f}
-                            size="small"
-                            type="number"
-                            label="How many in stock"
-                            fullWidth
-                            required
-                            disabled={!fieldsEditable}
-                            error={Boolean(fieldState.error)}
-                            helperText={fieldState.error?.message}
-                            onChange={(event) =>
-                              f.onChange(Number(event.target.value) || 0)
-                            }
-                          />
-                        )}
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Controller
-                        name={`variants.${index}.isActive`}
-                        control={control}
-                        render={({ field: f }) => (
-                          <FormControlLabel
-                            control={
-                              <Switch
-                                checked={f.value}
-                                onChange={(_, checked) => f.onChange(checked)}
-                                disabled={!fieldsEditable}
-                                size="small"
-                              />
-                            }
-                            label={f.value ? "Yes" : "No"}
-                          />
-                        )}
-                      />
-                    </td>
-                    <td className="px-2 py-3">
-                      <Button
-                        type="button"
-                        color="error"
-                        size="small"
-                        disabled={!fieldsEditable || visibleVariants.length <= 1}
-                        onClick={() =>
-                          update(index, { ...variant, _delete: true })
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          </button>
+        }
+      >
+        <div className="space-y-3">
+          {visibleVariants.map(({ field, index }) => {
+            const variant = variants[index];
+            if (!variant) return null;
+            return (
+              <div
+                key={field.fieldId}
+                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+              >
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                  <div className="lg:col-span-4">
+                    <Controller
+                      name={`variants.${index}.name`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <TextField
+                          {...f}
+                          select
+                          size="small"
+                          label="Size / pack"
+                          fullWidth
+                          required
+                          disabled={!fieldsEditable}
+                          error={Boolean(fieldState.error)}
+                          helperText={
+                            fieldState.error?.message ??
+                            "What customers pick at checkout"
+                          }
+                        >
+                          {sizeMenuItems(f.value).map((option) => (
+                            <MenuItem key={option} value={option}>
+                              {option}
+                            </MenuItem>
+                          ))}
+                        </TextField>
+                      )}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <Controller
+                      name={`variants.${index}.price`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <TextField
+                          {...f}
+                          size="small"
+                          type="number"
+                          label="Price"
+                          fullWidth
+                          required
+                          disabled={!fieldsEditable}
+                          error={Boolean(fieldState.error)}
+                          helperText={fieldState.error?.message}
+                          onChange={(event) =>
+                            f.onChange(Number(event.target.value))
+                          }
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="lg:col-span-2">
+                    <Controller
+                      name={`variants.${index}.quantity`}
+                      control={control}
+                      render={({ field: f, fieldState }) => (
+                        <TextField
+                          {...f}
+                          size="small"
+                          type="number"
+                          label="Stock"
+                          fullWidth
+                          required
+                          disabled={!fieldsEditable}
+                          error={Boolean(fieldState.error)}
+                          helperText={fieldState.error?.message}
+                          onChange={(event) =>
+                            f.onChange(Number(event.target.value) || 0)
+                          }
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center lg:col-span-2 lg:pb-1">
+                    <Controller
+                      name={`variants.${index}.isActive`}
+                      control={control}
+                      render={({ field: f }) => (
+                        <AdminToggle
+                          checked={f.value}
+                          disabled={!fieldsEditable}
+                          label={f.value ? "On sale" : "Hidden"}
+                          onChange={f.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+                  <div className="flex items-center justify-end lg:col-span-2 lg:pb-1">
+                    <button
+                      type="button"
+                      disabled={!fieldsEditable || visibleVariants.length <= 1}
+                      className={cn(
+                        adminBtn("ghost"),
+                        "!min-h-9 text-[var(--color-error)] disabled:opacity-40",
+                      )}
+                      onClick={() =>
+                        update(index, { ...variant, _delete: true })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </StepCard>
 
@@ -600,7 +609,7 @@ export function ProductForm({
         title="Show on your store?"
         description="Draft stays private. Active means customers can buy it."
       >
-        <div className={adminFieldsGrid(2) + " admin-fields-grid--2-md"}>
+        <div className="grid gap-4 lg:grid-cols-2">
           <Controller
             name="status"
             control={control}
@@ -623,60 +632,47 @@ export function ProductForm({
             name="featured"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                className="items-start rounded-lg border border-[var(--color-border)] px-3 py-2"
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!fieldsEditable}
-                  />
-                }
-                label={
-                  <span>
-                    <span className="block font-medium">Featured product</span>
-                    <span className="text-sm text-[var(--color-muted)]">
-                      Show it in featured sections on the homepage.
-                    </span>
-                  </span>
-                }
+              <AdminToggle
+                variant="row"
+                checked={field.value}
+                disabled={!fieldsEditable}
+                label="Featured product"
+                description="Show it in featured sections on the homepage."
+                onChange={field.onChange}
               />
             )}
           />
-        </div>
-      </StepCard>
-
-      <StepCard
-        step={4}
-        title="Visual presentation"
-        description="2D gallery is the default. Optional 3D uses a trusted GLB/GLTF storage path only."
-      >
-        <p className="mb-3 text-sm text-[var(--color-muted)]">
-          Product photos are managed in the media panel after save. Leave the 3D
-          path empty for a normal image gallery. Path format:{" "}
-          <code className="text-xs">products/&#123;storeId&#125;/3d/file.glb</code>
-        </p>
-        <Controller
-          name="modelPath"
-          control={control}
-          render={({ field, fieldState }) => (
-            <TextField
-              label="Optional 3D model path"
-              fullWidth
-              disabled={!fieldsEditable}
-              value={field.value ?? ""}
-              onChange={(event) =>
-                field.onChange(event.target.value.trim() || null)
-              }
-              error={Boolean(fieldState.error)}
-              helperText={
-                fieldState.error?.message ||
-                "No remote URLs. Upload a .glb/.gltf under your store’s products/…/3d/ folder, then paste the path."
-              }
-              placeholder="products/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx/3d/model.glb"
+          <div className="lg:col-span-2">
+            <Controller
+              name="returnPolicy"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  select
+                  label="Return / replace policy"
+                  fullWidth
+                  disabled={!fieldsEditable}
+                  value={field.value ?? ""}
+                  onChange={(event) =>
+                    field.onChange(
+                      event.target.value
+                        ? (event.target.value as ReturnPolicy)
+                        : null,
+                    )
+                  }
+                  helperText={`Follows Delivery & returns unless you pick a different rule for this product only. Store default: ${returnPolicyLabel(storeReturnPolicy)}.`}
+                >
+                  <MenuItem value="">
+                    Use store default — {returnPolicyLabel(storeReturnPolicy)}
+                  </MenuItem>
+                  <MenuItem value="no_return_refund">No return / no refund</MenuItem>
+                  <MenuItem value="no_replace">No replace</MenuItem>
+                  <MenuItem value="replace_only">Replace only</MenuItem>
+                </TextField>
+              )}
             />
-          )}
-        />
+          </div>
+        </div>
       </StepCard>
 
       {mode === "create" ? (
@@ -686,17 +682,17 @@ export function ProductForm({
       ) : null}
 
       <details
-        className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+        className={`${adminCard()} ${adminCardPadding()}`}
         open={showAdvanced}
         onToggle={(event) =>
           setShowAdvanced((event.target as HTMLDetailsElement).open)
         }
       >
-        <summary className="cursor-pointer text-sm font-medium">
+        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-foreground)]">
           Extra details (optional)
         </summary>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Brand, ingredients, shipping weight, and search listing text.
+          Brand, ingredients, shipping weight, and SEO.
         </p>
         <div className={`mt-4 ${adminFieldsGrid(2)}`}>
           <Controller
@@ -891,16 +887,11 @@ export function ProductForm({
                   name={`variants.${index}.trackInventory`}
                   control={control}
                   render={({ field: f }) => (
-                    <FormControlLabel
-                      control={
-                        <Switch
-                          checked={f.value}
-                          onChange={(_, checked) => f.onChange(checked)}
-                          disabled={!fieldsEditable}
-                          size="small"
-                        />
-                      }
+                    <AdminToggle
+                      checked={f.value}
+                      disabled={!fieldsEditable}
                       label="Track stock for this size"
+                      onChange={f.onChange}
                     />
                   )}
                 />

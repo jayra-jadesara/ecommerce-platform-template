@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  FULFILLMENT_MODES,
+  RETURN_POLICIES,
+} from "@/features/shipping/policies";
 
 const nonNeg = z.coerce
   .number({ invalid_type_error: "Enter a valid number." })
@@ -34,6 +38,20 @@ export const shippingSettingsSchema = z
       .optional()
       .nullable(),
     estimatedDeliveryLabel: z.string().max(120).optional().nullable(),
+    fulfillmentMode: z.enum(FULFILLMENT_MODES),
+    /** Used when fulfillmentMode is auto_days */
+    autoDeliverAfterDays: z
+      .union([
+        z.coerce.number().int().min(1).max(60),
+        z.nan(),
+        z.null(),
+        z.literal(""),
+      ])
+      .optional()
+      .nullable(),
+    returnPolicy: z.enum(RETURN_POLICIES),
+    /** When true, replace requests require a photo (uses storage). Default false. */
+    replacePhotoRequired: z.coerce.boolean(),
   })
   .superRefine((value, ctx) => {
     const min = value.estimatedDeliveryMinDays;
@@ -51,30 +69,60 @@ export const shippingSettingsSchema = z
         path: ["estimatedDeliveryMaxDays"],
       });
     }
+
+    if (value.fulfillmentMode === "auto_days") {
+      const days = value.autoDeliverAfterDays;
+      const empty =
+        days == null ||
+        days === "" ||
+        (typeof days === "number" && Number.isNaN(days));
+      if (empty) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Enter how many days after shipping (1–60).",
+          path: ["autoDeliverAfterDays"],
+        });
+      }
+    }
   })
-  .transform((value) => ({
-    ...value,
-    freeShippingThreshold:
-      value.freeShippingThreshold == null ||
-      Number.isNaN(value.freeShippingThreshold)
+  .transform((value) => {
+    const autoDays =
+      value.autoDeliverAfterDays == null ||
+      value.autoDeliverAfterDays === "" ||
+      Number.isNaN(value.autoDeliverAfterDays as number)
         ? null
-        : value.freeShippingThreshold,
-    percentageRate:
-      value.percentageRate == null || Number.isNaN(value.percentageRate)
-        ? null
-        : value.percentageRate,
-    estimatedDeliveryMinDays:
-      value.estimatedDeliveryMinDays == null ||
-      Number.isNaN(value.estimatedDeliveryMinDays)
-        ? null
-        : value.estimatedDeliveryMinDays,
-    estimatedDeliveryMaxDays:
-      value.estimatedDeliveryMaxDays == null ||
-      Number.isNaN(value.estimatedDeliveryMaxDays)
-        ? null
-        : value.estimatedDeliveryMaxDays,
-    estimatedDeliveryLabel: value.estimatedDeliveryLabel?.trim() || null,
-  }));
+        : Number(value.autoDeliverAfterDays);
+
+    return {
+      ...value,
+      freeShippingThreshold:
+        value.freeShippingThreshold == null ||
+        Number.isNaN(value.freeShippingThreshold)
+          ? null
+          : value.freeShippingThreshold,
+      percentageRate:
+        value.percentageRate == null || Number.isNaN(value.percentageRate)
+          ? null
+          : value.percentageRate,
+      estimatedDeliveryMinDays:
+        value.estimatedDeliveryMinDays == null ||
+        Number.isNaN(value.estimatedDeliveryMinDays)
+          ? null
+          : value.estimatedDeliveryMinDays,
+      estimatedDeliveryMaxDays:
+        value.estimatedDeliveryMaxDays == null ||
+        Number.isNaN(value.estimatedDeliveryMaxDays)
+          ? null
+          : value.estimatedDeliveryMaxDays,
+      estimatedDeliveryLabel: value.estimatedDeliveryLabel?.trim() || null,
+      autoDeliverAfterDays:
+        value.fulfillmentMode === "auto_days" ? autoDays : null,
+      replacePhotoRequired:
+        value.returnPolicy === "replace_only"
+          ? Boolean(value.replacePhotoRequired)
+          : false,
+    };
+  });
 
 export type ShippingSettingsFormValues = z.infer<typeof shippingSettingsSchema>;
 
@@ -84,9 +132,13 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettingsFormValues = {
   freeShippingThreshold: 500,
   defaultShippingFee: 50,
   percentageRate: null,
-  estimatedDeliveryMinDays: null,
-  estimatedDeliveryMaxDays: null,
+  estimatedDeliveryMinDays: 3,
+  estimatedDeliveryMaxDays: 7,
   estimatedDeliveryLabel: null,
+  fulfillmentMode: "auto_days",
+  autoDeliverAfterDays: 7,
+  returnPolicy: "no_return_refund",
+  replacePhotoRequired: false,
 };
 
 export const paymentSettingsSchema = z

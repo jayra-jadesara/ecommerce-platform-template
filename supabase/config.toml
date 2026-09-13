@@ -23,5 +23,11 @@ port = 54323
 [auth]
 enabled = true
 
+# Local CLI: skip confirmation emails so signup is not blocked by mailer rate limits.
+# Hosted projects: toggle Confirm email in the Supabase Auth dashboard if needed.
+[auth.email]
+enable_confirmations = false
+enable_signup = true
+
 [storage]
 enabled = true

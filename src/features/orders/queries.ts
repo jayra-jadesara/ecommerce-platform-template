@@ -11,6 +11,7 @@ import type {
   OrderListResult,
   OrderPaymentView,
 } from "@/features/orders/types";
+import { listReplaceRequestsForOrder, getReplacePhotoRequired } from "@/features/orders/replace-service";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { OrderStatus } from "@/types/database";
 
@@ -37,7 +38,7 @@ async function mapItems(
   const { data: items } = await supabase
     .from("order_items")
     .select(
-      "id, product_id, variant_id, product_name_snapshot, variant_name_snapshot, sku_snapshot, unit_price, quantity, line_total",
+      "id, product_id, variant_id, product_name_snapshot, variant_name_snapshot, sku_snapshot, unit_price, quantity, line_total, returns_allowed, return_policy",
     )
     .eq("order_id", orderId);
 
@@ -70,6 +71,17 @@ async function mapItems(
       quantity: item.quantity,
       lineTotal: Number(item.line_total),
       imageUrl,
+      returnPolicy:
+        item.return_policy === "no_return_refund" ||
+        item.return_policy === "no_replace" ||
+        item.return_policy === "replace_only"
+          ? item.return_policy
+          : item.returns_allowed === true
+            ? "no_replace"
+            : "no_return_refund",
+      returnsAllowed:
+        item.return_policy === "no_replace" ||
+        (item.return_policy == null && item.returns_allowed === true),
     });
   }
   return views;
@@ -149,11 +161,14 @@ export async function getOrderDetail(input: {
   const { data: order } = await query.maybeSingle();
   if (!order) return null;
 
-  const [items, payment, activities] = await Promise.all([
-    mapItems(order.id),
-    mapPayment(order.id),
-    mapActivities(order.id),
-  ]);
+  const [items, payment, activities, replaceRequests, replacePhotoRequired] =
+    await Promise.all([
+      mapItems(order.id),
+      mapPayment(order.id),
+      mapActivities(order.id),
+      listReplaceRequestsForOrder(order.id),
+      getReplacePhotoRequired(order.store_id),
+    ]);
 
   const customerNameParts: string[] = [];
   if (order.user_id) {
@@ -194,6 +209,8 @@ export async function getOrderDetail(input: {
     items,
     payment,
     activities,
+    replaceRequests,
+    replacePhotoRequired,
     customerEmail: null,
     customerName,
   };
@@ -203,6 +220,8 @@ export async function listCustomerOrders(input: {
   userId: string;
   page?: number;
   pageSize?: number;
+  createdFromIso?: string;
+  createdToIso?: string;
 }): Promise<OrderListResult> {
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 10));
@@ -210,15 +229,23 @@ export async function listCustomerOrders(input: {
   const to = from + pageSize - 1;
 
   const supabase = createSupabaseServiceClient();
-  const { data, count, error } = await supabase
+  let query = supabase
     .from("orders")
     .select("id, order_number, status, grand_total, currency, created_at", {
       count: "exact",
     })
     .eq("user_id", input.userId)
     .neq("status", "PENDING")
-    .order("created_at", { ascending: false })
-    .range(from, to);
+    .order("created_at", { ascending: false });
+
+  if (input.createdFromIso) {
+    query = query.gte("created_at", input.createdFromIso);
+  }
+  if (input.createdToIso) {
+    query = query.lte("created_at", input.createdToIso);
+  }
+
+  const { data, count, error } = await query.range(from, to);
 
   if (error) {
     return { items: [], total: 0, page, pageSize };

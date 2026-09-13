@@ -144,6 +144,13 @@ export const productFormSchema = z.object({
     .transform((v) => v.trim()),
   status: z.enum(["draft", "active", "archived"]),
   featured: z.boolean(),
+  /**
+   * null = use store Delivery & returns default.
+   * Set a value only to override for this product.
+   */
+  returnPolicy: z
+    .enum(["no_return_refund", "no_replace", "replace_only"])
+    .nullable(),
   seoTitle: z
     .string()
     .trim()
@@ -291,6 +298,7 @@ export const DEFAULT_PRODUCT_FORM: ProductFormValues = {
   usageInstructions: "",
   status: "draft",
   featured: false,
+  returnPolicy: null,
   seoTitle: "",
   seoDescription: "",
   modelPath: null,

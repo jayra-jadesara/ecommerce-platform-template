@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  isRecoveryQuestionId,
+  RECOVERY_QUESTION_IDS,
+} from "@/features/auth/recovery-questions";
 
 /** Required email with clear empty + format messages (shown on blur in forms). */
 export const authEmailSchema = z
@@ -12,6 +16,27 @@ export const authEmailSchema = z
     "Enter a valid email address (e.g. name@example.com)",
   );
 
+/** Fixed India country code for storefront registration. */
+export const REGISTER_COUNTRY_CODE = "+91";
+
+/** 10-digit Indian mobile (without country code) — shown as account number in UI. */
+export const registerPhoneSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter your account number")
+  .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit account number");
+
+export const recoveryQuestionIdSchema = z.enum(RECOVERY_QUESTION_IDS, {
+  required_error: "Select a security question",
+  invalid_type_error: "Select a security question",
+});
+
+export const recoveryAnswerSchema = z
+  .string()
+  .trim()
+  .min(2, "Answer must be at least 2 characters")
+  .max(120, "Answer is too long");
+
 export const loginSchema = z.object({
   email: authEmailSchema,
   password: z.string().min(1, "Password is required"),
@@ -22,6 +47,9 @@ export const registerSchema = z
     firstName: z.string().trim().min(1, "First name is required").max(80),
     lastName: z.string().trim().min(1, "Last name is required").max(80),
     email: authEmailSchema,
+    phone: registerPhoneSchema,
+    recoveryQuestionId: recoveryQuestionIdSchema,
+    recoveryAnswer: recoveryAnswerSchema,
     password: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -33,8 +61,12 @@ export const registerSchema = z
     path: ["confirmPassword"],
   });
 
+/** Step 1: verify identity for in-app password reset. */
 export const forgotPasswordSchema = z.object({
   email: authEmailSchema,
+  phone: registerPhoneSchema,
+  recoveryQuestionId: recoveryQuestionIdSchema,
+  recoveryAnswer: recoveryAnswerSchema,
 });
 
 export const resetPasswordSchema = z
@@ -50,11 +82,41 @@ export const resetPasswordSchema = z
     path: ["confirmPassword"],
   });
 
-export const profileUpdateSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required").max(80),
-  lastName: z.string().trim().min(1, "Last name is required").max(80),
-  phone: z.string().trim().max(30).optional(),
-});
+export const profileUpdateSchema = z
+  .object({
+    firstName: z.string().trim().min(1, "First name is required").max(80),
+    lastName: z.string().trim().min(1, "Last name is required").max(80),
+    phone: registerPhoneSchema,
+    recoveryQuestionId: z.string().optional(),
+    recoveryAnswer: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    const q = data.recoveryQuestionId?.trim() ?? "";
+    const a = data.recoveryAnswer?.trim() ?? "";
+    // Empty answer = leave recovery unchanged.
+    if (!a) return;
+    if (!isRecoveryQuestionId(q)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Select a security question",
+        path: ["recoveryQuestionId"],
+      });
+    }
+    if (a.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Answer must be at least 2 characters",
+        path: ["recoveryAnswer"],
+      });
+    }
+    if (a.length > 120) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Answer is too long",
+        path: ["recoveryAnswer"],
+      });
+    }
+  });
 
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/layout/Container";
+import { FooterNavLinks } from "@/components/layout/FooterNavLinks";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
 import type {
   BrandConfig,
@@ -109,41 +110,17 @@ export function Footer({
         </div>
 
         {shopLinks.length > 0 ? (
-          <nav aria-label="Shop">
+          <div>
             <p className={`${sfEyebrow()} !text-[var(--color-accent)]`}>Shop</p>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              {shopLinks.map((item) => (
-                <li key={`${item.href}-${item.label}`}>
-                  <Link
-                    href={item.href}
-                    className="text-sm text-[color-mix(in_srgb,var(--color-footer-foreground)_75%,transparent)] transition-colors hover:text-[var(--color-footer-foreground)]"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+            <FooterNavLinks items={shopLinks} ariaLabel="Shop" />
+          </div>
         ) : null}
 
         {footer.navVisible && supportLinks.length > 0 ? (
-          <nav aria-label="Support">
+          <div>
             <p className={`${sfEyebrow()} !text-[var(--color-accent)]`}>Support</p>
-            <ul className="mt-4 flex flex-col gap-2.5">
-              {supportLinks.map((item) => (
-                <li key={`${item.href}-${item.label}`}>
-                  <Link
-                    href={item.href}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noopener noreferrer" : undefined}
-                    className="text-sm text-[color-mix(in_srgb,var(--color-footer-foreground)_75%,transparent)] transition-colors hover:text-[var(--color-footer-foreground)]"
-                  >
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
+            <FooterNavLinks items={supportLinks} ariaLabel="Support" />
+          </div>
         ) : null}
 
         {hasContact ? (

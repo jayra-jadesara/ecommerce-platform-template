@@ -184,17 +184,63 @@ export async function createCheckoutPaymentSession(input: {
     };
   }
 
-  const lineRows = summary.lines.map((line) => ({
-    order_id: order.id,
-    product_id: line.productId,
-    variant_id: line.variantId,
-    product_name_snapshot: line.productName,
-    variant_name_snapshot: line.variantName,
-    sku_snapshot: line.variantId.replace(/-/g, "").slice(0, 16).toUpperCase(),
-    unit_price: line.currentUnitPrice,
-    quantity: line.quantity,
-    line_total: line.currentUnitPrice * line.quantity,
-  }));
+  const productIds = [
+    ...new Set(summary.lines.map((line) => line.productId).filter(Boolean)),
+  ];
+  const returnsByProduct = new Map<
+    string,
+    "no_return_refund" | "no_replace" | "replace_only"
+  >();
+  let storeReturnPolicy: "no_return_refund" | "no_replace" | "replace_only" =
+    "no_return_refund";
+  if (productIds.length > 0) {
+    const [{ data: productPolicies }, { data: shipping }] = await Promise.all([
+      supabase
+        .from("products")
+        .select("id, store_id, returns_allowed, return_policy")
+        .in("id", productIds),
+      supabase
+        .from("shipping_settings")
+        .select("return_policy")
+        .eq("store_id", summary.storeId)
+        .maybeSingle(),
+    ]);
+    if (
+      shipping?.return_policy === "no_replace" ||
+      shipping?.return_policy === "replace_only" ||
+      shipping?.return_policy === "no_return_refund"
+    ) {
+      storeReturnPolicy = shipping.return_policy;
+    }
+    for (const row of productPolicies ?? []) {
+      const policy =
+        row.return_policy === "no_replace" ||
+        row.return_policy === "replace_only" ||
+        row.return_policy === "no_return_refund"
+          ? row.return_policy
+          : row.returns_allowed === true
+            ? "no_replace"
+            : storeReturnPolicy;
+      returnsByProduct.set(row.id, policy);
+    }
+  }
+
+  const lineRows = summary.lines.map((line) => {
+    const policy = returnsByProduct.get(line.productId) ?? storeReturnPolicy;
+    return {
+      order_id: order.id,
+      product_id: line.productId,
+      variant_id: line.variantId,
+      product_name_snapshot: line.productName,
+      variant_name_snapshot: line.variantName,
+      sku_snapshot: line.variantId.replace(/-/g, "").slice(0, 16).toUpperCase(),
+      unit_price: line.currentUnitPrice,
+      quantity: line.quantity,
+      line_total: line.currentUnitPrice * line.quantity,
+      return_policy: policy,
+      returns_allowed: policy === "no_replace",
+    };
+  });
 
   const { error: itemsError } = await supabase.from("order_items").insert(lineRows);
   if (itemsError) {
@@ -374,6 +420,10 @@ export async function createCheckoutPaymentSession(input: {
     .join(" ")
     .trim();
 
+  const themeColor = toRazorpayHex(
+    config.theme.light.buttonBackground || config.theme.light.primary,
+  );
+
   return {
     ok: true,
     session: {
@@ -386,6 +436,8 @@ export async function createCheckoutPaymentSession(input: {
       amountMinor,
       currency,
       brandName: config.brand.name,
+      brandLogoUrl: config.brand.logoUrl || undefined,
+      themeColor,
       description: `Order ${order.order_number}`,
       prefill: {
         name: name || undefined,
@@ -394,4 +446,28 @@ export async function createCheckoutPaymentSession(input: {
       },
     },
   };
+}
+
+/** Razorpay checkout only accepts solid hex accents (not CSS vars / rgb()). */
+function toRazorpayHex(color: string, fallback = "#9f1239"): string {
+  const value = color.trim();
+  const hex = value.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
+  if (hex) {
+    const body = hex[1];
+    if (body.length === 3) {
+      return `#${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`.toLowerCase();
+    }
+    return `#${body}`.toLowerCase();
+  }
+  const rgb = value.match(
+    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+\s*)?\)$/i,
+  );
+  if (rgb) {
+    const channel = (n: string) =>
+      Math.max(0, Math.min(255, Math.round(Number(n))))
+        .toString(16)
+        .padStart(2, "0");
+    return `#${channel(rgb[1])}${channel(rgb[2])}${channel(rgb[3])}`;
+  }
+  return fallback;
 }

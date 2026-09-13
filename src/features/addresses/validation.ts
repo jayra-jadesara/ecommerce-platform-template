@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  REGISTER_COUNTRY_CODE,
+  registerPhoneSchema,
+} from "@/features/auth/validations";
+import { normalizePhoneForCompare } from "@/features/auth/recovery-crypto";
 
 /** Strip control chars / obvious script payloads; keep international text. */
 function sanitizePlainText(value: string): string {
@@ -33,25 +38,11 @@ const optionalPlainText = (max: number, label: string) =>
       message: `${label} is too long.`,
     });
 
-/** Flexible phone: digits, spaces, +, -, (), 7–20 significant digits. */
-export const phoneSchema = z
-  .string()
-  .optional()
-  .nullable()
-  .transform((value) => {
-    if (value == null) return null;
-    const cleaned = sanitizePlainText(value);
-    return cleaned.length ? cleaned : null;
-  })
-  .refine(
-    (value) => {
-      if (value == null) return true;
-      if (value.length > 32) return false;
-      const digits = value.replace(/\D/g, "");
-      return digits.length >= 7 && digits.length <= 15;
-    },
-    { message: "Enter a valid phone number." },
-  );
+/**
+ * Address phone: same 10-digit Indian mobile as signup (national digits in the form).
+ * Stored with +91 via `formatAddressPhoneForStorage`.
+ */
+export const phoneSchema = registerPhoneSchema;
 
 /** Postal codes vary widely — require non-empty alphanumeric-ish text. */
 export const postalCodeSchema = z
@@ -71,7 +62,7 @@ export const addressFormSchema = z.object({
   addressLine1: plainText(3, 200, "Address line 1"),
   addressLine2: optionalPlainText(200, "Address line 2"),
   city: plainText(2, 100, "City"),
-  state: optionalPlainText(100, "State"),
+  state: plainText(2, 100, "State"),
   postalCode: postalCodeSchema,
   country: plainText(2, 100, "Country"),
   isDefault: z.coerce.boolean().optional().default(false),
@@ -82,3 +73,12 @@ export const addressIdSchema = z.object({
 });
 
 export type AddressFormInput = z.infer<typeof addressFormSchema>;
+
+/** Persist phone as +91##########. */
+export function formatAddressPhoneForStorage(nationalDigits: string): string {
+  return normalizePhoneForCompare(
+    `${REGISTER_COUNTRY_CODE}${nationalDigits.replace(/\D/g, "")}`,
+  );
+}
+
+export { REGISTER_COUNTRY_CODE };

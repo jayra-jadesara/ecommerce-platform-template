@@ -1,5 +1,6 @@
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
+import type { ReplaceRequestStatus } from "@/features/shipping/policies";
 
 export type OrderListItem = {
   id: string;
@@ -25,6 +26,9 @@ export type OrderItemView = {
   quantity: number;
   lineTotal: number;
   imageUrl: string | null;
+  returnPolicy: "no_return_refund" | "no_replace" | "replace_only";
+  /** Derived: false when cash refund is blocked. */
+  returnsAllowed: boolean;
 };
 
 export type OrderPaymentView = {
@@ -46,6 +50,21 @@ export type OrderActivityView = {
   message: string | null;
   createdAt: string;
   metadata: Record<string, unknown>;
+};
+
+export type OrderReplaceRequestView = {
+  id: string;
+  orderId: string;
+  orderItemId: string;
+  productName: string;
+  status: ReplaceRequestStatus;
+  reason: string;
+  customerNote: string | null;
+  adminNote: string | null;
+  photoUrl: string | null;
+  quantity: number;
+  createdAt: string;
+  reviewedAt: string | null;
 };
 
 export type OrderDetail = {
@@ -75,6 +94,8 @@ export type OrderDetail = {
   items: OrderItemView[];
   payment: OrderPaymentView | null;
   activities: OrderActivityView[];
+  replaceRequests: OrderReplaceRequestView[];
+  replacePhotoRequired: boolean;
   customerEmail?: string | null;
   customerName?: string | null;
 };

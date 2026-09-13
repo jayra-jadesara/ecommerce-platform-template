@@ -102,6 +102,7 @@ describe("category and product validation", () => {
       usageInstructions: "",
       status: "draft",
       featured: false,
+      returnPolicy: "no_return_refund",
       seoTitle: "",
       seoDescription: "",
       variants: [],

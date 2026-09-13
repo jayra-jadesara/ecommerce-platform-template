@@ -17,6 +17,10 @@ import {
   type PaymentSettingsFormValues,
   type ShippingSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
+import {
+  isFulfillmentMode,
+  isReturnPolicy,
+} from "@/features/shipping/policies";
 import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
@@ -71,6 +75,19 @@ export async function loadShippingSettingsForm(): Promise<{
           estimatedDeliveryMinDays: shipping.estimated_delivery_min_days,
           estimatedDeliveryMaxDays: shipping.estimated_delivery_max_days,
           estimatedDeliveryLabel: shipping.estimated_delivery_label,
+          fulfillmentMode: isFulfillmentMode(shipping.fulfillment_mode)
+            ? shipping.fulfillment_mode
+            : DEFAULT_SHIPPING_SETTINGS.fulfillmentMode,
+          autoDeliverAfterDays:
+            shipping.auto_deliver_after_days ??
+            (isFulfillmentMode(shipping.fulfillment_mode) &&
+            shipping.fulfillment_mode === "auto_days"
+              ? 7
+              : null),
+          returnPolicy: isReturnPolicy(shipping.return_policy)
+            ? shipping.return_policy
+            : DEFAULT_SHIPPING_SETTINGS.returnPolicy,
+          replacePhotoRequired: Boolean(shipping.replace_photo_required),
         }
       : DEFAULT_SHIPPING_SETTINGS,
   };
@@ -175,6 +192,10 @@ export async function updateShippingSettings(
     estimated_delivery_min_days: values.estimatedDeliveryMinDays,
     estimated_delivery_max_days: values.estimatedDeliveryMaxDays,
     estimated_delivery_label: values.estimatedDeliveryLabel,
+    fulfillment_mode: values.fulfillmentMode,
+    auto_deliver_after_days: values.autoDeliverAfterDays,
+    return_policy: values.returnPolicy,
+    replace_photo_required: values.replacePhotoRequired,
   };
 
   const { error } = await supabase

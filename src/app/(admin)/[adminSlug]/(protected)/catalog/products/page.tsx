@@ -15,6 +15,8 @@ import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { loadShippingSettingsForm } from "@/features/admin/settings/update-shipping-payment";
+import { isReturnPolicy } from "@/features/shipping/policies";
 
 export const dynamic = "force-dynamic";
 
@@ -68,9 +70,10 @@ export default async function AdminCatalogProductsPage({
       );
     }
 
-    const [categories, storeId] = await Promise.all([
+    const [categories, storeId, shipping] = await Promise.all([
       listAdminCategories(),
       resolveActiveStoreId(),
+      loadShippingSettingsForm(),
     ]);
 
     return (
@@ -99,6 +102,11 @@ export default async function AdminCatalogProductsPage({
           categories={categories}
           canUpdate={canCreate}
           canDelete={false}
+          storeReturnPolicy={
+            isReturnPolicy(shipping.values.returnPolicy)
+              ? shipping.values.returnPolicy
+              : "no_return_refund"
+          }
         />
       </div>
     );
@@ -106,14 +114,18 @@ export default async function AdminCatalogProductsPage({
 
   if (panel === "edit" || panel === "view") {
     if (!productId) notFound();
-    const [detail, categories, images] = await Promise.all([
+    const [detail, categories, images, shipping] = await Promise.all([
       getAdminProduct(productId),
       listAdminCategories(),
       listProductImages(productId),
+      loadShippingSettingsForm(),
     ]);
     if (!detail) notFound();
 
     const isView = panel === "view";
+    const storeReturnPolicy = isReturnPolicy(shipping.values.returnPolicy)
+      ? shipping.values.returnPolicy
+      : "no_return_refund";
 
     return (
       <div className="space-y-8 pb-24">
@@ -132,10 +144,11 @@ export default async function AdminCatalogProductsPage({
         <ProductForm
           mode={isView ? "view" : "edit"}
           productId={detail.product.id}
-          initialValues={toProductFormValues(detail)}
+          initialValues={toProductFormValues(detail, storeReturnPolicy)}
           categories={categories}
           canUpdate={canUpdate}
           canDelete={canDelete}
+          storeReturnPolicy={storeReturnPolicy}
         />
         {!isView ? (
           <section className="space-y-3">

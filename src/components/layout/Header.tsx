@@ -7,14 +7,14 @@ import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
 import IconButton from "@mui/material/IconButton";
 import { Container } from "@/components/layout/Container";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { HeaderAuthLinks } from "@/components/common/HeaderAuthLinks";
+import { HeaderAccountMenu } from "@/components/common/HeaderAccountMenu";
 import { HeaderCartControl } from "@/features/cart/components/HeaderCartControl";
 import { useThemeMode } from "@/features/theme";
 import { cn } from "@/lib/cn";
+import { isActivePath } from "@/lib/is-active-path";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import type {
   BrandConfig,
@@ -34,11 +34,6 @@ interface HeaderProps {
   navigation: NavigationConfig;
   layout: LayoutConfig;
   header: HeaderChromeConfig;
-}
-
-function isActivePath(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function isMeaningfulTagline(tagline: string | undefined | null) {
@@ -73,18 +68,18 @@ function NavLinks({
             aria-current={active ? "page" : undefined}
             className={cn(
               variant === "desktop"
-                ? "relative px-1 py-1 text-[0.9375rem] font-medium tracking-wide transition-colors"
-                : "rounded-lg px-3 py-3 text-base font-medium transition-colors",
+                ? "relative px-1 py-1 text-[0.9375rem] tracking-wide transition-colors"
+                : "rounded-lg px-3 py-3 text-base transition-colors",
               active
-                ? "text-[var(--color-primary)]"
-                : "text-[var(--color-header-foreground)] hover:text-[var(--color-primary)]",
+                ? "font-semibold text-[var(--color-primary)]"
+                : "font-medium text-[var(--color-header-foreground)] hover:text-[var(--color-primary)]",
               variant === "mobile" &&
                 (active
-                  ? "bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
+                  ? "bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)]"
                   : "hover:bg-[var(--color-surface)]"),
               variant === "desktop" &&
                 active &&
-                "after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:rounded-full after:bg-[var(--color-primary)]",
+                "after:absolute after:inset-x-0 after:-bottom-1.5 after:h-[3px] after:rounded-full after:bg-[var(--color-primary)]",
             )}
           >
             {item.label}
@@ -228,15 +223,9 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
           ) : null}
 
           {showAccount ? (
-            <IconButton
-              component={Link}
-              href="/account"
-              aria-label="Account"
-              size="medium"
-              className="!hidden !text-[var(--color-header-foreground)] sm:!inline-flex"
-            >
-              <PersonOutlinedIcon fontSize="small" />
-            </IconButton>
+            <div className="hidden sm:block">
+              <HeaderAccountMenu />
+            </div>
           ) : null}
 
           {showAccount ? (
@@ -244,20 +233,22 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
               component={Link}
               href="/account/wishlist"
               aria-label="Wishlist"
+              aria-current={
+                isActivePath(pathname, "/account/wishlist") ? "page" : undefined
+              }
               size="medium"
-              className="!hidden !text-[var(--color-header-foreground)] sm:!inline-flex"
+              className={cn(
+                "!hidden sm:!inline-flex",
+                isActivePath(pathname, "/account/wishlist")
+                  ? "!text-[var(--color-primary)] !bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)]"
+                  : "!text-[var(--color-header-foreground)]",
+              )}
             >
               <FavoriteBorderIcon fontSize="small" />
             </IconButton>
           ) : null}
 
           {showCart ? <HeaderCartControl /> : null}
-
-          {showAccount ? (
-            <div className="hidden lg:block">
-              <HeaderAuthLinks compact />
-            </div>
-          ) : null}
 
           <ThemeToggle />
 
@@ -293,7 +284,7 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
             />
             {showAccount ? (
               <div className="border-t border-[var(--color-border)] px-1 pt-2">
-                <HeaderAuthLinks />
+                <HeaderAccountMenu />
               </div>
             ) : null}
           </Container>

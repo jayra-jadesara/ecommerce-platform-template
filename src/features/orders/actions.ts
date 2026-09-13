@@ -161,3 +161,126 @@ export async function adminMarkOrderRefundedAction(
   if (result.ok) revalidateOrderPaths(parsed.data.orderId);
   return result;
 }
+
+export async function requestOrderReplaceAction(
+  formData: FormData,
+): Promise<{ ok: true; message: string } | { ok: false; error: string }> {
+  const { getCurrentUser } = await import("@/features/auth/session");
+  const { createReplaceRequest } = await import(
+    "@/features/orders/replace-service"
+  );
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Please sign in to continue." };
+
+  const orderId = String(formData.get("orderId") ?? "");
+  const orderItemId = String(formData.get("orderItemId") ?? "");
+  const reason = String(formData.get("reason") ?? "");
+  const customerNote = String(formData.get("customerNote") ?? "");
+  const quantityRaw = Number(formData.get("quantity") ?? 1);
+  const photoEntry = formData.get("photo");
+  const photo =
+    photoEntry instanceof File && photoEntry.size > 0 ? photoEntry : null;
+
+  const parsed = z
+    .object({
+      orderId: z.string().uuid(),
+      orderItemId: z.string().uuid(),
+      reason: z.string().trim().min(3).max(500),
+      customerNote: z.string().trim().max(500).optional(),
+      quantity: z.number().int().min(1).max(99),
+    })
+    .safeParse({
+      orderId,
+      orderItemId,
+      reason,
+      customerNote: customerNote || undefined,
+      quantity: Number.isFinite(quantityRaw) ? quantityRaw : 1,
+    });
+
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid replacement request.",
+    };
+  }
+
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "CREATE_REPLACE_REQUEST",
+      feature: "ORDERS",
+      entityType: "order_replace_requests",
+      entityId: parsed.data.orderId,
+      route: `/account/orders/${parsed.data.orderId}`,
+    },
+    () =>
+      createReplaceRequest({
+        userId: user.id,
+        orderId: parsed.data.orderId,
+        orderItemId: parsed.data.orderItemId,
+        reason: parsed.data.reason,
+        customerNote: parsed.data.customerNote ?? null,
+        quantity: parsed.data.quantity,
+        photo,
+      }),
+  );
+
+  if (result.ok) revalidateOrderPaths(parsed.data.orderId);
+  return result.ok
+    ? { ok: true, message: result.message }
+    : { ok: false, error: result.error };
+}
+
+export async function adminReviewReplaceRequestAction(raw: unknown): Promise<{
+  ok: true;
+  message: string;
+} | { ok: false; error: string }> {
+  const admin = await requirePermission("orders.update");
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return { ok: false, error: "No active store." };
+
+  const parsed = z
+    .object({
+      requestId: z.string().uuid(),
+      orderId: z.string().uuid(),
+      nextStatus: z.enum(["APPROVED", "REJECTED", "FULFILLED"]),
+      adminNote: z.string().max(500).optional().nullable(),
+    })
+    .safeParse(raw);
+
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid." };
+  }
+
+  const { reviewReplaceRequest } = await import(
+    "@/features/orders/replace-service"
+  );
+
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "REVIEW_REPLACE_REQUEST",
+      feature: "ORDERS",
+      entityType: "order_replace_requests",
+      entityId: parsed.data.requestId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      reviewReplaceRequest({
+        storeId,
+        actorUserId: admin.user.id,
+        requestId: parsed.data.requestId,
+        nextStatus: parsed.data.nextStatus,
+        adminNote: parsed.data.adminNote,
+      }),
+  );
+
+  if (result.ok) revalidateOrderPaths(parsed.data.orderId);
+  return result.ok
+    ? { ok: true, message: result.message }
+    : { ok: false, error: result.error };
+}

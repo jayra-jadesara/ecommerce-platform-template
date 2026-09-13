@@ -1,0 +1,169 @@
+"use client";
+
+import Dialog from "@mui/material/Dialog";
+import DialogContent from "@mui/material/DialogContent";
+import DialogTitle from "@mui/material/DialogTitle";
+import TextField from "@mui/material/TextField";
+import { useRouter } from "next/navigation";
+import { useId, useState, useTransition } from "react";
+import { requestOrderReplaceAction } from "@/features/orders/actions";
+import type { OrderItemView } from "@/features/orders/types";
+import { sfBtn } from "@/components/ui/storefront-classes";
+import { cn } from "@/lib/cn";
+
+export function RequestReplaceDialog({
+  orderId,
+  item,
+  photoRequired,
+  open,
+  onClose,
+}: {
+  orderId: string;
+  item: OrderItemView;
+  photoRequired: boolean;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const router = useRouter();
+  const titleId = useId();
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function resetAndClose() {
+    setReason("");
+    setNote("");
+    setQuantity(1);
+    setPhoto(null);
+    setError(null);
+    setSuccess(null);
+    onClose();
+  }
+
+  function onSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (photoRequired && !photo) {
+      setError("A photo is required for replacement requests.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.set("orderId", orderId);
+    formData.set("orderItemId", item.id);
+    formData.set("reason", reason);
+    formData.set("customerNote", note);
+    formData.set("quantity", String(quantity));
+    if (photo) formData.set("photo", photo);
+
+    startTransition(async () => {
+      const result = await requestOrderReplaceAction(formData);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setSuccess(result.message);
+      router.refresh();
+      window.setTimeout(() => resetAndClose(), 700);
+    });
+  }
+
+  return (
+    <Dialog open={open} onClose={pending ? undefined : resetAndClose} fullWidth maxWidth="sm">
+      <DialogTitle id={titleId}>Request replacement</DialogTitle>
+      <DialogContent>
+        <p className="mb-4 text-sm text-[var(--color-muted)]">
+          {item.productName}
+          {item.variantName ? ` · ${item.variantName}` : ""}
+        </p>
+        <form className="space-y-3" onSubmit={onSubmit}>
+          <TextField
+            label="Why do you need a replacement?"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            required
+            fullWidth
+            multiline
+            minRows={3}
+            disabled={pending}
+            helperText="Example: packet arrived damaged / wrong item"
+          />
+          <TextField
+            label="Quantity to replace"
+            type="number"
+            value={quantity}
+            onChange={(event) =>
+              setQuantity(
+                Math.min(
+                  item.quantity,
+                  Math.max(1, Number(event.target.value) || 1),
+                ),
+              )
+            }
+            fullWidth
+            disabled={pending}
+            slotProps={{ htmlInput: { min: 1, max: item.quantity } }}
+          />
+          <TextField
+            label="Extra note (optional)"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            fullWidth
+            disabled={pending}
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Photo {photoRequired ? "(required)" : "(optional)"}
+            </label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={pending}
+              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+              className="block w-full text-sm text-[var(--color-muted)]"
+            />
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              JPEG/PNG/WEBP, max 1 MB
+              {photoRequired
+                ? ". Required by the store."
+                : ". Optional — helps review faster."}
+            </p>
+          </div>
+
+          {error ? (
+            <p className="text-sm text-red-700" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p className="text-sm text-green-800">{success}</p>
+          ) : null}
+
+          <div className="flex flex-wrap justify-end gap-2 pt-2">
+            <button
+              type="button"
+              disabled={pending}
+              onClick={resetAndClose}
+              className={cn(sfBtn("ghost"), "text-sm")}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={pending}
+              className={cn(sfBtn("primary"), "text-sm")}
+            >
+              {pending ? "Sending…" : "Submit request"}
+            </button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

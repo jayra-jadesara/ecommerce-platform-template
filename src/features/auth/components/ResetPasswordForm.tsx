@@ -3,19 +3,19 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import TextField from "@mui/material/TextField";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { resetPasswordAction } from "@/features/auth/actions";
+import { PasswordField } from "@/features/auth/components/PasswordField";
 import {
   resetPasswordSchema,
   type ResetPasswordInput,
 } from "@/features/auth/validations";
 
 export function ResetPasswordForm() {
+  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const {
@@ -29,25 +29,23 @@ export function ResetPasswordForm() {
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
-    setSuccess(null);
     startTransition(async () => {
       const result = await resetPasswordAction(values);
       if (!result.ok) {
         setError(result.error);
         return;
       }
-      setSuccess(result.message ?? "Password updated.");
+      router.refresh();
+      router.push("/login");
     });
   });
 
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
       {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
 
-      <TextField
+      <PasswordField
         label="New password"
-        type="password"
         autoComplete="new-password"
         fullWidth
         disabled={pending}
@@ -55,9 +53,8 @@ export function ResetPasswordForm() {
         helperText={errors.password?.message}
         {...register("password")}
       />
-      <TextField
+      <PasswordField
         label="Confirm new password"
-        type="password"
         autoComplete="new-password"
         fullWidth
         disabled={pending}
@@ -69,17 +66,6 @@ export function ResetPasswordForm() {
       <Button type="submit" variant="contained" disabled={pending} fullWidth>
         {pending ? "Updating…" : "Update password"}
       </Button>
-
-      {success ? (
-        <p className="text-center text-sm">
-          <Link
-            href="/account"
-            className="text-[var(--color-primary)] underline-offset-2 hover:underline"
-          >
-            Go to account
-          </Link>
-        </p>
-      ) : null}
     </form>
   );
 }

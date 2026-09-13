@@ -6,7 +6,7 @@ import { safeInternalPath } from "@/features/auth/redirect";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = safeInternalPath(searchParams.get("next"), "/account");
+  const next = safeInternalPath(searchParams.get("next"), "/");
 
   if (code) {
     const supabase = await createSupabaseServerClient();

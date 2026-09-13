@@ -7,6 +7,8 @@ import { adminBtn, adminPageStack } from "@/features/admin/ui/admin-classes";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
 import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { countStoreCustomers } from "@/features/customers/service";
 import { APP_VERSION } from "@/config/version";
 import { cn } from "@/lib/cn";
 
@@ -33,6 +35,10 @@ export default async function AdminDashboardPage() {
   const canOrders = hasPermission(admin, "orders.view");
   const canCms = hasPermission(admin, "cms.view");
   const canTheme = hasPermission(admin, "theme.view");
+  const storeId = await resolveActiveStoreId();
+  const customerCount = hasPermission(admin, "customers.view")
+    ? await countStoreCustomers(storeId)
+    : 0;
 
   const stats = [
     {
@@ -56,8 +62,10 @@ export default async function AdminDashboardPage() {
     },
     {
       label: "Customers",
-      value: "—",
-      hint: "People who shop your store",
+      value: hasPermission(admin, "customers.view")
+        ? String(customerCount)
+        : "—",
+      hint: "People who placed an order",
       href: hasPermission(admin, "customers.view")
         ? getAdminPath("/customers")
         : null,

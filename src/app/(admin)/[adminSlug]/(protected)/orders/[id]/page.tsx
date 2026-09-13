@@ -4,6 +4,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { hasPermission, requirePermission } from "@/features/auth/session";
 import { AdminOrderDetailClient } from "@/features/orders/components/AdminOrderDetailClient";
+import { autoDeliverShippedOrders } from "@/features/orders/auto-deliver";
 import { getOrderDetail } from "@/features/orders/queries";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export default async function AdminOrderDetailPage({
   const storeId = await resolveActiveStoreId();
   if (!storeId) notFound();
 
+  await autoDeliverShippedOrders({ storeId, limit: 50 }).catch(() => null);
+
   const { id } = await params;
   const order = await getOrderDetail({
     orderId: id,
@@ -29,7 +32,7 @@ export default async function AdminOrderDetailPage({
     <div>
       <AdminPageHeader
         title={order.orderNumber}
-        description="Order details, payment, and fulfillment."
+        description="See progress at a glance, then move the order to the next step."
         breadcrumbs={[
           { label: "Orders", href: getAdminPath("/orders") },
           { label: order.orderNumber },

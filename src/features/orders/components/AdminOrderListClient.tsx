@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { getAdminPath } from "@/config/admin-route";
 import { formatMoney } from "@/features/catalog/money";
+import { OrderProgressDots } from "@/features/orders/components/OrderProgressDots";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import type { OrderListItem } from "@/features/orders/types";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
@@ -12,26 +13,6 @@ import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/format-date";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
-
-function statusTone(
-  status: OrderStatus,
-): "success" | "warning" | "error" | "info" | "neutral" {
-  switch (status) {
-    case "DELIVERED":
-      return "success";
-    case "CANCELLED":
-    case "REFUNDED":
-      return "error";
-    case "PENDING":
-      return "warning";
-    case "PROCESSING":
-    case "SHIPPED":
-    case "CONFIRMED":
-      return "info";
-    default:
-      return "neutral";
-  }
-}
 
 function paymentTone(
   status: PaymentStatus | null | undefined,
@@ -217,7 +198,7 @@ export function AdminOrderListClient({
                 <th className="px-4 py-3 font-medium">Date</th>
                 <th className="px-4 py-3 font-medium">Total</th>
                 <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Progress</th>
                 <th className="px-4 py-3 font-medium">Action</th>
               </tr>
             </thead>
@@ -245,9 +226,7 @@ export function AdminOrderListClient({
                     </AdminStatusBadge>
                   </td>
                   <td className="px-4 py-3.5">
-                    <AdminStatusBadge tone={statusTone(order.status)}>
-                      {orderStatusLabel(order.status)}
-                    </AdminStatusBadge>
+                    <OrderProgressDots status={order.status} />
                   </td>
                   <td className="px-4 py-3.5">
                     <Link

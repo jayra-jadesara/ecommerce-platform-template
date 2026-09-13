@@ -8,14 +8,17 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { applyHeaderAuthUser } from "@/components/common/header-auth-store";
+import { refreshHeaderAuthFromBrowser } from "@/components/common/refresh-header-auth";
 import { loginAction } from "@/features/auth/actions";
+import { PasswordField } from "@/features/auth/components/PasswordField";
 import { loginSchema, type LoginInput } from "@/features/auth/validations";
 import { safeInternalPath } from "@/features/auth/redirect";
 
 export function LoginForm({
   registerHref = "/register",
   forgotHref = "/forgot-password",
-  defaultNext = "/account",
+  defaultNext = "/",
 }: {
   registerHref?: string;
   forgotHref?: string;
@@ -42,11 +45,21 @@ export function LoginForm({
     const next = safeInternalPath(searchParams.get("next"), defaultNext);
     startTransition(async () => {
       const result = await loginAction(values, next);
-      if (result && !result.ok) {
+      if (!result.ok) {
         setError(result.error);
         return;
       }
+
+      // Update navbar immediately so home already shows the signed-in user.
+      applyHeaderAuthUser({
+        email: result.email ?? values.email,
+        displayName: result.displayName ?? values.email.split("@")[0] ?? values.email,
+      });
+      void refreshHeaderAuthFromBrowser();
+
+      const destination = result.next ?? next;
       router.refresh();
+      router.push(destination);
     });
   });
 
@@ -66,9 +79,8 @@ export function LoginForm({
         helperText={errors.email?.message}
         {...register("email")}
       />
-      <TextField
+      <PasswordField
         label="Password"
-        type="password"
         autoComplete="current-password"
         fullWidth
         disabled={pending}

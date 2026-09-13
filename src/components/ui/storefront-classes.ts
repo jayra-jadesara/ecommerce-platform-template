@@ -6,18 +6,18 @@ export function sfBtn(
   variant: "primary" | "secondary" | "ghost" | "outline" | "danger" = "primary",
 ): string {
   const base =
-    "sf-motion-btn inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-default,0.5rem)] px-5 py-2.5 text-sm font-semibold tracking-wide transition-[transform,box-shadow,background-color,border-color,filter,opacity] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]";
+    "sf-motion-btn inline-flex min-h-11 items-center justify-center gap-2 rounded-[var(--radius-default,0.5rem)] px-5 py-2.5 text-sm font-semibold tracking-wide transition-[transform,box-shadow,background-color,border-color,filter,opacity] duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:pointer-events-none motion-safe:active:scale-[0.98]";
 
   switch (variant) {
     case "secondary":
     case "outline":
-      return `${base} border border-[var(--color-border)] bg-transparent text-[var(--color-foreground)] hover:border-[color-mix(in_srgb,var(--color-primary)_50%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)]`;
+      return `${base} border border-[var(--color-border)] bg-transparent text-[var(--color-foreground)] hover:border-[color-mix(in_srgb,var(--color-primary)_50%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,transparent)] disabled:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-primary)_50%,var(--color-muted))]`;
     case "ghost":
-      return `${base} bg-transparent text-[var(--color-foreground)] hover:bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]`;
+      return `${base} bg-transparent text-[var(--color-foreground)] hover:bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]`;
     case "danger":
-      return `${base} bg-[var(--color-error)] text-white hover:opacity-90`;
+      return `${base} bg-[var(--color-error)] text-white hover:opacity-90 disabled:bg-[color-mix(in_srgb,var(--color-error)_55%,var(--color-border))] disabled:text-white/90`;
     default:
-      return `${base} bg-[var(--color-primary)] text-[var(--color-button-foreground)] shadow-[0_8px_20px_color-mix(in_srgb,var(--color-primary)_28%,transparent)] hover:brightness-[1.05]`;
+      return `${base} bg-[var(--color-primary)] text-[var(--color-button-foreground)] shadow-[0_8px_20px_color-mix(in_srgb,var(--color-primary)_28%,transparent)] hover:brightness-[1.05] disabled:bg-[color-mix(in_srgb,var(--color-button-background)_55%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-button-foreground)_88%,transparent)] disabled:shadow-none`;
   }
 }
 

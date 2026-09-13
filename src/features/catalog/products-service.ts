@@ -27,6 +27,10 @@ import type { CatalogResult } from "@/features/catalog/categories-service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import type { ProductStatus } from "@/types/database";
 import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
+import {
+  isReturnPolicy,
+  type ReturnPolicy,
+} from "@/features/shipping/policies";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { checkProductDependencies } from "@/features/admin/validation/dependencies";
 import { zodValidationFailure } from "@/lib/validation";
@@ -64,6 +68,8 @@ export type AdminProductDetail = {
     usage_instructions: string | null;
     status: ProductStatus;
     featured: boolean;
+    returns_allowed: boolean;
+    return_policy: "no_return_refund" | "no_replace" | "replace_only" | null;
     seo_title: string | null;
     seo_description: string | null;
     model_path: string | null;
@@ -380,8 +386,8 @@ export async function getAdminProduct(
     .select(
       `
       id, name, slug, category_id, brand, short_description, description,
-      ingredients, usage_instructions, status, featured, seo_title, seo_description,
-      model_path,
+      ingredients, usage_instructions, status, featured, returns_allowed,
+      return_policy, seo_title, seo_description, model_path,
       product_variants (
         id, name, sku, price, compare_at_price, cost_price, weight, unit,
         track_inventory, is_active,
@@ -428,6 +434,8 @@ export async function getAdminProduct(
       usage_instructions: data.usage_instructions,
       status: data.status as ProductStatus,
       featured: data.featured,
+      returns_allowed: data.returns_allowed !== false,
+      return_policy: data.return_policy ?? null,
       seo_title: data.seo_title,
       seo_description: data.seo_description,
       model_path: (data as { model_path?: string | null }).model_path ?? null,
@@ -626,6 +634,8 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
       usage_instructions: emptyToNull(values.usageInstructions),
       status: values.status,
       featured: values.featured,
+      return_policy: values.returnPolicy,
+      returns_allowed: values.returnPolicy === "no_replace",
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
       model_path: modelPath,
@@ -748,6 +758,8 @@ export async function updateProduct(
       usage_instructions: emptyToNull(values.usageInstructions),
       status: values.status,
       featured: values.featured,
+      return_policy: values.returnPolicy,
+      returns_allowed: values.returnPolicy === "no_replace",
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
       model_path: modelPath,
@@ -1024,7 +1036,21 @@ export async function updateInventory(
 
 export function toProductFormValues(
   detail: AdminProductDetail,
+  storeReturnPolicy?: ReturnPolicy | null,
 ): ProductFormValues {
+  const productPolicy = isReturnPolicy(detail.product.return_policy)
+    ? detail.product.return_policy
+    : null;
+  const storePolicy = isReturnPolicy(storeReturnPolicy)
+    ? storeReturnPolicy
+    : null;
+  // Match shipping default → use store default (null), not a duplicate override.
+  const returnPolicy =
+    productPolicy == null ||
+    (storePolicy != null && productPolicy === storePolicy)
+      ? null
+      : productPolicy;
+
   return {
     name: detail.product.name,
     slug: detail.product.slug,
@@ -1036,6 +1062,7 @@ export function toProductFormValues(
     usageInstructions: detail.product.usage_instructions ?? "",
     status: detail.product.status,
     featured: detail.product.featured,
+    returnPolicy,
     seoTitle: detail.product.seo_title ?? "",
     seoDescription: detail.product.seo_description ?? "",
     modelPath: detail.product.model_path,

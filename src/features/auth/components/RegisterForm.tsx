@@ -3,12 +3,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
+import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { registerAction } from "@/features/auth/actions";
+import { IndianMobileField } from "@/features/auth/components/IndianMobileField";
+import { PasswordField } from "@/features/auth/components/PasswordField";
+import { RECOVERY_QUESTIONS } from "@/features/auth/recovery-questions";
 import {
   registerSchema,
   type RegisterInput,
@@ -22,6 +26,7 @@ export function RegisterForm() {
 
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<RegisterInput>({
@@ -32,6 +37,9 @@ export function RegisterForm() {
       firstName: "",
       lastName: "",
       email: "",
+      phone: "",
+      recoveryQuestionId: RECOVERY_QUESTIONS[0].id,
+      recoveryAnswer: "",
       password: "",
       confirmPassword: "",
     },
@@ -43,16 +51,15 @@ export function RegisterForm() {
     startTransition(async () => {
       try {
         const result = await registerAction(values);
-        // redirect() from the server action never returns here.
         if (!result.ok) {
           setError(result.error);
           return;
         }
-        setSuccess(result.message ?? "Account created.");
-      } catch {
-        // NEXT_REDIRECT or unexpected client failure — refresh to pick up session.
         router.refresh();
-        router.push("/account");
+        router.push("/login");
+      } catch {
+        router.refresh();
+        router.push("/login");
       }
     });
   });
@@ -117,9 +124,52 @@ export function RegisterForm() {
         helperText={errors.email?.message}
         {...register("email")}
       />
+
+      <IndianMobileField
+        name="phone"
+        control={control}
+        disabled={pending}
+        error={Boolean(errors.phone)}
+        helperText={errors.phone?.message ?? "Enter your 10-digit account number"}
+      />
+
+      <Controller
+        name="recoveryQuestionId"
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            select
+            label="Security question"
+            fullWidth
+            disabled={pending}
+            error={Boolean(errors.recoveryQuestionId)}
+            helperText={
+              errors.recoveryQuestionId?.message ??
+              "Used if you forget your password"
+            }
+          >
+            {RECOVERY_QUESTIONS.map((q) => (
+              <MenuItem key={q.id} value={q.id}>
+                {q.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        )}
+      />
+
       <TextField
+        label="Security answer"
+        autoComplete="off"
+        fullWidth
+        disabled={pending}
+        error={Boolean(errors.recoveryAnswer)}
+        helperText={errors.recoveryAnswer?.message}
+        {...register("recoveryAnswer")}
+      />
+
+      <PasswordField
         label="Password"
-        type="password"
         autoComplete="new-password"
         fullWidth
         disabled={pending}
@@ -127,9 +177,8 @@ export function RegisterForm() {
         helperText={errors.password?.message}
         {...register("password")}
       />
-      <TextField
+      <PasswordField
         label="Confirm password"
-        type="password"
         autoComplete="new-password"
         fullWidth
         disabled={pending}

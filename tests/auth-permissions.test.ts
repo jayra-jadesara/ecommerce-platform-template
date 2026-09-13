@@ -7,7 +7,10 @@ import {
 } from "@/features/auth/permissions";
 import { safeAdminNextPath, safeInternalPath } from "@/features/auth/redirect";
 import { mapAuthError } from "@/features/auth/errors";
-import { authEmailSchema } from "@/features/auth/validations";
+import {
+  authEmailSchema,
+  registerPhoneSchema,
+} from "@/features/auth/validations";
 
 describe("permissionsForRoles", () => {
   it("grants SUPER_ADMIN every permission", () => {
@@ -108,6 +111,12 @@ describe("mapAuthError", () => {
     );
   });
 
+  it("maps email send rate limit", () => {
+    expect(mapAuthError({ message: "email rate limit exceeded" })).toMatch(
+      /verification emails/i,
+    );
+  });
+
   it("falls back to generic message", () => {
     expect(mapAuthError({ message: "weird failure" })).toBe(
       "Something went wrong. Please try again.",
@@ -131,5 +140,14 @@ describe("authEmailSchema", () => {
 
   it("accepts a normal email", () => {
     expect(authEmailSchema.safeParse("name@example.com").success).toBe(true);
+  });
+});
+
+describe("registerPhoneSchema", () => {
+  it("requires a 10-digit Indian mobile", () => {
+    expect(registerPhoneSchema.safeParse("").success).toBe(false);
+    expect(registerPhoneSchema.safeParse("12345").success).toBe(false);
+    expect(registerPhoneSchema.safeParse("5123456789").success).toBe(false);
+    expect(registerPhoneSchema.safeParse("9876543210").success).toBe(true);
   });
 });

@@ -54,7 +54,7 @@ describe("address validation", () => {
   it("accepts a valid address payload", () => {
     const parsed = addressFormSchema.safeParse({
       fullName: "Alex Customer",
-      phone: "+91 98765 43210",
+      phone: "9876543210",
       addressLine1: "12 Garden Road",
       addressLine2: "",
       city: "Pune",
@@ -70,7 +70,7 @@ describe("address validation", () => {
     expect(
       addressFormSchema.safeParse({
         fullName: "",
-        phone: null,
+        phone: "",
         addressLine1: "12 Garden Road",
         city: "Pune",
         postalCode: "411001",
@@ -80,7 +80,7 @@ describe("address validation", () => {
 
     const cleaned = addressFormSchema.safeParse({
       fullName: "<script>alert(1)</script>Alex",
-      phone: "5551234567",
+      phone: "9876543210",
       addressLine1: "12 Garden Road",
       city: "Pune",
       postalCode: "411001",
@@ -93,7 +93,7 @@ describe("address validation", () => {
     }
   });
 
-  it("validates phone and postal formats without over-restricting", () => {
+  it("requires a valid 10-digit Indian mobile (national digits)", () => {
     expect(
       addressFormSchema.safeParse({
         fullName: "Alex",
@@ -108,11 +108,22 @@ describe("address validation", () => {
     expect(
       addressFormSchema.safeParse({
         fullName: "Alex",
-        phone: null,
+        phone: "5551234567",
         addressLine1: "12 Garden Road",
         city: "Pune",
-        postalCode: "SW1A 1AA",
-        country: "United Kingdom",
+        postalCode: "411001",
+        country: "India",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      addressFormSchema.safeParse({
+        fullName: "Alex",
+        phone: "9876543210",
+        addressLine1: "12 Garden Road",
+        city: "Pune",
+        postalCode: "411001",
+        country: "India",
       }).success,
     ).toBe(true);
   });
