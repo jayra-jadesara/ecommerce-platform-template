@@ -52,12 +52,12 @@ export default async function AdminDashboardPage() {
     {
       label: "Revenue",
       value: formatMoney(overview.revenueMajor, overview.currency),
-      hint: "From paid orders",
+      hint: "Captured payments only",
     },
     {
       label: "Orders",
       value: String(overview.orderCount),
-      hint: "All store orders",
+      hint: "Captured payments only",
       href: canOrders ? getAdminPath("/orders") : null,
     },
     {

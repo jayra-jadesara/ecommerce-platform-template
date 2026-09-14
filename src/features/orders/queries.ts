@@ -310,6 +310,31 @@ export async function listAdminOrders(
   }
 
   const supabase = createSupabaseServiceClient();
+
+  // Resolve payment filter up front so pagination totals stay correct.
+  let paymentOrderIds: string[] | null = null;
+  if (query.paymentStatus && query.paymentStatus !== "ALL") {
+    const { data: storeOrderIds } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("store_id", query.storeId);
+    const ids = (storeOrderIds ?? []).map((r) => r.id);
+    if (!ids.length) {
+      return { items: [], total: 0, page, pageSize };
+    }
+    const { data: payments } = await supabase
+      .from("payments")
+      .select("order_id")
+      .in("order_id", ids)
+      .eq("status", query.paymentStatus);
+    paymentOrderIds = [
+      ...new Set((payments ?? []).map((p) => p.order_id).filter(Boolean)),
+    ];
+    if (!paymentOrderIds.length) {
+      return { items: [], total: 0, page, pageSize };
+    }
+  }
+
   let builder = supabase
     .from("orders")
     .select(
@@ -318,6 +343,10 @@ export async function listAdminOrders(
     )
     .eq("store_id", query.storeId)
     .order("created_at", { ascending: false });
+
+  if (paymentOrderIds) {
+    builder = builder.in("id", paymentOrderIds);
+  }
 
   if (query.status && query.status !== "ALL") {
     builder = builder.eq("status", query.status as OrderStatus);
@@ -367,14 +396,6 @@ export async function listAdminOrders(
         .select("id", { count: "exact", head: true })
         .eq("order_id", row.id),
     ]);
-
-    if (
-      query.paymentStatus &&
-      query.paymentStatus !== "ALL" &&
-      payment?.status !== query.paymentStatus
-    ) {
-      continue;
-    }
 
     const name = [
       profile.data?.first_name,

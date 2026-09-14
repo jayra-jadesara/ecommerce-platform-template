@@ -4,12 +4,13 @@ import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { listAdminOrders } from "@/features/orders/queries";
 import type { OrderListItem } from "@/features/orders/types";
 
-const PAID_PAYMENT_STATUSES = ["CAPTURED", "AUTHORIZED"] as const;
+/** Successful payments only — failed checkouts still create order rows. */
+const CAPTURED = "CAPTURED" as const;
 
 export type AdminDashboardStats = {
   orderCount: number;
   productCount: number;
-  /** Sum of grand_total for paid orders (CAPTURED / AUTHORIZED). */
+  /** Sum of grand_total for CAPTURED payments only. */
   revenueMajor: number;
   currency: string;
   recentOrders: OrderListItem[];
@@ -17,6 +18,7 @@ export type AdminDashboardStats = {
 
 /**
  * Overview metrics for the admin dashboard (store-scoped).
+ * Orders / revenue / recent list use CAPTURED payments only.
  */
 export async function getAdminDashboardStats(
   storeId: string | null,
@@ -39,6 +41,7 @@ export async function getAdminDashboardStats(
         page: 1,
         pageSize: 5,
         status: "ALL",
+        paymentStatus: CAPTURED,
       }),
       supabase
         .from("products")
@@ -55,7 +58,6 @@ export async function getAdminDashboardStats(
         .eq("store_id", storeId),
     ]);
 
-  const currency = settingsRes.data?.currency ?? "INR";
   const storeOrders = storeOrdersRes.data ?? [];
   let revenueMajor = 0;
 
@@ -63,9 +65,9 @@ export async function getAdminDashboardStats(
     const orderIds = storeOrders.map((o) => o.id);
     const { data: payments } = await supabase
       .from("payments")
-      .select("order_id, status")
+      .select("order_id")
       .in("order_id", orderIds)
-      .in("status", [...PAID_PAYMENT_STATUSES]);
+      .eq("status", CAPTURED);
 
     const paidIds = new Set((payments ?? []).map((p) => p.order_id));
     for (const order of storeOrders) {
@@ -80,7 +82,10 @@ export async function getAdminDashboardStats(
     productCount: productsCountRes.count ?? 0,
     revenueMajor,
     currency:
-      storeOrders.find((o) => o.currency)?.currency ?? currency,
+      ordersResult.items[0]?.currency ??
+      storeOrders.find((o) => o.currency)?.currency ??
+      settingsRes.data?.currency ??
+      "INR",
     recentOrders: ordersResult.items,
   };
 }
