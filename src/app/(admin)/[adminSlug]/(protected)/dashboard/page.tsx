@@ -7,9 +7,13 @@ import { adminBtn, adminPageStack } from "@/features/admin/ui/admin-classes";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
 import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
+import { getAdminDashboardStats } from "@/features/admin/dashboard-stats";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { countStoreCustomers } from "@/features/customers/service";
+import { formatMoney } from "@/features/catalog/money";
+import { orderStatusLabel } from "@/features/orders/state-machine";
 import { APP_VERSION } from "@/config/version";
+import { formatDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/cn";
 
 function greetingForHour(hour: number) {
@@ -36,26 +40,30 @@ export default async function AdminDashboardPage() {
   const canCms = hasPermission(admin, "cms.view");
   const canTheme = hasPermission(admin, "theme.view");
   const storeId = await resolveActiveStoreId();
-  const customerCount = hasPermission(admin, "customers.view")
-    ? await countStoreCustomers(storeId)
-    : 0;
+
+  const [customerCount, overview] = await Promise.all([
+    hasPermission(admin, "customers.view")
+      ? countStoreCustomers(storeId)
+      : Promise.resolve(0),
+    getAdminDashboardStats(storeId),
+  ]);
 
   const stats = [
     {
       label: "Revenue",
-      value: "—",
-      hint: "Available when sales reporting is enabled",
+      value: formatMoney(overview.revenueMajor, overview.currency),
+      hint: "From paid orders",
     },
     {
       label: "Orders",
-      value: "—",
-      hint: "Track purchases as they come in",
+      value: String(overview.orderCount),
+      hint: "All store orders",
       href: canOrders ? getAdminPath("/orders") : null,
     },
     {
       label: "Products",
-      value: "—",
-      hint: "Manage everything you sell",
+      value: String(overview.productCount),
+      hint: "In your catalog",
       href: hasPermission(admin, "products.view")
         ? getAdminPath("/catalog/products")
         : null,
@@ -65,7 +73,7 @@ export default async function AdminDashboardPage() {
       value: hasPermission(admin, "customers.view")
         ? String(customerCount)
         : "—",
-      hint: "People who placed an order",
+      hint: "People who placed a paid order",
       href: hasPermission(admin, "customers.view")
         ? getAdminPath("/customers")
         : null,
@@ -179,10 +187,37 @@ export default async function AdminDashboardPage() {
               </Link>
             ) : null}
           </div>
-          <EmptyState
-            title="No orders yet"
-            description="When customers place orders, they will show up here."
-          />
+          {overview.recentOrders.length === 0 ? (
+            <EmptyState
+              title="No orders yet"
+              description="When customers place orders, they will show up here."
+            />
+          ) : (
+            <ul className="divide-y divide-[var(--color-border)]">
+              {overview.recentOrders.map((order) => (
+                <li key={order.id}>
+                  <Link
+                    href={getAdminPath(`/orders/${order.id}`)}
+                    className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm transition-colors hover:text-[var(--color-primary)]"
+                  >
+                    <div className="min-w-0">
+                      <p className="font-semibold">{order.orderNumber}</p>
+                      <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                        {formatDateTime(order.createdAt)} ·{" "}
+                        {orderStatusLabel(order.status)}
+                        {order.customerName || order.customerEmail
+                          ? ` · ${order.customerName || order.customerEmail}`
+                          : ""}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-semibold tabular-nums">
+                      {formatMoney(order.grandTotal, order.currency)}
+                    </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </AdminCard>
 
         {hasPermission(admin, "settings.view") ? (
