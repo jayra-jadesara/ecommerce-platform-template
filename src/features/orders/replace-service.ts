@@ -4,8 +4,14 @@ import { randomUUID } from "node:crypto";
 import { writeOrderActivity, writeOrderAudit } from "@/features/orders/activity";
 import type { OrderReplaceRequestView } from "@/features/orders/types";
 import {
+  coerceReplaceMaxAttempts,
+  coerceReplaceReasonOptions,
+  coerceReplaceWindowHours,
+  evaluateReplaceEligibility,
+  isOtherReplaceReason,
   returnPolicyAllowsReplace,
   type ReplaceRequestStatus,
+  type ReplaceStoreRules,
 } from "@/features/shipping/policies";
 import {
   validateImageUpload,
@@ -37,6 +43,7 @@ function mapRequest(
     order_item_id: string;
     status: string;
     reason: string;
+    reason_code: string | null;
     customer_note: string | null;
     admin_note: string | null;
     photo_storage_path: string | null;
@@ -54,6 +61,7 @@ function mapRequest(
     productName,
     status: row.status as ReplaceRequestStatus,
     reason: row.reason,
+    reasonCode: row.reason_code,
     customerNote: row.customer_note,
     adminNote: row.admin_note,
     photoUrl,
@@ -70,7 +78,7 @@ export async function listReplaceRequestsForOrder(
   const { data: rows } = await supabase
     .from("order_replace_requests")
     .select(
-      "id, order_id, order_item_id, status, reason, customer_note, admin_note, photo_storage_path, quantity, created_at, reviewed_at",
+      "id, order_id, order_item_id, status, reason, reason_code, customer_note, admin_note, photo_storage_path, quantity, created_at, reviewed_at",
     )
     .eq("order_id", orderId)
     .order("created_at", { ascending: false });
@@ -99,16 +107,32 @@ export async function listReplaceRequestsForOrder(
   return views;
 }
 
-export async function getReplacePhotoRequired(
+export async function getReplaceStoreRules(
   storeId: string,
-): Promise<boolean> {
+): Promise<ReplaceStoreRules> {
   const supabase = createSupabaseServiceClient();
   const { data } = await supabase
     .from("shipping_settings")
-    .select("replace_photo_required")
+    .select(
+      "replace_photo_required, replace_window_hours, replace_max_attempts, replace_reason_options",
+    )
     .eq("store_id", storeId)
     .maybeSingle();
-  return Boolean(data?.replace_photo_required);
+
+  return {
+    photoRequired: Boolean(data?.replace_photo_required),
+    windowHours: coerceReplaceWindowHours(data?.replace_window_hours),
+    maxAttempts: coerceReplaceMaxAttempts(data?.replace_max_attempts),
+    reasonOptions: coerceReplaceReasonOptions(data?.replace_reason_options),
+  };
+}
+
+/** @deprecated Prefer getReplaceStoreRules */
+export async function getReplacePhotoRequired(
+  storeId: string,
+): Promise<boolean> {
+  const rules = await getReplaceStoreRules(storeId);
+  return rules.photoRequired;
 }
 
 export async function createReplaceRequest(input: {
@@ -116,12 +140,15 @@ export async function createReplaceRequest(input: {
   orderId: string;
   orderItemId: string;
   reason: string;
+  reasonCode?: string | null;
   customerNote?: string | null;
   quantity?: number;
   photo?: File | null;
 }): Promise<ReplaceMutationResult> {
   const supabase = createSupabaseServiceClient();
+  const reasonCodeRaw = (input.reasonCode ?? "").trim();
   const reason = input.reason.trim();
+
   if (reason.length < 3) {
     return { ok: false, error: "Please describe why you need a replacement." };
   }
@@ -131,18 +158,12 @@ export async function createReplaceRequest(input: {
 
   const { data: order } = await supabase
     .from("orders")
-    .select("id, store_id, user_id, status")
+    .select("id, store_id, user_id, status, delivered_at")
     .eq("id", input.orderId)
     .eq("user_id", input.userId)
     .maybeSingle();
 
   if (!order) return { ok: false, error: "Order not found." };
-  if (order.status !== "DELIVERED" && order.status !== "SHIPPED") {
-    return {
-      ok: false,
-      error: "Replacements can be requested after the order is shipped or delivered.",
-    };
-  }
 
   const { data: item } = await supabase
     .from("order_items")
@@ -165,8 +186,51 @@ export async function createReplaceRequest(input: {
   if (!returnPolicyAllowsReplace(policy)) {
     return {
       ok: false,
-      error: "This item is not eligible for replacement.",
+      error:
+        "This item is not eligible for replacement. Its policy must be Replace only (check the product or Delivery & returns settings, then save).",
     };
+  }
+
+  const rules = await getReplaceStoreRules(order.store_id);
+  const options = rules.reasonOptions;
+  const reasonCode =
+    reasonCodeRaw && options.includes(reasonCodeRaw)
+      ? reasonCodeRaw
+      : options.find((option) => option.toLowerCase() === reasonCodeRaw.toLowerCase()) ??
+        (options.includes(reason) ? reason : null);
+
+  if (!reasonCode) {
+    return { ok: false, error: "Please choose a valid reason." };
+  }
+  if (isOtherReplaceReason(reasonCode) && reason.length < 3) {
+    return {
+      ok: false,
+      error: "Please write a short reason when choosing Other.",
+    };
+  }
+
+  const { data: priorRows } = await supabase
+    .from("order_replace_requests")
+    .select("id, status")
+    .eq("order_item_id", item.id);
+
+  const priorAttemptCount = priorRows?.length ?? 0;
+  const hasOpenRequest = (priorRows ?? []).some((row) =>
+    OPEN_STATUSES.includes(row.status as ReplaceRequestStatus),
+  );
+
+  const eligibility = evaluateReplaceEligibility({
+    orderStatus: order.status,
+    itemPolicy: policy,
+    deliveredAt: order.delivered_at,
+    windowHours: rules.windowHours,
+    maxAttempts: rules.maxAttempts,
+    priorAttemptCount,
+    hasOpenRequest,
+  });
+
+  if (!eligibility.ok) {
+    return { ok: false, error: eligibility.reason };
   }
 
   const qty = Math.min(
@@ -174,24 +238,9 @@ export async function createReplaceRequest(input: {
     item.quantity,
   );
 
-  const { data: open } = await supabase
-    .from("order_replace_requests")
-    .select("id")
-    .eq("order_item_id", item.id)
-    .in("status", OPEN_STATUSES)
-    .maybeSingle();
-
-  if (open) {
-    return {
-      ok: false,
-      error: "A replacement request is already open for this item.",
-    };
-  }
-
-  const photoRequired = await getReplacePhotoRequired(order.store_id);
   let photoPath: string | null = null;
 
-  if (photoRequired && !input.photo) {
+  if (rules.photoRequired && !input.photo) {
     return {
       ok: false,
       error: "A photo is required for replacement requests.",
@@ -234,6 +283,8 @@ export async function createReplaceRequest(input: {
     }
   }
 
+  const storedReason = isOtherReplaceReason(reasonCode) ? reason : reasonCode;
+
   const { data: created, error } = await supabase
     .from("order_replace_requests")
     .insert({
@@ -242,7 +293,8 @@ export async function createReplaceRequest(input: {
       order_item_id: item.id,
       user_id: input.userId,
       status: "REQUESTED",
-      reason,
+      reason: storedReason,
+      reason_code: reasonCode,
       customer_note: input.customerNote?.trim() || null,
       photo_storage_path: photoPath,
       quantity: qty,
@@ -283,7 +335,8 @@ export async function createReplaceRequest(input: {
     metadata: {
       requestId: created.id,
       orderItemId: item.id,
-      reason,
+      reason: storedReason,
+      reasonCode,
       hasPhoto: Boolean(photoPath),
     },
   });
@@ -354,7 +407,12 @@ export async function reviewReplaceRequest(input: {
     storeId: input.storeId,
     actorUserId: input.actorUserId,
     eventType: `REPLACE_${input.nextStatus}`,
-    message: `Replacement request ${input.nextStatus.toLowerCase()}`,
+    message:
+      input.nextStatus === "APPROVED"
+        ? "Replacement request granted"
+        : input.nextStatus === "FULFILLED"
+          ? "Replacement sent"
+          : `Replacement request ${input.nextStatus.toLowerCase()}`,
     metadata: {
       requestId: row.id,
       from: row.status,
@@ -375,7 +433,7 @@ export async function reviewReplaceRequest(input: {
   });
 
   const labels = {
-    APPROVED: "Replacement approved. Prepare a replacement shipment.",
+    APPROVED: "Replacement request granted. Prepare a replacement shipment.",
     REJECTED: "Replacement request rejected.",
     FULFILLED: "Marked as replacement sent.",
   } as const;

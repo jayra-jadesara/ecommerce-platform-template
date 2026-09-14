@@ -48,6 +48,11 @@ export function AccountOrdersList({ orders }: { orders: OrderListItem[] }) {
                         status={orderStatusLabel(order.status)}
                         tone={tone}
                       />
+                      {order.hasOpenReplace ? (
+                        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-primary)]">
+                          Replace open
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   <p className="shrink-0 font-semibold tabular-nums">
@@ -94,10 +99,17 @@ export function AccountOrdersList({ orders }: { orders: OrderListItem[] }) {
                     {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
                   </td>
                   <td className="px-4 py-3">
-                    <StatusPill
-                      status={orderStatusLabel(order.status)}
-                      tone={tone}
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                      <StatusPill
+                        status={orderStatusLabel(order.status)}
+                        tone={tone}
+                      />
+                      {order.hasOpenReplace ? (
+                        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-2 py-0.5 text-[11px] font-semibold text-[var(--color-primary)]">
+                          Replace open
+                        </span>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-right font-semibold tabular-nums">
                     {formatMoney(order.grandTotal, order.currency)}

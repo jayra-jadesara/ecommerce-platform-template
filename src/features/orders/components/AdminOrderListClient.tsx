@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from "react";
 import { getAdminPath } from "@/config/admin-route";
 import { formatMoney } from "@/features/catalog/money";
 import { OrderProgressDots } from "@/features/orders/components/OrderProgressDots";
+import { ReplaceProgress } from "@/features/orders/components/ReplaceProgress";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import type { OrderListItem } from "@/features/orders/types";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
@@ -226,7 +227,20 @@ export function AdminOrderListClient({
                     </AdminStatusBadge>
                   </td>
                   <td className="px-4 py-3.5">
-                    <OrderProgressDots status={order.status} />
+                    <div className="flex flex-col gap-2">
+                      <OrderProgressDots status={order.status} />
+                      {order.openReplaceStatus ? (
+                        <div>
+                          <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                            Replace
+                          </p>
+                          <ReplaceProgress
+                            status={order.openReplaceStatus}
+                            size="compact"
+                          />
+                        </div>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-4 py-3.5">
                     <Link

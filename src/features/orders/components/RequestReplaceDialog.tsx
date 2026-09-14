@@ -3,39 +3,79 @@
 import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import FormLabel from "@mui/material/FormLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { requestOrderReplaceAction } from "@/features/orders/actions";
 import type { OrderItemView } from "@/features/orders/types";
+import {
+  coerceReplaceReasonOptions,
+  formatReplaceWindowRemaining,
+  isOtherReplaceReason,
+  type ReplaceStoreRules,
+} from "@/features/shipping/policies";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
 export function RequestReplaceDialog({
   orderId,
   item,
-  photoRequired,
+  rules,
+  deliveredAt,
+  attemptsUsed,
   open,
   onClose,
 }: {
   orderId: string;
   item: OrderItemView;
-  photoRequired: boolean;
+  rules: ReplaceStoreRules;
+  deliveredAt: string | null;
+  attemptsUsed: number;
   open: boolean;
   onClose: () => void;
 }) {
   const router = useRouter();
   const titleId = useId();
-  const [reason, setReason] = useState("");
+  const reasonOptions = useMemo(
+    () => coerceReplaceReasonOptions(rules.reasonOptions),
+    [rules.reasonOptions],
+  );
+  const defaultReason = reasonOptions[0] ?? "Other";
+  const [reasonCode, setReasonCode] = useState(defaultReason);
+  const [otherText, setOtherText] = useState("");
   const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [photo, setPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const photoRequired = rules.photoRequired;
+  const attemptsLeft = Math.max(0, rules.maxAttempts - attemptsUsed);
+  const windowCopy = formatReplaceWindowRemaining(
+    deliveredAt,
+    rules.windowHours,
+  );
+
+  useEffect(() => {
+    if (!photo) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
+
   function resetAndClose() {
-    setReason("");
+    setReasonCode(defaultReason);
+    setOtherText("");
     setNote("");
     setQuantity(1);
     setPhoto(null);
@@ -49,6 +89,11 @@ export function RequestReplaceDialog({
     setError(null);
     setSuccess(null);
 
+    const other = isOtherReplaceReason(reasonCode);
+    if (other && otherText.trim().length < 3) {
+      setError("Please write a short reason (at least 3 characters).");
+      return;
+    }
     if (photoRequired && !photo) {
       setError("A photo is required for replacement requests.");
       return;
@@ -57,7 +102,8 @@ export function RequestReplaceDialog({
     const formData = new FormData();
     formData.set("orderId", orderId);
     formData.set("orderItemId", item.id);
-    formData.set("reason", reason);
+    formData.set("reasonCode", reasonCode);
+    formData.set("reason", other ? otherText.trim() : reasonCode);
     formData.set("customerNote", note);
     formData.set("quantity", String(quantity));
     if (photo) formData.set("photo", photo);
@@ -78,38 +124,81 @@ export function RequestReplaceDialog({
     <Dialog open={open} onClose={pending ? undefined : resetAndClose} fullWidth maxWidth="sm">
       <DialogTitle id={titleId}>Request replacement</DialogTitle>
       <DialogContent>
-        <p className="mb-4 text-sm text-[var(--color-muted)]">
+        <p className="mb-2 text-sm text-[var(--color-muted)]">
           {item.productName}
           {item.variantName ? ` · ${item.variantName}` : ""}
         </p>
-        <form className="space-y-3" onSubmit={onSubmit}>
-          <TextField
-            label="Why do you need a replacement?"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            required
-            fullWidth
-            multiline
-            minRows={3}
-            disabled={pending}
-            helperText="Example: packet arrived damaged / wrong item"
-          />
-          <TextField
-            label="Quantity to replace"
-            type="number"
-            value={quantity}
-            onChange={(event) =>
-              setQuantity(
-                Math.min(
-                  item.quantity,
-                  Math.max(1, Number(event.target.value) || 1),
-                ),
-              )
-            }
-            fullWidth
-            disabled={pending}
-            slotProps={{ htmlInput: { min: 1, max: item.quantity } }}
-          />
+        <p className="mb-4 text-xs text-[var(--color-muted)]">
+          {[windowCopy, `${attemptsLeft} attempt${attemptsLeft === 1 ? "" : "s"} left`]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+        <form className="space-y-4" onSubmit={onSubmit}>
+          <FormControl disabled={pending}>
+            <FormLabel id={`${titleId}-reason`}>Why do you need a replacement?</FormLabel>
+            <RadioGroup
+              aria-labelledby={`${titleId}-reason`}
+              value={reasonCode}
+              onChange={(event) => setReasonCode(event.target.value)}
+            >
+              {reasonOptions.map((option) => (
+                <FormControlLabel
+                  key={option}
+                  value={option}
+                  control={<Radio size="small" />}
+                  label={
+                    isOtherReplaceReason(option)
+                      ? "Other (write yours)"
+                      : option
+                  }
+                />
+              ))}
+            </RadioGroup>
+          </FormControl>
+
+          {isOtherReplaceReason(reasonCode) ? (
+            <TextField
+              label="Describe the issue"
+              value={otherText}
+              onChange={(event) => setOtherText(event.target.value)}
+              required
+              fullWidth
+              multiline
+              minRows={2}
+              disabled={pending}
+              helperText="Required when you choose Other"
+            />
+          ) : null}
+
+          <div>
+            <label
+              htmlFor={`${titleId}-qty`}
+              className="mb-1 block text-sm font-medium text-[var(--color-foreground)]"
+            >
+              Quantity to replace
+            </label>
+            <TextField
+              id={`${titleId}-qty`}
+              type="number"
+              value={quantity}
+              onChange={(event) =>
+                setQuantity(
+                  Math.min(
+                    item.quantity,
+                    Math.max(1, Number(event.target.value) || 1),
+                  ),
+                )
+              }
+              fullWidth
+              disabled={pending}
+              slotProps={{
+                htmlInput: { min: 1, max: item.quantity },
+                inputLabel: { shrink: true },
+              }}
+              helperText={`Up to ${item.quantity}`}
+            />
+          </div>
+
           <TextField
             label="Extra note (optional)"
             value={note}
@@ -117,6 +206,7 @@ export function RequestReplaceDialog({
             fullWidth
             disabled={pending}
           />
+
           <div>
             <label className="mb-1 block text-sm font-medium">
               Photo {photoRequired ? "(required)" : "(optional)"}
@@ -134,6 +224,14 @@ export function RequestReplaceDialog({
                 ? ". Required by the store."
                 : ". Optional — helps review faster."}
             </p>
+            {previewUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- local blob preview
+              <img
+                src={previewUrl}
+                alt="Selected photo preview"
+                className="mt-3 h-28 w-28 rounded-xl border border-[var(--color-border)] object-cover"
+              />
+            ) : null}
           </div>
 
           {error ? (

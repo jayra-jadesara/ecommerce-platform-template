@@ -433,6 +433,9 @@ export type Database = {
           fulfillment_mode: "auto_days" | "courier_api";
           return_policy: "no_return_refund" | "no_replace" | "replace_only";
           replace_photo_required: boolean;
+          replace_window_hours: number;
+          replace_max_attempts: number;
+          replace_reason_options: Json;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -449,6 +452,9 @@ export type Database = {
           fulfillment_mode?: "auto_days" | "courier_api";
           return_policy?: "no_return_refund" | "no_replace" | "replace_only";
           replace_photo_required?: boolean;
+          replace_window_hours?: number;
+          replace_max_attempts?: number;
+          replace_reason_options?: Json;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -884,6 +890,7 @@ export type Database = {
             | "FULFILLED"
             | "CANCELLED";
           reason: string;
+          reason_code: string | null;
           customer_note: string | null;
           admin_note: string | null;
           photo_storage_path: string | null;
@@ -906,6 +913,7 @@ export type Database = {
             | "FULFILLED"
             | "CANCELLED";
           reason: string;
+          reason_code?: string | null;
           customer_note?: string | null;
           admin_note?: string | null;
           photo_storage_path?: string | null;

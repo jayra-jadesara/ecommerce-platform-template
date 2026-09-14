@@ -29,8 +29,13 @@ import type { ProductStatus } from "@/types/database";
 import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
 import {
   isReturnPolicy,
+  resolveReturnPolicy,
   type ReturnPolicy,
 } from "@/features/shipping/policies";
+import {
+  resolveStoreReturnPolicy,
+  syncOrderItemReturnPolicies,
+} from "@/features/shipping/sync-order-policies";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { checkProductDependencies } from "@/features/admin/validation/dependencies";
 import { zodValidationFailure } from "@/lib/validation";
@@ -786,13 +791,27 @@ export async function updateProduct(
   const variantError = await upsertVariantsForProduct(id, storeId, values.variants);
   if (variantError) return variantError;
 
+  const storePolicy = await resolveStoreReturnPolicy(storeId);
+  const resolvedPolicy = resolveReturnPolicy(values.returnPolicy, storePolicy);
+  await syncOrderItemReturnPolicies({
+    storeId,
+    productId: id,
+    policy: resolvedPolicy,
+  });
+
   await supabase.from("audit_logs").insert({
     store_id: storeId,
     user_id: admin.user.id,
     action: "PRODUCT_UPDATED",
     entity_type: "products",
     entity_id: id,
-    metadata: { slug: values.slug, status: values.status, featured: values.featured },
+    metadata: {
+      slug: values.slug,
+      status: values.status,
+      featured: values.featured,
+      return_policy: values.returnPolicy,
+      resolved_return_policy: resolvedPolicy,
+    },
   });
 
   const seoChanged =
@@ -1036,20 +1055,12 @@ export async function updateInventory(
 
 export function toProductFormValues(
   detail: AdminProductDetail,
-  storeReturnPolicy?: ReturnPolicy | null,
+  _storeReturnPolicy?: ReturnPolicy | null,
 ): ProductFormValues {
-  const productPolicy = isReturnPolicy(detail.product.return_policy)
+  // null on the product = inherit Delivery & returns. Keep explicit overrides as-is.
+  const returnPolicy = isReturnPolicy(detail.product.return_policy)
     ? detail.product.return_policy
     : null;
-  const storePolicy = isReturnPolicy(storeReturnPolicy)
-    ? storeReturnPolicy
-    : null;
-  // Match shipping default → use store default (null), not a duplicate override.
-  const returnPolicy =
-    productPolicy == null ||
-    (storePolicy != null && productPolicy === storePolicy)
-      ? null
-      : productPolicy;
 
   return {
     name: detail.product.name,

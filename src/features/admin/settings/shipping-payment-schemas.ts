@@ -1,7 +1,10 @@
 import { z } from "zod";
 import {
+  DEFAULT_REPLACE_REASON_OPTIONS,
   FULFILLMENT_MODES,
+  REPLACE_WINDOW_HOURS,
   RETURN_POLICIES,
+  coerceReplaceReasonOptions,
 } from "@/features/shipping/policies";
 
 const nonNeg = z.coerce
@@ -52,6 +55,17 @@ export const shippingSettingsSchema = z
     returnPolicy: z.enum(RETURN_POLICIES),
     /** When true, replace requests require a photo (uses storage). Default false. */
     replacePhotoRequired: z.coerce.boolean(),
+    replaceWindowHours: z.coerce
+      .number()
+      .refine(
+        (value) => (REPLACE_WINDOW_HOURS as readonly number[]).includes(value),
+        "Choose 24, 48, 72, or 168 hours.",
+      ),
+    replaceMaxAttempts: z.coerce.number().int().min(1).max(5),
+    replaceReasonOptions: z
+      .array(z.string().trim().min(1).max(80))
+      .min(1)
+      .max(12),
   })
   .superRefine((value, ctx) => {
     const min = value.estimatedDeliveryMinDays;
@@ -84,6 +98,17 @@ export const shippingSettingsSchema = z
         });
       }
     }
+
+    if (value.returnPolicy === "replace_only") {
+      const options = coerceReplaceReasonOptions(value.replaceReasonOptions);
+      if (options.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Add at least one reason plus Other.",
+          path: ["replaceReasonOptions"],
+        });
+      }
+    }
   })
   .transform((value) => {
     const autoDays =
@@ -92,6 +117,8 @@ export const shippingSettingsSchema = z
       Number.isNaN(value.autoDeliverAfterDays as number)
         ? null
         : Number(value.autoDeliverAfterDays);
+
+    const replaceOnly = value.returnPolicy === "replace_only";
 
     return {
       ...value,
@@ -117,10 +144,14 @@ export const shippingSettingsSchema = z
       estimatedDeliveryLabel: value.estimatedDeliveryLabel?.trim() || null,
       autoDeliverAfterDays:
         value.fulfillmentMode === "auto_days" ? autoDays : null,
-      replacePhotoRequired:
-        value.returnPolicy === "replace_only"
-          ? Boolean(value.replacePhotoRequired)
-          : false,
+      replacePhotoRequired: replaceOnly
+        ? Boolean(value.replacePhotoRequired)
+        : false,
+      replaceWindowHours: replaceOnly ? value.replaceWindowHours : 72,
+      replaceMaxAttempts: replaceOnly ? value.replaceMaxAttempts : 1,
+      replaceReasonOptions: replaceOnly
+        ? coerceReplaceReasonOptions(value.replaceReasonOptions)
+        : [...DEFAULT_REPLACE_REASON_OPTIONS],
     };
   });
 
@@ -139,6 +170,9 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettingsFormValues = {
   autoDeliverAfterDays: 7,
   returnPolicy: "no_return_refund",
   replacePhotoRequired: false,
+  replaceWindowHours: 72,
+  replaceMaxAttempts: 1,
+  replaceReasonOptions: [...DEFAULT_REPLACE_REASON_OPTIONS],
 };
 
 export const paymentSettingsSchema = z

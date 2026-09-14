@@ -12,7 +12,7 @@ import ReplayOutlinedIcon from "@mui/icons-material/ReplayOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, useTransition, type ReactNode } from "react";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
 import {
@@ -27,7 +27,10 @@ import {
   adminUpdateOrderStatusAction,
   adminUpdateOrderTrackingAction,
 } from "@/features/orders/actions";
+import { AdminActivityTimeline } from "@/features/orders/components/AdminActivityTimeline";
 import { OrderStatusTimeline } from "@/features/orders/components/OrderStatusTimeline";
+import { ReplacePhotoLightbox } from "@/features/orders/components/ReplacePhotoLightbox";
+import { ReplaceProgress } from "@/features/orders/components/ReplaceProgress";
 import {
   canTransitionOrderStatus,
   orderStatusLabel,
@@ -43,6 +46,7 @@ import { cn } from "@/lib/cn";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 type ConfirmAction = { kind: "cancel" } | { kind: "refund" };
+type DetailTab = "order" | "customer" | "activity" | "replacement";
 
 function statusTone(
   status: OrderStatus,
@@ -140,6 +144,7 @@ export function AdminOrderDetailClient({
   canRefund: boolean;
 }) {
   const router = useRouter();
+  const tabsId = useId();
   const [order, setOrder] = useState(initialOrder);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -147,6 +152,14 @@ export function AdminOrderDetailClient({
   const [tracking, setTracking] = useState(order.trackingNumber ?? "");
   const [pending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+
+  const replaceRequests = order.replaceRequests ?? [];
+  const hasOpenReplace = replaceRequests.some(
+    (req) => req.status === "REQUESTED" || req.status === "APPROVED",
+  );
+  const [tab, setTab] = useState<DetailTab>(() =>
+    hasOpenReplace ? "replacement" : "order",
+  );
 
   const hasRestrictedPolicy = order.items.some((item) =>
     returnPolicyBlocksRefund(item.returnPolicy),
@@ -156,6 +169,16 @@ export function AdminOrderDetailClient({
   const primaryAllowed = primary
     ? canTransitionOrderStatus(order.status, primary.status)
     : false;
+
+  const activitiesNewestFirst = useMemo(
+    () =>
+      [...(order.activities ?? [])].sort(
+        (a, b) =>
+          Date.parse(b.createdAt) - Date.parse(a.createdAt) ||
+          b.id.localeCompare(a.id),
+      ),
+    [order.activities],
+  );
 
   useEffect(() => {
     setOrder(initialOrder);
@@ -220,6 +243,13 @@ export function AdminOrderDetailClient({
     order.shippingAddress.phone,
   ].filter(Boolean);
 
+  const tabs: Array<{ id: DetailTab; label: string }> = [
+    { id: "order", label: "Order" },
+    { id: "customer", label: "Customer" },
+    { id: "activity", label: "Activity" },
+    { id: "replacement", label: "Replacement" },
+  ];
+
   return (
     <div className="space-y-5">
       {error ? (
@@ -236,7 +266,6 @@ export function AdminOrderDetailClient({
         </p>
       ) : null}
 
-      {/* Hero summary */}
       <section className={`${adminCard()} ${adminCardPadding()}`}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -300,7 +329,6 @@ export function AdminOrderDetailClient({
         </div>
       </section>
 
-      {/* O—O—O process */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[15px] font-semibold tracking-tight">
@@ -323,321 +351,488 @@ export function AdminOrderDetailClient({
         </p>
       ) : null}
 
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
-        {/* Left column: items + address/payment */}
-        <div className="space-y-5">
-          <section className={`${adminCard()} ${adminCardPadding()}`}>
-            <SectionTitle
-              icon={<Inventory2OutlinedIcon className="!text-[1.1rem]" />}
-            >
-              Items ordered
-            </SectionTitle>
-            <ul className="mt-4 divide-y divide-[var(--color-border)]">
-              {order.items.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-                >
-                  <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[var(--color-surface)]">
-                    {item.imageUrl ? (
-                      <Image
-                        src={item.imageUrl}
-                        alt={item.productName}
-                        fill
-                        unoptimized
-                        className="object-contain p-1.5"
-                        sizes="64px"
-                      />
-                    ) : (
-                      <span className="flex h-full items-center justify-center text-sm font-semibold text-[var(--color-muted)]">
-                        {item.productName.slice(0, 1).toUpperCase()}
-                      </span>
+      <section className={`${adminCard()} overflow-hidden`}>
+        <div
+          className="flex flex-wrap border-b border-[var(--color-border)]"
+          role="tablist"
+          aria-label="Order detail sections"
+        >
+          {tabs.map((item) => {
+            const selected = tab === item.id;
+            const showReplaceBadge = item.id === "replacement" && replaceRequests.length > 0;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                id={`${tabsId}-tab-${item.id}`}
+                aria-controls={`${tabsId}-panel-${item.id}`}
+                onClick={() => setTab(item.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 px-4 py-3 text-sm font-semibold tracking-tight transition-colors sm:px-5",
+                  selected
+                    ? "border-b-2 border-[var(--color-primary)] text-[var(--color-foreground)]"
+                    : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
+                )}
+              >
+                {item.label}
+                {showReplaceBadge ? (
+                  <span
+                    className={cn(
+                      "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold",
+                      hasOpenReplace
+                        ? "bg-[color-mix(in_srgb,var(--color-primary)_16%,transparent)] text-[var(--color-primary)]"
+                        : "bg-[var(--color-surface)] text-[var(--color-muted)]",
                     )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-[var(--color-foreground)]">
-                      {item.productName}
-                    </p>
-                    <p className="text-xs text-[var(--color-muted)] sm:text-sm">
-                      {[item.variantName, `Qty ${item.quantity}`, item.sku]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium text-amber-800">
-                      {returnPolicyLabel(item.returnPolicy)}
-                    </p>
-                  </div>
-                  <p className="shrink-0 text-sm font-semibold">
-                    {formatMoney(item.lineTotal, order.currency)}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <section className={`${adminCard()} ${adminCardPadding()}`}>
-              <SectionTitle
-                icon={<PlaceOutlinedIcon className="!text-[1.1rem]" />}
-              >
-                Ship to
-              </SectionTitle>
-              <ul className="mt-3 space-y-1 text-sm leading-relaxed">
-                {shipLines.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </section>
-
-            <section className={`${adminCard()} ${adminCardPadding()}`}>
-              <SectionTitle
-                icon={<CreditCardOutlinedIcon className="!text-[1.1rem]" />}
-              >
-                Payment
-              </SectionTitle>
-              {order.payment ? (
-                <dl className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--color-muted)]">Status</dt>
-                    <dd>
-                      <AdminStatusBadge tone={paymentTone(order.payment.status)}>
-                        {order.payment.status}
-                      </AdminStatusBadge>
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--color-muted)]">Amount</dt>
-                    <dd className="font-semibold">
-                      {formatMoney(
-                        order.payment.amount,
-                        order.payment.currency,
-                      )}
-                    </dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--color-muted)]">Provider</dt>
-                    <dd className="capitalize">{order.payment.provider}</dd>
-                  </div>
-                  {order.payment.providerPaymentId ? (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--color-muted)]">Payment ID</dt>
-                      <dd className="max-w-[10rem] truncate text-xs">
-                        {order.payment.providerPaymentId}
-                      </dd>
-                    </div>
-                  ) : null}
-                </dl>
-              ) : (
-                <p className="mt-3 text-sm text-[var(--color-muted)]">
-                  No payment linked.
-                </p>
-              )}
-            </section>
-          </div>
-
-          <section className={`${adminCard()} ${adminCardPadding()}`}>
-            <SectionTitle
-              icon={<ReceiptLongOutlinedIcon className="!text-[1.1rem]" />}
-            >
-              Bill summary
-            </SectionTitle>
-            <dl className="mt-4 space-y-2 text-sm">
-              {[
-                ["Subtotal", order.subtotal],
-                [
-                  order.couponCode
-                    ? `Discount (${order.couponCode})`
-                    : "Discount",
-                  order.discountAmount,
-                ],
-                ["Shipping", order.shippingAmount],
-                ["Payment fee", order.gatewayFee],
-                ["Tax", order.taxAmount],
-              ].map(([label, value]) => (
-                <div key={String(label)} className="flex justify-between gap-3">
-                  <dt className="text-[var(--color-muted)]">{label}</dt>
-                  <dd>{formatMoney(Number(value), order.currency)}</dd>
-                </div>
-              ))}
-              <div className="flex justify-between gap-3 border-t border-[var(--color-border)] pt-3 text-base font-semibold">
-                <dt>Grand total</dt>
-                <dd>{formatMoney(order.grandTotal, order.currency)}</dd>
-              </div>
-            </dl>
-          </section>
+                  >
+                    {replaceRequests.length}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Right column: actions */}
-        <div className="space-y-5">
-          {canUpdate ? (
-            <section className={`${adminCard()} ${adminCardPadding()}`}>
-              <SectionTitle
-                icon={
-                  <CheckCircleOutlineRoundedIcon
-                    className={cn(
-                      "!text-[1.1rem]",
-                      order.status === "DELIVERED" &&
-                        "!text-[var(--color-success)]",
-                    )}
-                  />
-                }
-              >
-                Next step
-              </SectionTitle>
-              {primary && primaryAllowed ? (
-                <div className="mt-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-card))] p-4">
-                  <p className="text-sm font-semibold text-[var(--color-foreground)]">
-                    {primary.label}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">
-                    {primary.hint}
-                  </p>
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => advance(primary.status)}
-                    className={cn(adminBtn("primary"), "mt-4 w-full")}
+        <div className={adminCardPadding()}>
+          {tab === "order" ? (
+            <div
+              id={`${tabsId}-panel-order`}
+              role="tabpanel"
+              aria-labelledby={`${tabsId}-tab-order`}
+              className="grid gap-8 xl:grid-cols-[1.35fr_1fr]"
+            >
+              <div className="space-y-5">
+                <section>
+                  <SectionTitle
+                    icon={<Inventory2OutlinedIcon className="!text-[1.1rem]" />}
                   >
-                    {pending ? "Updating…" : primary.label}
-                  </button>
-                </div>
-              ) : order.status === "DELIVERED" ? (
-                <p className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--color-success)_32%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,var(--color-card))] px-3 py-3 text-sm font-medium text-[var(--color-success)]">
-                  This order is complete.
-                </p>
-              ) : (
-                <p className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-sm text-[var(--color-muted)]">
-                  {order.status === "CANCELLED" || order.status === "REFUNDED"
-                    ? `No further fulfillment steps (${orderStatusLabel(order.status)}).`
-                    : "No primary action available for this status."}
-                </p>
-              )}
+                    Items ordered
+                  </SectionTitle>
+                  <ul className="mt-4 divide-y divide-[var(--color-border)]">
+                    {order.items.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-[var(--color-surface)]">
+                          {item.imageUrl ? (
+                            <Image
+                              src={item.imageUrl}
+                              alt={item.productName}
+                              fill
+                              unoptimized
+                              className="object-contain p-1.5"
+                              sizes="64px"
+                            />
+                          ) : (
+                            <span className="flex h-full items-center justify-center text-sm font-semibold text-[var(--color-muted)]">
+                              {item.productName.slice(0, 1).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-[var(--color-foreground)]">
+                            {item.productName}
+                          </p>
+                          <p className="text-xs text-[var(--color-muted)] sm:text-sm">
+                            {[item.variantName, `Qty ${item.quantity}`, item.sku]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          <p className="mt-0.5 text-xs font-medium text-amber-800">
+                            {returnPolicyLabel(item.returnPolicy)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-sm font-semibold">
+                          {formatMoney(item.lineTotal, order.currency)}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
 
-              <div className="mt-4 space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
-                  Other actions
-                </p>
-                <div className="flex flex-col gap-2">
-                  {canTransitionOrderStatus(order.status, "CANCELLED") ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => setConfirmAction({ kind: "cancel" })}
-                      className={cn(adminBtn("outline"), "w-full justify-start")}
-                    >
-                      Cancel order
-                    </button>
-                  ) : null}
-                  {canRefund &&
-                  canTransitionOrderStatus(order.status, "REFUNDED") ? (
-                    <button
-                      type="button"
-                      disabled={pending || refundBlockedByPolicy}
-                      onClick={() => setConfirmAction({ kind: "refund" })}
-                      className={cn(
-                        adminBtn("outline"),
-                        "w-full justify-start text-red-700 disabled:opacity-40",
-                      )}
-                      title={
-                        refundBlockedByPolicy
-                          ? "Blocked by product return policy"
-                          : undefined
+                <section>
+                  <SectionTitle
+                    icon={<ReceiptLongOutlinedIcon className="!text-[1.1rem]" />}
+                  >
+                    Bill summary
+                  </SectionTitle>
+                  <dl className="mt-4 space-y-2 text-sm">
+                    {[
+                      ["Subtotal", order.subtotal],
+                      [
+                        order.couponCode
+                          ? `Discount (${order.couponCode})`
+                          : "Discount",
+                        order.discountAmount,
+                      ],
+                      ["Shipping", order.shippingAmount],
+                      ["Payment fee", order.gatewayFee],
+                      ["Tax", order.taxAmount],
+                    ].map(([label, value]) => (
+                      <div
+                        key={String(label)}
+                        className="flex justify-between gap-3"
+                      >
+                        <dt className="text-[var(--color-muted)]">{label}</dt>
+                        <dd>{formatMoney(Number(value), order.currency)}</dd>
+                      </div>
+                    ))}
+                    <div className="flex justify-between gap-3 border-t border-[var(--color-border)] pt-3 text-base font-semibold">
+                      <dt>Grand total</dt>
+                      <dd>{formatMoney(order.grandTotal, order.currency)}</dd>
+                    </div>
+                  </dl>
+                </section>
+
+                <section>
+                  <SectionTitle
+                    icon={<CreditCardOutlinedIcon className="!text-[1.1rem]" />}
+                  >
+                    Payment
+                  </SectionTitle>
+                  {order.payment ? (
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[var(--color-muted)]">Status</dt>
+                        <dd>
+                          <AdminStatusBadge
+                            tone={paymentTone(order.payment.status)}
+                          >
+                            {order.payment.status}
+                          </AdminStatusBadge>
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[var(--color-muted)]">Amount</dt>
+                        <dd className="font-semibold">
+                          {formatMoney(
+                            order.payment.amount,
+                            order.payment.currency,
+                          )}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-2">
+                        <dt className="text-[var(--color-muted)]">Provider</dt>
+                        <dd className="capitalize">{order.payment.provider}</dd>
+                      </div>
+                      {order.payment.providerPaymentId ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--color-muted)]">Payment ID</dt>
+                          <dd className="max-w-[10rem] truncate text-xs">
+                            {order.payment.providerPaymentId}
+                          </dd>
+                        </div>
+                      ) : null}
+                    </dl>
+                  ) : (
+                    <p className="mt-3 text-sm text-[var(--color-muted)]">
+                      No payment linked.
+                    </p>
+                  )}
+                </section>
+              </div>
+
+              <div className="space-y-5 xl:border-l xl:border-[var(--color-border)] xl:pl-8">
+                {canUpdate ? (
+                  <section>
+                    <SectionTitle
+                      icon={
+                        <CheckCircleOutlineRoundedIcon
+                          className={cn(
+                            "!text-[1.1rem]",
+                            order.status === "DELIVERED" &&
+                              "!text-[var(--color-success)]",
+                          )}
+                        />
                       }
                     >
-                      {refundBlockedByPolicy
-                        ? "Refund blocked (final sale)"
-                        : "Mark refunded (local)"}
-                    </button>
-                  ) : null}
-                </div>
-              </div>
+                      Next step
+                    </SectionTitle>
+                    {primary && primaryAllowed ? (
+                      <div className="mt-4 rounded-2xl border border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-card))] p-4">
+                        <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                          {primary.label}
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--color-muted)]">
+                          {primary.hint}
+                        </p>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => advance(primary.status)}
+                          className={cn(adminBtn("primary"), "mt-4 w-full")}
+                        >
+                          {pending ? "Updating…" : primary.label}
+                        </button>
+                      </div>
+                    ) : order.status === "DELIVERED" ? (
+                      <p className="mt-4 rounded-xl border border-[color-mix(in_srgb,var(--color-success)_32%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,var(--color-card))] px-3 py-3 text-sm font-medium text-[var(--color-success)]">
+                        This order is complete.
+                      </p>
+                    ) : (
+                      <p className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3 text-sm text-[var(--color-muted)]">
+                        {order.status === "CANCELLED" ||
+                        order.status === "REFUNDED"
+                          ? `No further fulfillment steps (${orderStatusLabel(order.status)}).`
+                          : "No primary action available for this status."}
+                      </p>
+                    )}
 
-              <div className="mt-5 border-t border-[var(--color-border)] pt-5">
-                <SectionTitle
-                  icon={<LocalShippingOutlinedIcon className="!text-[1.1rem]" />}
-                >
-                  Tracking
-                </SectionTitle>
-                <p className="mt-1 text-sm text-[var(--color-muted)]">
-                  Optional. Add before or after marking shipped.
-                </p>
-                <div className="mt-3 space-y-2">
-                  <input
-                    value={provider}
-                    onChange={(event) => setProvider(event.target.value)}
-                    placeholder="Courier name (e.g. Delhivery)"
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
-                  />
-                  <input
-                    value={tracking}
-                    onChange={(event) => setTracking(event.target.value)}
-                    placeholder="Tracking number"
-                    className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
-                  />
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() =>
-                      run(() =>
-                        adminUpdateOrderTrackingAction({
-                          orderId: order.id,
-                          shippingProvider: provider,
-                          trackingNumber: tracking,
-                        }),
-                      )
-                    }
-                    className={cn(adminBtn("primary"), "w-full")}
-                  >
-                    Save tracking
-                  </button>
-                </div>
+                    <div className="mt-4 space-y-2">
+                      <p className="text-xs font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                        Other actions
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {canTransitionOrderStatus(order.status, "CANCELLED") ? (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => setConfirmAction({ kind: "cancel" })}
+                            className={cn(
+                              adminBtn("outline"),
+                              "w-full justify-start",
+                            )}
+                          >
+                            Cancel order
+                          </button>
+                        ) : null}
+                        {canRefund &&
+                        canTransitionOrderStatus(order.status, "REFUNDED") ? (
+                          <button
+                            type="button"
+                            disabled={pending || refundBlockedByPolicy}
+                            onClick={() => setConfirmAction({ kind: "refund" })}
+                            className={cn(
+                              adminBtn("outline"),
+                              "w-full justify-start text-red-700 disabled:opacity-40",
+                            )}
+                            title={
+                              refundBlockedByPolicy
+                                ? "Blocked by product return policy"
+                                : undefined
+                            }
+                          >
+                            {refundBlockedByPolicy
+                              ? "Refund blocked (final sale)"
+                              : "Mark refunded (local)"}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 border-t border-[var(--color-border)] pt-5">
+                      <SectionTitle
+                        icon={
+                          <LocalShippingOutlinedIcon className="!text-[1.1rem]" />
+                        }
+                      >
+                        Tracking
+                      </SectionTitle>
+                      <p className="mt-1 text-sm text-[var(--color-muted)]">
+                        Optional. Add before or after marking shipped.
+                      </p>
+                      <div className="mt-3 space-y-2">
+                        <input
+                          value={provider}
+                          onChange={(event) => setProvider(event.target.value)}
+                          placeholder="Courier name (e.g. Delhivery)"
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
+                        />
+                        <input
+                          value={tracking}
+                          onChange={(event) => setTracking(event.target.value)}
+                          placeholder="Tracking number"
+                          className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
+                        />
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() =>
+                            run(() =>
+                              adminUpdateOrderTrackingAction({
+                                orderId: order.id,
+                                shippingProvider: provider,
+                                trackingNumber: tracking,
+                              }),
+                            )
+                          }
+                          className={cn(adminBtn("primary"), "w-full")}
+                        >
+                          Save tracking
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                ) : (
+                  <p className="text-sm text-[var(--color-muted)]">
+                    You can view this order but cannot update fulfillment.
+                  </p>
+                )}
               </div>
-            </section>
+            </div>
           ) : null}
 
-          {(order.replaceRequests?.length ?? 0) > 0 ? (
-            <section className={`${adminCard()} ${adminCardPadding()}`}>
+          {tab === "customer" ? (
+            <div
+              id={`${tabsId}-panel-customer`}
+              role="tabpanel"
+              aria-labelledby={`${tabsId}-tab-customer`}
+              className="grid gap-8 md:grid-cols-2"
+            >
+              <section>
+                <SectionTitle
+                  icon={<PersonOutlineRoundedIcon className="!text-[1.1rem]" />}
+                >
+                  Customer
+                </SectionTitle>
+                <dl className="mt-3 space-y-2 text-sm">
+                  <div>
+                    <dt className="text-xs text-[var(--color-muted)]">Name</dt>
+                    <dd className="font-semibold">
+                      {order.customerName ||
+                        order.shippingAddress.fullName ||
+                        "Customer"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-[var(--color-muted)]">Phone</dt>
+                    <dd className="font-medium">
+                      {order.shippingAddress.phone || "—"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-[var(--color-muted)]">Email</dt>
+                    <dd className="font-medium">
+                      {order.customerEmail || "—"}
+                    </dd>
+                  </div>
+                </dl>
+              </section>
+              <section className="md:border-l md:border-[var(--color-border)] md:pl-8">
+                <SectionTitle
+                  icon={<PlaceOutlinedIcon className="!text-[1.1rem]" />}
+                >
+                  Ship to
+                </SectionTitle>
+                <ul className="mt-3 space-y-1 text-sm leading-relaxed">
+                  {shipLines.length ? (
+                    shipLines.map((line) => <li key={line}>{line}</li>)
+                  ) : (
+                    <li className="text-[var(--color-muted)]">
+                      No address on file.
+                    </li>
+                  )}
+                </ul>
+              </section>
+            </div>
+          ) : null}
+
+          {tab === "activity" ? (
+            <div
+              id={`${tabsId}-panel-activity`}
+              role="tabpanel"
+              aria-labelledby={`${tabsId}-tab-activity`}
+            >
+              <SectionTitle
+                icon={<HistoryRoundedIcon className="!text-[1.1rem]" />}
+              >
+                Activity
+              </SectionTitle>
+              <AdminActivityTimeline activities={activitiesNewestFirst} />
+            </div>
+          ) : null}
+
+          {tab === "replacement" ? (
+            <div
+              id={`${tabsId}-panel-replacement`}
+              role="tabpanel"
+              aria-labelledby={`${tabsId}-tab-replacement`}
+            >
               <SectionTitle
                 icon={<ReplayOutlinedIcon className="!text-[1.1rem]" />}
               >
                 Replacements
               </SectionTitle>
-              <ul className="mt-4 space-y-3 text-sm">
-                {order.replaceRequests.map((req) => (
-                  <li
-                    key={req.id}
-                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div>
-                        <p className="font-medium">{req.productName}</p>
-                        <p className="text-[var(--color-muted)]">
-                          Qty {req.quantity} ·{" "}
-                          {replaceRequestStatusLabel(req.status)}
-                        </p>
-                        <p className="mt-1">{req.reason}</p>
-                      </div>
-                      {req.photoUrl ? (
-                        <a
-                          href={req.photoUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="relative h-14 w-14 overflow-hidden rounded-lg border border-[var(--color-border)]"
-                        >
-                          <Image
+              {replaceRequests.length === 0 ? (
+                <p className="mt-3 text-sm text-[var(--color-muted)]">
+                  No replacement requests for this order.
+                </p>
+              ) : (
+                <ul className="mt-4 space-y-3 text-sm">
+                  {replaceRequests.map((req) => (
+                    <li
+                      key={req.id}
+                      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium">{req.productName}</p>
+                          <p className="text-[var(--color-muted)]">
+                            Qty {req.quantity}
+                          </p>
+                          <p className="mt-1">{req.reason}</p>
+                          <p className="mt-1 text-xs text-[var(--color-muted)]">
+                            {replaceRequestStatusLabel(req.status)}
+                          </p>
+                        </div>
+                        {req.photoUrl ? (
+                          <ReplacePhotoLightbox
                             src={req.photoUrl}
-                            alt="Replace evidence"
-                            fill
-                            unoptimized
-                            className="object-cover"
+                            alt="Replacement evidence"
                           />
-                        </a>
-                      ) : null}
-                    </div>
-                    {canUpdate ? (
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {req.status === "REQUESTED" ? (
-                          <>
+                        ) : null}
+                      </div>
+                      <div className="mt-3">
+                        <ReplaceProgress
+                          status={req.status}
+                          size="comfortable"
+                        />
+                      </div>
+                      {canUpdate ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {req.status === "REQUESTED" ? (
+                            <>
+                              <button
+                                type="button"
+                                disabled={pending}
+                                className={cn(adminBtn("primary"), "text-xs")}
+                                onClick={() =>
+                                  run(async () =>
+                                    adminReviewReplaceRequestAction({
+                                      requestId: req.id,
+                                      orderId: order.id,
+                                      nextStatus: "APPROVED",
+                                    }),
+                                  )
+                                }
+                              >
+                                Grant request
+                              </button>
+                              <button
+                                type="button"
+                                disabled={pending}
+                                className={cn(
+                                  adminBtn("outline"),
+                                  "text-xs text-red-700",
+                                )}
+                                onClick={() =>
+                                  run(async () =>
+                                    adminReviewReplaceRequestAction({
+                                      requestId: req.id,
+                                      orderId: order.id,
+                                      nextStatus: "REJECTED",
+                                      adminNote: "Not eligible for replacement",
+                                    }),
+                                  )
+                                }
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : null}
+                          {req.status === "APPROVED" ? (
                             <button
                               type="button"
                               disabled={pending}
@@ -647,88 +842,24 @@ export function AdminOrderDetailClient({
                                   adminReviewReplaceRequestAction({
                                     requestId: req.id,
                                     orderId: order.id,
-                                    nextStatus: "APPROVED",
+                                    nextStatus: "FULFILLED",
                                   }),
                                 )
                               }
                             >
-                              Approve
+                              Mark replacement sent
                             </button>
-                            <button
-                              type="button"
-                              disabled={pending}
-                              className={cn(adminBtn("outline"), "text-xs text-red-700")}
-                              onClick={() =>
-                                run(async () =>
-                                  adminReviewReplaceRequestAction({
-                                    requestId: req.id,
-                                    orderId: order.id,
-                                    nextStatus: "REJECTED",
-                                    adminNote: "Not eligible for replacement",
-                                  }),
-                                )
-                              }
-                            >
-                              Reject
-                            </button>
-                          </>
-                        ) : null}
-                        {req.status === "APPROVED" ? (
-                          <button
-                            type="button"
-                            disabled={pending}
-                            className={cn(adminBtn("primary"), "text-xs")}
-                            onClick={() =>
-                              run(async () =>
-                                adminReviewReplaceRequestAction({
-                                  requestId: req.id,
-                                  orderId: order.id,
-                                  nextStatus: "FULFILLED",
-                                }),
-                              )
-                            }
-                          >
-                            Mark replacement sent
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </section>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           ) : null}
-
-          <section className={`${adminCard()} ${adminCardPadding()}`}>
-            <SectionTitle
-              icon={<HistoryRoundedIcon className="!text-[1.1rem]" />}
-            >
-              Activity
-            </SectionTitle>
-            {!order.activities.length ? (
-              <p className="mt-3 text-sm text-[var(--color-muted)]">
-                No activity yet.
-              </p>
-            ) : (
-              <ol className="mt-4 space-y-3">
-                {order.activities.map((activity) => (
-                  <li
-                    key={activity.id}
-                    className="relative border-l-2 border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] pl-3"
-                  >
-                    <p className="text-sm font-medium">
-                      {activity.message || activity.eventType}
-                    </p>
-                    <p className="text-xs text-[var(--color-muted)]">
-                      {formatDateTime(activity.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
         </div>
-      </div>
+      </section>
 
       <ConfirmDeleteDialog
         open={Boolean(confirmAction)}

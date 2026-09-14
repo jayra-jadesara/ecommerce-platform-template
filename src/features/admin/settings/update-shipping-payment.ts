@@ -18,10 +18,15 @@ import {
   type ShippingSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
 import {
+  coerceReplaceMaxAttempts,
+  coerceReplaceReasonOptions,
+  coerceReplaceWindowHours,
   isFulfillmentMode,
   isReturnPolicy,
 } from "@/features/shipping/policies";
+import { syncInheritedOrderItemReturnPolicies } from "@/features/shipping/sync-order-policies";
 import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
+import { CATALOG_CACHE_TAG } from "@/features/catalog/cache";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
 
@@ -88,6 +93,15 @@ export async function loadShippingSettingsForm(): Promise<{
             ? shipping.return_policy
             : DEFAULT_SHIPPING_SETTINGS.returnPolicy,
           replacePhotoRequired: Boolean(shipping.replace_photo_required),
+          replaceWindowHours: coerceReplaceWindowHours(
+            shipping.replace_window_hours,
+          ),
+          replaceMaxAttempts: coerceReplaceMaxAttempts(
+            shipping.replace_max_attempts,
+          ),
+          replaceReasonOptions: coerceReplaceReasonOptions(
+            shipping.replace_reason_options,
+          ),
         }
       : DEFAULT_SHIPPING_SETTINGS,
   };
@@ -196,6 +210,9 @@ export async function updateShippingSettings(
     auto_deliver_after_days: values.autoDeliverAfterDays,
     return_policy: values.returnPolicy,
     replace_photo_required: values.replacePhotoRequired,
+    replace_window_hours: values.replaceWindowHours,
+    replace_max_attempts: values.replaceMaxAttempts,
+    replace_reason_options: values.replaceReasonOptions,
   };
 
   const { error } = await supabase
@@ -246,7 +263,13 @@ export async function updateShippingSettings(
     metadata: { changed },
   });
 
+  await syncInheritedOrderItemReturnPolicies({
+    storeId: store.id,
+    storePolicy: values.returnPolicy,
+  });
+
   revalidateTag(PRICING_SETTINGS_CACHE_TAG, "max");
+  revalidateTag(CATALOG_CACHE_TAG, "max");
   return { ok: true, message: "Shipping settings saved." };
 }
 

@@ -43,10 +43,13 @@ import {
 import { getAdminPath } from "@/config/admin-route";
 import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
 import {
+  resolveReturnPolicy,
   returnPolicyLabel,
   type ReturnPolicy,
 } from "@/features/shipping/policies";
 import { cn } from "@/lib/cn";
+
+const STORE_DEFAULT_POLICY = "store_default";
 
 function sizeMenuItems(current: string) {
   const options = PRODUCT_SIZE_OPTIONS as readonly string[];
@@ -191,10 +194,6 @@ export function ProductForm({
     setSuccess(null);
 
     let payload = values;
-    // Same as store shipping default → store null (inherit), not a duplicate override.
-    if (payload.returnPolicy === storeReturnPolicy) {
-      payload = { ...payload, returnPolicy: null };
-    }
     if (mode === "create") {
       const slug = slugify(values.name);
       let visibleIndex = 0;
@@ -646,30 +645,45 @@ export function ProductForm({
             <Controller
               name="returnPolicy"
               control={control}
-              render={({ field }) => (
-                <TextField
-                  select
-                  label="Return / replace policy"
-                  fullWidth
-                  disabled={!fieldsEditable}
-                  value={field.value ?? ""}
-                  onChange={(event) =>
-                    field.onChange(
-                      event.target.value
-                        ? (event.target.value as ReturnPolicy)
-                        : null,
-                    )
-                  }
-                  helperText={`Follows Delivery & returns unless you pick a different rule for this product only. Store default: ${returnPolicyLabel(storeReturnPolicy)}.`}
-                >
-                  <MenuItem value="">
-                    Use store default — {returnPolicyLabel(storeReturnPolicy)}
-                  </MenuItem>
-                  <MenuItem value="no_return_refund">No return / no refund</MenuItem>
-                  <MenuItem value="no_replace">No replace</MenuItem>
-                  <MenuItem value="replace_only">Replace only</MenuItem>
-                </TextField>
-              )}
+              render={({ field }) => {
+                const selectValue = field.value ?? STORE_DEFAULT_POLICY;
+                const customersSee = returnPolicyLabel(
+                  resolveReturnPolicy(field.value, storeReturnPolicy),
+                );
+                return (
+                  <div className="space-y-2">
+                    <TextField
+                      select
+                      label="Return / replace policy"
+                      fullWidth
+                      disabled={!fieldsEditable}
+                      value={selectValue}
+                      onChange={(event) => {
+                        const next = event.target.value;
+                        field.onChange(
+                          next === STORE_DEFAULT_POLICY
+                            ? null
+                            : (next as ReturnPolicy),
+                        );
+                      }}
+                      helperText="Use store default to follow Delivery & returns. Override only when this product needs a different rule."
+                    >
+                      <MenuItem value={STORE_DEFAULT_POLICY}>
+                        Use store default — {returnPolicyLabel(storeReturnPolicy)}
+                      </MenuItem>
+                      <MenuItem value="no_return_refund">
+                        No return / no refund
+                      </MenuItem>
+                      <MenuItem value="no_replace">No replace</MenuItem>
+                      <MenuItem value="replace_only">Replace only</MenuItem>
+                    </TextField>
+                    <p className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]">
+                      Customers see:{" "}
+                      <span className="font-semibold">{customersSee}</span>
+                    </p>
+                  </div>
+                );
+              }}
             />
           </div>
         </div>

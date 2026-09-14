@@ -35,7 +35,12 @@ import {
 } from "@/features/admin/validation/form-errors";
 import {
   FULFILLMENT_MODE_OPTIONS,
+  REPLACE_WINDOW_HOURS,
   RETURN_POLICY_OPTIONS,
+  coerceReplaceMaxAttempts,
+  coerceReplaceReasonOptions,
+  coerceReplaceWindowHours,
+  isOtherReplaceReason,
   returnPolicyLabel,
   type FulfillmentMode,
   type ReturnPolicy,
@@ -113,8 +118,8 @@ export function ShippingSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const defaults = useMemo(
-    () => ({
+  const defaults = useMemo((): ShippingSettingsFormValues => {
+    return {
       ...DEFAULT_SHIPPING_SETTINGS,
       ...initialValues,
       method:
@@ -135,15 +140,23 @@ export function ShippingSettingsForm({
           ? initialValues.returnPolicy
           : "no_return_refund",
       replacePhotoRequired: Boolean(initialValues.replacePhotoRequired),
+      replaceWindowHours: coerceReplaceWindowHours(
+        initialValues.replaceWindowHours,
+      ),
+      replaceMaxAttempts: coerceReplaceMaxAttempts(
+        initialValues.replaceMaxAttempts,
+      ),
+      replaceReasonOptions: coerceReplaceReasonOptions(
+        initialValues.replaceReasonOptions,
+      ),
       autoDeliverAfterDays:
         initialValues.autoDeliverAfterDays ??
         DEFAULT_SHIPPING_SETTINGS.autoDeliverAfterDays,
       defaultShippingFee:
         initialValues.defaultShippingFee ??
         DEFAULT_SHIPPING_SETTINGS.defaultShippingFee,
-    }),
-    [initialValues],
-  );
+    };
+  }, [initialValues]);
 
   const {
     register,
@@ -160,6 +173,11 @@ export function ShippingSettingsForm({
     ) as Resolver<ShippingSettingsFormValues>,
     defaultValues: defaults,
   });
+
+  const reasonOptions =
+    (useWatch({ control, name: "replaceReasonOptions" }) as
+      | string[]
+      | undefined) ?? [];
 
   const watched = useWatch({ control });
   const method =
@@ -350,7 +368,7 @@ export function ShippingSettingsForm({
                   if (
                     option.value === "auto_days" &&
                     (watched.autoDeliverAfterDays == null ||
-                      watched.autoDeliverAfterDays === "")
+                      Number(watched.autoDeliverAfterDays) < 1)
                   ) {
                     setValue("autoDeliverAfterDays", 7, {
                       shouldDirty: true,
@@ -422,20 +440,197 @@ export function ShippingSettingsForm({
             <span className="font-semibold">{returnPolicyLabel(returnPolicy)}</span>
           </p>
           {returnPolicy === "replace_only" ? (
-            <Controller
-              name="replacePhotoRequired"
-              control={control}
-              render={({ field }) => (
-                <AdminToggle
-                  variant="row"
-                  checked={Boolean(field.value)}
-                  disabled={locked}
-                  label="Require photo for replace requests"
-                  description="Off by default to save free-tier storage. Turn on only if you need evidence (max 1 MB per photo)."
-                  onChange={field.onChange}
+            <div className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4">
+              <Controller
+                name="replacePhotoRequired"
+                control={control}
+                render={({ field }) => (
+                  <AdminToggle
+                    variant="row"
+                    checked={Boolean(field.value)}
+                    disabled={locked}
+                    label="Require photo for replace requests"
+                    description="Off by default to save free-tier storage. Turn on only if you need evidence (max 1 MB per photo)."
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+
+              <div className={adminFieldsGrid()}>
+                <Controller
+                  name="replaceWindowHours"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      select
+                      label="Replace window after delivery"
+                      fullWidth
+                      disabled={locked}
+                      value={coerceReplaceWindowHours(field.value)}
+                      onChange={(event) =>
+                        field.onChange(Number(event.target.value))
+                      }
+                      helperText="Customers can request a replacement only within this time after Delivered."
+                    >
+                      {REPLACE_WINDOW_HOURS.map((hours) => (
+                        <MenuItem key={hours} value={hours}>
+                          {hours === 168
+                            ? "7 days (168 hours)"
+                            : `${hours} hours`}
+                        </MenuItem>
+                      ))}
+                    </TextField>
+                  )}
                 />
-              )}
-            />
+                <Controller
+                  name="replaceMaxAttempts"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Max attempts per item"
+                      type="number"
+                      fullWidth
+                      disabled={locked}
+                      value={coerceReplaceMaxAttempts(field.value)}
+                      onChange={(event) =>
+                        field.onChange(
+                          coerceReplaceMaxAttempts(event.target.value),
+                        )
+                      }
+                      helperText="How many times a customer may request replace for the same line (1–5)."
+                      slotProps={{ htmlInput: { min: 1, max: 5 } }}
+                    />
+                  )}
+                />
+              </div>
+              <FieldError message={errors.replaceWindowHours?.message} />
+              <FieldError message={errors.replaceMaxAttempts?.message} />
+
+              <div>
+                <p className="text-sm font-medium text-[var(--color-foreground)]">
+                  Reason options
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                  Shown in the customer request dialog. Always keep an Other
+                  option so shoppers can write their own.
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {reasonOptions.map((option, index) => {
+                    const isOther = isOtherReplaceReason(option);
+                    return (
+                      <li
+                        key={`${index}-${option}`}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <TextField
+                          size="small"
+                          fullWidth
+                          disabled={locked || isOther}
+                          value={option}
+                          onChange={(event) => {
+                            const next = [...reasonOptions];
+                            next[index] = event.target.value;
+                            setValue(
+                              "replaceReasonOptions",
+                              coerceReplaceReasonOptions(next),
+                              { shouldDirty: true },
+                            );
+                          }}
+                          className="min-w-[12rem] flex-1"
+                        />
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            disabled={locked || index === 0}
+                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs disabled:opacity-40"
+                            onClick={() => {
+                              if (index === 0) return;
+                              const next = [...reasonOptions];
+                              const tmp = next[index - 1]!;
+                              next[index - 1] = next[index]!;
+                              next[index] = tmp;
+                              setValue(
+                                "replaceReasonOptions",
+                                coerceReplaceReasonOptions(next),
+                                { shouldDirty: true },
+                              );
+                            }}
+                          >
+                            Up
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              locked || index >= reasonOptions.length - 1
+                            }
+                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs disabled:opacity-40"
+                            onClick={() => {
+                              if (index >= reasonOptions.length - 1) return;
+                              const next = [...reasonOptions];
+                              const tmp = next[index + 1]!;
+                              next[index + 1] = next[index]!;
+                              next[index] = tmp;
+                              setValue(
+                                "replaceReasonOptions",
+                                coerceReplaceReasonOptions(next),
+                                { shouldDirty: true },
+                              );
+                            }}
+                          >
+                            Down
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              locked ||
+                              isOther ||
+                              reasonOptions.filter(
+                                (item) => !isOtherReplaceReason(item),
+                              ).length <= 1
+                            }
+                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs text-red-700 disabled:opacity-40"
+                            onClick={() => {
+                              const next = reasonOptions.filter(
+                                (_, i) => i !== index,
+                              );
+                              setValue(
+                                "replaceReasonOptions",
+                                coerceReplaceReasonOptions(next),
+                                { shouldDirty: true },
+                              );
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <button
+                  type="button"
+                  disabled={locked || reasonOptions.length >= 12}
+                  className="mt-3 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm disabled:opacity-40"
+                  onClick={() => {
+                    const withoutOther = reasonOptions.filter(
+                      (item) => !isOtherReplaceReason(item),
+                    );
+                    setValue(
+                      "replaceReasonOptions",
+                      coerceReplaceReasonOptions([
+                        ...withoutOther,
+                        "New reason",
+                        "Other",
+                      ]),
+                      { shouldDirty: true },
+                    );
+                  }}
+                >
+                  Add reason
+                </button>
+                <FieldError message={errors.replaceReasonOptions?.message} />
+              </div>
+            </div>
           ) : null}
         </section>
 

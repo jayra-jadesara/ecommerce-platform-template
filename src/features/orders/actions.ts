@@ -176,6 +176,7 @@ export async function requestOrderReplaceAction(
   const orderId = String(formData.get("orderId") ?? "");
   const orderItemId = String(formData.get("orderItemId") ?? "");
   const reason = String(formData.get("reason") ?? "");
+  const reasonCode = String(formData.get("reasonCode") ?? "");
   const customerNote = String(formData.get("customerNote") ?? "");
   const quantityRaw = Number(formData.get("quantity") ?? 1);
   const photoEntry = formData.get("photo");
@@ -187,6 +188,7 @@ export async function requestOrderReplaceAction(
       orderId: z.string().uuid(),
       orderItemId: z.string().uuid(),
       reason: z.string().trim().min(3).max(500),
+      reasonCode: z.string().trim().min(1).max(80),
       customerNote: z.string().trim().max(500).optional(),
       quantity: z.number().int().min(1).max(99),
     })
@@ -194,6 +196,7 @@ export async function requestOrderReplaceAction(
       orderId,
       orderItemId,
       reason,
+      reasonCode,
       customerNote: customerNote || undefined,
       quantity: Number.isFinite(quantityRaw) ? quantityRaw : 1,
     });
@@ -221,6 +224,7 @@ export async function requestOrderReplaceAction(
         orderId: parsed.data.orderId,
         orderItemId: parsed.data.orderItemId,
         reason: parsed.data.reason,
+        reasonCode: parsed.data.reasonCode,
         customerNote: parsed.data.customerNote ?? null,
         quantity: parsed.data.quantity,
         photo,

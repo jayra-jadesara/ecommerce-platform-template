@@ -1,6 +1,9 @@
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
-import type { ReplaceRequestStatus } from "@/features/shipping/policies";
+import type {
+  ReplaceRequestStatus,
+  ReplaceStoreRules,
+} from "@/features/shipping/policies";
 
 export type OrderListItem = {
   id: string;
@@ -13,6 +16,10 @@ export type OrderListItem = {
   paymentStatus: PaymentStatus | null;
   customerEmail?: string | null;
   customerName?: string | null;
+  /** True when an open or granted replace request exists for the order. */
+  hasOpenReplace?: boolean;
+  /** Open replace status (REQUESTED or APPROVED) for admin Progress column. */
+  openReplaceStatus?: ReplaceRequestStatus | null;
 };
 
 export type OrderItemView = {
@@ -59,6 +66,7 @@ export type OrderReplaceRequestView = {
   productName: string;
   status: ReplaceRequestStatus;
   reason: string;
+  reasonCode: string | null;
   customerNote: string | null;
   adminNote: string | null;
   photoUrl: string | null;
@@ -95,7 +103,9 @@ export type OrderDetail = {
   payment: OrderPaymentView | null;
   activities: OrderActivityView[];
   replaceRequests: OrderReplaceRequestView[];
+  /** @deprecated Prefer replaceRules.photoRequired */
   replacePhotoRequired: boolean;
+  replaceRules: ReplaceStoreRules;
   customerEmail?: string | null;
   customerName?: string | null;
 };

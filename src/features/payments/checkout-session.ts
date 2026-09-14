@@ -13,6 +13,7 @@ import type { StartCheckoutPaymentResult } from "@/features/payments/types";
 import { getCheckoutSummary } from "@/features/checkout/service";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { resolveReturnPolicy } from "@/features/shipping/policies";
 import type { Json } from "@/types/database";
 import { randomBytes } from "node:crypto";
 
@@ -213,15 +214,10 @@ export async function createCheckoutPaymentSession(input: {
       storeReturnPolicy = shipping.return_policy;
     }
     for (const row of productPolicies ?? []) {
-      const policy =
-        row.return_policy === "no_replace" ||
-        row.return_policy === "replace_only" ||
-        row.return_policy === "no_return_refund"
-          ? row.return_policy
-          : row.returns_allowed === true
-            ? "no_replace"
-            : storeReturnPolicy;
-      returnsByProduct.set(row.id, policy);
+      returnsByProduct.set(
+        row.id,
+        resolveReturnPolicy(row.return_policy, storeReturnPolicy),
+      );
     }
   }
 

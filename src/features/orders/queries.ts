@@ -11,8 +11,9 @@ import type {
   OrderListResult,
   OrderPaymentView,
 } from "@/features/orders/types";
-import { listReplaceRequestsForOrder, getReplacePhotoRequired } from "@/features/orders/replace-service";
+import { listReplaceRequestsForOrder, getReplaceStoreRules } from "@/features/orders/replace-service";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
+import type { ReplaceRequestStatus } from "@/features/shipping/policies";
 import type { OrderStatus } from "@/types/database";
 
 function asAddress(value: unknown): ShippingAddressSnapshot {
@@ -161,24 +162,29 @@ export async function getOrderDetail(input: {
   const { data: order } = await query.maybeSingle();
   if (!order) return null;
 
-  const [items, payment, activities, replaceRequests, replacePhotoRequired] =
+  const [items, payment, activities, replaceRequests, replaceRules] =
     await Promise.all([
       mapItems(order.id),
       mapPayment(order.id),
       mapActivities(order.id),
       listReplaceRequestsForOrder(order.id),
-      getReplacePhotoRequired(order.store_id),
+      getReplaceStoreRules(order.store_id),
     ]);
 
   const customerNameParts: string[] = [];
+  let customerEmail: string | null = null;
   if (order.user_id) {
-    const { data: profile } = await supabase
-      .from("user_profiles")
-      .select("first_name, last_name")
-      .eq("id", order.user_id)
-      .maybeSingle();
+    const [{ data: profile }, authResult] = await Promise.all([
+      supabase
+        .from("user_profiles")
+        .select("first_name, last_name")
+        .eq("id", order.user_id)
+        .maybeSingle(),
+      supabase.auth.admin.getUserById(order.user_id),
+    ]);
     if (profile?.first_name) customerNameParts.push(profile.first_name);
     if (profile?.last_name) customerNameParts.push(profile.last_name);
+    customerEmail = authResult.data.user?.email ?? null;
   }
   const customerName = customerNameParts.join(" ").trim() || null;
 
@@ -210,8 +216,9 @@ export async function getOrderDetail(input: {
     payment,
     activities,
     replaceRequests,
-    replacePhotoRequired,
-    customerEmail: null,
+    replacePhotoRequired: replaceRules.photoRequired,
+    replaceRules,
+    customerEmail,
     customerName,
   };
 }
@@ -252,6 +259,19 @@ export async function listCustomerOrders(input: {
   }
 
   const items: OrderListItem[] = [];
+  const orderIds = (data ?? []).map((row) => row.id);
+  const openReplaceOrderIds = new Set<string>();
+  if (orderIds.length) {
+    const { data: openReplaces } = await supabase
+      .from("order_replace_requests")
+      .select("order_id")
+      .in("order_id", orderIds)
+      .in("status", ["REQUESTED", "APPROVED"]);
+    for (const row of openReplaces ?? []) {
+      openReplaceOrderIds.add(row.order_id);
+    }
+  }
+
   for (const row of data ?? []) {
     const [{ count: itemCount }, payment] = await Promise.all([
       supabase
@@ -269,6 +289,7 @@ export async function listCustomerOrders(input: {
       createdAt: row.created_at,
       itemCount: itemCount ?? 0,
       paymentStatus: payment?.status ?? null,
+      hasOpenReplace: openReplaceOrderIds.has(row.id),
     });
   }
 
@@ -312,6 +333,25 @@ export async function listAdminOrders(
   }
 
   const items: OrderListItem[] = [];
+  const orderIds = (data ?? []).map((row) => row.id);
+  const openReplaceByOrder = new Map<string, ReplaceRequestStatus>();
+  if (orderIds.length) {
+    const { data: openReplaces } = await supabase
+      .from("order_replace_requests")
+      .select("order_id, status, created_at")
+      .in("order_id", orderIds)
+      .in("status", ["REQUESTED", "APPROVED"])
+      .order("created_at", { ascending: false });
+    for (const row of openReplaces ?? []) {
+      if (!openReplaceByOrder.has(row.order_id)) {
+        openReplaceByOrder.set(
+          row.order_id,
+          row.status as ReplaceRequestStatus,
+        );
+      }
+    }
+  }
+
   for (const row of data ?? []) {
     const [payment, profile, itemCountRes] = await Promise.all([
       mapPayment(row.id),
@@ -344,6 +384,8 @@ export async function listAdminOrders(
       .join(" ")
       .trim();
 
+    const openReplaceStatus = openReplaceByOrder.get(row.id) ?? null;
+
     items.push({
       id: row.id,
       orderNumber: row.order_number,
@@ -354,6 +396,8 @@ export async function listAdminOrders(
       itemCount: itemCountRes.count ?? 0,
       paymentStatus: payment?.status ?? null,
       customerName: name || null,
+      hasOpenReplace: Boolean(openReplaceStatus),
+      openReplaceStatus,
     });
   }
 
