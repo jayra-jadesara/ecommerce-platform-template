@@ -8,6 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { adminLoginAction } from "@/features/auth/actions";
+import { PasswordField } from "@/features/auth/components/PasswordField";
 import { loginSchema, type LoginInput } from "@/features/auth/validations";
 import { safeAdminNextPath } from "@/features/auth/redirect";
 import { getAdminPath } from "@/config/admin-route";
@@ -60,9 +61,8 @@ export function AdminLoginForm() {
         helperText={errors.email?.message}
         {...register("email")}
       />
-      <TextField
+      <PasswordField
         label="Password"
-        type="password"
         autoComplete="current-password"
         fullWidth
         required
