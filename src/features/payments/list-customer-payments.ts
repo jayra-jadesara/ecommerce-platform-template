@@ -1,3 +1,4 @@
+import type { PaymentStatus } from "@/types/database";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 export type CustomerPaymentListItem = {
@@ -24,6 +25,8 @@ export async function listCustomerPayments(input: {
   createdFromIso?: string;
   createdToIso?: string;
 }): Promise<CustomerPaymentListResult> {
+  const { measureServerOperation } = await import("@/lib/perf/measure-server");
+  return measureServerOperation("payments.listCustomer", async () => {
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 10));
   const from = (page - 1) * pageSize;
@@ -56,7 +59,7 @@ export async function listCustomerPayments(input: {
       const order = payment.orders as unknown as { order_number: string };
       return {
         id: payment.id,
-        status: payment.status,
+        status: payment.status as PaymentStatus | string,
         amount: Number(payment.amount),
         currency: payment.currency,
         createdAt: payment.created_at,
@@ -66,4 +69,5 @@ export async function listCustomerPayments(input: {
     }) ?? [];
 
   return { items, total: count ?? 0, page, pageSize };
+  });
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import {
   addToCart,
   clearCart,
+  getCartItemCount,
   getCurrentCart,
   mergeGuestCart,
   removeFromCart,
@@ -28,6 +29,15 @@ export async function getCartAction(): Promise<CartView> {
     return await getCurrentCart();
   } catch {
     return emptyCartView();
+  }
+}
+
+/** Badge-only: total quantity without full cart joins. */
+export async function getCartCountAction(): Promise<number> {
+  try {
+    return await getCartItemCount();
+  } catch {
+    return 0;
   }
 }
 

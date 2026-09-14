@@ -8,8 +8,8 @@ import {
   getPaymentReceiptAction,
   type PaymentReceiptData,
 } from "@/features/payments/get-payment-receipt-action";
-import { downloadOrderReceiptPdf } from "@/features/payments/download-order-receipt-pdf";
 import { OrderReceiptDialog } from "@/features/payments/components/OrderReceiptDialog";
+import type { ReceiptPdfInput } from "@/features/payments/download-order-receipt-pdf";
 import {
   PaymentMetaLine,
   paymentStatusTone,
@@ -34,6 +34,13 @@ const actionBtnClass = cn(
   sfBtn("outline"),
   "!min-h-9 !gap-1.5 !px-3 !py-1.5 !text-xs",
 );
+
+async function downloadPdfLazy(input: ReceiptPdfInput) {
+  const { downloadOrderReceiptPdf } = await import(
+    "@/features/payments/download-order-receipt-pdf"
+  );
+  return downloadOrderReceiptPdf(input);
+}
 
 export function AccountPaymentsList({
   payments,
@@ -78,7 +85,7 @@ export function AccountPaymentsList({
         setError("Could not download this receipt. Please try again.");
         return;
       }
-      await downloadOrderReceiptPdf({
+      await downloadPdfLazy({
         brandName: brand.name,
         brandTagline: brand.tagline,
         logoUrl: brand.logoUrl || brand.logoDarkUrl,

@@ -5,7 +5,7 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { useForm, type Resolver } from "react-hook-form";
+import { useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import { createPageAction, updatePageAction } from "@/features/cms/actions";
 import {
@@ -55,24 +55,24 @@ export function PageForm({
 
   const {
     register,
+    control,
     handleSubmit,
     setValue,
     setError: setFieldError,
     setFocus,
-    watch,
     formState: { errors },
   } = useForm<PageFormValues>({
     resolver: zodResolver(pageFormSchema) as Resolver<PageFormValues>,
     defaultValues: initialValues,
   });
 
-  const title = watch("title") ?? "";
-  const slug = watch("slug") ?? "";
-  const content = watch("content") ?? "";
-  const seoTitle = watch("seoTitle") ?? "";
-  const seoDescription = watch("seoDescription") ?? "";
-  const featured = watch("featuredImagePath");
-  const og = watch("ogImagePath");
+  const title = useWatch({ control, name: "title" }) ?? "";
+  const slug = useWatch({ control, name: "slug" }) ?? "";
+  const content = useWatch({ control, name: "content" }) ?? "";
+  const seoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
+  const seoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
+  const featured = useWatch({ control, name: "featuredImagePath" });
+  const og = useWatch({ control, name: "ogImagePath" });
   const featuredPreview = resolveCmsImageUrl(featured);
   const ogPreview = resolveCmsImageUrl(og);
   const pagePath = slug ? `/pages/${slug}` : "/pages/…";

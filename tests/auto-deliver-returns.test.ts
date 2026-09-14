@@ -54,8 +54,8 @@ describe("auto-deliver + returns policy", () => {
     }
   });
 
-  it("defaults products to no return / no refund", () => {
-    expect(DEFAULT_PRODUCT_FORM.returnPolicy).toBe("no_return_refund");
+  it("defaults products to inherit store return policy (null)", () => {
+    expect(DEFAULT_PRODUCT_FORM.returnPolicy).toBeNull();
     const parsed = productFormSchema.safeParse({
       ...DEFAULT_PRODUCT_FORM,
       name: "Garam Masala",
@@ -70,7 +70,7 @@ describe("auto-deliver + returns policy", () => {
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) {
-      expect(parsed.data.returnPolicy).toBe("no_return_refund");
+      expect(parsed.data.returnPolicy).toBeNull();
     }
   });
 

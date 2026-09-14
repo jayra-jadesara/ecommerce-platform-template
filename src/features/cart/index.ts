@@ -16,4 +16,8 @@ export {
   updateCartItemQuantitySchema,
   removeCartItemSchema,
 } from "@/features/cart/validation";
-export { cartQueryKey } from "@/features/cart/query-keys";
+export { cartCountQueryKey, cartQueryKey } from "@/features/cart/query-keys";
+export {
+  invalidateCartQueryCaches,
+  syncCartQueryCaches,
+} from "@/features/cart/sync-cart-query";

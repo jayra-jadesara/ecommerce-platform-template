@@ -10,7 +10,6 @@ import { useState } from "react";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
 import { formatMoney } from "@/features/catalog/money";
 import type { OrderItemView } from "@/features/orders/types";
-import { downloadOrderReceiptPdf } from "@/features/payments/download-order-receipt-pdf";
 import {
   receiptTotalRows,
   type ReceiptTotals,
@@ -77,6 +76,9 @@ export function OrderReceiptDialog({
     setDownloadError(null);
     setDownloading(true);
     try {
+      const { downloadOrderReceiptPdf } = await import(
+        "@/features/payments/download-order-receipt-pdf"
+      );
       await downloadOrderReceiptPdf({
         brandName: brand.name,
         brandTagline: brand.tagline,

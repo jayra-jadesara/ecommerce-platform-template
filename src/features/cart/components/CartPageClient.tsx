@@ -18,6 +18,10 @@ import {
 import { FreeShippingProgressLoader } from "@/features/cart/components/FreeShippingProgressLoader";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { cartQueryKey } from "@/features/cart/query-keys";
+import {
+  invalidateCartQueryCaches,
+  syncCartQueryCaches,
+} from "@/features/cart/sync-cart-query";
 import { getFreeShippingHintAction } from "@/features/cart/shipping-hint";
 import {
   CART_MAX_QUANTITY,
@@ -50,8 +54,7 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
     staleTime: 5 * 60_000,
   });
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: cartQueryKey });
+  const invalidate = () => invalidateCartQueryCaches(queryClient);
 
   const updateMutation = useMutation({
     mutationFn: updateCartItemQuantityAction,
@@ -61,7 +64,7 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
         return;
       }
       setError(null);
-      queryClient.setQueryData(cartQueryKey, result.cart);
+      syncCartQueryCaches(queryClient, result.cart);
     },
     onError: () => setError("Could not update quantity."),
   });
@@ -74,7 +77,7 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
         return;
       }
       setError(null);
-      queryClient.setQueryData(cartQueryKey, result.cart);
+      syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
@@ -82,7 +85,7 @@ export function CartPageClient({ initialCart }: CartPageClientProps) {
     startTransition(async () => {
       const result = await clearCartAction();
       if (result.ok) {
-        queryClient.setQueryData(cartQueryKey, result.cart);
+        syncCartQueryCaches(queryClient, result.cart);
       } else {
         setError(result.error);
       }

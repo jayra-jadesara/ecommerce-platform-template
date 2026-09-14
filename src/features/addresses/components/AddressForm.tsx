@@ -7,7 +7,7 @@ import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useEffect, useState, useTransition } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { IndianMobileField } from "@/features/auth/components/IndianMobileField";
 import { toNationalMobileDigits } from "@/features/auth/recovery-crypto";
 import {
@@ -48,7 +48,6 @@ export function AddressForm({
     control,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<AddressFormInput>({
     resolver: zodResolver(addressFormSchema) as Resolver<AddressFormInput>,
@@ -66,7 +65,7 @@ export function AddressForm({
     },
   });
 
-  const watchedState = watch("state");
+  const watchedState = useWatch({ control, name: "state" });
 
   useEffect(() => {
     let cancelled = false;
@@ -98,10 +97,7 @@ export function AddressForm({
   }, [initial?.state]);
 
   useEffect(() => {
-    if (!selectedStateId) {
-      setCities([]);
-      return;
-    }
+    if (!selectedStateId) return;
     let cancelled = false;
     void (async () => {
       const cityRows = await getIndiaCitiesAction(selectedStateId);
@@ -184,6 +180,7 @@ export function AddressForm({
               field.onChange(name);
               const match = states.find((s) => s.name === name);
               setSelectedStateId(match?.id ?? "");
+              setCities([]);
               setValue("city", "");
             }}
           >

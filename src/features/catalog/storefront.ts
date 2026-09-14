@@ -20,12 +20,17 @@ import type {
   StorefrontProductDetail,
   StorefrontProductImage,
 } from "@/features/catalog/types";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { resolveOptimizedStorageUrl, resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { isSafeModelStoragePath } from "@/features/visual-effects/schemas";
 import { resolveReturnPolicy } from "@/features/shipping/policies";
+import { cache } from "react";
+import { measureServerOperation } from "@/lib/perf/measure-server";
 
 export { formatMoney };
 export type { StorefrontProductDetail };
+
+/** Soft cap for in-memory price sort — avoids loading the entire catalog. */
+const PRICE_SORT_FETCH_CAP = 500;
 
 function getConfiguredStoreSlug(): string | null {
   const slug =
@@ -327,7 +332,7 @@ async function listStorefrontProductsUncached(
   const from = (query.page - 1) * query.pageSize;
   const to = from + query.pageSize - 1;
   const { data, error, count } = priceSort
-    ? await dbQuery
+    ? await dbQuery.limit(PRICE_SORT_FETCH_CAP)
     : await dbQuery.range(from, to);
   if (error || !data) {
     return { items: [], total: 0, page: query.page, pageSize: query.pageSize };
@@ -405,6 +410,11 @@ function mapProductListRowToCard(row: ProductListRow): StorefrontProductCard {
     [...images].sort((a, b) => a.sort_order - b.sort_order)[0];
   const primaryUrl = primary
     ? primary.public_url ||
+      resolveOptimizedStorageUrl("products", primary.storage_path, {
+        width: 480,
+        quality: 75,
+        resize: "contain",
+      }) ||
       resolvePublicStorageUrl("products", primary.storage_path)
     : undefined;
   const secondary =
@@ -413,6 +423,11 @@ function mapProductListRowToCard(row: ProductListRow): StorefrontProductCard {
       .find((image) => image.id !== primary?.id) ?? null;
   const secondaryUrl = secondary
     ? secondary.public_url ||
+      resolveOptimizedStorageUrl("products", secondary.storage_path, {
+        width: 480,
+        quality: 75,
+        resize: "contain",
+      }) ||
       resolvePublicStorageUrl("products", secondary.storage_path)
     : undefined;
   const imageUrls = [
@@ -425,6 +440,11 @@ function mapProductListRowToCard(row: ProductListRow): StorefrontProductCard {
         .map(
           (image) =>
             image.public_url ||
+            resolveOptimizedStorageUrl("products", image.storage_path, {
+              width: 480,
+              quality: 75,
+              resize: "contain",
+            }) ||
             resolvePublicStorageUrl("products", image.storage_path),
         )
         .filter((url): url is string => Boolean(url)),
@@ -623,16 +643,18 @@ async function getProductBySlugUncached(
   };
 }
 
-export function getStorefrontProductBySlug(slug: string) {
-  return unstable_cache(
-    () => getProductBySlugUncached(slug),
-    ["storefront-product", slug],
-    {
-      revalidate: 60,
-      tags: [CATALOG_CACHE_TAG, CATALOG_PRODUCTS_TAG, productCacheTag(slug)],
-    },
-  )();
-}
+export const getStorefrontProductBySlug = cache((slug: string) => {
+  return measureServerOperation("catalog.productBySlug", () =>
+    unstable_cache(
+      () => getProductBySlugUncached(slug),
+      ["storefront-product", slug],
+      {
+        revalidate: 60,
+        tags: [CATALOG_CACHE_TAG, CATALOG_PRODUCTS_TAG, productCacheTag(slug)],
+      },
+    )(),
+  );
+});
 
 /** Same-category products for the PDP “Related products” strip. */
 export async function listSimilarStorefrontProducts(input: {

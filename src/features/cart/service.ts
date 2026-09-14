@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { availableQuantity } from "@/features/catalog/stock";
 import {
@@ -310,39 +311,87 @@ export async function getCurrentCart(): Promise<CartView> {
   // Allow local UI without Supabase env (cart stays empty).
   if (!getSupabasePublicEnvOptional()) return emptyCartView();
 
-  const storeId = await requireStoreId();
-  if (!storeId) return emptyCartView();
+  const { measureServerOperation } = await import("@/lib/perf/measure-server");
+  return measureServerOperation("cart.full", async () => {
+    const storeId = await requireStoreId();
+    if (!storeId) return emptyCartView();
 
-  const user = await getCurrentUser();
-  const currencyClient = serviceClientOrNull() ?? (await createSupabaseServerClient());
-  const currency = await loadCurrency(storeId, currencyClient);
+    const user = await getCurrentUser();
+    const currencyClient =
+      serviceClientOrNull() ?? (await createSupabaseServerClient());
+    const currency = await loadCurrency(storeId, currencyClient);
 
-  if (user) {
-    await mergeGuestCartIntoCustomer(user.id, storeId);
-    const server = await createSupabaseServerClient();
-    const cart = await findCustomerCart(server, storeId, user.id);
-    if (!cart) return { ...emptyCartView(currency), storeId, ownerKind: "CUSTOMER" };
-    const items = await fetchCartItems(server, cart.id);
+    if (user) {
+      await mergeGuestCartIntoCustomer(user.id, storeId);
+      const server = await createSupabaseServerClient();
+      const cart = await findCustomerCart(server, storeId, user.id);
+      if (!cart) {
+        return { ...emptyCartView(currency), storeId, ownerKind: "CUSTOMER" };
+      }
+      const items = await fetchCartItems(server, cart.id);
+      return toCartView(cart, items, currency);
+    }
+
+    const guestToken = await readGuestCartToken();
+    if (!guestToken) {
+      return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
+    }
+
+    const service = serviceClientOrNull();
+    if (!service) {
+      return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
+    }
+
+    const cart = await findGuestCart(service, storeId, guestToken);
+    if (!cart) {
+      return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
+    }
+    const items = await fetchCartItems(service, cart.id);
     return toCartView(cart, items, currency);
-  }
-
-  const guestToken = await readGuestCartToken();
-  if (!guestToken) {
-    return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
-  }
-
-  const service = serviceClientOrNull();
-  if (!service) {
-    return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
-  }
-
-  const cart = await findGuestCart(service, storeId, guestToken);
-  if (!cart) {
-    return { ...emptyCartView(currency), storeId, ownerKind: "GUEST" };
-  }
-  const items = await fetchCartItems(service, cart.id);
-  return toCartView(cart, items, currency);
+  });
 }
+
+/**
+ * Header badge only — sums quantities without product/image joins or guest merge.
+ * Full cart + merge remain on getCurrentCart / explicit mergeGuestCart.
+ * Request-memoized so one RSC tree cannot pay twice.
+ */
+export const getCartItemCount = cache(async (): Promise<number> => {
+  if (!getSupabasePublicEnvOptional()) return 0;
+
+  const { measureServerOperation } = await import("@/lib/perf/measure-server");
+  return measureServerOperation("cart.count", async () => {
+    const storeId = await requireStoreId();
+    if (!storeId) return 0;
+
+    const user = await getCurrentUser();
+
+    if (user) {
+      const server = await createSupabaseServerClient();
+      const cart = await findCustomerCart(server, storeId, user.id);
+      if (!cart) return 0;
+      const { data } = await server
+        .from("cart_items")
+        .select("quantity")
+        .eq("cart_id", cart.id);
+      return (data ?? []).reduce((sum, row) => sum + (row.quantity || 0), 0);
+    }
+
+    const guestToken = await readGuestCartToken();
+    if (!guestToken) return 0;
+
+    const service = serviceClientOrNull();
+    if (!service) return 0;
+
+    const cart = await findGuestCart(service, storeId, guestToken);
+    if (!cart) return 0;
+    const { data } = await service
+      .from("cart_items")
+      .select("quantity")
+      .eq("cart_id", cart.id);
+    return (data ?? []).reduce((sum, row) => sum + (row.quantity || 0), 0);
+  });
+});
 
 async function upsertCartItemQuantity(
   client: Db,

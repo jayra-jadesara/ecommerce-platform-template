@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
-import { cartQueryKey } from "@/features/cart/query-keys";
+import { syncCartQueryCaches } from "@/features/cart/sync-cart-query";
 import { CART_MAX_QUANTITY } from "@/features/cart/types";
 import { getProductQuickViewAction } from "@/features/catalog/quick-view-action";
 import { formatMoney } from "@/features/catalog/money";
@@ -252,8 +252,7 @@ function QuickViewBody({
       }
       setError(null);
       setMessage("Added to cart.");
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
@@ -272,8 +271,7 @@ function QuickViewBody({
         setError(result.error);
         return;
       }
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
       onClose();
       router.push("/checkout");
     } catch {

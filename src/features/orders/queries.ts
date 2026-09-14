@@ -14,7 +14,7 @@ import type {
 import { listReplaceRequestsForOrder, getReplaceStoreRules } from "@/features/orders/replace-service";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { ReplaceRequestStatus } from "@/features/shipping/policies";
-import type { OrderStatus } from "@/types/database";
+import type { OrderStatus, PaymentStatus } from "@/types/database";
 
 function asAddress(value: unknown): ShippingAddressSnapshot {
   const row = (value ?? {}) as Record<string, unknown>;
@@ -43,49 +43,70 @@ async function mapItems(
     )
     .eq("order_id", orderId);
 
-  const views: OrderItemView[] = [];
-  for (const item of items ?? []) {
-    let imageUrl: string | null = null;
-    if (item.product_id) {
-      const { data: image } = await supabase
-        .from("product_images")
-        .select("storage_path, public_url")
-        .eq("product_id", item.product_id)
-        .order("sort_order", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (image) {
-        imageUrl =
-          image.public_url ||
+  const productIds = [
+    ...new Set(
+      (items ?? [])
+        .map((item) => item.product_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const imageByProduct = new Map<string, string | null>();
+  if (productIds.length) {
+    const { data: images } = await supabase
+      .from("product_images")
+      .select("product_id, storage_path, public_url, sort_order, is_primary")
+      .in("product_id", productIds)
+      .order("sort_order", { ascending: true });
+
+    for (const image of images ?? []) {
+      if (imageByProduct.has(image.product_id)) continue;
+      // Prefer first row after sort; primary wins if seen first among ties.
+      if (!image.is_primary && imageByProduct.has(image.product_id)) continue;
+      imageByProduct.set(
+        image.product_id,
+        image.public_url ||
           resolvePublicStorageUrl("products", image.storage_path) ||
-          null;
-      }
+          null,
+      );
     }
-    views.push({
-      id: item.id,
-      productId: item.product_id,
-      variantId: item.variant_id,
-      productName: item.product_name_snapshot,
-      variantName: item.variant_name_snapshot,
-      sku: item.sku_snapshot,
-      unitPrice: Number(item.unit_price),
-      quantity: item.quantity,
-      lineTotal: Number(item.line_total),
-      imageUrl,
-      returnPolicy:
-        item.return_policy === "no_return_refund" ||
-        item.return_policy === "no_replace" ||
-        item.return_policy === "replace_only"
-          ? item.return_policy
-          : item.returns_allowed === true
-            ? "no_replace"
-            : "no_return_refund",
-      returnsAllowed:
-        item.return_policy === "no_replace" ||
-        (item.return_policy == null && item.returns_allowed === true),
-    });
+    // Ensure primary images take precedence when present.
+    for (const image of images ?? []) {
+      if (!image.is_primary) continue;
+      imageByProduct.set(
+        image.product_id,
+        image.public_url ||
+          resolvePublicStorageUrl("products", image.storage_path) ||
+          null,
+      );
+    }
   }
-  return views;
+
+  return (items ?? []).map((item) => ({
+    id: item.id,
+    productId: item.product_id,
+    variantId: item.variant_id,
+    productName: item.product_name_snapshot,
+    variantName: item.variant_name_snapshot,
+    sku: item.sku_snapshot,
+    unitPrice: Number(item.unit_price),
+    quantity: item.quantity,
+    lineTotal: Number(item.line_total),
+    imageUrl: item.product_id
+      ? (imageByProduct.get(item.product_id) ?? null)
+      : null,
+    returnPolicy:
+      item.return_policy === "no_return_refund" ||
+      item.return_policy === "no_replace" ||
+      item.return_policy === "replace_only"
+        ? item.return_policy
+        : item.returns_allowed === true
+          ? "no_replace"
+          : "no_return_refund",
+    returnsAllowed:
+      item.return_policy === "no_replace" ||
+      (item.return_policy == null && item.returns_allowed === true),
+  }));
 }
 
 async function mapPayment(orderId: string): Promise<OrderPaymentView | null> {
@@ -230,6 +251,8 @@ export async function listCustomerOrders(input: {
   createdFromIso?: string;
   createdToIso?: string;
 }): Promise<OrderListResult> {
+  const { measureServerOperation } = await import("@/lib/perf/measure-server");
+  return measureServerOperation("orders.listCustomer", async () => {
   const page = Math.max(1, input.page ?? 1);
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 10));
   const from = (page - 1) * pageSize;
@@ -261,25 +284,57 @@ export async function listCustomerOrders(input: {
   const items: OrderListItem[] = [];
   const orderIds = (data ?? []).map((row) => row.id);
   const openReplaceOrderIds = new Set<string>();
+  const itemCountByOrder = new Map<string, number>();
+  const paymentByOrder = new Map<string, OrderPaymentView>();
+
   if (orderIds.length) {
-    const { data: openReplaces } = await supabase
-      .from("order_replace_requests")
-      .select("order_id")
-      .in("order_id", orderIds)
-      .in("status", ["REQUESTED", "APPROVED"]);
+    const [{ data: openReplaces }, { data: itemRows }, { data: paymentRows }] =
+      await Promise.all([
+        supabase
+          .from("order_replace_requests")
+          .select("order_id")
+          .in("order_id", orderIds)
+          .in("status", ["REQUESTED", "APPROVED"]),
+        supabase
+          .from("order_items")
+          .select("order_id")
+          .in("order_id", orderIds),
+        supabase
+          .from("payments")
+          .select(
+            "id, order_id, status, amount, currency, provider, provider_payment_id, provider_order_id, payment_method, paid_at, failure_reason, created_at",
+          )
+          .in("order_id", orderIds)
+          .order("created_at", { ascending: false }),
+      ]);
+
     for (const row of openReplaces ?? []) {
       openReplaceOrderIds.add(row.order_id);
+    }
+    for (const row of itemRows ?? []) {
+      itemCountByOrder.set(
+        row.order_id,
+        (itemCountByOrder.get(row.order_id) ?? 0) + 1,
+      );
+    }
+    for (const row of paymentRows ?? []) {
+      if (paymentByOrder.has(row.order_id)) continue;
+      paymentByOrder.set(row.order_id, {
+        id: row.id,
+        status: row.status as PaymentStatus,
+        amount: Number(row.amount),
+        currency: row.currency,
+        provider: row.provider,
+        providerPaymentId: row.provider_payment_id,
+        providerOrderId: row.provider_order_id,
+        paymentMethod: row.payment_method,
+        paidAt: row.paid_at,
+        failureReason: row.failure_reason,
+      });
     }
   }
 
   for (const row of data ?? []) {
-    const [{ count: itemCount }, payment] = await Promise.all([
-      supabase
-        .from("order_items")
-        .select("id", { count: "exact", head: true })
-        .eq("order_id", row.id),
-      mapPayment(row.id),
-    ]);
     items.push({
       id: row.id,
       orderNumber: row.order_number,
@@ -287,13 +342,14 @@ export async function listCustomerOrders(input: {
       grandTotal: Number(row.grand_total),
       currency: row.currency,
       createdAt: row.created_at,
-      itemCount: itemCount ?? 0,
-      paymentStatus: payment?.status ?? null,
+      itemCount: itemCountByOrder.get(row.id) ?? 0,
+      paymentStatus: paymentByOrder.get(row.id)?.status ?? null,
       hasOpenReplace: openReplaceOrderIds.has(row.id),
     });
   }
 
   return { items, total: count ?? 0, page, pageSize };
+  });
 }
 
 export async function listAdminOrders(

@@ -33,6 +33,10 @@ export type AdminCouponListResult = {
   storeId: string;
 };
 
+export type CouponMutationResult =
+  | { ok: true; id: string; message?: string }
+  | { ok: false; error: string; fieldErrors?: FieldErrors };
+
 async function requireStoreContext(): Promise<{
   storeId: string;
   currency: string;

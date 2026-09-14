@@ -9,10 +9,14 @@ import Drawer from "@mui/material/Drawer";
 import { useState } from "react";
 import {
   getCartAction,
+  getCartCountAction,
   removeFromCartAction,
   updateCartItemQuantityAction,
 } from "@/features/cart/actions";
-import { cartQueryKey } from "@/features/cart/query-keys";
+import { cartCountQueryKey, cartQueryKey } from "@/features/cart/query-keys";
+import {
+  syncCartQueryCaches,
+} from "@/features/cart/sync-cart-query";
 import { cartCountLabel, emptyCartView } from "@/features/cart/types";
 import { FreeShippingProgressLoader } from "@/features/cart/components/FreeShippingProgressLoader";
 import { formatMoney } from "@/features/catalog/money";
@@ -20,53 +24,91 @@ import { EmptyState, emptyStateCtaClass } from "@/components/ui/EmptyState";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
-export function HeaderCartControl() {
+/**
+ * Suspense fallback only — must not call useQuery.
+ * A zero-count HeaderCartControl fallback would seed the shared QueryClient
+ * cache with 0 and cause SSR/client hydration mismatches once the real count streams in.
+ */
+export function HeaderCartControlFallback() {
+  return (
+    <IconButton
+      aria-label="Open cart"
+      size="medium"
+      className="!text-[var(--color-header-foreground)]"
+    >
+      <span className="relative inline-flex">
+        <ShoppingCartOutlinedIcon fontSize="small" />
+      </span>
+    </IconButton>
+  );
+}
+
+export function HeaderCartControl({
+  initialCartCount = 0,
+}: {
+  initialCartCount?: number;
+}) {
   const [open, setOpen] = useState(false);
+  const [drawerOpenedOnce, setDrawerOpenedOnce] = useState(false);
   const queryClient = useQueryClient();
-  const { data: cart = emptyCartView() } = useQuery({
+
+  const { data: itemCount = initialCartCount } = useQuery({
+    queryKey: cartCountQueryKey,
+    queryFn: () => getCartCountAction(),
+    initialData: initialCartCount,
+    staleTime: 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const loadFullCart = open || drawerOpenedOnce;
+  const { data: cart = emptyCartView(), isFetching: cartFetching } = useQuery({
     queryKey: cartQueryKey,
     queryFn: () => getCartAction(),
     staleTime: 30_000,
+    enabled: loadFullCart,
   });
 
   const removeMutation = useMutation({
     mutationFn: removeFromCartAction,
     onSuccess: (result) => {
-      if (result.ok) {
-        queryClient.setQueryData(cartQueryKey, result.cart);
-      }
+      if (result.ok) syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
   const qtyMutation = useMutation({
     mutationFn: updateCartItemQuantityAction,
     onSuccess: (result) => {
-      if (result.ok) {
-        queryClient.setQueryData(cartQueryKey, result.cart);
-      }
+      if (result.ok) syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
+  const badgeCount = loadFullCart ? cart.itemCount : itemCount;
   const lineCount = cart.lineCount ?? cart.items.length;
   const countLabel = cartCountLabel({
-    itemCount: cart.itemCount,
-    lineCount,
+    itemCount: badgeCount,
+    lineCount: loadFullCart ? lineCount : 0,
   });
-  const packageWord = cart.itemCount === 1 ? "package" : "packages";
+  const packageWord = badgeCount === 1 ? "package" : "packages";
+
+  function openDrawer() {
+    setDrawerOpenedOnce(true);
+    setOpen(true);
+  }
 
   return (
     <>
       <IconButton
-        aria-label={`Open cart, ${cart.itemCount} ${packageWord}`}
+        aria-label={`Open cart, ${badgeCount} ${packageWord}`}
         size="medium"
-        onClick={() => setOpen(true)}
+        onClick={openDrawer}
         className="!text-[var(--color-header-foreground)]"
       >
         <span className="relative inline-flex">
           <ShoppingCartOutlinedIcon fontSize="small" />
-          {cart.itemCount > 0 ? (
+          {badgeCount > 0 ? (
             <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[10px] font-semibold text-[var(--color-button-foreground)]">
-              {cart.itemCount > 99 ? "99+" : cart.itemCount}
+              {badgeCount > 99 ? "99+" : badgeCount}
             </span>
           ) : null}
         </span>
@@ -103,7 +145,11 @@ export function HeaderCartControl() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 py-4">
-            {cart.items.length === 0 ? (
+            {cartFetching && cart.items.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[var(--color-muted)]">
+                Loading cart…
+              </p>
+            ) : cart.items.length === 0 ? (
               <EmptyState
                 title="Your cart is empty"
                 description="Browse the catalog and add something you love."

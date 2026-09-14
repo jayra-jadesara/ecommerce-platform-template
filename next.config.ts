@@ -36,8 +36,13 @@ const nextConfig: NextConfig = {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [64, 96, 128, 256, 384],
+    // ProductCard uses 70; default Next quality is 75.
+    qualities: [70, 75],
     // Successful optimized images (heroes/detail) stay warm; grids use unoptimized.
     minimumCacheTTL: 86400,
+    // Local/Windows DNS often resolves *.supabase.co via NAT64 (64:ff9b::…) which
+    // Next treats as a private IP and blocks. remotePatterns still limit hosts.
+    dangerouslyAllowLocalIP: true,
     remotePatterns: supabaseHost
       ? [
           {

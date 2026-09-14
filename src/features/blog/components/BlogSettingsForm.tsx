@@ -8,7 +8,7 @@ import TextField from "@mui/material/TextField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import { saveBlogSettingsAction } from "@/features/blog/actions";
 import {
@@ -48,7 +48,7 @@ export function BlogSettingsForm({
   const [pending, startTransition] = useTransition();
   const listHref = getAdminPath("/content/blog");
 
-  const { control, handleSubmit, setError: setFieldError, setFocus, watch } =
+  const { control, handleSubmit, setError: setFieldError, setFocus } =
     useForm<BlogSettingsFormValues>({
       resolver: zodResolver(
         blogSettingsFormSchema,
@@ -56,13 +56,14 @@ export function BlogSettingsForm({
       defaultValues: initialValues,
     });
 
-  const showFeaturedPost = watch("showFeaturedPost");
-  const sidebarPreset = watch("sidebarPreset");
+  const showFeaturedPost = useWatch({ control, name: "showFeaturedPost" });
+  const sidebarPreset = useWatch({ control, name: "sidebarPreset" });
+  const ctaTitle = useWatch({ control, name: "ctaTitle" });
+  const ctaDescription = useWatch({ control, name: "ctaDescription" });
+  const ctaButtonLabel = useWatch({ control, name: "ctaButtonLabel" });
+  const ctaButtonHref = useWatch({ control, name: "ctaButtonHref" });
   const showCta = Boolean(
-    watch("ctaTitle") ||
-      watch("ctaDescription") ||
-      watch("ctaButtonLabel") ||
-      watch("ctaButtonHref"),
+    ctaTitle || ctaDescription || ctaButtonLabel || ctaButtonHref,
   );
 
   return (

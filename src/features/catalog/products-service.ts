@@ -30,7 +30,6 @@ import { isStoreScopedModelPath } from "@/features/visual-effects/schemas";
 import {
   isReturnPolicy,
   resolveReturnPolicy,
-  type ReturnPolicy,
 } from "@/features/shipping/policies";
 import {
   resolveStoreReturnPolicy,
@@ -1055,7 +1054,6 @@ export async function updateInventory(
 
 export function toProductFormValues(
   detail: AdminProductDetail,
-  _storeReturnPolicy?: ReturnPolicy | null,
 ): ProductFormValues {
   // null on the product = inherit Delivery & returns. Keep explicit overrides as-is.
   const returnPolicy = isReturnPolicy(detail.product.return_policy)

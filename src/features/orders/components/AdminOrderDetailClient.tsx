@@ -180,11 +180,13 @@ export function AdminOrderDetailClient({
     [order.activities],
   );
 
+  /* eslint-disable react-hooks/set-state-in-effect -- sync refreshed server order into local editable state */
   useEffect(() => {
     setOrder(initialOrder);
     setProvider(initialOrder.shippingProvider ?? "");
     setTracking(initialOrder.trackingNumber ?? "");
   }, [initialOrder]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function run(
     action: () => Promise<{

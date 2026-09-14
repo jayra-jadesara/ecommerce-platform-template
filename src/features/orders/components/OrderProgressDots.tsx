@@ -2,13 +2,13 @@ import type { OrderStatus } from "@/types/database";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import { cn } from "@/lib/cn";
 
-const STEPS: OrderStatus[] = [
+const STEPS = [
   "PENDING",
   "CONFIRMED",
   "PROCESSING",
   "SHIPPED",
   "DELIVERED",
-];
+] as const satisfies ReadonlyArray<OrderStatus>;
 
 const RANK: Record<OrderStatus, number> = {
   PENDING: 0,

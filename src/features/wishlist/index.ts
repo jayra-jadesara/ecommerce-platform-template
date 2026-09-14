@@ -5,6 +5,7 @@ export {
   type WishlistView,
 } from "@/features/wishlist/types";
 export { wishlistQueryKey, wishlistMembershipQueryKey, wishlistMembershipKey } from "@/features/wishlist/query-keys";
+export { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
 export {
   addToWishlistSchema,
   removeFromWishlistSchema,

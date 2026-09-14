@@ -22,6 +22,7 @@ import type {
   LayoutConfig,
   NavigationConfig,
 } from "@/types";
+import type { ReactNode } from "react";
 
 const LOGO_HEIGHT: Record<HeaderChromeConfig["logoSize"], string> = {
   small: "h-9 md:h-10",
@@ -34,6 +35,10 @@ interface HeaderProps {
   navigation: NavigationConfig;
   layout: LayoutConfig;
   header: HeaderChromeConfig;
+  /** Streamed cart badge from layout Suspense (preferred). */
+  cartSlot?: ReactNode;
+  /** @deprecated Prefer cartSlot — kept for simple fallbacks. */
+  initialCartCount?: number;
 }
 
 function isMeaningfulTagline(tagline: string | undefined | null) {
@@ -94,7 +99,14 @@ function NavLinks({
  * Commerce header — logo + tagline left, centered nav, icon utilities right
  * (inspired by premium Indian FMCG storefront patterns; fully white-label).
  */
-export function Header({ brand, navigation, layout, header }: HeaderProps) {
+export function Header({
+  brand,
+  navigation,
+  layout,
+  header,
+  cartSlot,
+  initialCartCount = 0,
+}: HeaderProps) {
   const pathname = usePathname() || "/";
   const hydrated = useHasHydrated();
   const [menuPath, setMenuPath] = useState<string | null>(null);
@@ -248,7 +260,11 @@ export function Header({ brand, navigation, layout, header }: HeaderProps) {
             </IconButton>
           ) : null}
 
-          {showCart ? <HeaderCartControl /> : null}
+          {showCart
+            ? (cartSlot ?? (
+                <HeaderCartControl initialCartCount={initialCartCount} />
+              ))
+            : null}
 
           <ThemeToggle />
 

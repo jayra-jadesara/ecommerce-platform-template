@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminPath } from "@/config/admin-route";
@@ -8,6 +9,7 @@ import {
   permissionsForRoles,
   type Permission,
 } from "@/features/auth/permissions";
+import { measureServerOperation } from "@/lib/perf/measure-server";
 import type { AdminRoleCode, Tables } from "@/types/database";
 import type { User } from "@supabase/supabase-js";
 
@@ -23,12 +25,20 @@ export type AdminContext = {
   permissions: Set<Permission>;
 };
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data.user) return null;
-  return toAuthUser(data.user);
-}
+/** Shared auth.getUser() for the current request (cookie-bound). */
+const getAuthSessionUser = cache(async (): Promise<User | null> => {
+  return measureServerOperation("auth.getUser", async () => {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
+    return data.user;
+  });
+});
+
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
+  const user = await getAuthSessionUser();
+  return user ? toAuthUser(user) : null;
+});
 
 export async function requireUser(loginPath = "/login"): Promise<AuthUser> {
   const user = await getCurrentUser();
@@ -36,61 +46,61 @@ export async function requireUser(loginPath = "/login"): Promise<AuthUser> {
   return user;
 }
 
-export async function getCurrentAdmin(): Promise<AdminContext | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data: authData, error: authError } = await supabase.auth.getUser();
-  if (authError || !authData.user) return null;
+export const getCurrentAdmin = cache(async (): Promise<AdminContext | null> => {
+  return measureServerOperation("auth.getCurrentAdmin", async () => {
+    const authUser = await getAuthSessionUser();
+    if (!authUser) return null;
 
-  const user = toAuthUser(authData.user);
+    const user = toAuthUser(authUser);
+    const supabase = await createSupabaseServerClient();
 
-  const { data: admin, error: adminError } = await supabase
-    .from("admin_users")
-    .select("*")
-    .eq("user_id", user.id)
-    .maybeSingle();
+    const { data: admin, error: adminError } = await supabase
+      .from("admin_users")
+      .select("*")
+      .eq("user_id", user.id)
+      .maybeSingle();
 
-  if (adminError || !admin || !admin.is_active) return null;
+    if (adminError || !admin || !admin.is_active) return null;
 
-  const { data: roleLinks, error: linksError } = await supabase
-    .from("admin_user_roles")
-    .select("role_id")
-    .eq("user_id", user.id);
+    const { data: roleLinks, error: linksError } = await supabase
+      .from("admin_user_roles")
+      .select("role_id")
+      .eq("user_id", user.id);
 
-  if (linksError || !roleLinks?.length) return null;
+    if (linksError || !roleLinks?.length) return null;
 
-  const roleIds = roleLinks.map((row) => row.role_id);
-  const { data: roleRows, error: rolesError } = await supabase
-    .from("roles")
-    .select("code")
-    .in("id", roleIds);
+    const roleIds = roleLinks.map((row) => row.role_id);
+    const { data: roleRows, error: rolesError } = await supabase
+      .from("roles")
+      .select("code")
+      .in("id", roleIds);
 
-  if (rolesError || !roleRows?.length) return null;
+    if (rolesError || !roleRows?.length) return null;
 
-  const roles = roleRows
-    .map((row) => row.code)
-    .filter((code): code is AdminRoleCode => Boolean(code));
+    const roles = roleRows
+      .map((row) => row.code)
+      .filter((code): code is AdminRoleCode => Boolean(code));
 
-  if (roles.length === 0) return null;
+    if (roles.length === 0) return null;
 
-  return {
-    user,
-    admin,
-    roles,
-    permissions: permissionsForRoles(roles),
-  };
-}
+    return {
+      user,
+      admin,
+      roles,
+      permissions: permissionsForRoles(roles),
+    };
+  });
+});
 
 export async function requireAdmin(
   permission?: Permission,
 ): Promise<AdminContext> {
-  const user = await getCurrentUser();
-  if (!user) {
-    redirect(getAdminPath("/login"));
-  }
-
   const admin = await getCurrentAdmin();
   if (!admin) {
-    // Authenticated but not an active admin (customer or inactive).
+    const user = await getCurrentUser();
+    if (!user) {
+      redirect(getAdminPath("/login"));
+    }
     redirect(getAdminPath("/unauthorized"));
   }
   if (permission && !admin.permissions.has(permission)) {

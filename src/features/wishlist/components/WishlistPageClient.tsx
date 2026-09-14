@@ -5,13 +5,14 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
-import { cartQueryKey } from "@/features/cart/query-keys";
+import { syncCartQueryCaches } from "@/features/cart/sync-cart-query";
 import { formatMoney } from "@/features/catalog/money";
 import {
   getWishlistAction,
   removeFromWishlistAction,
 } from "@/features/wishlist/actions";
 import { wishlistQueryKey } from "@/features/wishlist/query-keys";
+import { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
 import type { WishlistView } from "@/features/wishlist/types";
 
 interface WishlistPageClientProps {
@@ -41,7 +42,7 @@ export function WishlistPageClient({
       }
       setError(null);
       setMessage(result.message ?? "Removed.");
-      queryClient.setQueryData(wishlistQueryKey, result.wishlist);
+      syncWishlistQueryCaches(queryClient, result.wishlist);
     },
   });
 
@@ -54,8 +55,7 @@ export function WishlistPageClient({
       }
       setError(null);
       setMessage("Added to cart.");
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
     },
   });
 

@@ -72,12 +72,12 @@ export function MediaLibraryClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Keep filter inputs aligned with URL search params without an effect.
   const [filterQ, setFilterQ] = useState(q);
   const [urlQ, setUrlQ] = useState(q);
   const [deleteTarget, setDeleteTarget] = useState<MediaRow | null>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState("");
-
   if (urlQ !== q) {
     setUrlQ(q);
     setFilterQ(q);

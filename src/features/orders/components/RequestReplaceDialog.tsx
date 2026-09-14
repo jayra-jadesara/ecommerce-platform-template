@@ -51,10 +51,20 @@ export function RequestReplaceDialog({
   const [note, setNote] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [photo, setPhoto] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const previewUrl = useMemo(
+    () => (photo ? URL.createObjectURL(photo) : null),
+    [photo],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const photoRequired = rules.photoRequired;
   const attemptsLeft = Math.max(0, rules.maxAttempts - attemptsUsed);
@@ -62,16 +72,6 @@ export function RequestReplaceDialog({
     deliveredAt,
     rules.windowHours,
   );
-
-  useEffect(() => {
-    if (!photo) {
-      setPreviewUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(photo);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photo]);
 
   function resetAndClose() {
     setReasonCode(defaultReason);

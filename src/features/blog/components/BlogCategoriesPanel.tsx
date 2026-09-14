@@ -8,7 +8,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import {
   createBlogCategoryAction,
@@ -85,7 +85,6 @@ export function BlogCategoriesPanel({
     setValue,
     setError: setFieldError,
     setFocus,
-    watch,
     formState: { errors },
   } = useForm<BlogCategoryFormValues>({
     resolver: zodResolver(
@@ -94,8 +93,8 @@ export function BlogCategoriesPanel({
     values: defaults,
   });
 
-  const name = watch("name") ?? "";
-  const imagePath = watch("imagePath");
+  const name = useWatch({ control, name: "name" }) ?? "";
+  const imagePath = useWatch({ control, name: "imagePath" });
   const imagePreview = resolveCmsImageUrl(imagePath);
   const canEditForm = editingId ? canUpdate : canCreate;
 

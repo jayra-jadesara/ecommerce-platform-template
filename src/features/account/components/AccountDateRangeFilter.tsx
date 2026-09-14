@@ -6,7 +6,7 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import dayjs from "dayjs";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AccountDateField } from "@/features/account/components/AccountDateField";
 import {
   ACCOUNT_DATE_RANGE_OPTIONS,
@@ -72,11 +72,14 @@ export function AccountDateRangeFilter({
 
   const [customFrom, setCustomFrom] = useState(urlFrom);
   const [customTo, setCustomTo] = useState(urlTo);
-
-  useEffect(() => {
+  const [syncedFrom, setSyncedFrom] = useState(urlFrom);
+  const [syncedTo, setSyncedTo] = useState(urlTo);
+  if (syncedFrom !== urlFrom || syncedTo !== urlTo) {
+    setSyncedFrom(urlFrom);
+    setSyncedTo(urlTo);
     setCustomFrom(urlFrom);
     setCustomTo(urlTo);
-  }, [urlFrom, urlTo]);
+  }
 
   function pushParams(next: {
     range: AccountDateRange;

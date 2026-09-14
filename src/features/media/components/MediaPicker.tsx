@@ -66,11 +66,13 @@ export function MediaPicker({
 
   useEffect(() => {
     if (!open) return;
+    /* eslint-disable react-hooks/set-state-in-effect -- reset list when dialog opens */
     setBrowseFolder(folder);
     startTransition(async () => {
       setError(null);
       await refreshList(folder);
     });
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [open, folder, refreshList]);
 
   function selectBrowseFolder(next: MediaFolderFilter) {

@@ -642,23 +642,25 @@ export function resolve3DConfig(input: Resolve3dInput): Effective3dConfig {
 /** Build a section motion override from CMS config fields.
  * Motion is store-wide (Appearance → Motion & 3D); section custom is ignored.
  */
-export function sectionMotionOverrideFromConfig(_config: {
+export function sectionMotionOverrideFromConfig(config: {
   motionSource?: string | null;
   animationEnabled?: boolean | null;
   animationPreset?: string | null;
   animationIntensity?: string | null;
 }): SectionMotionOverride {
+  void config;
   return { source: "global" };
 }
 
 /** Build a section 3D override from CMS config fields.
  * 3D is store-wide (Appearance → Motion & 3D); section custom is ignored.
  */
-export function section3dOverrideFromConfig(_config: {
+export function section3dOverrideFromConfig(config: {
   threeSource?: string | null;
   enable3d?: boolean | null;
   scene3dPreset?: string | null;
 }): Section3dOverride {
+  void config;
   return { source: "global" };
 }
 

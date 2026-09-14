@@ -9,10 +9,12 @@ import type { PlatformConfig } from "@/types";
 interface AppLayoutProps {
   config: PlatformConfig;
   children: ReactNode;
+  /** Streamed cart control (Suspense). Falls back to empty badge if omitted. */
+  cartSlot?: ReactNode;
 }
 
 /** Storefront chrome: header, footer, and scroll affordance. */
-export function AppLayout({ config, children }: AppLayoutProps) {
+export function AppLayout({ config, children, cartSlot }: AppLayoutProps) {
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
       <AnnouncementBar announcement={config.header.announcement} />
@@ -21,6 +23,7 @@ export function AppLayout({ config, children }: AppLayoutProps) {
         navigation={config.navigation}
         layout={config.layout}
         header={config.header}
+        cartSlot={cartSlot}
       />
       {children}
       <Footer

@@ -8,7 +8,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
-import { cartQueryKey } from "@/features/cart/query-keys";
+import { syncCartQueryCaches } from "@/features/cart/sync-cart-query";
 import { CART_MAX_QUANTITY } from "@/features/cart/types";
 import {
   getWishlistMembershipKeysAction,
@@ -17,8 +17,8 @@ import {
 import {
   wishlistMembershipKey,
   wishlistMembershipQueryKey,
-  wishlistQueryKey,
 } from "@/features/wishlist/query-keys";
+import { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
@@ -66,6 +66,8 @@ export function ProductPurchaseActions({
     queryFn: () => getWishlistMembershipKeysAction(),
     enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const membershipSet = useMemo(
@@ -87,8 +89,7 @@ export function ProductPurchaseActions({
       }
       setError(null);
       setMessage(result.message ?? "Added to cart.");
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
@@ -101,10 +102,7 @@ export function ProductPurchaseActions({
       }
       setError(null);
       setMessage(result.message ?? "Wishlist updated.");
-      void queryClient.invalidateQueries({
-        queryKey: wishlistMembershipQueryKey,
-      });
-      void queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
+      if (result.wishlist) syncWishlistQueryCaches(queryClient, result.wishlist);
     },
   });
 
@@ -118,8 +116,7 @@ export function ProductPurchaseActions({
         setError(result.error);
         return;
       }
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
       router.push("/checkout");
     } catch {
       setError("Could not start Buy it now.");

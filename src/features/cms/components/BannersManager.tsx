@@ -5,7 +5,7 @@ import { useState, useTransition } from "react";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   createBannerAction,
@@ -286,7 +286,6 @@ function BannerForm({
     setValue,
     setError: setFieldError,
     setFocus,
-    watch,
     formState: { errors },
   } = useForm<BannerFormValues>({
     resolver: zodResolver(bannerFormSchema) as Resolver<BannerFormValues>,
@@ -301,9 +300,9 @@ function BannerForm({
     },
   });
 
-  const imagePath = watch("imagePath");
-  const buttonText = watch("buttonText");
-  const linkUrl = watch("linkUrl");
+  const imagePath = useWatch({ control, name: "imagePath" });
+  const buttonText = useWatch({ control, name: "buttonText" });
+  const linkUrl = useWatch({ control, name: "linkUrl" });
   const imagePreview = resolveCmsImageUrl(imagePath);
 
   return (

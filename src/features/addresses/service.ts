@@ -29,10 +29,6 @@ function mapAddress(row: Tables<"user_addresses">): CustomerAddress {
   };
 }
 
-function phoneForDb(input: AddressFormInput): string {
-  return formatAddressPhoneForStorage(input.phone);
-}
-
 async function listForUser(userId: string): Promise<CustomerAddress[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase

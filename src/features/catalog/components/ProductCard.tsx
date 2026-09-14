@@ -9,7 +9,7 @@ import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
-import { cartQueryKey } from "@/features/cart/query-keys";
+import { syncCartQueryCaches } from "@/features/cart/sync-cart-query";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductCard } from "@/features/catalog/storefront";
 import { QuickView } from "@/features/catalog/components/QuickView";
@@ -21,8 +21,8 @@ import {
 import {
   wishlistMembershipKey,
   wishlistMembershipQueryKey,
-  wishlistQueryKey,
 } from "@/features/wishlist/query-keys";
+import { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
 import { cn } from "@/lib/cn";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 
@@ -109,6 +109,8 @@ export function ProductCard({
     queryFn: () => getWishlistMembershipKeysAction(),
     enabled: hydrated && isAuthenticated,
     staleTime: 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const membershipSet = useMemo(
@@ -126,8 +128,7 @@ export function ProductCard({
       }
       setError(null);
       setMessage("Added to cart.");
-      queryClient.setQueryData(cartQueryKey, result.cart);
-      void queryClient.invalidateQueries({ queryKey: cartQueryKey });
+      syncCartQueryCaches(queryClient, result.cart);
     },
   });
 
@@ -144,10 +145,7 @@ export function ProductCard({
       }
       setError(null);
       setMessage(result.message ?? "Wishlist updated.");
-      void queryClient.invalidateQueries({
-        queryKey: wishlistMembershipQueryKey,
-      });
-      void queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
+      if (result.wishlist) syncWishlistQueryCaches(queryClient, result.wishlist);
     },
   });
 
@@ -285,7 +283,8 @@ export function ProductCard({
               height={112}
               className="h-full w-full object-contain p-1.5"
               loading="lazy"
-              unoptimized
+              sizes="112px"
+              quality={70}
               onError={() => markFailed(listThumbUrl)}
             />
           ) : (
@@ -314,7 +313,7 @@ export function ProductCard({
               compact ? "p-1.5" : "p-2 sm:p-2.5",
             )}
             loading="lazy"
-            unoptimized
+            quality={70}
             onError={() => markFailed(activeUrl)}
           />
         ) : (

@@ -142,10 +142,12 @@ export function createAppMuiTheme(
               borderColor: tokens.error,
             },
           },
-          // Do not force medium padding on size="small" (was making admin selects huge).
-          inputSizeSmall: {
-            paddingTop: 8,
-            paddingBottom: 8,
+          // Prefer selector over removed `inputSizeSmall` key (MUI v9 typings).
+          input: {
+            "&.MuiInputBase-inputSizeSmall": {
+              paddingTop: 8,
+              paddingBottom: 8,
+            },
           },
           notchedOutline: {
             borderRadius: 10,

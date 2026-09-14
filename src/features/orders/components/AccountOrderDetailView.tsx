@@ -47,7 +47,10 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
     returnPolicyBlocksRefund(item.returnPolicy),
   );
   const rules = order.replaceRules;
-  const replaceRequests = order.replaceRequests ?? [];
+  const replaceRequests = useMemo(
+    () => order.replaceRequests ?? [],
+    [order.replaceRequests],
+  );
   const hasOpenReplace = replaceRequests.some(
     (req) => req.status === "REQUESTED" || req.status === "APPROVED",
   );

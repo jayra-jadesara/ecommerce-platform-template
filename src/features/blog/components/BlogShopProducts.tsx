@@ -13,8 +13,8 @@ import {
 import {
   wishlistMembershipKey,
   wishlistMembershipQueryKey,
-  wishlistQueryKey,
 } from "@/features/wishlist/query-keys";
+import { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 
 export type BlogShopProduct = {
@@ -38,6 +38,8 @@ function ProductWishlistButton({
     queryFn: () => getWishlistMembershipKeysAction(),
     enabled: hydrated,
     staleTime: 30_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 
   const membershipSet = useMemo(
@@ -47,11 +49,9 @@ function ProductWishlistButton({
 
   const mutation = useMutation({
     mutationFn: () => toggleWishlistAction({ productId }),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: wishlistMembershipQueryKey,
-      });
-      await queryClient.invalidateQueries({ queryKey: wishlistQueryKey });
+    onSuccess: (result) => {
+      if (!result.ok || !result.wishlist) return;
+      syncWishlistQueryCaches(queryClient, result.wishlist);
     },
   });
 

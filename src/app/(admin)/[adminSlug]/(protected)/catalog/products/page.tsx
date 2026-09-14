@@ -144,7 +144,7 @@ export default async function AdminCatalogProductsPage({
         <ProductForm
           mode={isView ? "view" : "edit"}
           productId={detail.product.id}
-          initialValues={toProductFormValues(detail, storeReturnPolicy)}
+          initialValues={toProductFormValues(detail)}
           categories={categories}
           canUpdate={canUpdate}
           canDelete={canDelete}

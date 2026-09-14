@@ -221,12 +221,13 @@ describe("Image + wishlist performance contracts", () => {
     return readFileSync(resolve(root, rel), "utf8");
   }
 
-  it("caches optimized images longer and skips optimizer on ProductCard thumbs", () => {
+  it("caches optimized images longer and uses Next Image on ProductCard thumbs", () => {
     const config = read("next.config.ts");
     expect(config).toContain("minimumCacheTTL: 86400");
 
     const card = read("src/features/catalog/components/ProductCard.tsx");
-    expect(card).toContain("unoptimized");
+    expect(card).not.toContain("unoptimized");
+    expect(card).toContain("quality={70}");
     expect(card).toContain("activeUrl");
     expect(card).not.toContain("isInWishlistAction");
     expect(card).toContain("getWishlistMembershipKeysAction");

@@ -11,7 +11,7 @@ import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Controller, useForm, type Resolver } from "react-hook-form";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import {
   createBlogPostAction,
@@ -81,7 +81,6 @@ export function BlogPostForm({
     setValue,
     setError: setFieldError,
     setFocus,
-    watch,
     formState: { errors },
   } = useForm<BlogPostFormValues>({
     resolver: zodResolver(blogPostFormSchema) as Resolver<BlogPostFormValues>,
@@ -94,15 +93,15 @@ export function BlogPostForm({
     },
   });
 
-  const title = watch("title") ?? "";
-  const slug = watch("slug") ?? "";
-  const excerpt = watch("excerpt") ?? "";
-  const content = watch("content") ?? "";
-  const seoTitle = watch("seoTitle") ?? "";
-  const seoDescription = watch("seoDescription") ?? "";
-  const featured = watch("featuredImagePath");
-  const og = watch("ogImagePath");
-  const status = watch("status") ?? "draft";
+  const title = useWatch({ control, name: "title" }) ?? "";
+  const slug = useWatch({ control, name: "slug" }) ?? "";
+  const excerpt = useWatch({ control, name: "excerpt" }) ?? "";
+  const content = useWatch({ control, name: "content" }) ?? "";
+  const seoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
+  const seoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
+  const featured = useWatch({ control, name: "featuredImagePath" });
+  const og = useWatch({ control, name: "ogImagePath" });
+  const status = useWatch({ control, name: "status" }) ?? "draft";
   const featuredPreview = resolveCmsImageUrl(featured);
   const ogPreview = resolveCmsImageUrl(og);
   const postPath = slug ? `/blog/${slug}` : "/blog/…";
