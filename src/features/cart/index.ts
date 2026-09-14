@@ -1,5 +1,6 @@
 export {
   CART_MAX_QUANTITY,
+  cartCountLabel,
   cartItemCount,
   cartSubtotal,
   emptyCartView,

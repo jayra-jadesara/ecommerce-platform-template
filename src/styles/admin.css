@@ -116,8 +116,55 @@
 .admin-form-stack > .MuiFormControl-root,
 .admin-form-stack > .MuiTextField-root,
 .admin-fields-grid > .MuiFormControl-root,
-.admin-fields-grid > .MuiTextField-root {
+.admin-fields-grid > .MuiTextField-root,
+.admin-fields-grid > div > .MuiFormControl-root,
+.admin-fields-grid > div > .MuiTextField-root,
+.admin-fields-grid > div > .admin-datetime-field {
   width: 100% !important;
+}
+
+/* MUI X v9 datetime: PickersOutlinedInput (not OutlinedInput). */
+.admin-shell .MuiPickersOutlinedInput-root {
+  font-size: 0.8125rem !important;
+  border-radius: 10px !important;
+  background-color: var(--color-card) !important;
+}
+
+.admin-shell .MuiPickersOutlinedInput-root:not(.MuiInputBase-multiline) {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+  max-height: 2.5rem !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.admin-shell .MuiPickersOutlinedInput-notchedOutline {
+  border-color: var(--color-border) !important;
+  border-radius: 10px !important;
+}
+
+.admin-shell
+  .MuiPickersOutlinedInput-root:hover
+  .MuiPickersOutlinedInput-notchedOutline {
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary) 45%,
+    var(--color-border)
+  ) !important;
+}
+
+.admin-shell
+  .MuiPickersOutlinedInput-root.Mui-focused
+  .MuiPickersOutlinedInput-notchedOutline {
+  border-color: var(--color-primary) !important;
+  border-width: 1.5px !important;
+}
+
+.admin-shell .MuiPickersOutlinedInput-sectionsContainer {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  line-height: 22px !important;
 }
 
 .admin-shell .MuiFormGroup-root {
@@ -361,7 +408,10 @@
 }
 
 .admin-fields-grid > .MuiFormControl-root,
-.admin-fields-grid > .MuiTextField-root {
+.admin-fields-grid > .MuiTextField-root,
+.admin-fields-grid > div > .MuiFormControl-root,
+.admin-fields-grid > div > .MuiTextField-root,
+.admin-fields-grid > div > .admin-datetime-field {
   margin: 0 !important;
   min-width: 0;
   width: 100%;

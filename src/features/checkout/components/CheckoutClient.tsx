@@ -28,6 +28,7 @@ type CheckoutUiStep = "address" | "confirm" | "payment";
 
 interface CheckoutClientProps {
   initialSummary: CheckoutSummary;
+  featuredCoupon?: { code: string; offerLabel: string } | null;
 }
 
 function formatAddress(address: CustomerAddress): string {
@@ -47,7 +48,10 @@ const STEPS: { id: CheckoutUiStep; label: string; hint: string }[] = [
   { id: "payment", label: "Payment", hint: "Pay securely" },
 ];
 
-export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
+export function CheckoutClient({
+  initialSummary,
+  featuredCoupon = null,
+}: CheckoutClientProps) {
   const router = useRouter();
   const { openCheckout } = useRazorpayCheckout();
   const [summary, setSummary] = useState(initialSummary);
@@ -604,6 +608,40 @@ export function CheckoutClient({ initialSummary }: CheckoutClientProps) {
             <label htmlFor="checkout-coupon" className="text-sm font-medium">
               Coupon code
             </label>
+            {!summary.couponCode && featuredCoupon ? (
+              <button
+                type="button"
+                disabled={busy || summary.lines.length === 0}
+                onClick={() => {
+                  const code = featuredCoupon.code;
+                  setCouponInput(code);
+                  startTransition(async () => {
+                    setError(null);
+                    const next = await applyCheckoutCouponAction({
+                      code,
+                      selectedAddressId: summary.selectedAddressId,
+                    });
+                    setSummary(next);
+                    if (next.couponCode) {
+                      setCouponInput(next.couponCode);
+                    }
+                  });
+                }}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-card))] px-3 py-2.5 text-left text-sm transition hover:border-[var(--color-primary)] disabled:opacity-50"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[0.7rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                    Try {featuredCoupon.offerLabel}
+                  </span>
+                  <span className="font-semibold tracking-wide">
+                    {featuredCoupon.code}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold text-[var(--color-primary)]">
+                  Apply
+                </span>
+              </button>
+            ) : null}
             {summary.couponCode ? (
               <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5 text-sm">
                 <span>

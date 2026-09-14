@@ -1,7 +1,6 @@
 "use client";
 
 import Alert from "@mui/material/Alert";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -10,16 +9,23 @@ import {
   deleteMediaAction,
   uploadMediaAction,
 } from "@/features/media/actions";
+import { MediaFolderNav } from "@/features/media/components/MediaFolderNav";
 import { UploadDropzone } from "@/features/media/components/UploadDropzone";
 import type { MediaRow } from "@/features/media/media-service";
-import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
+import {
+  MEDIA_FOLDER_HINTS,
+  mediaFolderLabel,
+  resolveMediaUploadFolder,
+  type MediaFolderFilter,
+} from "@/features/media/media-folder-labels";
+import type { MediaFolder } from "@/features/media/validation";
 import { getAdminPath } from "@/config/admin-route";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import {
   adminBtn,
   adminCard,
-  adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { cn } from "@/lib/cn";
 
 interface MediaLibraryClientProps {
   initialItems: MediaRow[];
@@ -31,22 +37,6 @@ interface MediaLibraryClientProps {
   canUpload: boolean;
   canDelete: boolean;
 }
-
-const FOLDER_LABELS: Record<MediaFolder, string> = {
-  general: "General library",
-  cms: "Homepage & pages",
-  products: "Products",
-  categories: "Categories",
-  branding: "Logo & branding",
-};
-
-const FOLDER_HINTS: Record<MediaFolder, string> = {
-  general: "Private admin library — use signed previews in admin only.",
-  cms: "Best for banners and homepage images (public on the store).",
-  products: "Product photos",
-  categories: "Category images",
-  branding: "Logo, favicon, social image",
-};
 
 function buildHref(input: {
   page?: number;
@@ -82,25 +72,25 @@ export function MediaLibraryClient({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [uploadFolder, setUploadFolder] = useState<MediaFolder>(
-    folder === "all" ? "cms" : folder,
-  );
   const [filterQ, setFilterQ] = useState(q);
-  const [filterFolder, setFilterFolder] = useState<MediaFolder | "all">(folder);
-  const [urlFilters, setUrlFilters] = useState({ q, folder });
+  const [urlQ, setUrlQ] = useState(q);
   const [deleteTarget, setDeleteTarget] = useState<MediaRow | null>(null);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState("");
 
-  // Keep draft inputs aligned when the URL/search params change (back/forward).
-  if (urlFilters.q !== q || urlFilters.folder !== folder) {
-    setUrlFilters({ q, folder });
+  if (urlQ !== q) {
+    setUrlQ(q);
     setFilterQ(q);
-    setFilterFolder(folder);
   }
 
+  const uploadFolder = resolveMediaUploadFolder(folder);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const items = useMemo(() => initialItems, [initialItems]);
+  const activeFolder: MediaFolderFilter = folder;
+
+  function navigateFolder(next: MediaFolderFilter) {
+    router.push(buildHref({ q: filterQ, folder: next, page: 1 }));
+  }
 
   function openDelete(item: MediaRow) {
     setError(null);
@@ -122,231 +112,193 @@ export function MediaLibraryClient({
   }
 
   return (
-    <div style={adminStackStyle}>
-      <div
-        className={`${adminCard()} p-4 md:p-5`}
-        style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+    <div className="grid gap-4 lg:grid-cols-[4.75rem_minmax(0,1fr)] lg:items-start">
+      <aside
+        className={cn(
+          adminCard(),
+          "flex flex-col items-center gap-2 p-2 lg:sticky lg:top-4 lg:self-start",
+        )}
       >
-        <div>
-          <p className="text-sm font-semibold text-[var(--color-foreground)]">
-            Upload images
-          </p>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Choose where the file belongs, then upload. For storefront banners
-            and homepage, prefer <strong>Homepage &amp; pages</strong>.
-          </p>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
-          <UploadDropzone
-            disabled={!canUpload || pending}
-            label="Drop images here"
-            hint="JPEG, PNG, or WebP · max 10 MB each"
-            onFiles={async (files) => {
-              setError(null);
-              setSuccess(null);
-              for (const file of files) {
-                const formData = new FormData();
-                formData.set("file", file);
-                formData.set("folder", uploadFolder);
-                const result = await uploadMediaAction(formData);
-                if (!result.ok) {
-                  setError(result.error);
-                  return;
-                }
-              }
-              setSuccess(
-                files.length === 1
-                  ? "Image uploaded."
-                  : `${files.length} images uploaded.`,
-              );
-              router.refresh();
-            }}
-          />
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <TextField
-              select
-              label="Save into"
-              value={uploadFolder}
-              required
-              disabled={!canUpload}
-              helperText={FOLDER_HINTS[uploadFolder]}
-              onChange={(event) =>
-                setUploadFolder(event.target.value as MediaFolder)
-              }
-            >
-              {MEDIA_FOLDERS.map((value) => (
-                <MenuItem key={value} value={value}>
-                  {FOLDER_LABELS[value]}
-                </MenuItem>
-              ))}
-            </TextField>
-          </div>
-        </div>
-      </div>
-
-      <form
-        className={`${adminCard()} flex flex-col gap-3 p-4 sm:flex-row sm:items-end`}
-        onSubmit={(event) => {
-          event.preventDefault();
-          router.push(
-            buildHref({
-              q: filterQ,
-              folder: filterFolder,
-              page: 1,
-            }),
-          );
-        }}
-      >
-        <TextField
-          label="Search by name"
-          size="small"
-          value={filterQ}
-          onChange={(event) => setFilterQ(event.target.value)}
-          fullWidth
+        <p className="sr-only">Categories</p>
+        <MediaFolderNav
+          active={activeFolder}
+          onSelect={navigateFolder}
         />
-        <TextField
-          select
-          label="Folder"
-          size="small"
-          value={filterFolder}
-          onChange={(event) =>
-            setFilterFolder(event.target.value as MediaFolder | "all")
-          }
-          className="min-w-48"
+        <p className="hidden border-t border-[var(--color-border)] px-1 pt-2 text-center text-[10px] leading-snug text-[var(--color-muted)] xl:block">
+          {activeFolder === "all"
+            ? "Uploads go to Homepage & pages."
+            : MEDIA_FOLDER_HINTS[activeFolder]}
+        </p>
+      </aside>
+
+      <div className="min-w-0 space-y-4">
+        {canUpload ? (
+          <div className={`${adminCard()} p-3 sm:p-4`}>
+            <UploadDropzone
+              disabled={pending}
+              label="Drop images here"
+              hint={`Saved to ${mediaFolderLabel(uploadFolder)} · JPEG, PNG, or WebP · max 5 MB each`}
+              onFiles={async (files) => {
+                setError(null);
+                setSuccess(null);
+                for (const file of files) {
+                  const formData = new FormData();
+                  formData.set("file", file);
+                  formData.set("folder", uploadFolder);
+                  const result = await uploadMediaAction(formData);
+                  if (!result.ok) {
+                    setError(result.error);
+                    return;
+                  }
+                }
+                setSuccess(
+                  files.length === 1
+                    ? "Image uploaded."
+                    : `${files.length} images uploaded.`,
+                );
+                router.refresh();
+              }}
+            />
+          </div>
+        ) : null}
+
+        <form
+          className={`${adminCard()} flex flex-col gap-2 p-3 sm:flex-row sm:items-end`}
+          onSubmit={(event) => {
+            event.preventDefault();
+            router.push(
+              buildHref({
+                q: filterQ,
+                folder: activeFolder,
+                page: 1,
+              }),
+            );
+          }}
         >
-          <MenuItem value="all">All folders</MenuItem>
-          {MEDIA_FOLDERS.map((value) => (
-            <MenuItem key={value} value={value}>
-              {FOLDER_LABELS[value]}
-            </MenuItem>
-          ))}
-        </TextField>
-        <button type="submit" className={adminBtn("outline")}>
-          Apply
-        </button>
-      </form>
+          <TextField
+            label="Search by name"
+            size="small"
+            value={filterQ}
+            onChange={(event) => setFilterQ(event.target.value)}
+            fullWidth
+          />
+          <button type="submit" className={adminBtn("outline")}>
+            Search
+          </button>
+        </form>
 
-      {error ? <Alert severity="error">{error}</Alert> : null}
-      {success ? <Alert severity="success">{success}</Alert> : null}
+        {error ? <Alert severity="error">{error}</Alert> : null}
+        {success ? <Alert severity="success">{success}</Alert> : null}
 
-      {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-14 text-center">
-          <p className="text-sm font-medium text-[var(--color-foreground)]">
-            No images yet
-          </p>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Upload product photos, banners, or brand assets to use across your
-            store.
-          </p>
-        </div>
-      ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((item) => {
-            const url = item.preview_url || null;
-            const folderKey = (item.folder || "general") as MediaFolder;
-            const folderLabel =
-              FOLDER_LABELS[folderKey] ?? item.folder ?? "General";
-            return (
-              <li key={item.id} className={`${adminCard()} overflow-hidden`}>
-                <div className="relative aspect-[4/3] bg-[var(--color-surface)]">
-                  {url ? (
-                    // Signed private URLs must not go through next/image optimizer.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={url}
-                      alt={item.alt_text || item.file_name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full flex-col items-center justify-center gap-1 px-3 text-center">
-                      <p className="text-sm font-medium text-[var(--color-foreground)]">
-                        Preview unavailable
-                      </p>
-                      <p className="text-xs text-[var(--color-muted)]">
-                        {item.file_name}
-                      </p>
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="p-3"
-                  style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+        {items.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
+            <p className="text-sm font-medium text-[var(--color-foreground)]">
+              No images yet
+            </p>
+            <p className="mt-1 text-sm text-[var(--color-muted)]">
+              Upload to this folder, or pick another category on the left.
+            </p>
+          </div>
+        ) : (
+          <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {items.map((item) => {
+              const url = item.preview_url || null;
+              return (
+                <li
+                  key={item.id}
+                  className={`${adminCard()} overflow-hidden`}
                 >
-                  <div>
-                    <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
+                  <div className="relative aspect-square bg-[var(--color-surface)] p-1.5">
+                    {url ? (
+                      // Signed private URLs must not go through next/image optimizer.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={url}
+                        alt={item.alt_text || item.file_name}
+                        className="h-full w-full object-contain"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center px-1 text-center text-[10px] text-[var(--color-muted)]">
+                        {item.file_name}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 border-t border-[var(--color-border)] p-2">
+                    <p
+                      className="truncate text-[11px] font-medium leading-tight text-[var(--color-foreground)]"
+                      title={item.file_name}
+                    >
                       {item.file_name}
                     </p>
-                    <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                      {folderLabel}
+                    <p className="truncate text-[10px] text-[var(--color-muted)]">
+                      {mediaFolderLabel(item.folder)}
                       {item.file_size ? ` · ${formatBytes(item.file_size)}` : ""}
                     </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className={adminBtn("outline")}
-                      onClick={async () => {
-                        await navigator.clipboard.writeText(item.storage_path);
-                        setSuccess("Path copied — paste this in image fields.");
-                      }}
-                    >
-                      Copy path
-                    </button>
-                    {url ? (
+                    <div className="flex flex-wrap gap-1">
                       <button
                         type="button"
-                        className={adminBtn("ghost")}
+                        className="rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-medium hover:border-[var(--color-primary)]"
                         onClick={async () => {
-                          await navigator.clipboard.writeText(url);
-                          setSuccess("Preview link copied.");
+                          await navigator.clipboard.writeText(item.storage_path);
+                          setSuccess("Path copied.");
                         }}
                       >
-                        Copy link
+                        Path
                       </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      className={adminBtn("danger")}
-                      disabled={!canDelete || pending}
-                      onClick={() => openDelete(item)}
-                    >
-                      Delete
-                    </button>
+                      {url ? (
+                        <button
+                          type="button"
+                          className="rounded border border-[var(--color-border)] px-1.5 py-0.5 text-[10px] font-medium hover:border-[var(--color-primary)]"
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(url);
+                            setSuccess("Link copied.");
+                          }}
+                        >
+                          Link
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="rounded border border-red-200 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        disabled={!canDelete || pending}
+                        onClick={() => openDelete(item)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
 
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <p className="text-[var(--color-muted)]">
-          {total} image{total === 1 ? "" : "s"} · page {page} of {totalPages}
-        </p>
-        <div className="flex gap-2">
-          <a
-            className={`${adminBtn("outline")} ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={buildHref({ q, folder, page: page - 1 })}
-            aria-disabled={page <= 1}
-          >
-            Previous
-          </a>
-          <a
-            className={`${adminBtn("outline")} ${page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-            href={buildHref({ q, folder, page: page + 1 })}
-            aria-disabled={page >= totalPages}
-          >
-            Next
-          </a>
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <p className="text-[var(--color-muted)]">
+            {total} image{total === 1 ? "" : "s"} · page {page} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <a
+              className={`${adminBtn("outline")} ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
+              href={buildHref({ q, folder, page: page - 1 })}
+              aria-disabled={page <= 1}
+            >
+              Previous
+            </a>
+            <a
+              className={`${adminBtn("outline")} ${page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+              href={buildHref({ q, folder, page: page + 1 })}
+              aria-disabled={page >= totalPages}
+            >
+              Next
+            </a>
+          </div>
         </div>
       </div>
 
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
-        title={
-          deleteBlocked ? "Can't delete this image" : "Delete image?"
-        }
+        title={deleteBlocked ? "Can't delete this image" : "Delete image?"}
         message={deleteMessage}
         blocked={deleteBlocked}
         warningTone={deleteBlocked}

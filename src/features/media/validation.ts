@@ -10,8 +10,8 @@ export type AllowedImageMime = (typeof ALLOWED_IMAGE_MIME)[number];
 
 export const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"] as const;
 
-/** Default max upload size for product/media images (10 MB). */
-export const MAX_MEDIA_IMAGE_BYTES = 10 * 1024 * 1024;
+/** Default max upload size for product/media images (5 MB). */
+export const MAX_MEDIA_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export const MEDIA_FOLDERS = [
   "products",

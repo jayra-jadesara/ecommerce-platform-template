@@ -196,6 +196,7 @@ function toCartView(
     ownerKind: cart.user_id ? "CUSTOMER" : "GUEST",
     items: lines,
     itemCount: cartItemCount(lines),
+    lineCount: lines.length,
     subtotal: minorToMajor(subtotalMinor, currency),
     currency,
     hasUnavailableItems: lines.some((line) => line.availability !== "AVAILABLE"),

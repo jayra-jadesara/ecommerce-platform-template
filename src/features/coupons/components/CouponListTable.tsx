@@ -165,6 +165,7 @@ export function CouponListTable({
               <th className="px-3 py-2 font-medium">Discount</th>
               <th className="px-3 py-2 font-medium">Minimum order</th>
               <th className="px-3 py-2 font-medium">Usage</th>
+              <th className="px-3 py-2 font-medium">Storefront</th>
               <th className="px-3 py-2 font-medium">Start</th>
               <th className="px-3 py-2 font-medium">Expiry</th>
               <th className="px-3 py-2 font-medium">Status</th>
@@ -175,7 +176,7 @@ export function CouponListTable({
             {items.length === 0 ? (
               <tr>
                 <td
-                  colSpan={8}
+                  colSpan={9}
                   className="px-3 py-8 text-center text-[var(--color-muted)]"
                 >
                   No coupons yet.
@@ -199,6 +200,13 @@ export function CouponListTable({
                   <td className="px-3 py-2">
                     {item.redemptionCount}
                     {item.usageLimit != null ? ` / ${item.usageLimit}` : ""}
+                  </td>
+                  <td className="px-3 py-2">
+                    {item.showOnStorefront ? (
+                      <Chip size="small" label="Featured" color="info" />
+                    ) : (
+                      "—"
+                    )}
                   </td>
                   <td className="px-3 py-2">{formatDateTime(item.startsAt)}</td>
                   <td className="px-3 py-2">{formatDateTime(item.expiresAt)}</td>

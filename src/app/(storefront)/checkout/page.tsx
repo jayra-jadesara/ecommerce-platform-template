@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout";
 import { CheckoutClient } from "@/features/checkout/components/CheckoutClient";
 import { getCheckoutSummary } from "@/features/checkout/service";
+import { getStorefrontFeaturedCoupon } from "@/features/coupons/storefront";
 import { getCurrentUser } from "@/features/auth/session";
 import { buildPrivatePageMetadata } from "@/features/seo/private-metadata";
 
@@ -16,7 +17,10 @@ export default async function CheckoutPage() {
     redirect("/login?next=/checkout");
   }
 
-  const summary = await getCheckoutSummary();
+  const [summary, featuredCoupon] = await Promise.all([
+    getCheckoutSummary(),
+    getStorefrontFeaturedCoupon(),
+  ]);
 
   return (
     <PageShell
@@ -25,7 +29,17 @@ export default async function CheckoutPage() {
       backHref="/cart"
       backLabel="Back to cart"
     >
-      <CheckoutClient initialSummary={summary} />
+      <CheckoutClient
+        initialSummary={summary}
+        featuredCoupon={
+          featuredCoupon
+            ? {
+                code: featuredCoupon.code,
+                offerLabel: featuredCoupon.offerLabel,
+              }
+            : null
+        }
+      />
     </PageShell>
   );
 }

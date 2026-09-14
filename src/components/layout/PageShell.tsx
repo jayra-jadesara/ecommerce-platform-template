@@ -14,6 +14,8 @@ interface PageShellProps {
   /** Fallback href when history cannot go back. */
   backHref?: string;
   backLabel?: string;
+  /** Page title alignment. Default left. */
+  titleAlign?: "left" | "center";
 }
 
 /** Consistent page chrome: optional back + heading block + constrained content. */
@@ -25,6 +27,7 @@ export function PageShell({
   showBack = true,
   backHref = "/",
   backLabel = "Back",
+  titleAlign = "left",
 }: PageShellProps) {
   return (
     <Container
@@ -37,17 +40,27 @@ export function PageShell({
         </div>
       ) : null}
       {(title || description) && (
-        <header className="mb-6 md:mb-8">
+        <header
+          className={cn(
+            "mb-6 md:mb-8",
+            titleAlign === "center" && "text-center",
+          )}
+        >
           {title ? (
             <StorefrontHeading
               title={title}
               as="h1"
-              align="left"
+              align={titleAlign}
               className="!text-2xl md:!text-3xl"
             />
           ) : null}
           {description ? (
-            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
+            <p
+              className={cn(
+                "mt-2 max-w-2xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]",
+                titleAlign === "center" && "mx-auto",
+              )}
+            >
               {description}
             </p>
           ) : null}

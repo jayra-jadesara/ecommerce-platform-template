@@ -17,6 +17,8 @@ import {
   JsonLdScript,
 } from "@/features/seo";
 import { HomeView } from "./home-view";
+import { getStorefrontFeaturedCoupon } from "@/features/coupons/storefront";
+import { CouponPromoModal } from "@/features/coupons/components/CouponPromoModal";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getPlatformConfigAsync();
@@ -31,17 +33,19 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function HomePage() {
-  const [config, homepage, categories, productList, user] = await Promise.all([
-    getPlatformConfigAsync(),
-    getPublishedHomepage(),
-    listStorefrontCategories(),
-    listStorefrontProducts({
-      page: "1",
-      pageSize: "8",
-      sort: "featured",
-    }),
-    getCurrentUser(),
-  ]);
+  const [config, homepage, categories, productList, user, featuredCoupon] =
+    await Promise.all([
+      getPlatformConfigAsync(),
+      getPublishedHomepage(),
+      listStorefrontCategories(),
+      listStorefrontProducts({
+        page: "1",
+        pageSize: "8",
+        sort: "featured",
+      }),
+      getCurrentUser(),
+      getStorefrontFeaturedCoupon(),
+    ]);
 
   const isAuthenticated = Boolean(user);
   const hasSections = (homepage?.sections.length ?? 0) > 0;
@@ -80,6 +84,7 @@ export default async function HomePage() {
           isAuthenticated={isAuthenticated}
         />
       )}
+      {featuredCoupon ? <CouponPromoModal promo={featuredCoupon} /> : null}
     </Container>
   );
 }

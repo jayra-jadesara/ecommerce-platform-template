@@ -32,8 +32,10 @@ export type CartView = {
   storeId: string | null;
   ownerKind: CartOwnerKind | null;
   items: CartLineView[];
-  /** Sum of line quantities (e.g. 2+3 = 5). */
+  /** Sum of line quantities / packages (e.g. 2+3 = 5). */
   itemCount: number;
+  /** Number of distinct cart lines (product + weight SKUs). */
+  lineCount: number;
   /** Pre-checkout subtotal from current variant prices only. */
   subtotal: number;
   currency: string;
@@ -51,6 +53,7 @@ export function emptyCartView(currency = "INR"): CartView {
     ownerKind: null,
     items: [],
     itemCount: 0,
+    lineCount: 0,
     subtotal: 0,
     currency,
     hasUnavailableItems: false,
@@ -59,6 +62,19 @@ export function emptyCartView(currency = "INR"): CartView {
 
 export function cartItemCount(items: Array<{ quantity: number }>): number {
   return items.reduce((sum, item) => sum + Math.max(0, item.quantity), 0);
+}
+
+/** Human-readable “27 packages · 6 lines” for cart chrome. */
+export function cartCountLabel(input: {
+  itemCount: number;
+  lineCount: number;
+}): string {
+  const packages = input.itemCount;
+  const lines = input.lineCount;
+  const packageWord = packages === 1 ? "package" : "packages";
+  const lineWord = lines === 1 ? "line" : "lines";
+  if (packages <= 0 && lines <= 0) return "Empty";
+  return `${packages} ${packageWord} · ${lines} ${lineWord}`;
 }
 
 export function cartSubtotal(

@@ -24,6 +24,10 @@ export type CouponRow = {
   startsAt: string | null;
   expiresAt: string | null;
   isActive: boolean;
+  showOnStorefront: boolean;
+  promoHeadline: string | null;
+  promoSubtext: string | null;
+  promoImageUrl: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -73,4 +77,16 @@ export type CouponEligibilityContext = {
   productIds?: string[];
   categoryIds?: string[];
   minimumQuantity?: number;
+};
+
+/** Public storefront promo payload (homepage modal + checkout chip). */
+export type StorefrontFeaturedCoupon = {
+  code: string;
+  discountType: "percentage" | "fixed";
+  discountValue: number;
+  headline: string;
+  subtext: string | null;
+  imageUrl: string | null;
+  offerLabel: string;
+  currency: string;
 };

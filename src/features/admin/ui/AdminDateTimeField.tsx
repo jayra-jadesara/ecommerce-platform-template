@@ -3,6 +3,11 @@
 import dayjs, { type Dayjs } from "dayjs";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import type { ReactNode } from "react";
+import {
+  COMPACT_PICKER_CONTROL_HEIGHT,
+  getCompactOpenPickerButtonSx,
+  getCompactPickerFieldSx,
+} from "@/features/admin/ui/picker-field-sx";
 
 /** Local wall-clock string used by existing admin forms (no seconds). */
 export const ADMIN_DATETIME_LOCAL_FORMAT = "YYYY-MM-DDTHH:mm";
@@ -43,8 +48,7 @@ export type AdminDateTimeFieldProps = {
 
 /**
  * Themed date + time field for Admin.
- * Uses store CSS variables (primary / surface / foreground) instead of the
- * browser’s native datetime-local chrome.
+ * Sized via shared PickersOutlinedInput kit to match TextField height/width.
  */
 export function AdminDateTimeField({
   label,
@@ -78,6 +82,15 @@ export function AdminDateTimeField({
           slotProps: {
             inputLabel: { shrink: true },
           },
+          sx: getCompactPickerFieldSx({
+            height: COMPACT_PICKER_CONTROL_HEIGHT,
+            fullWidth,
+          }),
+        },
+        openPickerButton: {
+          size: "medium",
+          edge: false,
+          sx: getCompactOpenPickerButtonSx(COMPACT_PICKER_CONTROL_HEIGHT),
         },
         field: {
           clearable,
@@ -129,30 +142,6 @@ export function AdminDateTimeField({
       }}
       sx={{
         width: fullWidth ? "100%" : undefined,
-        "& .MuiOutlinedInput-root": {
-          backgroundColor: "var(--color-card)",
-        },
-        "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
-          {
-            borderColor: "var(--color-primary)",
-          },
-        "& .MuiInputLabel-root.Mui-focused": {
-          color: "var(--color-primary)",
-        },
-        "& .MuiSvgIcon-root": {
-          color: "var(--color-muted)",
-        },
-        "& .MuiIconButton-root": {
-          color: "var(--color-muted)",
-        },
-        "& .MuiIconButton-root:hover": {
-          color: "var(--color-primary)",
-          backgroundColor:
-            "color-mix(in srgb, var(--color-primary) 10%, transparent)",
-        },
-        "& .MuiIconButton-root:hover .MuiSvgIcon-root": {
-          color: "var(--color-primary)",
-        },
       }}
     />
   );

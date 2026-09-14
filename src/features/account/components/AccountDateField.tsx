@@ -3,13 +3,15 @@
 import dayjs, { type Dayjs } from "dayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import type { ReactNode } from "react";
+import {
+  COMPACT_PICKER_CONTROL_HEIGHT,
+  getCompactOpenPickerButtonSx,
+  getCompactPickerFieldSx,
+} from "@/features/admin/ui/picker-field-sx";
 
 const DATE_FORMAT = "YYYY-MM-DD";
-/** Match MUI Select `size="small"` control height (40px). */
-const CONTROL_HEIGHT = 40;
 /** Keep From/To fields compact — not stretched across the filter bar. */
 const FIELD_WIDTH = 168;
-
 const THEME_FONT = "var(--font-sans), system-ui, sans-serif";
 
 function parseDate(value: string | null | undefined): Dayjs | null {
@@ -37,7 +39,7 @@ export type AccountDateFieldProps = {
 
 /**
  * Theme-token date field sized to match storefront Filter Select.
- * MUI X v9 uses PickersOutlinedInput (not MuiOutlinedInput).
+ * Uses the shared PickersOutlinedInput kit (same height as admin TextFields).
  */
 export function AccountDateField({
   label,
@@ -65,88 +67,18 @@ export function AccountDateField({
           size: "small",
           error,
           helperText,
-          sx: {
-            width: "100%",
+          sx: getCompactPickerFieldSx({
+            height: COMPACT_PICKER_CONTROL_HEIGHT,
+            fullWidth: true,
             maxWidth: { xs: "100%", sm: FIELD_WIDTH },
             fontFamily: THEME_FONT,
-            "& .MuiFormControl-root, &.MuiFormControl-root, &.MuiPickersTextField-root":
-              {
-                fontFamily: THEME_FONT,
-              },
-            "& .MuiInputLabel-root": {
-              fontFamily: THEME_FONT,
-              fontSize: "0.8125rem",
-              color: "var(--color-muted)",
-              transform: "translate(14px, 9px) scale(1)",
-              "&.MuiInputLabel-shrink": {
-                transform: "translate(14px, -9px) scale(0.75)",
-              },
-            },
-            "& .MuiInputLabel-root.Mui-focused": {
-              color: "var(--color-primary)",
-            },
-            "& .MuiPickersOutlinedInput-root": {
-              height: CONTROL_HEIGHT,
-              minHeight: CONTROL_HEIGHT,
-              maxHeight: CONTROL_HEIGHT,
-              padding: "0 10px 0 12px",
-              backgroundColor: "var(--color-card)",
-              borderRadius: "var(--radius-default, 0.5rem)",
-              fontSize: "0.8125rem",
-              fontFamily: THEME_FONT,
-              boxSizing: "border-box",
-            },
-            "& .MuiPickersOutlinedInput-sectionsContainer": {
-              padding: "8px 0 !important",
-              lineHeight: "22px",
-              fontSize: "0.8125rem",
-              fontFamily: THEME_FONT,
-            },
-            "& .MuiPickersSectionList-sectionContent, & .MuiPickersInputBase-sectionContent, & .MuiPickersInputBase-section":
-              {
-                lineHeight: "22px",
-                fontSize: "0.8125rem",
-                fontFamily: THEME_FONT,
-              },
-            "& .MuiPickersOutlinedInput-root.Mui-focused .MuiPickersOutlinedInput-notchedOutline":
-              {
-                borderColor: "var(--color-primary)",
-                borderWidth: 1.5,
-              },
-            "& .MuiPickersOutlinedInput-root:hover .MuiPickersOutlinedInput-notchedOutline":
-              {
-                borderColor: "var(--color-primary)",
-              },
-            "& .MuiPickersOutlinedInput-notchedOutline": {
-              borderColor: "var(--color-border)",
-            },
-            "& .MuiInputAdornment-root": {
-              marginLeft: 0,
-              marginRight: "2px",
-              height: CONTROL_HEIGHT - 2,
-              maxHeight: CONTROL_HEIGHT - 2,
-            },
-          },
+            compactTypography: true,
+          }),
         },
         openPickerButton: {
           size: "medium",
           edge: false,
-          sx: {
-            width: 34,
-            height: 34,
-            marginRight: "2px",
-            padding: "6px",
-            color: "var(--color-muted)",
-            "&:hover": {
-              color: "var(--color-primary)",
-              backgroundColor:
-                "color-mix(in srgb, var(--color-primary) 10%, transparent)",
-            },
-            "& .MuiSvgIcon-root": {
-              fontSize: "1.35rem",
-              color: "inherit",
-            },
-          },
+          sx: getCompactOpenPickerButtonSx(COMPACT_PICKER_CONTROL_HEIGHT),
         },
         openPickerIcon: {
           fontSize: "medium",

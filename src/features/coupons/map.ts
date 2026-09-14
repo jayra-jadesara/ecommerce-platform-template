@@ -22,6 +22,10 @@ export function mapCouponRow(row: Tables<"coupons">): CouponRow {
     startsAt: row.starts_at,
     expiresAt: row.expires_at,
     isActive: row.is_active,
+    showOnStorefront: Boolean(row.show_on_storefront),
+    promoHeadline: row.promo_headline ?? null,
+    promoSubtext: row.promo_subtext ?? null,
+    promoImageUrl: row.promo_image_url ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

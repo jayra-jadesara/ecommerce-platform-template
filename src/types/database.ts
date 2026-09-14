@@ -1017,6 +1017,10 @@ export type Database = {
           starts_at: string | null;
           expires_at: string | null;
           is_active: boolean;
+          show_on_storefront: boolean;
+          promo_headline: string | null;
+          promo_subtext: string | null;
+          promo_image_url: string | null;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -1032,6 +1036,10 @@ export type Database = {
           starts_at?: string | null;
           expires_at?: string | null;
           is_active?: boolean;
+          show_on_storefront?: boolean;
+          promo_headline?: string | null;
+          promo_subtext?: string | null;
+          promo_image_url?: string | null;
           created_at?: string;
           updated_at?: string;
         };

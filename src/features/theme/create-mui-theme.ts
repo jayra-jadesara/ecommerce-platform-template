@@ -297,6 +297,9 @@ export function createAppMuiTheme(
         styleOverrides: {
           paper: {
             borderRadius: parseBorderRadius(borderRadius) + 4,
+            border: "none",
+            outline: "none",
+            backgroundImage: "none",
           },
         },
       },

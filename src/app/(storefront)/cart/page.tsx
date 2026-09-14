@@ -16,6 +16,7 @@ export default async function CartPage() {
       title="Your cart"
       backHref="/products"
       backLabel="Back to shopping"
+      titleAlign="center"
     >
       <CartPageClient initialCart={cart} />
     </PageShell>

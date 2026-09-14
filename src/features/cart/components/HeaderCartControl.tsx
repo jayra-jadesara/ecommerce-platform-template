@@ -13,7 +13,7 @@ import {
   updateCartItemQuantityAction,
 } from "@/features/cart/actions";
 import { cartQueryKey } from "@/features/cart/query-keys";
-import { emptyCartView } from "@/features/cart/types";
+import { cartCountLabel, emptyCartView } from "@/features/cart/types";
 import { FreeShippingProgressLoader } from "@/features/cart/components/FreeShippingProgressLoader";
 import { formatMoney } from "@/features/catalog/money";
 import { EmptyState, emptyStateCtaClass } from "@/components/ui/EmptyState";
@@ -47,10 +47,17 @@ export function HeaderCartControl() {
     },
   });
 
+  const lineCount = cart.lineCount ?? cart.items.length;
+  const countLabel = cartCountLabel({
+    itemCount: cart.itemCount,
+    lineCount,
+  });
+  const packageWord = cart.itemCount === 1 ? "package" : "packages";
+
   return (
     <>
       <IconButton
-        aria-label={`Open cart, ${cart.itemCount} items`}
+        aria-label={`Open cart, ${cart.itemCount} ${packageWord}`}
         size="medium"
         onClick={() => setOpen(true)}
         className="!text-[var(--color-header-foreground)]"
@@ -83,9 +90,7 @@ export function HeaderCartControl() {
               <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold">
                 Your cart
               </h2>
-              <p className="text-xs text-[var(--color-muted)]">
-                {cart.itemCount} {cart.itemCount === 1 ? "item" : "items"}
-              </p>
+              <p className="text-xs text-[var(--color-muted)]">{countLabel}</p>
             </div>
             <button
               type="button"

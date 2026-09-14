@@ -30,6 +30,16 @@ const optionalDateTime = z
     return Number.isNaN(d.getTime()) ? null : d.toISOString();
   });
 
+const optionalTrimmedText = (max: number) =>
+  z
+    .union([z.string(), z.null(), z.undefined()])
+    .optional()
+    .transform((v) => {
+      if (v == null) return null;
+      const trimmed = v.trim();
+      return trimmed ? trimmed.slice(0, max) : null;
+    });
+
 export const couponFormSchema = z
   .object({
     code: z
@@ -40,14 +50,7 @@ export const couponFormSchema = z
       .refine((c) => /^[A-Z0-9_-]+$/.test(c), {
         message: "Use letters, numbers, hyphens, or underscores only.",
       }),
-    description: z
-      .union([z.string(), z.null(), z.undefined()])
-      .optional()
-      .transform((v) => {
-        if (v == null) return null;
-        const trimmed = v.trim();
-        return trimmed ? trimmed.slice(0, 500) : null;
-      }),
+    description: optionalTrimmedText(500),
     discountType: z.enum(["percentage", "fixed"]),
     discountValue: z.coerce
       .number({ message: "Enter a discount value." })
@@ -59,6 +62,10 @@ export const couponFormSchema = z
     startsAt: optionalDateTime,
     expiresAt: optionalDateTime,
     isActive: z.boolean(),
+    showOnStorefront: z.boolean(),
+    promoHeadline: optionalTrimmedText(120),
+    promoSubtext: optionalTrimmedText(240),
+    promoImageUrl: optionalTrimmedText(2000),
   })
   .superRefine((data, ctx) => {
     if (data.discountType === "percentage" && data.discountValue > 100) {
@@ -79,11 +86,12 @@ export const couponFormSchema = z
         message: "Expiry must be on or after the start date.",
       });
     }
-    if (
-      data.discountType === "fixed" &&
-      data.maximumDiscountAmount != null
-    ) {
-      // Max discount is meaningful for percentage; ignore for fixed or warn softly.
+    if (data.showOnStorefront && !data.promoHeadline) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["promoHeadline"],
+        message: "Add a headline for the storefront promo.",
+      });
     }
   });
 
@@ -117,4 +125,8 @@ export const DEFAULT_COUPON_FORM: CouponFormValues = {
   startsAt: null,
   expiresAt: null,
   isActive: true,
+  showOnStorefront: false,
+  promoHeadline: null,
+  promoSubtext: null,
+  promoImageUrl: null,
 };

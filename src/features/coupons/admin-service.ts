@@ -194,9 +194,41 @@ export async function getAdminCoupon(
   };
 }
 
-export type CouponMutationResult =
-  | { ok: true; id: string; message?: string }
-  | { ok: false; error: string; fieldErrors?: FieldErrors };
+async function clearOtherStorefrontCoupons(
+  storeId: string,
+  exceptId?: string,
+): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  let query = supabase
+    .from("coupons")
+    .update({ show_on_storefront: false })
+    .eq("store_id", storeId)
+    .eq("show_on_storefront", true);
+  if (exceptId) {
+    query = query.neq("id", exceptId);
+  }
+  await query;
+}
+
+function couponWritePayload(values: CouponFormValues) {
+  return {
+    code: values.code,
+    description: values.description,
+    discount_type: values.discountType,
+    discount_value: values.discountValue,
+    minimum_order_amount: values.minimumOrderAmount,
+    maximum_discount_amount: values.maximumDiscountAmount,
+    usage_limit: values.usageLimit,
+    per_user_limit: values.perUserLimit,
+    starts_at: values.startsAt,
+    expires_at: values.expiresAt,
+    is_active: values.isActive,
+    show_on_storefront: values.showOnStorefront,
+    promo_headline: values.promoHeadline,
+    promo_subtext: values.promoSubtext,
+    promo_image_url: values.promoImageUrl,
+  };
+}
 
 export async function createAdminCoupon(
   raw: unknown,
@@ -228,21 +260,15 @@ export async function createAdminCoupon(
     };
   }
 
+  if (values.showOnStorefront) {
+    await clearOtherStorefrontCoupons(ctx.storeId);
+  }
+
   const { data, error } = await supabase
     .from("coupons")
     .insert({
       store_id: ctx.storeId,
-      code: values.code,
-      description: values.description,
-      discount_type: values.discountType,
-      discount_value: values.discountValue,
-      minimum_order_amount: values.minimumOrderAmount,
-      maximum_discount_amount: values.maximumDiscountAmount,
-      usage_limit: values.usageLimit,
-      per_user_limit: values.perUserLimit,
-      starts_at: values.startsAt,
-      expires_at: values.expiresAt,
-      is_active: values.isActive,
+      ...couponWritePayload(values),
     })
     .select("id")
     .single();
@@ -321,21 +347,13 @@ export async function updateAdminCoupon(
     }
   }
 
+  if (values.showOnStorefront) {
+    await clearOtherStorefrontCoupons(ctx.storeId, id);
+  }
+
   const { error } = await supabase
     .from("coupons")
-    .update({
-      code: values.code,
-      description: values.description,
-      discount_type: values.discountType,
-      discount_value: values.discountValue,
-      minimum_order_amount: values.minimumOrderAmount,
-      maximum_discount_amount: values.maximumDiscountAmount,
-      usage_limit: values.usageLimit,
-      per_user_limit: values.perUserLimit,
-      starts_at: values.startsAt,
-      expires_at: values.expiresAt,
-      is_active: values.isActive,
-    })
+    .update(couponWritePayload(values))
     .eq("id", id)
     .eq("store_id", ctx.storeId);
 
@@ -485,5 +503,9 @@ export function toCouponFormValues(coupon: CouponRow): CouponFormValues {
     startsAt: coupon.startsAt,
     expiresAt: coupon.expiresAt,
     isActive: coupon.isActive,
+    showOnStorefront: coupon.showOnStorefront,
+    promoHeadline: coupon.promoHeadline,
+    promoSubtext: coupon.promoSubtext,
+    promoImageUrl: coupon.promoImageUrl,
   };
 }

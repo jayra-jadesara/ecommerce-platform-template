@@ -22,7 +22,7 @@ export function UploadDropzone({
   multiple = true,
   onFiles,
   label = "Upload images",
-  hint = "JPEG, PNG, or WebP · max 10 MB each",
+  hint = "JPEG, PNG, or WebP · max 5 MB each",
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
