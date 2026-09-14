@@ -102,8 +102,9 @@ export function AdminOrderListClient({
     const params = new URLSearchParams();
     if (search.trim()) params.set("q", search.trim());
     if (nextStatus && nextStatus !== "ALL") params.set("status", nextStatus);
-    // Always send payment — page defaults to CAPTURED when the param is missing.
-    params.set("payment", nextPayment || "CAPTURED");
+    if (nextPayment && nextPayment !== "ALL") {
+      params.set("payment", nextPayment);
+    }
     if (nextPage > 1) params.set("page", String(nextPage));
     startTransition(() => {
       router.push(`${getAdminPath("/orders")}?${params.toString()}`);

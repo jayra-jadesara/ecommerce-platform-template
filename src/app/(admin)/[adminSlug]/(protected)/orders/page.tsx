@@ -26,9 +26,8 @@ export default async function AdminOrdersPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const status = (params.status as OrderStatus | "ALL" | undefined) ?? "ALL";
-  // Default: real sales only. Failed checkouts still create order rows — hide unless asked.
   const paymentStatus =
-    (params.payment as PaymentStatus | "ALL" | undefined) ?? "CAPTURED";
+    (params.payment as PaymentStatus | "ALL" | undefined) ?? "ALL";
 
   const result = await listAdminOrders({
     storeId,
