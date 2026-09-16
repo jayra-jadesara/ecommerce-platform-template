@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -16,6 +14,8 @@ import {
   footerSettingsSchema,
   type FooterSettingsFormValues,
 } from "@/features/admin/settings/schemas";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminBtn,
   adminCard,
@@ -42,19 +42,21 @@ function autoFooterDescription(brand: BrandConfig): string {
 }
 
 function autoFooterCopyright(brand: BrandConfig): string {
-  return `© ${new Date().getFullYear()} ${brand.name}. All rights reserved.`;
+  return `©Copyright ${new Date().getFullYear()} ${brand.name}, All rights reserved.`;
 }
 
 interface FooterSettingsFormProps {
   initialValues: FooterSettingsFormValues;
   brand: BrandConfig;
   canUpdate: boolean;
+  productOptions?: Array<{ id: string; name: string }>;
 }
 
 export function FooterSettingsForm({
   initialValues,
   brand,
   canUpdate,
+  productOptions = [],
 }: FooterSettingsFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -163,19 +165,16 @@ export function FooterSettingsForm({
             name="enabled"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(field.value)}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate || pending}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate || pending}
                 label={
                   footerOn
                     ? "Yes — show the footer on every page"
                     : "No — hide the footer"
                 }
+                variant="row"
               />
             )}
           />
@@ -202,6 +201,7 @@ export function FooterSettingsForm({
                 ["showSocial", "Show social links"],
                 ["navVisible", "Show footer menu links"],
                 ["showNewsletter", "Show newsletter signup area"],
+                ["showFeaturedProduct", "Show featured product above footer"],
               ] as const
             ).map(([name, label]) => (
               <Controller
@@ -209,20 +209,40 @@ export function FooterSettingsForm({
                 name={name}
                 control={control}
                 render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onChange={(_, checked) => field.onChange(checked)}
-                        disabled={!canUpdate || pending || !footerOn}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(field.value)}
+                    onChange={field.onChange}
+                    disabled={!canUpdate || pending || !footerOn}
                     label={label}
+                    variant="row"
                   />
                 )}
               />
             ))}
           </div>
+          {watched.showFeaturedProduct ? (
+            <Controller
+              name="featuredProductId"
+              control={control}
+              render={({ field }) => (
+                <AdminSelect
+                  label="Featured product"
+                  value={field.value ?? ""}
+                  onChange={(next) =>
+                    field.onChange(next === "" ? null : next)
+                  }
+                  disabled={!canUpdate || pending || !footerOn}
+                  allowEmpty
+                  emptyLabel="None"
+                  helperText="Centered above the footer wave — pick a highlight product."
+                  options={productOptions.map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                  }))}
+                />
+              )}
+            />
+          ) : null}
         </div>
         </section>
 
@@ -311,7 +331,7 @@ export function FooterSettingsForm({
                     label="Custom copyright line"
                     fullWidth
                     disabled={!canUpdate || pending || !footerOn}
-                    helperText={`Leave blank to use: “${autoCopyright}”`}
+                    helperText={`Leave blank to use: “${autoCopyright}”. Use {year} in a custom line for an auto-updating year.`}
                   />
                 )}
               />

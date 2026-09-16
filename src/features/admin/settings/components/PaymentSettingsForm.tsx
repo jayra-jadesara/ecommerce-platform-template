@@ -1,9 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -15,6 +12,8 @@ import {
   paymentSettingsSchema,
   type PaymentSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { calculateOrderPricing } from "@/features/pricing/engine";
 import { majorToMinor } from "@/features/pricing/money";
 import { formatMoney } from "@/features/catalog/money";
@@ -238,10 +237,8 @@ export function PaymentSettingsForm({
             name="provider"
             control={control}
             render={({ field }) => (
-              <TextField
-                select
+              <AdminSelect
                 label="Payment method"
-                fullWidth
                 required
                 disabled={!canUpdate || pending}
                 helperText={
@@ -252,15 +249,14 @@ export function PaymentSettingsForm({
                       : "This option is reserved for a future provider."
                 }
                 value={provider}
-                onChange={(event) => field.onChange(event.target.value)}
-                onBlur={field.onBlur}
+                onChange={field.onChange}
                 name={field.name}
-                inputRef={field.ref}
-              >
-                <MenuItem value="none">No online payment yet</MenuItem>
-                <MenuItem value="razorpay">Razorpay (Pay Now)</MenuItem>
-                <MenuItem value="other">Other (not set up yet)</MenuItem>
-              </TextField>
+                options={[
+                  { value: "none", label: "No online payment yet" },
+                  { value: "razorpay", label: "Razorpay (Pay Now)" },
+                  { value: "other", label: "Other (not set up yet)" },
+                ]}
+              />
             )}
           />
         </div>
@@ -276,19 +272,16 @@ export function PaymentSettingsForm({
             name="feeEnabled"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(field.value)}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate || pending}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate || pending}
                 label={
                   feeOn
                     ? "Yes — add a fee at checkout"
                     : "No — do not add a payment fee"
                 }
+                variant="row"
               />
             )}
           />
@@ -300,24 +293,22 @@ export function PaymentSettingsForm({
                   name="feeType"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      select
+                    <AdminSelect
                       label="Fee type"
-                      fullWidth
                       required
                       disabled={!canUpdate || pending}
                       value={feeType}
-                      onChange={(event) => field.onChange(event.target.value)}
-                      onBlur={field.onBlur}
+                      onChange={field.onChange}
                       name={field.name}
-                      inputRef={field.ref}
                       helperText="Percent of the order, or a fixed amount"
-                    >
-                      <MenuItem value="PERCENTAGE">Percentage (%)</MenuItem>
-                      <MenuItem value="FIXED">
-                        Fixed amount ({currency})
-                      </MenuItem>
-                    </TextField>
+                      options={[
+                        { value: "PERCENTAGE", label: "Percentage (%)" },
+                        {
+                          value: "FIXED",
+                          label: `Fixed amount (${currency})`,
+                        },
+                      ]}
+                    />
                   )}
                 />
                 <div>
@@ -349,10 +340,8 @@ export function PaymentSettingsForm({
                 name="feeBasis"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    select
+                  <AdminSelect
                     label="Calculate fee on"
-                    fullWidth
                     required
                     disabled={!canUpdate || pending}
                     helperText="Most stores use products + delivery"
@@ -363,21 +352,23 @@ export function PaymentSettingsForm({
                         ? field.value
                         : "SUBTOTAL_PLUS_SHIPPING"
                     }
-                    onChange={(event) => field.onChange(event.target.value)}
-                    onBlur={field.onBlur}
+                    onChange={field.onChange}
                     name={field.name}
-                    inputRef={field.ref}
-                  >
-                    <MenuItem value="SUBTOTAL">
-                      Product total (after discount)
-                    </MenuItem>
-                    <MenuItem value="SUBTOTAL_PLUS_SHIPPING">
-                      Product total + delivery
-                    </MenuItem>
-                    <MenuItem value="ORDER_TOTAL_BEFORE_PAYMENT_FEE">
-                      Full order before this fee
-                    </MenuItem>
-                  </TextField>
+                    options={[
+                      {
+                        value: "SUBTOTAL",
+                        label: "Product total (after discount)",
+                      },
+                      {
+                        value: "SUBTOTAL_PLUS_SHIPPING",
+                        label: "Product total + delivery",
+                      },
+                      {
+                        value: "ORDER_TOTAL_BEFORE_PAYMENT_FEE",
+                        label: "Full order before this fee",
+                      },
+                    ]}
+                  />
                 )}
               />
             </>
@@ -400,15 +391,12 @@ export function PaymentSettingsForm({
             name="taxEnabled"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(field.value)}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate || pending}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate || pending}
                 label={taxOn ? "Yes — charge tax" : "No — do not charge tax"}
+                variant="row"
               />
             )}
           />
@@ -419,24 +407,22 @@ export function PaymentSettingsForm({
                 name="taxType"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    select
+                  <AdminSelect
                     label="Tax type"
-                    fullWidth
                     required
                     disabled={!canUpdate || pending}
                     value={taxType}
-                    onChange={(event) => field.onChange(event.target.value)}
-                    onBlur={field.onBlur}
+                    onChange={field.onChange}
                     name={field.name}
-                    inputRef={field.ref}
                     helperText="Percent of the order, or a fixed amount"
-                  >
-                    <MenuItem value="PERCENTAGE">Percentage (%)</MenuItem>
-                    <MenuItem value="FIXED">
-                      Fixed amount ({currency})
-                    </MenuItem>
-                  </TextField>
+                    options={[
+                      { value: "PERCENTAGE", label: "Percentage (%)" },
+                      {
+                        value: "FIXED",
+                        label: `Fixed amount (${currency})`,
+                      },
+                    ]}
+                  />
                 )}
               />
               <div>

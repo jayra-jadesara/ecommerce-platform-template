@@ -360,6 +360,15 @@ export function SectionEditorPreview({
 
   if (sectionType === "about") {
     const portrait = resolveCmsImageUrl(config.imagePath as string | null);
+    const engineWheel = resolveCmsImageUrl(
+      (config.engineWheelImagePath as string | null) ?? null,
+    );
+    const stops = (
+      (config.timelineItems as Array<{
+        year?: string;
+        label?: string;
+      }>) ?? []
+    ).filter((item) => text(item.year) || text(item.label));
     return (
       <PreviewShell>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
@@ -407,6 +416,85 @@ export function SectionEditorPreview({
             ) : null}
           </div>
         </div>
+        {stops.length > 0 ? (
+          <div className="border-t border-[var(--color-border)] px-4 py-3">
+            <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              Heritage train
+            </p>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex shrink-0 flex-col items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-2">
+                <span className="text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                  Engine
+                </span>
+                <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-card)]">
+                  {engineWheel ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={engineWheel}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-[0.55rem] text-[var(--color-muted)]">
+                      ◆
+                    </span>
+                  )}
+                </span>
+              </div>
+              {stops.map((stop, index) => (
+                  <div
+                    key={`preview-stop-${index}`}
+                    className="flex min-w-[5.25rem] shrink-0 flex-col items-center gap-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2 py-2"
+                  >
+                    <span className="max-w-full truncate text-[0.7rem] font-bold text-[var(--color-primary)]">
+                      {text(stop.year, `Bogie ${index + 1}`)}
+                    </span>
+                    {text(stop.label) ? (
+                      <span className="max-w-full truncate text-[0.55rem] text-[var(--color-muted)]">
+                        {text(stop.label)}
+                      </span>
+                    ) : null}
+                    <div className="flex items-center gap-1">
+                      <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]">
+                        {engineWheel ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={engineWheel}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[0.45rem] text-[var(--color-muted)]">
+                            •
+                          </span>
+                        )}
+                      </span>
+                      <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]">
+                        {engineWheel ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={engineWheel}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-[0.45rem] text-[var(--color-muted)]">
+                            •
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="border-t border-[var(--color-border)] px-4 py-3">
+            <p className="text-[0.65rem] text-[var(--color-muted)]">
+              Add bogie milestones to show the heritage train here.
+            </p>
+          </div>
+        )}
       </PreviewShell>
     );
   }

@@ -149,6 +149,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
       },
       {
         kind: "link",
+        id: "content-legal",
+        label: "Legal pages",
+        href: p("/content/legal"),
+        permissions: ["content.view", "cms.view"],
+        icon: "pages",
+        section: "content",
+      },
+      {
+        kind: "link",
         id: "content-pages",
         label: "Pages",
         href: p("/content/pages"),
@@ -296,6 +305,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "customers",
   "content-homepage",
   "content-about",
+  "content-legal",
   "content-pages",
   "content-banners",
   "content-blog",

@@ -1,5 +1,6 @@
 import {
   normalizeCardStyle,
+  normalizeCoverCtaStyle,
   normalizeSidebarPreset,
 } from "@/features/blog/settings-normalize";
 import { DEFAULT_BLOG_SETTINGS } from "@/features/blog/schemas";
@@ -39,6 +40,7 @@ export function mapBlogSettingsRow(
     layoutPreset,
     sidebarPreset: normalizeSidebarPreset(row.sidebar_preset),
     cardStyle: normalizeCardStyle(row.card_style),
+    coverCtaStyle: normalizeCoverCtaStyle(row.cover_cta_style),
     ctaTitle: row.cta_title ?? null,
     ctaDescription: row.cta_description ?? null,
     ctaButtonLabel: row.cta_button_label ?? null,
@@ -68,6 +70,7 @@ export function blogSettingsPayload(values: {
   layoutPreset: BlogSettings["layoutPreset"];
   sidebarPreset: BlogSettings["sidebarPreset"];
   cardStyle: BlogSettings["cardStyle"];
+  coverCtaStyle: BlogSettings["coverCtaStyle"];
   ctaTitle: string | null;
   ctaDescription: string | null;
   ctaButtonLabel: string | null;
@@ -93,6 +96,7 @@ export function blogSettingsPayload(values: {
     layout_preset: values.layoutPreset,
     sidebar_preset: values.sidebarPreset,
     card_style: values.cardStyle,
+    cover_cta_style: values.coverCtaStyle,
     cta_title: values.ctaTitle,
     cta_description: values.ctaDescription,
     cta_button_label: values.ctaButtonLabel,

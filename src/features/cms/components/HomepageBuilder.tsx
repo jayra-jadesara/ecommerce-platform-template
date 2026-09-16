@@ -36,6 +36,7 @@ import { MediaPicker } from "@/features/media";
 import { HomepagePreview } from "@/features/cms/components/HomepagePreview";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { SectionEditorPreview } from "@/features/cms/components/SectionEditorPreview";
+import { AboutSectionFields } from "@/features/cms/components/AboutSectionFields";
 import {
   pageOptionLabel,
   StorePageLinkField,
@@ -60,6 +61,12 @@ type Props = {
   canPublish: boolean;
   /** Shown in helper copy (default: Homepage). */
   pageLabel?: string;
+  /** When set, Add section only offers these types (otherwise all except text/image). */
+  allowedSectionTypes?: SupportedSectionType[];
+  /** Empty-state guidance when the page has no sections. */
+  emptyStateHint?: string;
+  /** Storefront URL for “View live site” (default `/`). */
+  viewLiveHref?: string;
 };
 
 type EditableConfig = Record<string, unknown>;
@@ -72,6 +79,9 @@ export function HomepageBuilder({
   canDelete,
   canPublish,
   pageLabel = "Homepage",
+  allowedSectionTypes,
+  emptyStateHint = "No sections yet. Add a Hero Banner to get started.",
+  viewLiveHref = "/",
 }: Props) {
   const router = useRouter();
   const [sections, setSections] = useState(initialSections);
@@ -87,6 +97,18 @@ export function HomepageBuilder({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mediaField, setMediaField] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ContentSection | null>(null);
+
+  const addableSectionTypes = useMemo(() => {
+    const base =
+      allowedSectionTypes?.length
+        ? allowedSectionTypes
+        : SUPPORTED_SECTION_TYPES.filter((t) => t !== "text" && t !== "image");
+    // Prefer About first when it’s in the list (recommended for /about).
+    if (base.includes("about")) {
+      return ["about" as const, ...base.filter((t) => t !== "about")];
+    }
+    return [...base];
+  }, [allowedSectionTypes]);
 
   const editing = useMemo(
     () => sections.find((s) => s.id === editId) ?? null,
@@ -184,7 +206,7 @@ export function HomepageBuilder({
             )
           ) : null}
           <Link
-            href="/"
+            href={viewLiveHref}
             target="_blank"
             className="rounded-md border border-[var(--color-border)] px-3 py-2 text-sm font-medium"
           >
@@ -219,7 +241,7 @@ export function HomepageBuilder({
 
       {sections.length === 0 ? (
         <p className="rounded-xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center text-sm text-[var(--color-muted)]">
-          No sections yet. Add a Hero Banner to get started.
+          {emptyStateHint}
         </p>
       ) : (
         <ul className="space-y-3">
@@ -391,39 +413,44 @@ export function HomepageBuilder({
         <DialogTitle>Add section</DialogTitle>
         <DialogContent dividers>
           <ul className="space-y-2">
-            {SUPPORTED_SECTION_TYPES.filter((t) => t !== "text" && t !== "image").map(
-              (type) => (
-                <li key={type}>
-                  <button
-                    type="button"
-                    className="w-full rounded-lg border border-[var(--color-border)] px-3 py-3 text-left hover:border-[var(--color-primary)]"
-                    onClick={() => {
-                      startTransition(async () => {
-                        const result = await createSectionAction({
-                          pageId: page.id,
-                          sectionType: type,
-                          title: SECTION_TYPE_LABELS[type],
-                        });
-                        if (!result.ok) {
-                          setError(result.error);
-                          return;
-                        }
-                        if (result.section) {
-                          setSections((prev) => [...prev, result.section!]);
-                        }
-                        setAddOpen(false);
-                        refresh();
+            {addableSectionTypes.map((type) => (
+              <li key={type}>
+                <button
+                  type="button"
+                  className="w-full rounded-lg border border-[var(--color-border)] px-3 py-3 text-left hover:border-[var(--color-primary)]"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await createSectionAction({
+                        pageId: page.id,
+                        sectionType: type,
+                        title: SECTION_TYPE_LABELS[type],
                       });
-                    }}
-                  >
+                      if (!result.ok) {
+                        setError(result.error);
+                        return;
+                      }
+                      if (result.section) {
+                        setSections((prev) => [...prev, result.section!]);
+                      }
+                      setAddOpen(false);
+                      refresh();
+                    });
+                  }}
+                >
+                  <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{SECTION_TYPE_LABELS[type]}</p>
-                    <p className="text-sm text-[var(--color-muted)]">
-                      {SECTION_TYPE_DESCRIPTIONS[type]}
-                    </p>
-                  </button>
-                </li>
-              ),
-            )}
+                    {type === "about" && allowedSectionTypes?.includes("about") ? (
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                        Recommended
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="text-sm text-[var(--color-muted)]">
+                    {SECTION_TYPE_DESCRIPTIONS[type]}
+                  </p>
+                </button>
+              </li>
+            ))}
           </ul>
         </DialogContent>
         <DialogActions>
@@ -580,6 +607,18 @@ export function HomepageBuilder({
                 logoPath: selection.storagePath,
               };
               return { ...prev, timelineItems: items };
+            }
+            const slideMatch = mediaField.match(/^slides\.(\d+)\.imagePath$/);
+            if (slideMatch) {
+              const index = Number(slideMatch[1]);
+              const slides = [
+                ...((prev.slides as Array<Record<string, unknown>>) ?? []),
+              ];
+              slides[index] = {
+                ...(slides[index] ?? {}),
+                imagePath: selection.storagePath,
+              };
+              return { ...prev, slides };
             }
             return {
               ...prev,
@@ -838,9 +877,162 @@ function SectionConfigFields({
           </div>
 
           <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">3. Images (optional)</p>
+            <p className="admin-field-group__title">3. Slideshow images</p>
             <p className="admin-field-group__hint">
-              Background fills the hero. Side image is optional — both show in preview.
+              Add up to 8 slides for an auto-playing hero (like a brand campaign
+              banner). When slides exist, they replace the single background
+              image layout on the storefront.
+            </p>
+            {(((config.slides as Array<Record<string, unknown>>) ?? []) as Array<
+              Record<string, unknown>
+            >).map((slide, index) => (
+              <div
+                key={index}
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+                style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                    Slide {index + 1}
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-[var(--color-error,#b91c1c)]"
+                    onClick={() => {
+                      const next = [
+                        ...((config.slides as Array<Record<string, unknown>>) ??
+                          []),
+                      ];
+                      next.splice(index, 1);
+                      setField("slides", next);
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+                <ImageField
+                  label="Slide image"
+                  value={slide.imagePath as string | null}
+                  onPick={() => onPickMedia(`slides.${index}.imagePath`)}
+                  onClear={() => {
+                    const next = [
+                      ...((config.slides as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], imagePath: "" };
+                    setField("slides", next);
+                  }}
+                />
+                <TextField
+                  label="Slide headline (optional)"
+                  fullWidth
+                  value={String(slide.title ?? "")}
+                  onChange={(e) => {
+                    const next = [
+                      ...((config.slides as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], title: e.target.value };
+                    setField("slides", next);
+                  }}
+                  helperText="Falls back to main headline if empty"
+                />
+                <TextField
+                  label="Badge (optional)"
+                  fullWidth
+                  value={String(slide.badge ?? "")}
+                  onChange={(e) => {
+                    const next = [
+                      ...((config.slides as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], badge: e.target.value };
+                    setField("slides", next);
+                  }}
+                  placeholder="SUSTAINABLE"
+                />
+                <TextField
+                  label="Slide button text (optional)"
+                  fullWidth
+                  value={String(slide.ctaLabel ?? "")}
+                  onChange={(e) => {
+                    const next = [
+                      ...((config.slides as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], ctaLabel: e.target.value };
+                    setField("slides", next);
+                  }}
+                />
+                <StorePageLinkField
+                  value={(slide.ctaHref as string | null) ?? null}
+                  fallback="/products"
+                  onChange={(v) => {
+                    const next = [
+                      ...((config.slides as Array<Record<string, unknown>>) ??
+                        []),
+                    ];
+                    next[index] = { ...next[index], ctaHref: v };
+                    setField("slides", next);
+                  }}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              disabled={
+                (((config.slides as unknown[]) ?? []).length ?? 0) >= 8
+              }
+              onClick={() => {
+                const next = [
+                  ...((config.slides as Array<Record<string, unknown>>) ?? []),
+                  {
+                    imagePath: "",
+                    title: "",
+                    subtitle: "",
+                    description: "",
+                    badge: "",
+                    ctaLabel: "Know more",
+                    ctaHref: "/products",
+                  },
+                ];
+                setField("slides", next);
+              }}
+              className="rounded-md border border-[var(--color-primary)] px-3 py-2 text-sm font-medium text-[var(--color-primary)] disabled:opacity-50"
+            >
+              Add slide
+            </button>
+            <div className={adminFieldsGrid(2)}>
+              <TextField
+                label="Autoplay interval (ms)"
+                type="number"
+                fullWidth
+                value={Number(config.autoplayMs ?? 5000)}
+                onChange={(e) =>
+                  setField("autoplayMs", Number(e.target.value) || 5000)
+                }
+                helperText="0 disables autoplay. Default 5000."
+              />
+              <TextField
+                select
+                label="Show arrows"
+                fullWidth
+                value={config.showArrows === false ? "no" : "yes"}
+                onChange={(e) =>
+                  setField("showArrows", e.target.value === "yes")
+                }
+              >
+                <MenuItem value="yes">Yes</MenuItem>
+                <MenuItem value="no">No</MenuItem>
+              </TextField>
+            </div>
+          </div>
+
+          <div className={adminFieldGroup()} style={adminStackStyle}>
+            <p className="admin-field-group__title">4. Fallback single images</p>
+            <p className="admin-field-group__hint">
+              Used when no slideshow slides are set. Background fills the hero.
+              Side image is optional.
             </p>
             <ImageField
               label="Background image"
@@ -857,7 +1049,7 @@ function SectionConfigFields({
           </div>
 
           <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">4. Layout</p>
+            <p className="admin-field-group__title">5. Layout</p>
             <p className="admin-field-group__hint">
               Full-bleed overlay is recommended for brand heroes.
             </p>
@@ -976,176 +1168,11 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "about" ? (
-        <>
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">1. Story</p>
-            <p className="admin-field-group__hint">
-              Priya-style founder block: heading, story, quote, and portrait.
-            </p>
-            <TextField
-              label="Heading"
-              fullWidth
-              value={String(config.heading ?? "")}
-              onChange={(e) => setField("heading", e.target.value)}
-              helperText='Example: "A Visionary Beyond Generations"'
-            />
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              minRows={5}
-              value={String(config.description ?? "")}
-              onChange={(e) => setField("description", e.target.value)}
-            />
-            <TextField
-              label="Quote"
-              fullWidth
-              multiline
-              minRows={2}
-              value={String(config.quote ?? "")}
-              onChange={(e) => setField("quote", e.target.value)}
-            />
-            <TextField
-              label="Quote author"
-              fullWidth
-              value={String(config.quoteAuthor ?? "")}
-              onChange={(e) => setField("quoteAuthor", e.target.value)}
-            />
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">2. Portrait</p>
-            <ImageField
-              label="Portrait image"
-              value={config.imagePath as string | null}
-              onPick={() => onPickMedia("imagePath")}
-              onClear={() => setField("imagePath", null)}
-            />
-            <TextField
-              label="Caption name"
-              fullWidth
-              value={String(config.imageCaptionName ?? "")}
-              onChange={(e) => setField("imageCaptionName", e.target.value)}
-              helperText="Shown on the photo badge"
-            />
-            <TextField
-              label="Caption role"
-              fullWidth
-              value={String(config.imageCaptionRole ?? "")}
-              onChange={(e) => setField("imageCaptionRole", e.target.value)}
-              helperText='Example: "Founder"'
-            />
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">3. Timeline</p>
-            <p className="admin-field-group__hint">
-              Optional milestones (logo, label, year) under the story.
-            </p>
-            {(
-              (config.timelineItems as Array<{
-                label?: string;
-                year?: string;
-                logoPath?: string | null;
-              }>) ?? []
-            ).map((item, index) => (
-              <div
-                key={`timeline-${index}`}
-                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3"
-                style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium">Milestone {index + 1}</p>
-                  <button
-                    type="button"
-                    className="text-xs text-[var(--color-error)]"
-                    onClick={() => {
-                      const next = [
-                        ...((config.timelineItems as unknown[]) ?? []),
-                      ];
-                      next.splice(index, 1);
-                      setField("timelineItems", next);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <TextField
-                  label="Label"
-                  fullWidth
-                  size="small"
-                  value={String(item.label ?? "")}
-                  onChange={(e) => {
-                    const next = [
-                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], label: e.target.value };
-                    setField("timelineItems", next);
-                  }}
-                />
-                <TextField
-                  label="Year / note"
-                  fullWidth
-                  size="small"
-                  value={String(item.year ?? "")}
-                  onChange={(e) => {
-                    const next = [
-                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], year: e.target.value };
-                    setField("timelineItems", next);
-                  }}
-                />
-                <ImageField
-                  label="Logo (optional)"
-                  value={(item.logoPath as string | null) ?? null}
-                  onPick={() => onPickMedia(`timelineItems.${index}.logoPath`)}
-                  onClear={() => {
-                    const next = [
-                      ...((config.timelineItems as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], logoPath: null };
-                    setField("timelineItems", next);
-                  }}
-                />
-              </div>
-            ))}
-            <button
-              type="button"
-              className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-2 text-sm font-medium text-[var(--color-foreground)] hover:border-[var(--color-primary)]"
-              onClick={() => {
-                const current =
-                  (config.timelineItems as unknown[]) ?? [];
-                if (current.length >= 6) return;
-                setField("timelineItems", [
-                  ...current,
-                  { label: "", year: "", logoPath: null },
-                ]);
-              }}
-            >
-              Add milestone
-            </button>
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">4. Button (optional)</p>
-            <TextField
-              label="Button text"
-              fullWidth
-              value={String(config.buttonText ?? "")}
-              onChange={(e) => setField("buttonText", e.target.value)}
-              helperText="Leave blank to hide"
-            />
-            <StorePageLinkField
-              value={config.buttonLink as string | null}
-              fallback="/contact"
-              onChange={(v) => setField("buttonLink", v)}
-            />
-          </div>
-        </>
+        <AboutSectionFields
+          config={config}
+          onChange={onChange}
+          onPickMedia={onPickMedia}
+        />
       ) : null}
 
       {sectionType === "categories" || sectionType === "products" || sectionType === "banner" || sectionType === "newsletter" ? (

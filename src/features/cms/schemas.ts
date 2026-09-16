@@ -82,7 +82,7 @@ export const SECTION_TYPE_DESCRIPTIONS: Record<SupportedSectionType, string> = {
   products: "Show products from your catalog",
   banner: "Promotional image with optional button",
   text_image: "Story block with text beside an image",
-  about: "Founder story — heading, quote, portrait, and timeline",
+  about: "Founder story, portrait, and optional heritage train milestones",
   features: "Highlight why customers choose you",
   statistics: "Key numbers about your business",
   testimonials: "Customer quotes",
@@ -164,6 +164,18 @@ export const HERO_LAYOUT_PRESET_LABELS: Record<HeroLayoutPreset, string> = {
   IMAGE_LEFT: "Image left",
 };
 
+export const heroSlideSchema = z.object({
+  imagePath: z.string().max(500).min(1),
+  title: z.string().max(200).optional().default(""),
+  subtitle: z.string().max(300).optional().default(""),
+  description: z.string().max(500).optional().default(""),
+  badge: z.string().max(40).optional().default(""),
+  ctaLabel: z.string().max(80).optional().default(""),
+  ctaHref: optionalSafeUrlSchema.optional().default(null),
+});
+
+export type HeroSlideConfig = z.infer<typeof heroSlideSchema>;
+
 export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   title: shortTextSchema.default(""),
   subtitle: z.string().max(300).optional().default(""),
@@ -177,6 +189,10 @@ export const heroSectionConfigSchema = sectionCommonSettingsSchema.extend({
   alignment: z.enum(["left", "center", "right"]).default("left"),
   /** Safe layout presets — never arbitrary CSS/JS from the database. */
   layoutPreset: z.enum(HERO_LAYOUT_PRESETS).default("SPLIT"),
+  /** Multi-image autoplay carousel (Britannia-style). Empty → legacy single image. */
+  slides: z.array(heroSlideSchema).max(8).default([]),
+  autoplayMs: z.number().int().min(0).max(30_000).default(5000),
+  showArrows: z.boolean().default(true),
   /** Legacy field — ignored at render; 3D comes from Appearance. */
   threeSource: z.enum(["global", "custom"]).default("global"),
   /** Legacy section 3D flags — ignored when threeSource is not applied. */
@@ -236,7 +252,7 @@ export const textImageSectionConfigSchema = sectionCommonSettingsSchema.extend({
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
 
-/** Timeline row for Priya-style about / founder story. */
+/** Timeline row for About heritage train milestones. */
 export const aboutTimelineItemSchema = z.object({
   label: z
     .union([z.string(), z.null(), z.undefined()])
@@ -246,6 +262,11 @@ export const aboutTimelineItemSchema = z.object({
     .union([z.string(), z.null(), z.undefined()])
     .transform((v) => String(v ?? "").trim())
     .pipe(z.string().max(40)),
+  description: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(z.string().max(500)),
+  /** Product/photo — legacy per-stop wheel; storefront uses shared engineWheelImagePath. */
   logoPath: z
     .union([z.string(), z.null(), z.undefined()])
     .transform((v) => (v == null || v === "" ? null : String(v)))
@@ -260,7 +281,14 @@ export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   imagePath: z.string().max(500).nullable().optional().default(null),
   imageCaptionName: z.string().max(120).optional().default(""),
   imageCaptionRole: z.string().max(120).optional().default(""),
-  timelineItems: z.array(aboutTimelineItemSchema).max(6).default([]),
+  /** Optional shared wheel image — used on locomotive and every bogie. */
+  engineWheelImagePath: z
+    .string()
+    .max(500)
+    .nullable()
+    .optional()
+    .default(null),
+  timelineItems: z.array(aboutTimelineItemSchema).max(24).default([]),
   buttonText: z.string().max(80).optional().default(""),
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
@@ -431,7 +459,7 @@ export const pageFormSchema = z.object({
     .min(1)
     .max(120)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers, and hyphens."),
-  content: z.string().max(50000).optional().nullable().default(null),
+  content: z.string().max(100000).optional().nullable().default(null),
   featuredImagePath: z.string().max(500).nullable().optional().default(null),
   seoTitle: z.string().max(200).optional().nullable().default(null),
   seoDescription: z.string().max(500).optional().nullable().default(null),
@@ -482,3 +510,41 @@ export type BannerFormValues = z.infer<typeof bannerFormSchema>;
 export const HOMEPAGE_SLUG = "home";
 /** Dedicated storefront About route (`/about`) — sections managed under Content → About. */
 export const ABOUT_PAGE_SLUG = "about";
+
+/** Reserved storefront legal routes — managed under Content → Legal pages. */
+export const PRIVACY_PAGE_SLUG = "privacy";
+export const TERMS_PAGE_SLUG = "terms";
+export const DISCLAIMER_PAGE_SLUG = "disclaimer";
+
+export const LEGAL_PAGE_SLUGS = [
+  PRIVACY_PAGE_SLUG,
+  TERMS_PAGE_SLUG,
+  DISCLAIMER_PAGE_SLUG,
+] as const;
+
+export type LegalPageSlug = (typeof LEGAL_PAGE_SLUGS)[number];
+
+export function isLegalPageSlug(slug: string): slug is LegalPageSlug {
+  return (LEGAL_PAGE_SLUGS as readonly string[]).includes(slug);
+}
+
+export const LEGAL_PAGE_META: Record<
+  LegalPageSlug,
+  { title: string; description: string; storefrontPath: string }
+> = {
+  privacy: {
+    title: "Privacy Policy",
+    description: "How you collect, use, and protect customer data.",
+    storefrontPath: "/privacy",
+  },
+  terms: {
+    title: "Terms of Use",
+    description: "Rules for using the store and placing orders.",
+    storefrontPath: "/terms",
+  },
+  disclaimer: {
+    title: "Disclaimer",
+    description: "General information and liability notice.",
+    storefrontPath: "/disclaimer",
+  },
+};

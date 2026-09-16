@@ -21,7 +21,9 @@ describe("phase 22 commerce experience", () => {
     expect(generate).toContain("generateBrandThemeFromColors");
     expect(generate).toContain("buildDark");
     expect(suggest).toContain("Apply suggested theme");
-    expect(suggest).toContain("Regenerate theme");
+    expect(suggest).toContain("Regenerate");
+    expect(suggest).toContain("Apply in Appearance");
+    expect(suggest).toContain("Colors are not saved on this page");
     expect(extract.toLowerCase()).not.toContain("openai");
     expect(extract.toLowerCase()).not.toContain("colorthief");
   });

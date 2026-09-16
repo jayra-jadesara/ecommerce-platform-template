@@ -15,12 +15,18 @@ const SECTIONS = [
     href: "/content/about",
     title: "About",
     description:
-      "Founder story for /about — heading, quote, portrait, and timeline (Priya-style).",
+      "Edit the /about founder story — portrait, quote, and optional heritage train milestones.",
+  },
+  {
+    href: "/content/legal",
+    title: "Legal pages",
+    description:
+      "Privacy Policy, Terms of Use, and Disclaimer — full markdown editor.",
   },
   {
     href: "/content/pages",
     title: "Pages",
-    description: "Shipping, Privacy, and other store pages (not Homepage or About).",
+    description: "Other store pages (not Homepage, About, or Legal).",
   },
   {
     href: "/content/banners",

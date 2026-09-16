@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -24,6 +23,7 @@ import {
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import {
   AdminDateTimeField,
   isoToAdminDateTimeLocal,
@@ -271,22 +271,20 @@ export function CouponForm({
                 name="discountType"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    select
+                  <AdminSelect
                     label="Discount type"
-                    fullWidth
                     disabled={!canSubmit || pending}
                     value={discountType}
-                    onChange={(event) => field.onChange(event.target.value)}
-                    onBlur={field.onBlur}
+                    onChange={field.onChange}
                     name={field.name}
-                    inputRef={field.ref}
-                  >
-                    <MenuItem value="percentage">Percentage off (%)</MenuItem>
-                    <MenuItem value="fixed">
-                      Fixed amount off ({currency})
-                    </MenuItem>
-                  </TextField>
+                    options={[
+                      { value: "percentage", label: "Percentage off (%)" },
+                      {
+                        value: "fixed",
+                        label: `Fixed amount off (${currency})`,
+                      },
+                    ]}
+                  />
                 )}
               />
               <div>

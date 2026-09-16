@@ -81,9 +81,11 @@ describe("phase 21 — storefront chrome", () => {
 
   it("footer is multi-column and hides empty contact/social", () => {
     const src = readSrc("src/components/layout/Footer.tsx");
-    expect(src).toContain("Shop");
-    expect(src).toContain("Support");
+    expect(src).toContain("Products");
+    expect(src).toContain("Explore");
     expect(src).toContain("hasContact");
+    expect(src).toContain("Connect with us");
+    expect(src).toContain("footer.showSocial");
     expect(src).toContain("socialLinks.length");
     expect(src).not.toContain("Secure shopping · Quality products");
   });

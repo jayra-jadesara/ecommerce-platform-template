@@ -5,6 +5,7 @@ import {
   optionalPhone,
   optionalSafeHttpUrl,
   optionalSafeNavHref,
+  optionalWhatsapp,
   requiredSafeNavHref,
 } from "@/features/admin/settings/validation";
 
@@ -44,7 +45,7 @@ export const generalSettingsSchema = z.object({
   socialYoutube: optionalSafeHttpUrl,
   socialLinkedin: optionalSafeHttpUrl,
   socialX: optionalSafeHttpUrl,
-  socialWhatsapp: optionalSafeHttpUrl,
+  socialWhatsapp: optionalWhatsapp,
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -84,6 +85,10 @@ export const footerSettingsSchema = z.object({
   showNewsletter: z.boolean(),
   navVisible: z.boolean(),
   copyrightText: optionalText(240),
+  showFeaturedProduct: z.boolean(),
+  featuredProductId: z
+    .union([z.string().uuid(), z.literal(""), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === "" ? null : v)),
 });
 
 export type FooterSettingsFormValues = z.infer<typeof footerSettingsSchema>;
@@ -193,6 +198,8 @@ export const DEFAULT_FOOTER_SETTINGS: FooterSettingsFormValues = {
   showNewsletter: false,
   navVisible: true,
   copyrightText: "",
+  showFeaturedProduct: false,
+  featuredProductId: null,
 };
 
 export const DEFAULT_SEO_SETTINGS: SeoSettingsFormValues = {

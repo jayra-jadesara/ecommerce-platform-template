@@ -161,7 +161,7 @@ export interface SocialLinksConfig {
   whatsapp?: string;
 }
 
-export type LogoSize = "small" | "medium" | "large";
+export type LogoSize = "small" | "medium" | "large" | "xlarge";
 
 export interface AnnouncementConfig {
   enabled: boolean;
@@ -189,7 +189,16 @@ export interface FooterChromeConfig {
   showNewsletter: boolean;
   navVisible: boolean;
   copyrightText?: string;
+  showFeaturedProduct: boolean;
+  featuredProductId?: string | null;
 }
+
+export type FooterFeaturedProduct = {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+};
 
 /** Aggregate config — populated from Supabase when available. */
 export interface PlatformConfig {

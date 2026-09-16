@@ -2,14 +2,13 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   archiveCategoryAction,
   checkCategoryDependenciesAction,
@@ -394,15 +393,12 @@ export function CategoryManager({
             name="isActive"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canEditForm}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canEditForm}
                 label="Show on store"
+                variant="row"
               />
             )}
           />

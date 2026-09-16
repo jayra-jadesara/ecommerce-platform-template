@@ -1,12 +1,8 @@
-import { PageShell } from "@/components/layout";
+import { LegalDocumentPage } from "@/features/cms/components/LegalDocumentPage";
+import { PRIVACY_PAGE_SLUG } from "@/features/cms/schemas";
+
+export const dynamic = "force-dynamic";
 
 export default function PrivacyPage() {
-  return (
-    <PageShell
-      title="Privacy"
-      description="Privacy policy content will be managed via CMS in a later phase."
-    >
-      <p className="text-sm text-[var(--color-muted)]">Placeholder page.</p>
-    </PageShell>
-  );
+  return <LegalDocumentPage slug={PRIVACY_PAGE_SLUG} />;
 }

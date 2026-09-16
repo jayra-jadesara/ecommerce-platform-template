@@ -151,6 +151,8 @@ export async function updateFooterSettings(
       footer_show_social: values.showSocial,
       footer_show_newsletter: values.showNewsletter,
       footer_nav_visible: values.navVisible,
+      footer_show_featured_product: values.showFeaturedProduct,
+      footer_featured_product_id: values.featuredProductId,
       copyright_text: emptyToNull(values.copyrightText),
     },
     "Footer settings saved.",

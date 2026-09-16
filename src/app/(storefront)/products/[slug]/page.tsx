@@ -18,7 +18,8 @@ import {
   buildProductJsonLd,
   JsonLdScript,
 } from "@/features/seo";
-import { BackLink, Container } from "@/components/layout";
+import { Container, StorefrontBreadcrumb } from "@/components/layout";
+import { absoluteUrl } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -119,6 +120,7 @@ export default async function ProductDetailPage({
 
   const crumbs = [
     { name: "Home", path: "/" },
+    { name: "Products", path: "/products" },
     ...(product.category
       ? [
           {
@@ -126,22 +128,36 @@ export default async function ProductDetailPage({
             path: `/categories/${product.category.slug}`,
           },
         ]
-      : [{ name: "Products", path: "/products" }]),
+      : []),
     { name: product.name, path: `/products/${product.slug}` },
   ];
 
   return (
     <Container className="relative z-0 py-8 md:py-12">
-      <div className="mb-5">
-        <BackLink href="/products" label="Back to products" />
-      </div>
       <JsonLdScript data={[productLd, buildBreadcrumbJsonLd(crumbs)]} />
+      <StorefrontBreadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Products", href: "/products" },
+          ...(product.category
+            ? [
+                {
+                  label: product.category.name,
+                  href: `/categories/${product.category.slug}`,
+                },
+              ]
+            : []),
+          { label: product.name },
+        ]}
+      />
       <ProductDetailClient
         product={product}
         currency={config.store.currency}
         isAuthenticated={isAuthenticated}
         visualEffects={config.visualEffects}
         animation={config.animation}
+        shareUrl={absoluteUrl(`/products/${product.slug}`)}
+        social={config.social}
       />
       <RelatedProducts
         products={related}

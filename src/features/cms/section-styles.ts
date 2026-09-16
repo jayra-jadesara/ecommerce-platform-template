@@ -1,4 +1,4 @@
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import type { SectionCommonSettings } from "@/features/cms/schemas";
 
 export function sectionShellClassName(
@@ -30,14 +30,9 @@ export function sectionShellClassName(
   ].join(" ");
 }
 
-export function resolveCmsImageUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return (
-    resolvePublicStorageUrl("cms", path) ??
-    resolvePublicStorageUrl("media", path) ??
-    resolvePublicStorageUrl("products", path) ??
-    resolvePublicStorageUrl("categories", path) ??
-    null
-  );
+/** Public URL for a CMS / media library path (or absolute URL). */
+export function resolveCmsImageUrl(
+  path: string | null | undefined,
+): string | null {
+  return resolveStoragePathUrl(path) ?? null;
 }

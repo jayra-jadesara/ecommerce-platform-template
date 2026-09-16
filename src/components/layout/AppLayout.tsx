@@ -4,17 +4,23 @@ import { DeveloperCredit } from "@/components/layout/DeveloperCredit";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
-import type { PlatformConfig } from "@/types";
+import type { FooterFeaturedProduct, PlatformConfig } from "@/types";
 
 interface AppLayoutProps {
   config: PlatformConfig;
   children: ReactNode;
   /** Streamed cart control (Suspense). Falls back to empty badge if omitted. */
   cartSlot?: ReactNode;
+  featuredProduct?: FooterFeaturedProduct | null;
 }
 
 /** Storefront chrome: header, footer, and scroll affordance. */
-export function AppLayout({ config, children, cartSlot }: AppLayoutProps) {
+export function AppLayout({
+  config,
+  children,
+  cartSlot,
+  featuredProduct = null,
+}: AppLayoutProps) {
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
       <AnnouncementBar announcement={config.header.announcement} />
@@ -32,6 +38,7 @@ export function AppLayout({ config, children, cartSlot }: AppLayoutProps) {
         footer={config.footer}
         contact={config.contact}
         social={config.social}
+        featuredProduct={featuredProduct}
       />
       <DeveloperCredit />
       <ScrollToTop />

@@ -1,8 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -14,6 +12,7 @@ import {
   seoSettingsSchema,
   type SeoSettingsFormValues,
 } from "@/features/admin/settings/schemas";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
 import {
   buildSeoDescription,
@@ -362,15 +361,12 @@ export function SeoSettingsForm({
             name="robotsIndex"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate}
                 label="Allow Google to list this store"
+                variant="row"
               />
             )}
           />
@@ -378,15 +374,12 @@ export function SeoSettingsForm({
             name="robotsFollow"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate}
                 label="Allow following links"
+                variant="row"
               />
             )}
           />

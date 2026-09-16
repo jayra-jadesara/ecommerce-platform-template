@@ -34,7 +34,17 @@ export type BlogSidebarPreset =
   | "NONE"
   | "SIDEBAR"
   | "TOP_FILTER";
-export type BlogCardStyle = "STANDARD" | "MINIMAL" | "EDITORIAL";
+export type BlogCardStyle = "STANDARD" | "MINIMAL" | "EDITORIAL" | "COVER";
+export type BlogCoverCtaStyle =
+  | "COOKIE"
+  | "PLAIN"
+  | "MASALA"
+  | "PACK"
+  | "BAND"
+  | "SQUARE"
+  | "RIBBON"
+  | "STAMP"
+  | "NONE";
 export type OrderStatus =
   | "PENDING"
   | "CONFIRMED"
@@ -139,7 +149,7 @@ export type Database = {
           header_account_enabled: boolean;
           header_mobile_menu_enabled: boolean;
           header_nav_visible: boolean;
-          header_logo_size: "small" | "medium" | "large";
+          header_logo_size: "small" | "medium" | "large" | "xlarge";
           announcement_enabled: boolean;
           announcement_text: string | null;
           announcement_url: string | null;
@@ -150,6 +160,8 @@ export type Database = {
           footer_show_social: boolean;
           footer_show_newsletter: boolean;
           footer_nav_visible: boolean;
+          footer_show_featured_product: boolean;
+          footer_featured_product_id: string | null;
           copyright_text: string | null;
           extra: Json;
         } & Timestamps;
@@ -185,7 +197,7 @@ export type Database = {
           header_account_enabled?: boolean;
           header_mobile_menu_enabled?: boolean;
           header_nav_visible?: boolean;
-          header_logo_size?: "small" | "medium" | "large";
+          header_logo_size?: "small" | "medium" | "large" | "xlarge";
           announcement_enabled?: boolean;
           announcement_text?: string | null;
           announcement_url?: string | null;
@@ -196,6 +208,8 @@ export type Database = {
           footer_show_social?: boolean;
           footer_show_newsletter?: boolean;
           footer_nav_visible?: boolean;
+          footer_show_featured_product?: boolean;
+          footer_featured_product_id?: string | null;
           copyright_text?: string | null;
           extra?: Json;
           created_at?: string;
@@ -1327,6 +1341,7 @@ export type Database = {
           auto_featured_fallback: boolean;
           featured_post_id: string | null;
           card_style: BlogCardStyle;
+          cover_cta_style: BlogCoverCtaStyle;
           cta_title: string | null;
           cta_description: string | null;
           cta_button_label: string | null;
@@ -1353,6 +1368,7 @@ export type Database = {
           auto_featured_fallback?: boolean;
           featured_post_id?: string | null;
           card_style?: BlogCardStyle;
+          cover_cta_style?: BlogCoverCtaStyle;
           cta_title?: string | null;
           cta_description?: string | null;
           cta_button_label?: string | null;

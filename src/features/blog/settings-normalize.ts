@@ -1,5 +1,6 @@
 import type {
   BlogCardStyle,
+  BlogCoverCtaStyle,
   BlogLayoutPreset,
   BlogSettings,
   BlogSidebarPreset,
@@ -14,22 +15,38 @@ export function normalizeSidebarPreset(
   if (raw === "LEFT") return "LEFT";
   if (raw === "TOP" || raw === "TOP_FILTER") return "TOP";
   if (raw === "NONE") return "NONE";
-  // SIDEBAR and RIGHT (and unknown) → RIGHT
   return "RIGHT";
 }
 
 export function normalizeCardStyle(
   raw: BlogCardStyle | string | null | undefined,
 ): BlogCardStyle {
-  if (raw === "MINIMAL" || raw === "EDITORIAL") return raw;
+  if (raw === "MINIMAL" || raw === "EDITORIAL" || raw === "COVER") return raw;
   return "STANDARD";
+}
+
+export function normalizeCoverCtaStyle(
+  raw: BlogCoverCtaStyle | string | null | undefined,
+): BlogCoverCtaStyle {
+  if (
+    raw === "PLAIN" ||
+    raw === "NONE" ||
+    raw === "MASALA" ||
+    raw === "PACK" ||
+    raw === "BAND" ||
+    raw === "SQUARE" ||
+    raw === "RIBBON" ||
+    raw === "STAMP"
+  ) {
+    return raw;
+  }
+  return "COOKIE";
 }
 
 export function isListLayout(settings: Pick<BlogSettings, "layoutPreset">): boolean {
   return settings.layoutPreset === "LIST";
 }
 
-/** Featured block on /blog when enabled and content exists. */
 export function wantsFeaturedBlock(
   settings: Pick<BlogSettings, "layoutPreset" | "showFeaturedPost">,
 ): boolean {

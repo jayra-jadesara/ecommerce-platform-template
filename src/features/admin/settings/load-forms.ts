@@ -16,6 +16,7 @@ import {
   type SeoSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import type { Tables } from "@/types/database";
+import { whatsappDisplayValue } from "@/features/admin/settings/validation";
 
 type SettingsRow = Tables<"store_settings">;
 type BrandingRow = Tables<"store_branding">;
@@ -72,7 +73,7 @@ export async function loadGeneralSettingsForm(): Promise<{
       socialYoutube: text(row?.social_youtube),
       socialLinkedin: text(row?.social_linkedin),
       socialX: text(row?.social_x),
-      socialWhatsapp: text(row?.social_whatsapp),
+      socialWhatsapp: whatsappDisplayValue(text(row?.social_whatsapp)),
     },
   };
 }
@@ -177,6 +178,10 @@ export async function loadFooterSettingsForm(): Promise<FooterSettingsFormValues
       row?.footer_show_newsletter ?? DEFAULT_FOOTER_SETTINGS.showNewsletter,
     navVisible: row?.footer_nav_visible ?? DEFAULT_FOOTER_SETTINGS.navVisible,
     copyrightText: text(row?.copyright_text),
+    showFeaturedProduct:
+      row?.footer_show_featured_product ??
+      DEFAULT_FOOTER_SETTINGS.showFeaturedProduct,
+    featuredProductId: row?.footer_featured_product_id ?? null,
   };
 }
 

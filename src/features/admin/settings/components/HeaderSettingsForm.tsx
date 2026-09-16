@@ -1,9 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -16,6 +13,8 @@ import {
   type HeaderSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import { LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminCard,
   adminCardPadding,
@@ -41,6 +40,7 @@ const LOGO_SIZE_LABELS: Record<(typeof LOGO_SIZE_OPTIONS)[number], string> = {
   small: "Small",
   medium: "Medium",
   large: "Large",
+  xlarge: "Extra large (brand hero)",
 };
 
 interface HeaderSettingsFormProps {
@@ -66,7 +66,8 @@ export function HeaderSettingsForm({
       logoSize:
         initialValues.logoSize === "small" ||
         initialValues.logoSize === "medium" ||
-        initialValues.logoSize === "large"
+        initialValues.logoSize === "large" ||
+        initialValues.logoSize === "xlarge"
           ? initialValues.logoSize
           : DEFAULT_HEADER_SETTINGS.logoSize,
     }),
@@ -90,7 +91,8 @@ export function HeaderSettingsForm({
   const logoSize =
     watched.logoSize === "small" ||
     watched.logoSize === "medium" ||
-    watched.logoSize === "large"
+    watched.logoSize === "large" ||
+    watched.logoSize === "xlarge"
       ? watched.logoSize
       : "medium";
 
@@ -181,15 +183,12 @@ export function HeaderSettingsForm({
                 name={name}
                 control={control}
                 render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onChange={(_, checked) => field.onChange(checked)}
-                        disabled={!canUpdate || pending}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(field.value)}
+                    onChange={field.onChange}
+                    disabled={!canUpdate || pending}
                     label={label}
+                    variant="row"
                   />
                 )}
               />
@@ -199,25 +198,19 @@ export function HeaderSettingsForm({
             name="logoSize"
             control={control}
             render={({ field }) => (
-              <TextField
-                select
+              <AdminSelect
                 label="Logo size"
-                fullWidth
                 required
                 disabled={!canUpdate || pending}
                 value={logoSize}
-                onChange={(event) => field.onChange(event.target.value)}
-                onBlur={field.onBlur}
+                onChange={field.onChange}
                 name={field.name}
-                inputRef={field.ref}
-                helperText="How large your logo appears in the header"
-              >
-                {LOGO_SIZE_OPTIONS.map((size) => (
-                  <MenuItem key={size} value={size}>
-                    {LOGO_SIZE_LABELS[size]}
-                  </MenuItem>
-                ))}
-              </TextField>
+                helperText="Default size at the top of the page — logo becomes smaller when shoppers scroll"
+                options={LOGO_SIZE_OPTIONS.map((size) => ({
+                  value: size,
+                  label: LOGO_SIZE_LABELS[size],
+                }))}
+              />
             )}
           />
         </div>
@@ -236,19 +229,16 @@ export function HeaderSettingsForm({
             name="announcementEnabled"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={Boolean(field.value)}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canUpdate || pending}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canUpdate || pending}
                 label={
                   announcementOn
                     ? "Yes — show announcement bar"
                     : "No — hide announcement bar"
                 }
+                variant="row"
               />
             )}
           />
@@ -300,15 +290,12 @@ export function HeaderSettingsForm({
                 name="announcementOpenInNewTab"
                 control={control}
                 render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onChange={(_, checked) => field.onChange(checked)}
-                        disabled={!canUpdate || pending}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(field.value)}
+                    onChange={field.onChange}
+                    disabled={!canUpdate || pending}
                     label="Open link in a new browser tab"
+                    variant="row"
                   />
                 )}
               />
@@ -349,9 +336,11 @@ export function HeaderSettingsForm({
                 fontSize:
                   logoSize === "small"
                     ? "0.95rem"
-                    : logoSize === "large"
-                      ? "1.35rem"
-                      : "1.1rem",
+                    : logoSize === "xlarge"
+                      ? "1.55rem"
+                      : logoSize === "large"
+                        ? "1.35rem"
+                        : "1.1rem",
               }}
             >
               {brand.name}

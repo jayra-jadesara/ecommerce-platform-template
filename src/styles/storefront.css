@@ -286,12 +286,115 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   }
 }
 
-/* Compact breadcrumb / listing header strip */
-.blog-page-header {
+/* Premium storefront breadcrumb strip */
+.sf-breadcrumb {
   letter-spacing: 0.01em;
 }
 
-/* Journal-style blog article body */
+/* Britannia-inspired cover cards — colors from store theme tokens */
+.blog-cover-card {
+  isolation: isolate;
+}
+
+.blog-cover-card__surface {
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, var(--color-foreground) 10%, transparent),
+    0 2px 6px color-mix(in srgb, var(--color-foreground) 6%, transparent);
+  transition:
+    transform 0.35s ease,
+    box-shadow 0.35s ease;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .blog-cover-card:hover .blog-cover-card__surface {
+    transform: translateY(-4px);
+    box-shadow:
+      0 18px 36px color-mix(in srgb, var(--color-primary) 18%, transparent),
+      0 4px 12px color-mix(in srgb, var(--color-foreground) 8%, transparent);
+  }
+}
+
+.blog-cover-card__tab {
+  background: var(--color-primary);
+}
+
+.blog-cover-card__read {
+  background: color-mix(in srgb, var(--color-foreground) 88%, var(--color-primary));
+  box-shadow: 0 10px 22px color-mix(in srgb, #000 35%, transparent);
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.blog-cover-card:hover .blog-cover-card__read {
+  background: var(--color-primary);
+  transform: scale(1.04);
+}
+
+.blog-cover-card__bite {
+  color: color-mix(in srgb, var(--color-accent) 75%, var(--color-primary));
+  filter: drop-shadow(0 8px 14px color-mix(in srgb, #000 28%, transparent));
+  pointer-events: none;
+}
+
+span.blog-cover-card__bite {
+  background: currentColor;
+}
+
+/* 3D pack icons behind Read more (SVG, not photos) */
+.blog-cover-card__pack-icon {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.blog-cover-card__cta--masala .blog-cover-card__read,
+.blog-cover-card__cta--pack .blog-cover-card__read {
+  box-shadow:
+    0 8px 18px color-mix(in srgb, #000 42%, transparent),
+    0 0 0 1.5px color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+
+/* Accent name band */
+.blog-cover-card__name-band {
+  border-radius: 0.2rem;
+  background: var(--color-accent);
+  box-shadow:
+    0 6px 14px color-mix(in srgb, #000 22%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 50%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, #000 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-accent) 60%, #000);
+}
+
+/* Curved packaging ribbon */
+.blog-cover-card__curve-ribbon-edge {
+  fill: color-mix(in srgb, var(--color-accent) 75%, #fff);
+}
+
+.blog-cover-card__curve-ribbon-fill {
+  fill: var(--color-primary);
+}
+
+.blog-cover-card__cta--ribbon {
+  filter: drop-shadow(0 6px 12px color-mix(in srgb, #000 28%, transparent));
+}
+
+.blog-cover-card__stamp {
+  border-radius: 999px;
+  border: 3px dashed color-mix(in srgb, var(--color-accent) 70%, #fff);
+  background: color-mix(in srgb, var(--color-primary) 82%, transparent);
+  box-shadow: 0 8px 16px color-mix(in srgb, #000 26%, transparent);
+}
+
+.blog-cover-card__square {
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--color-accent) 70%, var(--color-primary));
+  box-shadow: 0 8px 16px color-mix(in srgb, #000 26%, transparent);
+}
+
+.blog-cover-card__cta--square .blog-cover-card__read {
+  background: color-mix(in srgb, var(--color-primary) 88%, #000);
+}
+
+/* Journal-style blog article body — themed for storefront */
 .blog-markdown {
   color: var(--color-foreground);
   font-size: 1.125rem;
@@ -313,7 +416,7 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
-  color: var(--color-foreground);
+  color: var(--color-primary);
 }
 
 .blog-markdown h1 {
@@ -324,12 +427,15 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   font-size: 1.4rem;
   margin-top: 2em;
   margin-bottom: 0.35em;
+  padding-bottom: 0.35em;
+  border-bottom: 2px solid color-mix(in srgb, var(--color-primary) 28%, transparent);
 }
 
 .blog-markdown h3 {
   font-size: 1.15rem;
   margin-top: 1.65em;
   margin-bottom: 0.25em;
+  color: color-mix(in srgb, var(--color-primary) 70%, var(--color-foreground));
 }
 
 .blog-markdown p,
@@ -339,6 +445,7 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
 
 .blog-markdown a {
   color: var(--color-primary);
+  font-weight: 600;
   text-underline-offset: 0.15em;
 }
 
@@ -348,7 +455,9 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
 
 .blog-markdown blockquote {
   border-left: 3px solid color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
-  padding-left: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0 var(--radius-default, 0.75rem) var(--radius-default, 0.75rem) 0;
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface));
   color: var(--color-muted);
   font-style: italic;
 }
@@ -361,6 +470,10 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
 .blog-markdown ol {
   list-style: decimal;
   padding-left: 1.25rem;
+}
+
+.blog-markdown li::marker {
+  color: var(--color-primary);
 }
 
 .blog-markdown code {
@@ -398,6 +511,25 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   max-width: 100%;
   height: auto;
   border-radius: var(--radius-default, 0.75rem);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+/* Legal document body — slightly tighter, document-like reading measure */
+.blog-markdown.legal-document {
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.blog-markdown.legal-document h2 {
+  font-size: 1.25rem;
+  margin-top: 1.75em;
+  border-bottom-width: 1px;
+  border-bottom-color: color-mix(in srgb, var(--color-border) 85%, var(--color-primary));
+}
+
+.blog-markdown.legal-document h3 {
+  font-size: 1.1rem;
+  margin-top: 1.4em;
 }
 
 /* Article card cover hover */
@@ -412,6 +544,16 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   }
 
   .blog-card-image img {
+    transform: none !important;
+  }
+
+  .blog-cover-card__surface,
+  .blog-cover-card__read {
+    transition: none !important;
+  }
+
+  .blog-cover-card:hover .blog-cover-card__surface,
+  .blog-cover-card:hover .blog-cover-card__read {
     transform: none !important;
   }
 }
@@ -964,6 +1106,979 @@ html.dark .sf-auth-doodle {
   .sf-auth-panel {
     animation: none;
   }
+}
+
+/* Britannia-inspired back-to-top pennant */
+.sf-back-to-top {
+  background: var(--color-primary);
+  width: 3.35rem;
+  min-height: 4.75rem;
+  clip-path: polygon(50% 0%, 100% 12%, 100% 100%, 0 100%, 0 12%);
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+
+.sf-back-to-top:hover {
+  filter: brightness(1.06);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sf-back-to-top:hover {
+    transform: translateY(-3px);
+  }
+}
+
+.sf-share-chip svg {
+  display: block;
+}
+
+/* Footer wave crest (Britannia-style curve) */
+.sf-footer-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.sf-footer-curve {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 5.5rem;
+  transform: translateY(-55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.sf-footer-curve svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sf-footer-curve-fill {
+  fill: var(--color-footer-background);
+}
+
+.sf-footer-body {
+  position: relative;
+  z-index: 1;
+  background: var(--color-footer-background);
+  color: var(--color-footer-foreground);
+}
+
+/* Britannia-style clustered columns (not full-bleed stretch) */
+.sf-footer-cluster {
+  width: 100%;
+}
+
+.sf-footer-body .sf-footer-ink {
+  color: var(--color-footer-foreground);
+}
+
+.sf-footer-body .sf-footer-muted {
+  color: var(--color-footer-foreground);
+}
+
+.sf-footer-body .sf-footer-nav a {
+  color: var(--color-footer-foreground);
+  transition: color 0.15s ease;
+}
+
+.sf-footer-body .sf-footer-nav a:hover {
+  color: var(--color-primary);
+}
+
+.sf-footer-social-chip {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.3rem;
+  background: var(--color-primary);
+  color: var(--color-button-foreground);
+  transition: filter 0.15s ease, transform 0.15s ease;
+}
+
+.sf-footer-social-chip:hover {
+  filter: brightness(1.08);
+}
+
+.sf-footer-bar {
+  background: color-mix(in srgb, var(--color-footer-background) 28%, #1c1917);
+  color: color-mix(in srgb, #fff 88%, transparent);
+}
+
+.sf-footer-feature {
+  position: relative;
+  z-index: 2;
+}
+
+/* —— About heritage train (theme-matched SVG journey) —— */
+.sf-about-train-wrap {
+  margin-top: 4rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.sf-about-train {
+  --sf-train-body: var(--color-primary);
+  --sf-train-body-hi: color-mix(in srgb, var(--color-primary) 62%, #fff);
+  --sf-train-body-lo: color-mix(in srgb, var(--color-primary) 72%, #1a1210);
+  --sf-train-accent: var(--color-accent, var(--color-primary));
+  --sf-train-accent-hi: color-mix(
+    in srgb,
+    var(--color-accent, var(--color-primary)) 55%,
+    #fff
+  );
+  --sf-train-metal-hi: color-mix(in srgb, var(--color-foreground) 22%, #ebe6e0);
+  --sf-train-metal-lo: color-mix(in srgb, var(--color-foreground) 48%, #8f8983);
+  --sf-train-wagon-hi: color-mix(in srgb, var(--color-foreground) 18%, #dcd6cf);
+  --sf-train-wagon-lo: color-mix(in srgb, var(--color-foreground) 42%, #6a6560);
+  --sf-train-ink: color-mix(in srgb, var(--color-foreground) 78%, #2a2420);
+  --sf-train-window: color-mix(in srgb, var(--color-card) 70%, #9ec4e8);
+  --sf-train-smoke: color-mix(in srgb, var(--color-muted) 45%, transparent);
+  --sf-train-hill: color-mix(in srgb, var(--color-primary) 14%, #6a9a58);
+  --sf-train-hill-deep: color-mix(in srgb, var(--color-primary) 20%, #457244);
+  --sf-train-rail: color-mix(in srgb, var(--color-foreground) 48%, #6b6560);
+  --sf-train-sleeper: color-mix(in srgb, var(--color-foreground) 26%, #8b7355);
+  --sf-train-shadow: color-mix(in srgb, #000 14%, transparent);
+  --sf-train-wheel-rim: color-mix(in srgb, var(--color-foreground) 55%, #3a3532);
+  --sf-train-wheel-inset: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  --sf-train-shine: color-mix(in srgb, #fff 55%, transparent);
+  --sf-train-cloud: color-mix(in srgb, var(--color-muted) 18%, #fff);
+  --sf-train-bird: color-mix(in srgb, var(--color-foreground) 35%, transparent);
+
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  padding: 0.5rem 0 0.5rem;
+}
+
+html.dark .sf-about-train {
+  --sf-train-body-hi: color-mix(in srgb, var(--color-primary) 70%, #fff);
+  --sf-train-body-lo: color-mix(in srgb, var(--color-primary) 55%, #0a0808);
+  --sf-train-metal-hi: color-mix(in srgb, var(--color-foreground) 35%, #4a4542);
+  --sf-train-metal-lo: color-mix(in srgb, var(--color-foreground) 55%, #1c1a18);
+  --sf-train-wagon-hi: color-mix(in srgb, var(--color-foreground) 28%, #3f3b38);
+  --sf-train-wagon-lo: color-mix(in srgb, var(--color-foreground) 45%, #161412);
+  --sf-train-ink: color-mix(in srgb, var(--color-foreground) 70%, #0d0c0b);
+  --sf-train-window: color-mix(in srgb, var(--color-card) 55%, #3d5f7a);
+  --sf-train-smoke: color-mix(in srgb, var(--color-muted) 35%, transparent);
+  --sf-train-hill: color-mix(in srgb, var(--color-primary) 22%, #2f4a2a);
+  --sf-train-hill-deep: color-mix(in srgb, var(--color-primary) 28%, #1c3018);
+  --sf-train-rail: color-mix(in srgb, var(--color-foreground) 55%, #9a9490);
+  --sf-train-sleeper: color-mix(in srgb, var(--color-foreground) 30%, #5c4a38);
+  --sf-train-shadow: color-mix(in srgb, #000 45%, transparent);
+  --sf-train-wheel-rim: color-mix(in srgb, var(--color-foreground) 65%, #8a8480);
+  --sf-train-wheel-inset: color-mix(in srgb, var(--color-primary) 55%, transparent);
+  --sf-train-shine: color-mix(in srgb, #fff 28%, transparent);
+  --sf-train-cloud: color-mix(in srgb, var(--color-foreground) 12%, #2a2826);
+  --sf-train-bird: color-mix(in srgb, var(--color-foreground) 45%, transparent);
+}
+
+.sf-about-train__viewport {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding: 1.25rem 3.75rem 1.75rem;
+  outline: none;
+  min-height: 22rem;
+  max-width: 100%;
+  background: transparent;
+}
+
+.sf-about-train__viewport::-webkit-scrollbar {
+  display: none;
+}
+
+/* Pinned to train frame — stays visible while bogies scroll */
+.sf-about-train__sky {
+  pointer-events: none;
+  position: absolute;
+  inset: 0 0 7.5rem;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.sf-about-train__clouds,
+.sf-about-train__birds {
+  position: absolute;
+  inset: 0;
+  width: 140%;
+  height: 100%;
+  display: block;
+  will-change: transform;
+}
+
+.sf-about-train__clouds {
+  left: -10%;
+  opacity: 0.55;
+}
+
+.sf-about-train__birds {
+  left: -5%;
+  opacity: 0.7;
+}
+
+.sf-about-train__cloud {
+  fill: var(--sf-train-cloud);
+}
+
+.sf-about-train__bird {
+  fill: var(--sf-train-bird);
+}
+
+.sf-about-train__landscape {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 11rem;
+  z-index: 0;
+  will-change: transform;
+}
+
+.sf-about-train__hills-svg {
+  position: absolute;
+  inset: 0 0 1.6rem;
+  width: 100%;
+  left: 0;
+  height: calc(100% - 1.6rem);
+  display: block;
+}
+
+.sf-about-train__hill--back {
+  fill: var(--sf-train-hill);
+  opacity: 0.55;
+}
+
+.sf-about-train__hill--front {
+  fill: var(--sf-train-hill-deep);
+  opacity: 0.72;
+}
+
+html.dark .sf-about-train__hill--back {
+  opacity: 0.7;
+}
+
+html.dark .sf-about-train__hill--front {
+  opacity: 0.85;
+}
+
+.sf-about-train__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1.35rem;
+  height: 1.1rem;
+}
+
+.sf-about-train__rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--sf-train-rail);
+  border-radius: 1px;
+}
+
+.sf-about-train__rail--top {
+  top: 0.15rem;
+}
+
+.sf-about-train__rail--bot {
+  top: 0.55rem;
+}
+
+.sf-about-train__sleepers {
+  position: absolute;
+  inset: 0.75rem 0 0;
+  height: 0.28rem;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--sf-train-sleeper) 0 0.7rem,
+    transparent 0.7rem 1.35rem
+  );
+  opacity: 0.75;
+}
+
+/* Hover: landscape drifts so the consist feels like it's running */
+.sf-about-train--hover .sf-about-train__clouds {
+  animation: sf-about-train-drift-far 28s linear infinite;
+}
+
+.sf-about-train--hover .sf-about-train__birds {
+  animation: sf-about-train-drift-mid 18s linear infinite;
+}
+
+.sf-about-train--hover .sf-about-train__landscape {
+  animation: sf-about-train-drift-near 22s linear infinite;
+}
+
+@keyframes sf-about-train-drift-far {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-12%);
+  }
+}
+
+@keyframes sf-about-train-drift-mid {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-18%);
+  }
+}
+
+@keyframes sf-about-train-drift-near {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-8%);
+  }
+}
+
+.sf-about-train__consist {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  width: max-content;
+  min-height: 19rem;
+  padding-bottom: 0.55rem;
+  padding-top: 0.5rem;
+}
+
+.sf-about-train__engine {
+  position: relative;
+  flex-shrink: 0;
+  width: 13.75rem;
+  margin-right: -0.85rem;
+  padding-bottom: 0.1rem;
+}
+
+.sf-about-train__link {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  align-self: flex-end;
+  width: 0.95rem;
+  height: 0.55rem;
+  margin: 0 -0.35rem 1.95rem;
+  gap: 0;
+}
+
+.sf-about-train__link-pin {
+  flex-shrink: 0;
+  width: 0.32rem;
+  height: 0.48rem;
+  border-radius: 0.12rem;
+  background: linear-gradient(
+    180deg,
+    var(--sf-train-metal-hi),
+    var(--sf-train-metal-lo)
+  );
+  box-shadow: 0 1px 2px var(--sf-train-shadow);
+}
+
+.sf-about-train__link-bar {
+  flex: 1 1 auto;
+  height: 0.26rem;
+  min-width: 0.35rem;
+  border-radius: 0.08rem;
+  background: linear-gradient(
+    180deg,
+    var(--sf-train-metal-hi),
+    var(--sf-train-metal-lo)
+  );
+  box-shadow: 0 1px 2px var(--sf-train-shadow);
+}
+
+.sf-about-train__engine-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 8px 14px var(--sf-train-shadow));
+}
+
+.sf-about-train__smoke-puff {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: sf-about-train-smoke 3.6s ease-out infinite;
+}
+
+.sf-about-train__smoke-puff--1 {
+  opacity: 0.55;
+  animation-delay: 0s;
+}
+
+.sf-about-train__smoke-puff--2 {
+  opacity: 0.45;
+  animation-delay: 0.45s;
+}
+
+.sf-about-train__smoke-puff--3 {
+  opacity: 0.35;
+  animation-delay: 0.9s;
+}
+
+.sf-about-train__smoke-puff--4 {
+  opacity: 0.28;
+  animation-delay: 1.35s;
+}
+
+.sf-about-train__smoke-puff--5 {
+  opacity: 0.2;
+  animation-delay: 1.8s;
+}
+
+.sf-about-train--hover .sf-about-train__smoke-puff {
+  animation-duration: 2.4s;
+}
+
+@keyframes sf-about-train-smoke {
+  0% {
+    transform: translate(0, 4px) scale(0.65);
+    opacity: 0.15;
+  }
+  35% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translate(10px, -22px) scale(1.35);
+    opacity: 0;
+  }
+}
+
+.sf-about-train__engine-wheels {
+  position: absolute;
+  right: 3.35rem;
+  left: auto;
+  bottom: 0.05rem;
+  display: flex;
+  flex-direction: row-reverse;
+  gap: 0.85rem;
+  z-index: 2;
+}
+
+/* One milestone = two bogies (Britannia spacing) */
+.sf-about-train__stop {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  width: 17.5rem;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sf-about-train__pair {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.sf-about-train__card {
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  z-index: 2;
+  display: flex;
+  width: min(17rem, 100%);
+  max-width: 17rem;
+  min-height: 0;
+  margin-bottom: 0.85rem;
+  padding: 0 0.35rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  text-align: center;
+  transform: translateX(-50%);
+}
+
+.sf-about-train__year {
+  margin: 0;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+  color: var(--color-primary);
+}
+
+.sf-about-train__title {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  color: var(--color-foreground);
+}
+
+.sf-about-train__desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.sf-about-train__carriage {
+  position: relative;
+  width: 8.1rem;
+  flex-shrink: 0;
+  margin-bottom: 0.05rem;
+}
+
+.sf-about-train__wagon-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 10px var(--sf-train-shadow));
+}
+
+.sf-about-train__carriage-wheels {
+  position: absolute;
+  left: 50%;
+  bottom: -0.15rem;
+  display: flex;
+  gap: 1.55rem;
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.sf-about-train__wheel {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  width: 2.15rem;
+  height: 2.15rem;
+  background: var(--color-card);
+  box-shadow:
+    0 3px 8px var(--sf-train-shadow),
+    inset 0 0 0 1px color-mix(in srgb, #fff 35%, transparent);
+}
+
+html.dark .sf-about-train__wheel {
+  box-shadow:
+    0 3px 10px var(--sf-train-shadow),
+    inset 0 0 0 1px color-mix(in srgb, #fff 12%, transparent);
+}
+
+.sf-about-train__wheel--lg {
+  width: 3.05rem;
+  height: 3.05rem;
+}
+
+.sf-about-train__wheel-rim {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 3px solid var(--sf-train-wheel-rim);
+  box-shadow: inset 0 0 0 1.5px var(--sf-train-wheel-inset);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sf-about-train__wheel--lg .sf-about-train__wheel-rim {
+  border-width: 4px;
+}
+
+.sf-about-train__wheel img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.05);
+}
+
+.sf-about-train__wheel-shine {
+  position: absolute;
+  inset: 12% 18% auto;
+  height: 28%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--sf-train-shine), transparent);
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+html.dark .sf-about-train__wheel-shine {
+  opacity: 0.35;
+}
+
+.sf-about-train__wheel-fallback {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.02em;
+  z-index: 1;
+}
+
+.sf-about-train__wheel--lg .sf-about-train__wheel-fallback {
+  font-size: 0.75rem;
+}
+
+.sf-about-train__wheel--spin {
+  animation: sf-about-train-spin 2.1s linear infinite;
+}
+
+@keyframes sf-about-train-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.sf-about-train__nav {
+  position: absolute;
+  top: 38%;
+  z-index: 3;
+  display: inline-flex;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  height: 2.85rem;
+  width: 2.85rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 10%, transparent);
+  background: color-mix(in srgb, var(--color-card) 78%, transparent);
+  color: color-mix(in srgb, var(--color-foreground) 42%, transparent);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 22px color-mix(in srgb, #000 7%, transparent);
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  opacity: 0.9;
+  touch-action: manipulation;
+}
+
+html.dark .sf-about-train__nav {
+  border-color: color-mix(in srgb, var(--color-foreground) 16%, transparent);
+  background: color-mix(in srgb, var(--color-card) 70%, transparent);
+  color: color-mix(in srgb, var(--color-foreground) 70%, transparent);
+  box-shadow: 0 8px 22px color-mix(in srgb, #000 35%, transparent);
+}
+
+.sf-about-train__nav:hover {
+  color: var(--color-primary);
+  background: var(--color-card);
+  opacity: 1;
+}
+
+.sf-about-train__nav--prev {
+  left: 0.35rem;
+}
+
+.sf-about-train__nav--next {
+  right: 0.35rem;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .sf-about-train__viewport {
+    padding-left: 3.25rem;
+    padding-right: 3.25rem;
+    min-height: 20rem;
+  }
+
+  .sf-about-train__consist {
+    min-height: 17rem;
+  }
+
+  .sf-about-train__engine {
+    width: 12.25rem;
+    margin-right: -0.7rem;
+  }
+
+  .sf-about-train__engine-wheels {
+    right: 2.9rem;
+    gap: 0.7rem;
+  }
+
+  .sf-about-train__link {
+    width: 0.85rem;
+    margin: 0 -0.3rem 1.75rem;
+  }
+
+  .sf-about-train__stop {
+    width: 15.25rem;
+  }
+
+  .sf-about-train__carriage {
+    width: 7rem;
+  }
+
+  .sf-about-train__card {
+    width: min(14.5rem, 100%);
+    max-width: 14.5rem;
+    margin-bottom: 0.7rem;
+  }
+
+  .sf-about-train__year {
+    font-size: 1.75rem;
+  }
+}
+
+/* Phone */
+@media (max-width: 640px) {
+  .sf-about-train-wrap {
+    margin-top: 2rem;
+  }
+
+  .sf-about-train__viewport {
+    padding: 0.5rem 2.85rem 1.35rem;
+    min-height: 17.5rem;
+  }
+
+  .sf-about-train__landscape {
+    height: 8.25rem;
+  }
+
+  .sf-about-train__consist {
+    min-height: 15rem;
+    padding-bottom: 0.4rem;
+  }
+
+  .sf-about-train__engine {
+    width: 10.25rem;
+    margin-right: -0.55rem;
+  }
+
+  .sf-about-train__engine-wheels {
+    right: 2.35rem;
+    gap: 0.5rem;
+  }
+
+  .sf-about-train__link {
+    width: 0.75rem;
+    height: 0.45rem;
+    margin: 0 -0.25rem 1.45rem;
+  }
+
+  .sf-about-train__link-pin {
+    width: 0.26rem;
+    height: 0.4rem;
+  }
+
+  .sf-about-train__link-bar {
+    height: 0.22rem;
+  }
+
+  .sf-about-train__wheel {
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .sf-about-train__wheel--lg {
+    width: 2.35rem;
+    height: 2.35rem;
+  }
+
+  .sf-about-train__wheel-rim {
+    border-width: 2.5px;
+  }
+
+  .sf-about-train__wheel--lg .sf-about-train__wheel-rim {
+    border-width: 3px;
+  }
+
+  .sf-about-train__stop {
+    width: 13rem;
+  }
+
+  .sf-about-train__carriage {
+    width: 5.95rem;
+  }
+
+  .sf-about-train__card {
+    width: min(12.5rem, 100%);
+    max-width: 12.5rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .sf-about-train__year {
+    font-size: 1.45rem;
+  }
+
+  .sf-about-train__title {
+    font-size: 0.75rem;
+  }
+
+  .sf-about-train__desc {
+    font-size: 0.7rem;
+    -webkit-line-clamp: 4;
+  }
+
+  .sf-about-train__carriage-wheels {
+    gap: 1.15rem;
+  }
+
+  .sf-about-train__nav {
+    top: 36%;
+    height: 2.75rem;
+    width: 2.75rem;
+  }
+}
+
+/* Short landscape phones */
+@media (max-height: 480px) and (orientation: landscape) {
+  .sf-about-train__viewport {
+    min-height: 12rem;
+    padding-top: 0.25rem;
+    padding-bottom: 1rem;
+  }
+
+  .sf-about-train__consist {
+    min-height: 10rem;
+  }
+
+  .sf-about-train__card {
+    margin-bottom: 0.15rem;
+  }
+
+  .sf-about-train__desc {
+    -webkit-line-clamp: 2;
+  }
+
+  .sf-about-train__landscape {
+    height: 6.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-about-train__wheel--spin {
+    animation: none !important;
+  }
+
+  .sf-about-train--hover .sf-about-train__clouds,
+  .sf-about-train--hover .sf-about-train__birds,
+  .sf-about-train--hover .sf-about-train__landscape {
+    animation: none !important;
+  }
+
+  .sf-about-train__smoke-puff {
+    animation: none !important;
+    opacity: 0.35;
+  }
+}
+
+/* —— About visionary story block —— */
+.sf-about-visionary {
+  width: 100%;
+  max-width: 42rem;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sf-about-visionary__copy {
+  width: 100%;
+  max-width: 36rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.35rem;
+}
+
+.sf-about-visionary__body {
+  margin: 0;
+  width: 100%;
+  text-align: center;
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.9;
+  color: var(--color-muted);
+}
+
+.sf-about-visionary__quote {
+  margin: 0;
+  max-width: 32rem;
+  width: 100%;
+}
+
+.sf-about-visionary__quote-text {
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+  font-size: 1.125rem;
+  font-style: italic;
+  line-height: 1.65;
+  color: var(--color-primary);
+}
+
+.sf-about-visionary__quote-author {
+  font-style: normal;
+}
+
+.sf-about-visionary__cta {
+  display: flex;
+  justify-content: center;
+}
+
+.sf-about-visionary__portrait {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  margin-top: 2.75rem;
+}
+
+.sf-about-visionary__frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: calc(var(--radius-default, 1rem) + 0.15rem);
+  background: var(--color-primary);
+  aspect-ratio: 4 / 5;
+  box-shadow:
+    0 18px 40px color-mix(in srgb, #000 12%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-foreground) 6%, transparent);
+}
+
+html.dark .sf-about-visionary__frame {
+  box-shadow:
+    0 18px 44px color-mix(in srgb, #000 40%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-foreground) 12%, transparent);
+}
+
+.sf-about-visionary__badge {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 85%;
+  border-radius: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  text-align: center;
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-accent) 88%, #fff),
+    color-mix(in srgb, var(--color-primary) 55%, var(--color-accent))
+  );
+  color: var(--color-button-foreground, #fff);
+  box-shadow: 0 8px 20px color-mix(in srgb, #000 18%, transparent);
 }
 
 

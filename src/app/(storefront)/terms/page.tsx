@@ -1,12 +1,8 @@
-import { PageShell } from "@/components/layout";
+import { LegalDocumentPage } from "@/features/cms/components/LegalDocumentPage";
+import { TERMS_PAGE_SLUG } from "@/features/cms/schemas";
+
+export const dynamic = "force-dynamic";
 
 export default function TermsPage() {
-  return (
-    <PageShell
-      title="Terms"
-      description="Terms of service content will be managed via CMS in a later phase."
-    >
-      <p className="text-sm text-[var(--color-muted)]">Placeholder page.</p>
-    </PageShell>
-  );
+  return <LegalDocumentPage slug={TERMS_PAGE_SLUG} />;
 }

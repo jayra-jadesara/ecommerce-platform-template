@@ -1,14 +1,21 @@
+import Image from "next/image";
 import Link from "next/link";
+import FacebookIcon from "@mui/icons-material/Facebook";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import YouTubeIcon from "@mui/icons-material/YouTube";
 import { Container } from "@/components/layout/Container";
 import { FooterNavLinks } from "@/components/layout/FooterNavLinks";
-import { sfEyebrow } from "@/components/ui/storefront-classes";
 import type {
   BrandConfig,
   ContactConfig,
   FooterChromeConfig,
+  FooterFeaturedProduct,
   NavigationConfig,
   SocialLinksConfig,
 } from "@/types";
+import type { ReactNode } from "react";
 
 interface FooterProps {
   brand: BrandConfig;
@@ -16,15 +23,35 @@ interface FooterProps {
   footer: FooterChromeConfig;
   contact: ContactConfig;
   social: SocialLinksConfig;
+  featuredProduct?: FooterFeaturedProduct | null;
 }
 
-const SOCIAL_LABELS: Array<{ key: keyof SocialLinksConfig; label: string }> = [
-  { key: "instagram", label: "Instagram" },
-  { key: "facebook", label: "Facebook" },
-  { key: "youtube", label: "YouTube" },
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "x", label: "X" },
-  { key: "whatsapp", label: "WhatsApp" },
+function XGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      aria-hidden="true"
+      fill="currentColor"
+    >
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.74l7.727-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+    </svg>
+  );
+}
+
+const SOCIAL_ITEMS: Array<{
+  key: keyof SocialLinksConfig;
+  label: string;
+  icon: ReactNode;
+}> = [
+  { key: "linkedin", label: "LinkedIn", icon: <LinkedInIcon sx={{ fontSize: 18 }} /> },
+  { key: "facebook", label: "Facebook", icon: <FacebookIcon sx={{ fontSize: 18 }} /> },
+  { key: "x", label: "X", icon: <XGlyph /> },
+  { key: "instagram", label: "Instagram", icon: <InstagramIcon sx={{ fontSize: 18 }} /> },
+  { key: "youtube", label: "YouTube", icon: <YouTubeIcon sx={{ fontSize: 18 }} /> },
+  { key: "whatsapp", label: "WhatsApp", icon: <WhatsAppIcon sx={{ fontSize: 18 }} /> },
 ];
 
 export function Footer({
@@ -33,28 +60,33 @@ export function Footer({
   footer,
   contact,
   social,
+  featuredProduct = null,
 }: FooterProps) {
   if (!footer.enabled) return null;
 
   const year = new Date().getFullYear();
-  const copyright =
+  const rawCopyright =
     footer.copyrightText?.trim() ||
-    `© ${year} ${brand.name}. All rights reserved.`;
+    `©Copyright ${year} ${brand.name}, All rights reserved.`;
+  const copyright = rawCopyright.replaceAll("{year}", String(year));
 
-  const socialLinks = SOCIAL_LABELS.filter(({ key }) => Boolean(social[key]));
+  const socialLinks = SOCIAL_ITEMS.filter(({ key }) => Boolean(social[key]));
   const hasContact =
     footer.showContact &&
     Boolean(
       contact.email ||
         contact.phone ||
+        contact.phoneSecondary ||
         contact.addressLine1 ||
         contact.city ||
         contact.country,
     );
   const shopLinks = navigation.primary.slice(0, 6);
   const supportLinks = navigation.footer;
+  const showFeatured =
+    footer.showFeaturedProduct && Boolean(featuredProduct);
 
-  const ctaLine =
+  const brandBlurb =
     footer.description?.trim() ||
     (brand.tagline?.trim() &&
     brand.tagline.trim().toLowerCase() !== "your store, your brand."
@@ -62,106 +94,172 @@ export function Footer({
       : null);
 
   return (
-    <footer className="mt-auto bg-[var(--color-footer-background)] text-[var(--color-footer-foreground)]">
-      {ctaLine ? (
-        <div className="border-b border-[color-mix(in_srgb,var(--color-footer-foreground)_12%,transparent)] bg-[color-mix(in_srgb,var(--color-primary)_88%,black_12%)]">
-          <Container className="flex flex-col items-start justify-between gap-4 py-5 sm:flex-row sm:items-center">
-            <p className="font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-button-foreground)]">
-              {ctaLine}
-            </p>
-            <Link
-              href="/products"
-              className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-button-foreground)] px-4 text-sm font-semibold text-[var(--color-primary)] transition-opacity hover:opacity-90"
-            >
-              Shop now
-            </Link>
-          </Container>
+    <footer className="sf-footer-shell relative mt-16 md:mt-20">
+      {showFeatured && featuredProduct ? (
+        <div className="sf-footer-feature pointer-events-none absolute left-1/2 top-0 z-[3] flex w-full -translate-x-1/2 -translate-y-[42%] justify-center px-4">
+          <Link
+            href={`/products/${featuredProduct.slug}`}
+            className="pointer-events-auto group flex max-w-[11rem] flex-col items-center sm:max-w-[13rem]"
+          >
+            <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[var(--color-card)] shadow-[0_18px_40px_color-mix(in_srgb,var(--color-foreground)_18%,transparent)] ring-2 ring-[color-mix(in_srgb,#fff_70%,var(--color-accent))] transition-transform motion-safe:group-hover:-translate-y-1">
+              {featuredProduct.imageUrl ? (
+                <Image
+                  src={featuredProduct.imageUrl}
+                  alt={featuredProduct.name}
+                  fill
+                  className="object-contain p-2.5"
+                  sizes="208px"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-lg font-semibold text-[var(--color-primary)]">
+                  {featuredProduct.name.slice(0, 1)}
+                </div>
+              )}
+            </div>
+            <span className="sr-only">{featuredProduct.name}</span>
+          </Link>
         </div>
       ) : null}
 
-      <Container className="grid gap-10 py-12 md:grid-cols-2 lg:grid-cols-4 lg:gap-8 lg:py-14">
-        <div className="lg:col-span-1">
-          <p className="font-[family-name:var(--font-display)] text-2xl font-semibold text-[var(--color-footer-foreground)]">
-            {brand.name}
-          </p>
-          {(footer.description ||
-            (brand.tagline?.trim() &&
-              brand.tagline.trim().toLowerCase() !== "your store, your brand.")) && (
-            <p className="mt-3 max-w-sm text-sm leading-relaxed text-[color-mix(in_srgb,var(--color-footer-foreground)_72%,transparent)]">
-              {footer.description || brand.tagline}
-            </p>
-          )}
-          {footer.showSocial && socialLinks.length > 0 ? (
-            <ul className="mt-5 flex flex-wrap gap-2">
-              {socialLinks.map(({ key, label }) => (
-                <li key={key}>
-                  <a
-                    href={social[key]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex min-h-10 items-center rounded-full border border-[color-mix(in_srgb,var(--color-footer-foreground)_18%,transparent)] px-3 text-xs font-medium text-[color-mix(in_srgb,var(--color-footer-foreground)_75%,transparent)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-footer-foreground)]"
-                  >
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </div>
+      <div className="sf-footer-curve" aria-hidden="true">
+        <svg viewBox="0 0 1440 120" preserveAspectRatio="none">
+          <path
+            className="sf-footer-curve-fill"
+            d="M0,80 C240,20 480,0 720,0 C960,0 1200,20 1440,80 L1440,120 L0,120 Z"
+          />
+        </svg>
+      </div>
 
-        {shopLinks.length > 0 ? (
-          <div>
-            <p className={`${sfEyebrow()} !text-[var(--color-accent)]`}>Shop</p>
-            <FooterNavLinks items={shopLinks} ariaLabel="Shop" />
-          </div>
-        ) : null}
+      <div className="sf-footer-body pt-14 md:pt-16">
+        <Container className="pb-12 pt-4 lg:pb-14">
+          <div className="sf-footer-cluster mx-auto grid max-w-5xl gap-6 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
+            <div>
+              <p className="sf-footer-ink font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight">
+                {brand.name}
+              </p>
+              {brandBlurb ? (
+                <p className="sf-footer-muted mt-2.5 max-w-[16rem] text-sm leading-relaxed">
+                  {brandBlurb}
+                </p>
+              ) : null}
+            </div>
 
-        {footer.navVisible && supportLinks.length > 0 ? (
-          <div>
-            <p className={`${sfEyebrow()} !text-[var(--color-accent)]`}>Support</p>
-            <FooterNavLinks items={supportLinks} ariaLabel="Support" />
-          </div>
-        ) : null}
+            {shopLinks.length > 0 ? (
+              <div>
+                <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  Products
+                </p>
+                <div className="sf-footer-nav mt-2.5">
+                  <FooterNavLinks items={shopLinks} ariaLabel="Products" />
+                </div>
+              </div>
+            ) : null}
 
-        {hasContact ? (
-          <div>
-            <p className={`${sfEyebrow()} !text-[var(--color-accent)]`}>Contact</p>
-            <dl className="mt-4 space-y-2 text-sm text-[color-mix(in_srgb,var(--color-footer-foreground)_75%,transparent)]">
-              {contact.email ? (
-                <div>
-                  <a
-                    href={`mailto:${contact.email}`}
-                    className="hover:text-[var(--color-footer-foreground)]"
-                  >
-                    {contact.email}
-                  </a>
+            {footer.navVisible && supportLinks.length > 0 ? (
+              <div>
+                <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                  Explore
+                </p>
+                <div className="sf-footer-nav mt-2.5">
+                  <FooterNavLinks items={supportLinks} ariaLabel="Explore" />
+                </div>
+              </div>
+            ) : null}
+
+            <div>
+              <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                Contact
+              </p>
+              {hasContact ? (
+                <ul className="sf-footer-muted mt-2.5 space-y-1.5 text-sm">
+                  {contact.phone ? (
+                    <li>
+                      <a
+                        href={`tel:${contact.phone.replace(/\s+/g, "")}`}
+                        className="hover:text-[var(--color-primary)]"
+                      >
+                        {contact.phone}
+                      </a>
+                    </li>
+                  ) : null}
+                  {contact.phoneSecondary ? (
+                    <li>
+                      <a
+                        href={`tel:${contact.phoneSecondary.replace(/\s+/g, "")}`}
+                        className="hover:text-[var(--color-primary)]"
+                      >
+                        {contact.phoneSecondary}
+                      </a>
+                    </li>
+                  ) : null}
+                  {contact.email ? (
+                    <li>
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="underline underline-offset-2 hover:text-[var(--color-primary)]"
+                      >
+                        {contact.email}
+                      </a>
+                    </li>
+                  ) : null}
+                  {contact.addressLine1 || contact.city || contact.country ? (
+                    <li className="leading-relaxed">
+                      {[
+                        contact.addressLine1,
+                        contact.city,
+                        contact.state,
+                        contact.postalCode,
+                        contact.country,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </li>
+                  ) : null}
+                </ul>
+              ) : (
+                <p className="sf-footer-muted mt-2.5 text-sm">
+                  Add contact details in Store settings.
+                </p>
+              )}
+
+              {footer.showSocial ? (
+                <div className="mt-5">
+                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                    Connect with us
+                  </p>
+                  {socialLinks.length > 0 ? (
+                    <ul className="mt-2.5 flex flex-wrap gap-2">
+                      {socialLinks.map(({ key, label, icon }) => (
+                        <li key={key}>
+                          <a
+                            href={social[key]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label={label}
+                            title={label}
+                            className="sf-footer-social-chip"
+                          >
+                            {icon}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="sf-footer-muted mt-2.5 text-sm">
+                      Add social links in Store settings.
+                    </p>
+                  )}
                 </div>
               ) : null}
-              {contact.phone ? <div>{contact.phone}</div> : null}
-              {contact.phoneSecondary ? (
-                <div>{contact.phoneSecondary}</div>
-              ) : null}
-              {[
-                contact.addressLine1,
-                contact.addressLine2,
-                [contact.city, contact.state, contact.postalCode]
-                  .filter(Boolean)
-                  .join(", "),
-                contact.country,
-              ]
-                .filter(Boolean)
-                .map((line) => (
-                  <div key={String(line)}>{line}</div>
-                ))}
-            </dl>
+            </div>
           </div>
-        ) : null}
-      </Container>
-
-      <div className="border-t border-[color-mix(in_srgb,var(--color-footer-foreground)_12%,transparent)]">
-        <Container className="py-4 text-center text-xs text-[color-mix(in_srgb,var(--color-footer-foreground)_65%,transparent)]">
-          <p>{copyright}</p>
         </Container>
+
+        <div className="sf-footer-bar">
+          <Container className="py-3.5 text-xs">
+            <p>{copyright}</p>
+          </Container>
+        </div>
       </div>
     </footer>
   );

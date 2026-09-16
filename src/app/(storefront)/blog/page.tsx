@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Container } from "@/components/layout";
+import { Container, StorefrontBreadcrumb } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
-import { BlogBreadcrumb } from "@/features/blog/components/BlogBreadcrumb";
 import { BlogListing } from "@/features/blog/components/BlogListing";
 import { DEFAULT_BLOG_SETTINGS } from "@/features/blog/schemas";
 import { wantsFeaturedBlock } from "@/features/blog/settings-normalize";
@@ -97,7 +96,13 @@ export default async function BlogListingPage({
       as="main"
       className="relative z-0 flex-1 pb-10 pt-6 md:pb-14 md:pt-8"
     >
-      <BlogBreadcrumb categoryLabel={categoryLabel} />
+      <StorefrontBreadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Blog", href: "/blog" },
+          { label: categoryLabel?.trim() || "All" },
+        ]}
+      />
       <header className="mb-6 max-w-2xl md:mb-8">
         <StorefrontHeading
           title={settings.pageTitle || "Blog"}

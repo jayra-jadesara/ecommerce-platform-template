@@ -3,10 +3,8 @@
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
 import { useThemeMode } from "@/features/theme";
-import { useHasHydrated } from "@/lib/use-has-hydrated";
+import { cn } from "@/lib/cn";
 
 const LABELS = {
   light: "Light mode",
@@ -14,31 +12,37 @@ const LABELS = {
   system: "System mode",
 } as const;
 
+/**
+ * Native theme control — avoids MUI Emotion SSR/client class mismatches.
+ * Mode comes from useSyncExternalStore (SSR snapshot matches first client paint).
+ */
 export function ThemeToggle() {
-  const hydrated = useHasHydrated();
   const { mode, allowUserToggle, availableModes, cycleMode } = useThemeMode();
 
   if (!allowUserToggle || availableModes.length <= 1) return null;
 
-  // Until hydrated, show the SSR-safe default icon so markup matches the server.
-  const displayMode = hydrated ? mode : "light";
+  const label = LABELS[mode];
 
   const Icon =
-    displayMode === "dark"
+    mode === "dark"
       ? DarkModeOutlinedIcon
-      : displayMode === "system"
+      : mode === "system"
         ? SettingsBrightnessOutlinedIcon
         : LightModeOutlinedIcon;
 
   return (
-    <Tooltip title={`Theme: ${LABELS[mode]} (click to change)`}>
-      <IconButton
-        aria-label={`Current theme ${LABELS[mode]}. Switch theme. Available: ${availableModes.join(", ")}.`}
-        onClick={cycleMode}
-        size="small"
-      >
-        <Icon fontSize="small" />
-      </IconButton>
-    </Tooltip>
+    <button
+      type="button"
+      title={`Theme: ${label} (click to change)`}
+      aria-label={`Current theme ${label}. Switch theme. Available: ${availableModes.join(", ")}.`}
+      onClick={cycleMode}
+      className={cn(
+        "inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-header-foreground)] transition-colors",
+        "hover:bg-[color-mix(in_srgb,var(--color-header-foreground)_8%,transparent)]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
+      )}
+    >
+      <Icon fontSize="small" />
+    </button>
   );
 }

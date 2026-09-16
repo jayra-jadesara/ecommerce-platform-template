@@ -7,6 +7,7 @@ import {
   isListLayout,
   listingLayoutPreset,
   normalizeCardStyle,
+  normalizeCoverCtaStyle,
   normalizeSidebarPreset,
   wantsFeaturedBlock,
 } from "@/features/blog/settings-normalize";
@@ -68,7 +69,20 @@ describe("blog phase 24.2 settings", () => {
 
   it("normalizes card styles safely", () => {
     expect(normalizeCardStyle("MINIMAL")).toBe("MINIMAL");
+    expect(normalizeCardStyle("COVER")).toBe("COVER");
     expect(normalizeCardStyle("weird")).toBe("STANDARD");
+  });
+
+  it("defaults to COVER card style", () => {
+    expect(DEFAULT_BLOG_SETTINGS.cardStyle).toBe("COVER");
+  });
+
+  it("normalizes cover CTA style", () => {
+    expect(normalizeCoverCtaStyle("COOKIE")).toBe("COOKIE");
+    expect(normalizeCoverCtaStyle("PLAIN")).toBe("PLAIN");
+    expect(normalizeCoverCtaStyle("NONE")).toBe("NONE");
+    expect(normalizeCoverCtaStyle("weird")).toBe("COOKIE");
+    expect(DEFAULT_BLOG_SETTINGS.coverCtaStyle).toBe("COOKIE");
   });
 
   it("derives featured and list layout flags", () => {

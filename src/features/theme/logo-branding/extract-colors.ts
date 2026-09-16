@@ -7,6 +7,8 @@ export type Rgb = { r: number; g: number; b: number };
 
 const NEAR_WHITE_LUM = 0.92;
 const NEAR_BLACK_LUM = 0.08;
+const CHROMATIC_SAT = 0.18;
+const SAMPLE_SIZE = 160;
 
 function channelToLinear(c: number): number {
   const s = c / 255;
@@ -78,21 +80,23 @@ export function rgbHue({ r, g, b }: Rgb): number {
   return h;
 }
 
-function hueDistance(a: number, b: number): number {
+export function hueDistance(a: number, b: number): number {
   const d = Math.abs(a - b) % 360;
   return Math.min(d, 360 - d);
 }
 
+type Bucket = { rgb: Rgb; count: number; sat: number };
+
 /**
  * Quantize RGBA image data into ranked brand-candidate colors.
- * Rejects near-white / near-black / transparent pixels.
+ * Prefers chromatic hues; caps muddy edge greys.
  */
 export function extractRepresentativeColorsFromImageData(
   data: Uint8ClampedArray | Uint8Array,
   options?: { maxColors?: number },
 ): string[] {
   const maxColors = options?.maxColors ?? 5;
-  const buckets = new Map<string, { rgb: Rgb; count: number; sat: number }>();
+  const buckets = new Map<string, Bucket>();
 
   for (let i = 0; i < data.length; i += 4) {
     const a = data[i + 3] ?? 0;
@@ -132,20 +136,36 @@ export function extractRepresentativeColorsFromImageData(
     }))
     .sort((a, b) => b.score - a.score);
 
+  const chromatic = ranked.filter((e) => e.sat >= CHROMATIC_SAT);
+  const neutrals = ranked.filter((e) => e.sat < CHROMATIC_SAT);
+
   const selected: Rgb[] = [];
-  for (const entry of ranked) {
+  const minHueGap = 32;
+
+  for (const entry of chromatic) {
     if (selected.length >= maxColors) break;
     const hue = rgbHue(entry.rgb);
     const tooClose = selected.some(
-      (s) => hueDistance(rgbHue(s), hue) < 28 && rgbSaturation(s) > 0.15,
+      (s) =>
+        rgbSaturation(s) >= CHROMATIC_SAT &&
+        hueDistance(rgbHue(s), hue) < minHueGap,
     );
-    if (tooClose && selected.length > 0) continue;
+    if (tooClose) continue;
     selected.push(entry.rgb);
+  }
+
+  // At most one intentional mid-tone neutral when chromatics are scarce
+  if (selected.length < Math.min(2, maxColors) && neutrals.length > 0) {
+    const midTone = neutrals.find((n) => {
+      const lum = rgbLuminance(n.rgb);
+      return lum > 0.18 && lum < 0.72;
+    });
+    if (midTone) selected.push(midTone.rgb);
   }
 
   // Prefer saturated colors first for brand identity
   selected.sort((a, b) => rgbSaturation(b) - rgbSaturation(a));
-  return selected.map(rgbToHex);
+  return selected.slice(0, maxColors).map(rgbToHex);
 }
 
 /** Browser-only: sample an image URL via canvas (requires CORS-friendly source). */
@@ -158,7 +178,7 @@ export async function extractColorsFromImageUrl(
   }
 
   const img = await loadImage(url);
-  const size = 96;
+  const size = SAMPLE_SIZE;
   const canvas = document.createElement("canvas");
   canvas.width = size;
   canvas.height = size;

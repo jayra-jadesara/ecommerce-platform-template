@@ -27,6 +27,7 @@ export function getAdminRouteSegment(): string {
     "contact",
     "privacy",
     "terms",
+    "disclaimer",
   ]);
   if (reserved.has(cleaned)) {
     throw new Error(`ADMIN_ROUTE "${cleaned}" conflicts with a reserved path.`);

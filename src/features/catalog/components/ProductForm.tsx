@@ -3,7 +3,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
 import Button from "@mui/material/Button";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
@@ -18,6 +17,7 @@ import {
 } from "@/features/catalog/actions";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminBtn,
@@ -402,22 +402,19 @@ export function ProductForm({
             name="categoryId"
             control={control}
             render={({ field }) => (
-              <TextField
-                select
+              <AdminSelect
                 label="Category (product group)"
-                fullWidth
                 disabled={!fieldsEditable}
                 value={field.value ?? ""}
-                onChange={(event) => field.onChange(event.target.value || null)}
+                onChange={(next) => field.onChange(next || null)}
+                allowEmpty
+                emptyLabel="No category"
                 helperText="Optional. Groups this product for shopping (e.g. Spices, Snacks). Add groups under Products → Categories."
-              >
-                <MenuItem value="">No category</MenuItem>
-                {categories.map((category) => (
-                  <MenuItem key={category.id} value={category.id}>
-                    {category.name}
-                  </MenuItem>
-                ))}
-              </TextField>
+                options={categories.map((category) => ({
+                  value: category.id,
+                  label: category.name,
+                }))}
+              />
             )}
           />
           <div className="md:col-span-2">
@@ -500,12 +497,8 @@ export function ProductForm({
                       name={`variants.${index}.name`}
                       control={control}
                       render={({ field: f, fieldState }) => (
-                        <TextField
-                          {...f}
-                          select
-                          size="small"
+                        <AdminSelect
                           label="Size / pack"
-                          fullWidth
                           required
                           disabled={!fieldsEditable}
                           error={Boolean(fieldState.error)}
@@ -513,13 +506,13 @@ export function ProductForm({
                             fieldState.error?.message ??
                             "What customers pick at checkout"
                           }
-                        >
-                          {sizeMenuItems(f.value).map((option) => (
-                            <MenuItem key={option} value={option}>
-                              {option}
-                            </MenuItem>
-                          ))}
-                        </TextField>
+                          value={f.value ?? ""}
+                          onChange={f.onChange}
+                          options={sizeMenuItems(f.value).map((option) => ({
+                            value: option,
+                            label: option,
+                          }))}
+                        />
                       )}
                     />
                   </div>
@@ -613,18 +606,19 @@ export function ProductForm({
             name="status"
             control={control}
             render={({ field }) => (
-              <TextField
-                {...field}
-                select
+              <AdminSelect
                 label="Status"
-                fullWidth
                 required
                 disabled={!fieldsEditable}
-              >
-                <MenuItem value="draft">Draft — not visible yet</MenuItem>
-                <MenuItem value="active">Active — for sale</MenuItem>
-                <MenuItem value="archived">Archived — hidden</MenuItem>
-              </TextField>
+                value={field.value}
+                onChange={field.onChange}
+                name={field.name}
+                options={[
+                  { value: "draft", label: "Draft — not visible yet" },
+                  { value: "active", label: "Active — for sale" },
+                  { value: "archived", label: "Archived — hidden" },
+                ]}
+              />
             )}
           />
           <Controller
@@ -652,14 +646,11 @@ export function ProductForm({
                 );
                 return (
                   <div className="space-y-2">
-                    <TextField
-                      select
+                    <AdminSelect
                       label="Return / replace policy"
-                      fullWidth
                       disabled={!fieldsEditable}
                       value={selectValue}
-                      onChange={(event) => {
-                        const next = event.target.value;
+                      onChange={(next) => {
                         field.onChange(
                           next === STORE_DEFAULT_POLICY
                             ? null
@@ -667,16 +658,19 @@ export function ProductForm({
                         );
                       }}
                       helperText="Use store default to follow Delivery & returns. Override only when this product needs a different rule."
-                    >
-                      <MenuItem value={STORE_DEFAULT_POLICY}>
-                        Use store default — {returnPolicyLabel(storeReturnPolicy)}
-                      </MenuItem>
-                      <MenuItem value="no_return_refund">
-                        No return / no refund
-                      </MenuItem>
-                      <MenuItem value="no_replace">No replace</MenuItem>
-                      <MenuItem value="replace_only">Replace only</MenuItem>
-                    </TextField>
+                      options={[
+                        {
+                          value: STORE_DEFAULT_POLICY,
+                          label: `Use store default — ${returnPolicyLabel(storeReturnPolicy)}`,
+                        },
+                        {
+                          value: "no_return_refund",
+                          label: "No return / no refund",
+                        },
+                        { value: "no_replace", label: "No replace" },
+                        { value: "replace_only", label: "Replace only" },
+                      ]}
+                    />
                     <p className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]">
                       Customers see:{" "}
                       <span className="font-semibold">{customersSee}</span>
@@ -856,29 +850,31 @@ export function ProductForm({
                 <Controller
                   name={`variants.${index}.unit`}
                   control={control}
-                  render={({ field: f }) => (
-                    <TextField
-                      {...f}
-                      select
-                      size="small"
-                      label="Weight unit"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                    >
-                      <MenuItem value="">Not set</MenuItem>
-                      {PRODUCT_UNIT_OPTIONS.filter(Boolean).map((unit) => (
-                        <MenuItem key={unit} value={unit}>
-                          {unit}
-                        </MenuItem>
-                      ))}
-                      {f.value &&
+                  render={({ field: f }) => {
+                    const unitOptions = [
+                      ...PRODUCT_UNIT_OPTIONS.filter(Boolean).map((unit) => ({
+                        value: unit,
+                        label: unit,
+                      })),
+                      ...(f.value &&
                       !(PRODUCT_UNIT_OPTIONS as readonly string[]).includes(
                         f.value,
-                      ) ? (
-                        <MenuItem value={f.value}>{f.value}</MenuItem>
-                      ) : null}
-                    </TextField>
-                  )}
+                      )
+                        ? [{ value: f.value, label: f.value }]
+                        : []),
+                    ];
+                    return (
+                      <AdminSelect
+                        label="Weight unit"
+                        disabled={!fieldsEditable}
+                        value={f.value ?? ""}
+                        onChange={f.onChange}
+                        allowEmpty
+                        emptyLabel="Not set"
+                        options={unitOptions}
+                      />
+                    );
+                  }}
                 />
                 <Controller
                   name={`variants.${index}.lowStockThreshold`}

@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import Chip from "@mui/material/Chip";
@@ -10,7 +9,12 @@ import { DeliveryInfoBlock } from "@/features/catalog/components/DeliveryInfoBlo
 import { ProductImageZoom } from "@/features/catalog/components/ProductImageZoom";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
-import type { VisualEffectsConfig, AnimationConfig } from "@/types";
+import type {
+  SocialLinksConfig,
+  VisualEffectsConfig,
+  AnimationConfig,
+} from "@/types";
+import { ShareActions } from "@/components/ui/ShareActions";
 import { sfDisplay, sfEyebrow } from "@/components/ui/storefront-classes";
 import { returnPolicyLabel } from "@/features/shipping/policies";
 import { cn } from "@/lib/cn";
@@ -28,6 +32,8 @@ interface ProductDetailClientProps {
   isAuthenticated: boolean;
   visualEffects: VisualEffectsConfig;
   animation: AnimationConfig;
+  shareUrl: string;
+  social?: SocialLinksConfig;
 }
 
 const stockColor: Record<string, "default" | "success" | "warning" | "error"> = {
@@ -42,6 +48,8 @@ export function ProductDetailClient({
   isAuthenticated,
   visualEffects,
   animation,
+  shareUrl,
+  social,
 }: ProductDetailClientProps) {
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [activeImageId, setActiveImageId] = useState(
@@ -206,34 +214,6 @@ export function ProductDetailClient({
         }}
       >
         <div className="space-y-2">
-          <nav
-            className="text-xs text-[var(--color-muted)]"
-            aria-label="Breadcrumb"
-          >
-            <ol className="flex flex-wrap items-center gap-1.5">
-              <li>
-                <Link
-                  href="/products"
-                  className="hover:text-[var(--color-foreground)]"
-                >
-                  Products
-                </Link>
-              </li>
-              {product.category ? (
-                <>
-                  <li aria-hidden>/</li>
-                  <li>
-                    <Link
-                      href={`/categories/${product.category.slug}`}
-                      className="hover:text-[var(--color-foreground)]"
-                    >
-                      {product.category.name}
-                    </Link>
-                  </li>
-                </>
-              ) : null}
-            </ol>
-          </nav>
           {product.category ? (
             <p className={sfEyebrow()}>{product.category.name}</p>
           ) : null}
@@ -245,6 +225,16 @@ export function ProductDetailClient({
           {product.brand ? (
             <p className="text-sm text-[var(--color-muted)]">{product.brand}</p>
           ) : null}
+          <ShareActions
+            url={shareUrl}
+            title={product.name}
+            label="Share"
+            profiles={{
+              instagram: social?.instagram,
+              youtube: social?.youtube,
+            }}
+            className="pt-1"
+          />
           <div className="flex flex-wrap gap-2">
             {product.featured ? (
               <Chip size="small" label="Featured" color="primary" />

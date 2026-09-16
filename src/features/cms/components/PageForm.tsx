@@ -1,11 +1,10 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { useForm, useWatch, type Resolver } from "react-hook-form";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import { createPageAction, updatePageAction } from "@/features/cms/actions";
 import {
@@ -14,8 +13,13 @@ import {
 } from "@/features/cms/schemas";
 import { slugify } from "@/features/catalog/slug";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
+import {
+  insertMarkdownImageAtCaret,
+  MarkdownEditor,
+} from "@/features/editor";
 import { MediaPicker } from "@/features/media";
 import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import {
   adminBtn,
   adminCard,
@@ -45,7 +49,10 @@ export function PageForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [mediaOpen, setMediaOpen] = useState<"featured" | "og" | null>(null);
+  const [mediaOpen, setMediaOpen] = useState<
+    "featured" | "og" | "content" | null
+  >(null);
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
   /** On create, keep address in sync with title until the merchant edits it. */
   const [addressLockedToTitle, setAddressLockedToTitle] = useState(
     mode === "create",
@@ -58,6 +65,7 @@ export function PageForm({
     control,
     handleSubmit,
     setValue,
+    getValues,
     setError: setFieldError,
     setFocus,
     formState: { errors },
@@ -214,25 +222,30 @@ export function PageForm({
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">2. Page content</p>
           <p className="admin-field-group__hint">
-            Write what shoppers should read on this page.
+            Use the toolbar to format text. Switch to Preview anytime to see how
+            it will look on your store.
           </p>
-          <div>
-            <TextField
-              label="Content"
-              fullWidth
-              multiline
-              minRows={10}
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.content)}
-              helperText={
-                errors.content
-                  ? undefined
-                  : "Plain text for now — formatting tools can come later."
-              }
-              {...register("content")}
-            />
-            <FieldError message={errors.content?.message} />
-          </div>
+          <Controller
+            name="content"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <MarkdownEditor
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  textareaRef={contentRef}
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.content)}
+                  onRequestImage={() => setMediaOpen("content")}
+                  placeholder={
+                    "Write this page…\n\nTip: select text, then tap Bold or Link."
+                  }
+                  rows={14}
+                />
+                <FieldError message={errors.content?.message} />
+              </div>
+            )}
+          />
         </div>
 
         <div className={adminFieldGroup()} style={adminStackStyle}>
@@ -289,19 +302,25 @@ export function PageForm({
 
         <div className={adminFieldGroup()} style={adminStackStyle}>
           <p className="admin-field-group__title">4. Publish</p>
-          <TextField
-            select
-            label="Status"
-            fullWidth
-            disabled={!canSubmit || pending}
-            defaultValue={initialValues.status}
-            helperText="Draft = only you can see it. Published = live on the store."
-            {...register("status")}
-          >
-            <MenuItem value="draft">Draft (not public yet)</MenuItem>
-            <MenuItem value="published">Published (live)</MenuItem>
-            <MenuItem value="archived">Archived (hidden)</MenuItem>
-          </TextField>
+          <Controller
+            name="status"
+            control={control}
+            render={({ field }) => (
+              <AdminSelect
+                label="Status"
+                disabled={!canSubmit || pending}
+                value={field.value ?? "draft"}
+                onChange={field.onChange}
+                name={field.name}
+                helperText="Draft = only you can see it. Published = live on the store."
+                options={[
+                  { value: "draft", label: "Draft (not public yet)" },
+                  { value: "published", label: "Published (live)" },
+                  { value: "archived", label: "Archived (hidden)" },
+                ]}
+              />
+            )}
+          />
         </div>
 
         <div className="flex flex-wrap gap-2 pt-1">
@@ -339,6 +358,26 @@ export function PageForm({
           if (mediaOpen === "og") {
             setValue("ogImagePath", selection.storagePath, {
               shouldDirty: true,
+            });
+          }
+          if (mediaOpen === "content") {
+            const url =
+              selection.publicUrl ||
+              resolveCmsImageUrl(selection.storagePath) ||
+              selection.storagePath;
+            const current = getValues("content") ?? "";
+            const { next, caret } = insertMarkdownImageAtCaret(
+              current,
+              contentRef.current,
+              url,
+              selection.altText || "Image",
+            );
+            setValue("content", next, { shouldDirty: true, shouldValidate: true });
+            requestAnimationFrame(() => {
+              const node = contentRef.current;
+              if (!node) return;
+              node.focus();
+              node.setSelectionRange(caret, caret);
             });
           }
           setMediaOpen(null);

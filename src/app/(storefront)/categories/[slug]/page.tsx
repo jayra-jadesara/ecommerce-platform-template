@@ -1,7 +1,6 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { PageShell } from "@/components/layout";
+import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { ProductsCatalog } from "@/features/catalog/components/ProductsCatalog";
 import {
@@ -94,12 +93,20 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   const breadcrumbs = buildBreadcrumbJsonLd([
     { name: "Home", path: "/" },
+    { name: "Products", path: "/products" },
     { name: category.name, path: `/categories/${category.slug}` },
   ]);
 
   return (
     <PageShell showBack={false} className="!pt-3 md:!pt-5">
       <JsonLdScript data={breadcrumbs} />
+      <StorefrontBreadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Products", href: "/products" },
+          { label: category.name },
+        ]}
+      />
       <header className="mx-auto mb-3 max-w-5xl md:mb-4">
         <StorefrontHeading
           title={category.name}
@@ -112,21 +119,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
             {category.description}
           </p>
         ) : null}
-        <nav
-          className="mt-1.5 flex items-center gap-1.5 text-xs text-[var(--color-muted)]"
-          aria-label="Breadcrumb"
-        >
-          <Link
-            href="/"
-            className="font-medium text-[var(--color-primary)] hover:underline"
-          >
-            Home
-          </Link>
-          <span aria-hidden className="text-[var(--color-border)]">
-            /
-          </span>
-          <span className="text-[var(--color-foreground)]">{category.name}</span>
-        </nav>
       </header>
 
       <ProductsCatalog

@@ -1,9 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
@@ -16,6 +13,8 @@ import {
   type NavigationSettingsFormValues,
 } from "@/features/admin/settings/schemas";
 import type { AdminNavItemRow } from "@/features/admin/settings/update-navigation";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminBtn,
   adminCard,
@@ -398,19 +397,28 @@ function NavLinkCard({
             name={`items.${index}.location`}
             control={control}
             render={({ field: f }) => (
-              <TextField
-                {...f}
-                select
+              <AdminSelect
                 label="Menu location"
-                fullWidth
                 required
                 disabled={!canUpdate || pending}
                 helperText="Move between top and bottom menu"
-                value={f.value === "header" || f.value === "footer" ? f.value : "header"}
-              >
-                <MenuItem value="header">Top of the store (header)</MenuItem>
-                <MenuItem value="footer">Bottom of the store (footer)</MenuItem>
-              </TextField>
+                value={
+                  f.value === "header" || f.value === "footer"
+                    ? f.value
+                    : "header"
+                }
+                onChange={f.onChange}
+                options={[
+                  {
+                    value: "header",
+                    label: "Top of the store (header)",
+                  },
+                  {
+                    value: "footer",
+                    label: "Bottom of the store (footer)",
+                  },
+                ]}
+              />
             )}
           />
           <Controller
@@ -437,15 +445,15 @@ function NavLinkCard({
             More options
           </summary>
           <div className="mt-3" style={adminStackStyle}>
-            <TextField
-              select
+            <AdminSelect
               label="Nest under another link (optional)"
-              fullWidth
               disabled={!canUpdate || pending}
               value={item.parentClientKey ?? ""}
+              allowEmpty
+              emptyLabel="None (main menu item)"
               helperText="Leave as None for a normal top-level menu item"
-              onChange={(event) => {
-                const value = event.target.value || null;
+              onChange={(next) => {
+                const value = next || null;
                 const parent = items.find(
                   (candidate) => candidate.clientKey === value,
                 );
@@ -456,34 +464,29 @@ function NavLinkCard({
                   shouldDirty: true,
                 });
               }}
-            >
-              <MenuItem value="">None (main menu item)</MenuItem>
-              {parentOptions
+              options={parentOptions
                 .filter(
                   (parent) =>
                     parent.clientKey !== item.clientKey &&
                     parent.location === item.location,
                 )
-                .map((parent) => (
-                  <MenuItem key={parent.clientKey} value={parent.clientKey}>
-                    {parent.label}
-                  </MenuItem>
-                ))}
-            </TextField>
-            <div className="flex flex-wrap items-center gap-4">
+                .map((parent) => ({
+                  value: parent.clientKey,
+                  label: parent.label,
+                }))}
+            />
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
               <Controller
                 name={`items.${index}.isActive`}
                 control={control}
                 render={({ field: f }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={f.value}
-                        onChange={(_, checked) => f.onChange(checked)}
-                        disabled={!canUpdate || pending}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(f.value)}
+                    onChange={f.onChange}
+                    disabled={!canUpdate || pending}
                     label="Show this link on the store"
+                    variant="row"
+                    className="sm:min-w-[14rem] sm:flex-1"
                   />
                 )}
               />
@@ -491,15 +494,13 @@ function NavLinkCard({
                 name={`items.${index}.openInNewTab`}
                 control={control}
                 render={({ field: f }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={f.value}
-                        onChange={(_, checked) => f.onChange(checked)}
-                        disabled={!canUpdate || pending}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(f.value)}
+                    onChange={f.onChange}
+                    disabled={!canUpdate || pending}
                     label="Open in a new browser tab"
+                    variant="row"
+                    className="sm:min-w-[14rem] sm:flex-1"
                   />
                 )}
               />

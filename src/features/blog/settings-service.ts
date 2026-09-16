@@ -190,6 +190,7 @@ export function toBlogSettingsFormValues(
       settings.layoutPreset === "LIST" ? "LIST" : "GRID",
     sidebarPreset,
     cardStyle: settings.cardStyle,
+    coverCtaStyle: settings.coverCtaStyle,
     featuredPostId: settings.featuredPostId,
     ctaTitle: settings.ctaTitle,
     ctaDescription: settings.ctaDescription,

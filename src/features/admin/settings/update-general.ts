@@ -12,7 +12,7 @@ import {
   ensureActiveStore,
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
-import { diffChangedKeys } from "@/features/admin/settings/validation";
+import { diffChangedKeys, normalizeWhatsappForStorage } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
@@ -75,7 +75,9 @@ export async function updateGeneralStoreSettings(
     social_youtube: emptyToNull(values.socialYoutube),
     social_linkedin: emptyToNull(values.socialLinkedin),
     social_x: emptyToNull(values.socialX),
-    social_whatsapp: emptyToNull(values.socialWhatsapp),
+    social_whatsapp: emptyToNull(
+      normalizeWhatsappForStorage(values.socialWhatsapp ?? ""),
+    ),
   };
 
   const { data: existing } = await supabase

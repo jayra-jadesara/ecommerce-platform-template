@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -16,6 +15,7 @@ import {
 import { calculateOrderPricing } from "@/features/pricing/engine";
 import { majorToMinor } from "@/features/pricing/money";
 import { formatMoney } from "@/features/catalog/money";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import {
   adminCard,
   adminCardPadding,
@@ -461,25 +461,20 @@ export function ShippingSettingsForm({
                   name="replaceWindowHours"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      select
+                    <AdminSelect
                       label="Replace window after delivery"
-                      fullWidth
                       disabled={locked}
-                      value={coerceReplaceWindowHours(field.value)}
-                      onChange={(event) =>
-                        field.onChange(Number(event.target.value))
-                      }
+                      value={String(coerceReplaceWindowHours(field.value))}
+                      onChange={(next) => field.onChange(Number(next))}
                       helperText="Customers can request a replacement only within this time after Delivered."
-                    >
-                      {REPLACE_WINDOW_HOURS.map((hours) => (
-                        <MenuItem key={hours} value={hours}>
-                          {hours === 168
+                      options={REPLACE_WINDOW_HOURS.map((hours) => ({
+                        value: String(hours),
+                        label:
+                          hours === 168
                             ? "7 days (168 hours)"
-                            : `${hours} hours`}
-                        </MenuItem>
-                      ))}
-                    </TextField>
+                            : `${hours} hours`,
+                      }))}
+                    />
                   )}
                 />
                 <Controller
@@ -653,10 +648,8 @@ export function ShippingSettingsForm({
             control={control}
             render={({ field }) => (
               <div>
-                <TextField
-                  select
+                <AdminSelect
                   label="Pricing style"
-                  fullWidth
                   required
                   disabled={locked || !deliveryOn}
                   error={Boolean(errors.method)}
@@ -668,20 +661,21 @@ export function ShippingSettingsForm({
                       ? field.value
                       : "flat_rate"
                   }
-                  onChange={(event) => field.onChange(event.target.value)}
-                  onBlur={field.onBlur}
+                  onChange={field.onChange}
                   name={field.name}
-                  inputRef={field.ref}
-                >
-                  <MenuItem value="flat_rate">
-                    Fixed fee (free above a certain amount)
-                  </MenuItem>
-                  <MenuItem value="free">Always free</MenuItem>
-                  <MenuItem value="percentage">% of order total</MenuItem>
-                  <MenuItem value="zone">
-                    By area (uses fixed fee for now)
-                  </MenuItem>
-                </TextField>
+                  options={[
+                    {
+                      value: "flat_rate",
+                      label: "Fixed fee (free above a certain amount)",
+                    },
+                    { value: "free", label: "Always free" },
+                    { value: "percentage", label: "% of order total" },
+                    {
+                      value: "zone",
+                      label: "By area (uses fixed fee for now)",
+                    },
+                  ]}
+                />
                 <FieldError message={errors.method?.message} />
               </div>
             )}

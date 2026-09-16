@@ -11,7 +11,11 @@ import {
 import {
   ABOUT_PAGE_SLUG,
   HOMEPAGE_SLUG,
+  isLegalPageSlug,
+  LEGAL_PAGE_META,
+  LEGAL_PAGE_SLUGS,
   parseSectionConfig,
+  type LegalPageSlug,
   type SectionConfigMap,
   type SupportedSectionType,
 } from "@/features/cms/schemas";
@@ -19,6 +23,7 @@ import type { BannerRow, ContentPage, ParsedContentSection } from "@/features/cm
 import { listStorefrontCategories, listStorefrontProducts } from "@/features/catalog/storefront";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import type { Tables } from "@/types/database";
+import type { NavItem } from "@/types";
 
 function mapPage(row: Tables<"pages">): ContentPage {
   return {
@@ -169,8 +174,8 @@ export async function getPublishedStorefrontPage(
   const storeId = await resolveActiveStoreId();
   if (!storeId) return null;
 
-  // About is edited often in admin — skip Data Cache so publish/save shows immediately.
-  if (slug === ABOUT_PAGE_SLUG) {
+  // About & legal pages are edited often in admin — skip Data Cache so publish/save shows immediately.
+  if (slug === ABOUT_PAGE_SLUG || isLegalPageSlug(slug)) {
     return loadPublishedPageUncached(storeId, slug);
   }
 
@@ -192,6 +197,128 @@ export async function getPublishedStorefrontPage(
 
 export async function getPublishedHomepage(): Promise<StorefrontPagePayload | null> {
   return getPublishedStorefrontPage(HOMEPAGE_SLUG);
+}
+
+/** Legal page for storefront: title always from admin; body only when published. */
+export type LegalStorefrontPage = {
+  slug: LegalPageSlug;
+  title: string;
+  content: string | null;
+  published: boolean;
+};
+
+export async function getLegalStorefrontPage(
+  slug: LegalPageSlug,
+): Promise<LegalStorefrontPage> {
+  const meta = LEGAL_PAGE_META[slug];
+  const fallback: LegalStorefrontPage = {
+    slug,
+    title: meta.title,
+    content: null,
+    published: false,
+  };
+
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return fallback;
+
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return fallback;
+
+  const { data } = await supabase
+    .from("pages")
+    .select("title, content, status")
+    .eq("store_id", storeId)
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (!data) return fallback;
+
+  const published = data.status === "published";
+  return {
+    slug,
+    title: data.title?.trim() || meta.title,
+    content: published ? data.content?.trim() || null : null,
+    published,
+  };
+}
+
+/**
+ * Published legal pages keyed by storefront path (`/privacy`, …) → admin title.
+ * Used to show/hide and relabel footer (and similar) legal links.
+ */
+export async function getPublishedLegalLinkMap(): Promise<
+  Map<string, string>
+> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return new Map();
+
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return new Map();
+
+  const { data } = await supabase
+    .from("pages")
+    .select("slug, title")
+    .eq("store_id", storeId)
+    .eq("status", "published")
+    .in("slug", [...LEGAL_PAGE_SLUGS]);
+
+  const map = new Map<string, string>();
+  for (const row of data ?? []) {
+    if (!isLegalPageSlug(row.slug)) continue;
+    const path = LEGAL_PAGE_META[row.slug].storefrontPath;
+    map.set(path, row.title?.trim() || LEGAL_PAGE_META[row.slug].title);
+  }
+  return map;
+}
+
+function normalizeNavHref(href: string): string {
+  const trimmed = href.trim();
+  if (!trimmed) return trimmed;
+  try {
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+      return new URL(trimmed).pathname.replace(/\/$/, "") || "/";
+    }
+  } catch {
+    // keep as-is
+  }
+  const path = trimmed.split("?")[0]?.split("#")[0] ?? trimmed;
+  if (path.length > 1 && path.endsWith("/")) return path.slice(0, -1);
+  return path;
+}
+
+const LEGAL_FOOTER_PATHS = new Set(
+  LEGAL_PAGE_SLUGS.map((slug) => LEGAL_PAGE_META[slug].storefrontPath),
+);
+
+/** Drop unpublished/archived legal links; rename published ones to the admin title. */
+export function applyLegalLinksToNav(
+  items: NavItem[],
+  publishedLegal: Map<string, string>,
+): NavItem[] {
+  const next: NavItem[] = [];
+  for (const item of items) {
+    const path = normalizeNavHref(item.href);
+    const children = item.children
+      ? applyLegalLinksToNav(item.children, publishedLegal)
+      : undefined;
+
+    if (LEGAL_FOOTER_PATHS.has(path)) {
+      const title = publishedLegal.get(path);
+      if (!title) continue;
+      next.push({
+        ...item,
+        label: title,
+        ...(children?.length ? { children } : {}),
+      });
+      continue;
+    }
+
+    next.push({
+      ...item,
+      ...(children ? { children } : {}),
+    });
+  }
+  return next;
 }
 
 async function loadActiveBannersUncached(storeId: string): Promise<BannerRow[]> {

@@ -1,14 +1,16 @@
 "use client";
 
-import MenuItem from "@mui/material/MenuItem";
-import TextField from "@mui/material/TextField";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 
 export const STORE_PAGE_OPTIONS = [
-  { value: "/products", label: "Products catalog" },
-  { value: "/about", label: "About page" },
+  { value: "/products", label: "Products" },
+  { value: "/about", label: "About" },
   { value: "/blog", label: "Blog" },
-  { value: "/contact", label: "Contact page" },
-  { value: "/", label: "Home page" },
+  { value: "/contact", label: "Contact" },
+  { value: "/privacy", label: "Privacy Policy" },
+  { value: "/terms", label: "Terms of Use" },
+  { value: "/disclaimer", label: "Disclaimer" },
+  { value: "/", label: "Home" },
   { value: "/cart", label: "Cart" },
 ] as const;
 
@@ -54,29 +56,29 @@ export function StorePageLinkField({
     Boolean(resolved) &&
     !STORE_PAGE_OPTIONS.some((o) => o.value === resolved);
 
+  const options = [
+    ...(isCustom
+      ? [{ value: resolved, label: `Custom path (${resolved})` }]
+      : []),
+    ...STORE_PAGE_OPTIONS.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+    })),
+  ];
+
   return (
-    <TextField
-      select
+    <AdminSelect
       label={label}
-      fullWidth
+      value={resolved}
       disabled={disabled}
       error={error}
-      value={resolved}
-      onChange={(e) => {
-        const next = e.target.value;
+      helperText={helperText}
+      allowEmpty={allowEmpty}
+      emptyLabel={emptyLabel}
+      options={options}
+      onChange={(next) => {
         onChange(next ? next : null);
       }}
-      helperText={helperText}
-    >
-      {allowEmpty ? <MenuItem value="">{emptyLabel}</MenuItem> : null}
-      {isCustom ? (
-        <MenuItem value={resolved}>Custom path ({resolved})</MenuItem>
-      ) : null}
-      {STORE_PAGE_OPTIONS.map((opt) => (
-        <MenuItem key={opt.value} value={opt.value}>
-          {opt.label} ({opt.value})
-        </MenuItem>
-      ))}
-    </TextField>
+    />
   );
 }

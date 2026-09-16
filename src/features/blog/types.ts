@@ -1,5 +1,6 @@
 import type {
   BlogCardStyle,
+  BlogCoverCtaStyle,
   BlogLayoutPreset,
   BlogPostStatus,
   BlogSidebarPreset,
@@ -7,6 +8,7 @@ import type {
 
 export type {
   BlogCardStyle,
+  BlogCoverCtaStyle,
   BlogLayoutPreset,
   BlogPostStatus,
   BlogSidebarPreset,
@@ -68,6 +70,7 @@ export type BlogSettings = {
   layoutPreset: BlogLayoutPreset;
   sidebarPreset: BlogSidebarPreset;
   cardStyle: BlogCardStyle;
+  coverCtaStyle: BlogCoverCtaStyle;
   ctaTitle: string | null;
   ctaDescription: string | null;
   ctaButtonLabel: string | null;

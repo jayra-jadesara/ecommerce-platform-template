@@ -14,11 +14,28 @@ export const BLOG_SIDEBAR_PRESETS = [
   "SIDEBAR",
   "TOP_FILTER",
 ] as const;
-export const BLOG_CARD_STYLES = ["STANDARD", "MINIMAL", "EDITORIAL"] as const;
+export const BLOG_CARD_STYLES = [
+  "STANDARD",
+  "MINIMAL",
+  "EDITORIAL",
+  "COVER",
+] as const;
+export const BLOG_COVER_CTA_STYLES = [
+  "COOKIE",
+  "PLAIN",
+  "MASALA",
+  "PACK",
+  "BAND",
+  "SQUARE",
+  "RIBBON",
+  "STAMP",
+  "NONE",
+] as const;
 
 export type BlogLayoutPreset = (typeof BLOG_LAYOUT_PRESETS)[number];
 export type BlogSidebarPreset = (typeof BLOG_SIDEBAR_PRESETS)[number];
 export type BlogCardStyle = (typeof BLOG_CARD_STYLES)[number];
+export type BlogCoverCtaStyle = (typeof BLOG_COVER_CTA_STYLES)[number];
 
 const optionalNullableString = (max: number) =>
   z
@@ -142,7 +159,8 @@ export const blogSettingsFormSchema = z
     showSearch: z.boolean().default(true),
     layoutPreset: z.enum(BLOG_LAYOUT_PRESETS).default("FEATURED_GRID"),
     sidebarPreset: z.enum(BLOG_SIDEBAR_PRESETS).default("RIGHT"),
-    cardStyle: z.enum(BLOG_CARD_STYLES).default("STANDARD"),
+    cardStyle: z.enum(BLOG_CARD_STYLES).default("COVER"),
+    coverCtaStyle: z.enum(BLOG_COVER_CTA_STYLES).default("COOKIE"),
     featuredPostId: z
       .union([z.string().uuid(), z.literal(""), z.null(), z.undefined()])
       .transform((v) => (v == null || v === "" ? null : v)),
@@ -250,7 +268,8 @@ export const DEFAULT_BLOG_SETTINGS: BlogSettingsFormValues = {
   showSearch: true,
   layoutPreset: "GRID",
   sidebarPreset: "RIGHT",
-  cardStyle: "STANDARD",
+  cardStyle: "COVER",
+  coverCtaStyle: "COOKIE",
   featuredPostId: null,
   ctaTitle: null,
   ctaDescription: null,

@@ -12,14 +12,24 @@ import {
 import {
   ABOUT_PAGE_SLUG,
   HOMEPAGE_SLUG,
+  SECTION_TYPE_LABELS,
+  defaultConfigForType,
+  isLegalPageSlug,
+  LEGAL_PAGE_META,
+  type LegalPageSlug,
   pageFormSchema,
   type PageFormValues,
 } from "@/features/cms/schemas";
+import {
+  DISCLAIMER_STARTER_MARKDOWN,
+  PRIVACY_STARTER_MARKDOWN,
+  TERMS_STARTER_MARKDOWN,
+} from "@/features/cms/legal-templates";
 import type { ContentPage } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
-import type { Tables } from "@/types/database";
+import type { Json, Tables } from "@/types/database";
 
 function mapPage(row: Tables<"pages">): ContentPage {
   return {
@@ -121,7 +131,12 @@ export async function getOrCreateAboutPage(): Promise<ContentPage | null> {
     .eq("store_id", storeId)
     .eq("slug", ABOUT_PAGE_SLUG)
     .maybeSingle();
-  if (existing) return mapPage(existing);
+
+  if (existing) {
+    const page = mapPage(existing);
+    await ensureAboutSection(page.id);
+    return page;
+  }
 
   const user = await getCurrentUser();
   const { data, error } = await supabase
@@ -138,16 +153,113 @@ export async function getOrCreateAboutPage(): Promise<ContentPage | null> {
 
   if (error || !data) return null;
 
+  await ensureAboutSection(data.id);
+
   await writeContentAudit({
     storeId,
     userId: user?.id ?? null,
     action: "PAGE_CREATED",
     entityType: "page",
     entityId: data.id,
-    metadata: { slug: ABOUT_PAGE_SLUG, title: "About" },
+    metadata: { slug: ABOUT_PAGE_SLUG, title: "About", seededSection: "about" },
   });
 
   return mapPage(data);
+}
+
+async function ensureAboutSection(pageId: string): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data: existingAbout } = await supabase
+    .from("page_sections")
+    .select("id")
+    .eq("page_id", pageId)
+    .eq("section_type", "about")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingAbout) return;
+
+  const { data: maxRow } = await supabase
+    .from("page_sections")
+    .select("sort_order")
+    .eq("page_id", pageId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const aboutConfig = defaultConfigForType("about");
+  await supabase.from("page_sections").insert({
+    page_id: pageId,
+    section_type: "about",
+    title: SECTION_TYPE_LABELS.about,
+    sort_order: (maxRow?.sort_order ?? -1) + 1,
+    is_active: true,
+    config: aboutConfig as unknown as Json,
+  });
+}
+
+function legalStarterContent(slug: LegalPageSlug): string {
+  switch (slug) {
+    case "privacy":
+      return PRIVACY_STARTER_MARKDOWN;
+    case "terms":
+      return TERMS_STARTER_MARKDOWN;
+    case "disclaimer":
+      return DISCLAIMER_STARTER_MARKDOWN;
+    default:
+      return "";
+  }
+}
+
+export async function getOrCreateLegalPage(
+  slug: LegalPageSlug,
+): Promise<ContentPage | null> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return null;
+  const supabase = await createSupabaseServerClient();
+  const { data: existing } = await supabase
+    .from("pages")
+    .select("*")
+    .eq("store_id", storeId)
+    .eq("slug", slug)
+    .maybeSingle();
+  if (existing) return mapPage(existing);
+
+  const meta = LEGAL_PAGE_META[slug];
+  const user = await getCurrentUser();
+  const { data, error } = await supabase
+    .from("pages")
+    .insert({
+      store_id: storeId,
+      title: meta.title,
+      slug,
+      status: "draft",
+      content: legalStarterContent(slug),
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) return null;
+
+  await writeContentAudit({
+    storeId,
+    userId: user?.id ?? null,
+    action: "PAGE_CREATED",
+    entityType: "page",
+    entityId: data.id,
+    metadata: { slug, title: meta.title, legal: true },
+  });
+
+  return mapPage(data);
+}
+
+export async function listLegalPages(): Promise<ContentPage[]> {
+  const pages = await Promise.all(
+    (Object.keys(LEGAL_PAGE_META) as LegalPageSlug[]).map((slug) =>
+      getOrCreateLegalPage(slug),
+    ),
+  );
+  return pages.filter((p): p is ContentPage => Boolean(p));
 }
 
 export type PageMutationResult =
@@ -177,6 +289,15 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
       error: "The about page is managed under Content → About.",
       fieldErrors: {
         slug: "The about page is managed under Content → About.",
+      },
+    };
+  }
+  if (isLegalPageSlug(parsed.data.slug)) {
+    return {
+      ok: false,
+      error: "Legal pages are managed under Content → Legal pages.",
+      fieldErrors: {
+        slug: "Legal pages are managed under Content → Legal pages.",
       },
     };
   }
@@ -283,6 +404,25 @@ export async function updateAdminPage(
       ok: false,
       error: "The about page URL cannot be changed.",
       fieldErrors: { slug: "The about page URL cannot be changed." },
+    };
+  }
+  if (isLegalPageSlug(current.slug) && values.slug !== current.slug) {
+    return {
+      ok: false,
+      error: "Legal page URLs cannot be changed.",
+      fieldErrors: { slug: "Legal page URLs cannot be changed." },
+    };
+  }
+  if (
+    isLegalPageSlug(values.slug) &&
+    !isLegalPageSlug(current.slug)
+  ) {
+    return {
+      ok: false,
+      error: "Legal pages are managed under Content → Legal pages.",
+      fieldErrors: {
+        slug: "Legal pages are managed under Content → Legal pages.",
+      },
     };
   }
 

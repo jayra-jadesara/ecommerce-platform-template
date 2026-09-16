@@ -2,7 +2,7 @@ import Alert from "@mui/material/Alert";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { HomepageBuilder } from "@/features/cms/components/HomepageBuilder";
+import { AboutPageForm } from "@/features/cms/components/AboutPageForm";
 import { getOrCreateAboutPage } from "@/features/cms/pages-service";
 import { listPageSections } from "@/features/cms/sections-service";
 
@@ -28,24 +28,41 @@ export default async function AdminContentAboutPage() {
   }
 
   const sections = await listPageSections(page.id);
+  const aboutSection = sections.find((s) => s.sectionType === "about") ?? null;
+
+  if (!aboutSection) {
+    return (
+      <div className="space-y-4 pb-16">
+        <AdminPageHeader
+          title="About"
+          description="Edit the /about page for shoppers — founder story, portrait, and optional heritage train milestones."
+          breadcrumbs={[
+            { label: "Content", href: getAdminPath("/content") },
+            { label: "About" },
+          ]}
+        />
+        <Alert severity="error">
+          About content is missing. Refresh the page, or contact support if this
+          keeps happening.
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="About"
-        description="Build the /about page — add an About section for the founder story (heading, quote, portrait, timeline)."
+        description="Edit the /about page for shoppers — founder story, portrait, and optional heritage train milestones."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "About" },
         ]}
       />
-      <HomepageBuilder
+      <AboutPageForm
         page={page}
-        initialSections={sections}
-        pageLabel="About page"
-        canCreate={hasPermission(admin, "content.create")}
+        section={aboutSection}
         canUpdate={hasPermission(admin, "content.update")}
-        canDelete={hasPermission(admin, "content.delete")}
         canPublish={hasPermission(admin, "content.publish")}
       />
     </div>

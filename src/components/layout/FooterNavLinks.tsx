@@ -22,7 +22,7 @@ export function FooterNavLinks({
 
   return (
     <nav aria-label={ariaLabel}>
-      <ul className="mt-4 flex flex-col gap-2.5">
+      <ul className="flex flex-col gap-2">
         {items.map((item) => {
           const active =
             !item.external &&
@@ -39,8 +39,8 @@ export function FooterNavLinks({
                 className={cn(
                   "text-sm transition-colors",
                   active
-                    ? "font-semibold text-[var(--color-footer-foreground)]"
-                    : "text-[color-mix(in_srgb,var(--color-footer-foreground)_75%,transparent)] hover:text-[var(--color-footer-foreground)]",
+                    ? "font-semibold text-[var(--color-primary)]"
+                    : "text-[var(--color-footer-foreground)] hover:text-[var(--color-primary)]",
                 )}
               >
                 {item.label}

@@ -11,7 +11,11 @@ import {
   unpublishPageAction,
 } from "@/features/cms/actions";
 import type { ContentPage } from "@/features/cms/types";
-import { ABOUT_PAGE_SLUG, HOMEPAGE_SLUG } from "@/features/cms/schemas";
+import {
+  ABOUT_PAGE_SLUG,
+  HOMEPAGE_SLUG,
+  isLegalPageSlug,
+} from "@/features/cms/schemas";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { formatDate } from "@/lib/format-date";
 
@@ -34,7 +38,10 @@ export function PagesListClient({
   const [archiveTarget, setArchiveTarget] = useState<ContentPage | null>(null);
 
   const visible = pages.filter(
-    (p) => p.slug !== HOMEPAGE_SLUG && p.slug !== ABOUT_PAGE_SLUG,
+    (p) =>
+      p.slug !== HOMEPAGE_SLUG &&
+      p.slug !== ABOUT_PAGE_SLUG &&
+      !isLegalPageSlug(p.slug),
   );
 
   return (

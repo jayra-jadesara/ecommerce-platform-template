@@ -1,9 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
+import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
+import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
@@ -15,6 +17,9 @@ import {
   generalSettingsSchema,
   type GeneralSettingsFormValues,
 } from "@/features/admin/settings/schemas";
+import { AdminSection } from "@/features/admin/ui/AdminCard";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   STORE_COUNTRIES,
   STORE_CURRENCIES,
@@ -26,13 +31,9 @@ import {
   normalizeSelectValue,
 } from "@/features/admin/settings/location-options";
 import {
-  adminCard,
-  adminCardPadding,
   adminCardsGrid,
   adminCardSpanFull,
-  adminFieldGroup,
   adminFieldsGrid,
-  adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
 import {
@@ -40,6 +41,7 @@ import {
   focusFirstFieldError,
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
+import { whatsappDisplayValue } from "@/features/admin/settings/validation";
 
 interface GeneralSettingsFormProps {
   initialValues: GeneralSettingsFormValues;
@@ -82,37 +84,33 @@ function SelectField({
         ? "__custom__"
         : (values[0] ?? "");
 
+  const composed = [
+    ...(!hasValue && value
+      ? [{ value, label: `${value} (saved)` }]
+      : []),
+    ...normalized,
+    ...(allowCustom
+      ? [{ value: "__custom__", label: customLabel }]
+      : []),
+  ];
+
   return (
-    <TextField
-      select
+    <AdminSelect
       label={label}
-      fullWidth
       required={required}
       disabled={disabled}
       error={error}
       helperText={helperText}
       value={selectValue}
-      onChange={(event) => {
-        const next = event.target.value;
+      options={composed}
+      onChange={(next) => {
         if (next === "__custom__") {
           onChange("");
           return;
         }
         onChange(next);
       }}
-    >
-      {!hasValue && value ? (
-        <MenuItem value={value}>{value} (saved)</MenuItem>
-      ) : null}
-      {normalized.map((opt) => (
-        <MenuItem key={opt.value} value={opt.value}>
-          {opt.label}
-        </MenuItem>
-      ))}
-      {allowCustom ? (
-        <MenuItem value="__custom__">{customLabel}</MenuItem>
-      ) : null}
-    </TextField>
+    />
   );
 }
 
@@ -151,6 +149,9 @@ export function GeneralSettingsForm({
         initialValues.defaultLocale,
         STORE_LOCALES.map((l) => l.value),
         countryDefaults.defaultLocale,
+      ),
+      socialWhatsapp: whatsappDisplayValue(
+        initialValues.socialWhatsapp ?? "",
       ),
     } satisfies GeneralSettingsFormValues;
   }, [initialValues]);
@@ -195,7 +196,10 @@ export function GeneralSettingsForm({
         return;
       }
       setSuccess(result.message);
-      reset(values);
+      reset({
+        ...values,
+        socialWhatsapp: whatsappDisplayValue(values.socialWhatsapp ?? ""),
+      });
       router.refresh();
     });
   });
@@ -206,8 +210,7 @@ export function GeneralSettingsForm({
         event.preventDefault();
         onSubmit();
       }}
-      className="w-full"
-      style={adminStackStyle}
+      className="space-y-4"
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -236,12 +239,11 @@ export function GeneralSettingsForm({
       />
 
       <div className={adminCardsGrid()}>
-        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">1. Store name</p>
-          <p className="admin-field-group__hint">
-            What shoppers see as your brand name.
-          </p>
+        <AdminSection
+          title="Store identity"
+          description="Name and how customers reach you."
+          icon={<StorefrontOutlinedIcon sx={{ fontSize: 20 }} />}
+        >
           <div className={adminFieldsGrid(2)}>
             <Controller
               name="displayName"
@@ -250,8 +252,9 @@ export function GeneralSettingsForm({
                 <div>
                   <TextField
                     {...field}
-                    label="Store name shoppers see"
+                    label="Store name"
                     fullWidth
+                    size="small"
                     required
                     disabled={!canUpdate || pending}
                     error={Boolean(fieldState.error)}
@@ -269,23 +272,96 @@ export function GeneralSettingsForm({
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Legal / registered business name"
+                  label="Legal business name"
                   fullWidth
+                  size="small"
                   disabled={!canUpdate || pending}
-                  helperText="Optional — for invoices and paperwork"
+                  helperText="Optional — invoices and paperwork"
                 />
               )}
             />
+            <Controller
+              name="contactEmail"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="Contact email"
+                    fullWidth
+                    size="small"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+            <Controller
+              name="contactPhone"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="Main phone"
+                    fullWidth
+                    size="small"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+            <Controller
+              name="contactPhoneSecondary"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="Second phone"
+                    fullWidth
+                    size="small"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+            <Controller
+              name="socialWhatsapp"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="WhatsApp number"
+                    fullWidth
+                    size="small"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                    placeholder="+91 98765 43210"
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : "Include country code. Saved as a chat link for the storefront."
+                    }
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
           </div>
-        </div>
-        </section>
+        </AdminSection>
 
-        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">2. Money &amp; language</p>
-          <p className="admin-field-group__hint">
-            Prices, language, and clock — usually match your country.
-          </p>
+        <AdminSection
+          title="Locale"
+          description="Currency, language, and timezone for the storefront."
+          icon={<LanguageOutlinedIcon sx={{ fontSize: 20 }} />}
+        >
           <div className={adminFieldsGrid(2)}>
             <Controller
               name="currency"
@@ -318,7 +394,7 @@ export function GeneralSettingsForm({
                   label="Language / region"
                   required
                   disabled={!canUpdate || pending}
-                  helperText="How dates and language are shown in the store"
+                  helperText="How dates and language are shown"
                   value={field.value}
                   options={[...STORE_LOCALES]}
                   onChange={field.onChange}
@@ -334,7 +410,7 @@ export function GeneralSettingsForm({
                   label="Timezone"
                   required
                   disabled={!canUpdate || pending}
-                  helperText="Used for order times and schedules"
+                  helperText="Order times and schedules"
                   value={field.value}
                   options={[...STORE_TIMEZONES]}
                   onChange={field.onChange}
@@ -343,67 +419,15 @@ export function GeneralSettingsForm({
               )}
             />
           </div>
-        </div>
-        </section>
+        </AdminSection>
 
-        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">3. Contact &amp; address</p>
-          <p className="admin-field-group__hint">
-            How customers reach you, and where your business is based.
-          </p>
+        <AdminSection
+          className={adminCardSpanFull()}
+          title="Address & location"
+          description="Business address shown to customers where configured."
+          icon={<PlaceOutlinedIcon sx={{ fontSize: 20 }} />}
+        >
           <div className={adminFieldsGrid(2)}>
-            <Controller
-              name="contactEmail"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Email customers can write to"
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={undefined}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="contactPhone"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Main phone number"
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={undefined}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="contactPhoneSecondary"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Second phone (optional)"
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={undefined}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
             <Controller
               name="country"
               control={control}
@@ -430,6 +454,23 @@ export function GeneralSettingsForm({
               )}
             />
             <Controller
+              name="postalCode"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="PIN / postal code"
+                    fullWidth
+                    size="small"
+                    disabled={!canUpdate || pending}
+                    error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+            <Controller
               name="addressLine1"
               control={control}
               render={({ field, fieldState }) => (
@@ -438,9 +479,9 @@ export function GeneralSettingsForm({
                     {...field}
                     label="Street address"
                     fullWidth
+                    size="small"
                     disabled={!canUpdate || pending}
                     error={Boolean(fieldState.error)}
-                    helperText={undefined}
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -452,8 +493,9 @@ export function GeneralSettingsForm({
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Landmark / area (optional)"
+                  label="Landmark / area"
                   fullWidth
+                  size="small"
                   disabled={!canUpdate || pending}
                 />
               )}
@@ -474,9 +516,11 @@ export function GeneralSettingsForm({
                       const cities = citiesForState(next);
                       const currentCity = city;
                       if (cities.length && !cities.includes(currentCity)) {
-                        setValue("city", cities.includes("Rajkot") ? "Rajkot" : cities[0]!, {
-                          shouldDirty: true,
-                        });
+                        setValue(
+                          "city",
+                          cities.includes("Rajkot") ? "Rajkot" : cities[0]!,
+                          { shouldDirty: true },
+                        );
                         setCustomCity(false);
                       }
                     }}
@@ -492,6 +536,7 @@ export function GeneralSettingsForm({
                     {...field}
                     label="State / region"
                     fullWidth
+                    size="small"
                     disabled={!canUpdate || pending}
                     error={Boolean(fieldState.error)}
                   />
@@ -531,6 +576,7 @@ export function GeneralSettingsForm({
                     {...field}
                     label="City"
                     fullWidth
+                    size="small"
                     disabled={!canUpdate || pending}
                     error={Boolean(fieldState.error)}
                     helperText={
@@ -542,33 +588,14 @@ export function GeneralSettingsForm({
                 )}
               />
             )}
-            <Controller
-              name="postalCode"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="PIN / postal code"
-                    fullWidth
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={undefined}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
           </div>
-        </div>
-        </section>
+        </AdminSection>
 
-        <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">4. Business IDs (optional)</p>
-          <p className="admin-field-group__hint">
-            For invoices and tax paperwork — skip if you do not have them yet.
-          </p>
+        <AdminSection
+          title="Business & accounts"
+          description="Tax IDs and how customers sign in or check out."
+          icon={<BadgeOutlinedIcon sx={{ fontSize: 20 }} />}
+        >
           <div className={adminFieldsGrid(2)}>
             <Controller
               name="businessRegistrationNumber"
@@ -578,6 +605,7 @@ export function GeneralSettingsForm({
                   {...field}
                   label="Business registration number"
                   fullWidth
+                  size="small"
                   disabled={!canUpdate || pending}
                   helperText="Example: company or FSSAI number"
                 />
@@ -591,6 +619,7 @@ export function GeneralSettingsForm({
                   {...field}
                   label="Tax ID / GSTIN"
                   fullWidth
+                  size="small"
                   disabled={!canUpdate || pending}
                 />
               )}
@@ -599,15 +628,12 @@ export function GeneralSettingsForm({
               name="registrationEnabled"
               control={control}
               render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                      disabled={!canUpdate || pending}
-                    />
-                  }
+                <AdminToggle
+                  checked={Boolean(field.value)}
+                  onChange={field.onChange}
+                  disabled={!canUpdate || pending}
                   label="Allow customers to create accounts"
+                  variant="row"
                 />
               )}
             />
@@ -615,31 +641,24 @@ export function GeneralSettingsForm({
               name="checkoutGuestAllowed"
               control={control}
               render={({ field }) => (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={field.value}
-                      onChange={(_, checked) => field.onChange(checked)}
-                      disabled={!canUpdate || pending}
-                    />
-                  }
+                <AdminToggle
+                  checked={Boolean(field.value)}
+                  onChange={field.onChange}
+                  disabled={!canUpdate || pending}
                   label="Allow checkout without an account"
+                  variant="row"
                 />
               )}
             />
           </div>
-        </div>
-        </section>
+        </AdminSection>
 
-        <section
-          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
-          style={adminStackStyle}
+        <AdminSection
+          className={adminCardSpanFull()}
+          title="Social profile links"
+          description="Full profile URLs only. WhatsApp number is under Store identity."
+          icon={<ShareOutlinedIcon sx={{ fontSize: 20 }} />}
         >
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">5. Social links (optional)</p>
-          <p className="admin-field-group__hint">
-            Paste full profile links. Leave blank if you do not use a network.
-          </p>
           <div className={adminFieldsGrid(2)}>
             {(
               [
@@ -648,7 +667,6 @@ export function GeneralSettingsForm({
                 ["socialYoutube", "YouTube"],
                 ["socialLinkedin", "LinkedIn"],
                 ["socialX", "X (Twitter)"],
-                ["socialWhatsapp", "WhatsApp"],
               ] as const
             ).map(([name, label]) => (
               <Controller
@@ -661,9 +679,9 @@ export function GeneralSettingsForm({
                       {...field}
                       label={label}
                       fullWidth
+                      size="small"
                       disabled={!canUpdate || pending}
                       error={Boolean(fieldState.error)}
-                      helperText={undefined}
                       placeholder="https://"
                     />
                     <FieldError message={fieldState.error?.message} />
@@ -672,8 +690,7 @@ export function GeneralSettingsForm({
               />
             ))}
           </div>
-        </div>
-        </section>
+        </AdminSection>
       </div>
     </form>
   );

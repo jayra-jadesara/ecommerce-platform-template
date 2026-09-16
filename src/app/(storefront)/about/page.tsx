@@ -1,4 +1,4 @@
-import { PageShell } from "@/components/layout";
+import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
@@ -28,7 +28,13 @@ export default async function AboutPage() {
   const hasSections = sections.length > 0;
 
   return (
-    <PageShell showBack backHref="/" backLabel="Back to home">
+    <PageShell showBack={false} className="!pt-3 md:!pt-5">
+      <StorefrontBreadcrumb
+        items={[
+          { label: "Home", href: "/" },
+          { label: "About" },
+        ]}
+      />
       <section className="relative isolate overflow-hidden pb-8 pt-2 text-center md:pb-10">
         <div
           aria-hidden

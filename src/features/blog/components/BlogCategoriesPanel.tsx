@@ -3,13 +3,12 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   createBlogCategoryAction,
   deleteBlogCategoryAction,
@@ -264,15 +263,12 @@ export function BlogCategoriesPanel({
                 name="isActive"
                 control={control}
                 render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onChange={(_, checked) => field.onChange(checked)}
-                        disabled={!canEditForm || pending}
-                      />
-                    }
+                  <AdminToggle
+                    checked={Boolean(field.value)}
+                    onChange={field.onChange}
+                    disabled={!canEditForm || pending}
                     label="Active"
+                    variant="row"
                   />
                 )}
               />

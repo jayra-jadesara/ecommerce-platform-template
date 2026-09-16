@@ -1,16 +1,29 @@
-"use client";
+﻿"use client";
 
+import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
+import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import TravelExploreOutlinedIcon from "@mui/icons-material/TravelExploreOutlined";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Autocomplete from "@mui/material/Autocomplete";
 import Checkbox from "@mui/material/Checkbox";
-import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormGroup from "@mui/material/FormGroup";
-import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import {
@@ -18,9 +31,9 @@ import {
   updateBlogPostAction,
 } from "@/features/blog/actions";
 import {
-  BlogMarkdownEditor,
+  MarkdownEditor,
   insertMarkdownImageAtCaret,
-} from "@/features/blog/components/BlogMarkdownEditor";
+} from "@/features/editor";
 import {
   blogPostFormSchema,
   type BlogPostFormValues,
@@ -30,6 +43,8 @@ import { slugify } from "@/features/catalog/slug";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { MediaPicker } from "@/features/media";
 import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
+import { AdminMultiSelect } from "@/features/admin/ui/AdminMultiSelect";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminBtn,
   adminCard,
@@ -49,6 +64,35 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 
+function plainTextFromMarkdown(value: string): string {
+  return value
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`[^`]*`/g, " ")
+    .replace(/!\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/\[[^\]]*]\([^)]*\)/g, " ")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/[*_~>#-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function FormSectionTitle({
+  icon,
+  children,
+}: {
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <p className="admin-field-group__title flex items-center gap-2">
+      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+        {icon}
+      </span>
+      {children}
+    </p>
+  );
+}
+
 export function BlogPostForm({
   mode,
   postId,
@@ -67,10 +111,9 @@ export function BlogPostForm({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [mediaOpen, setMediaOpen] = useState<"featured" | "content" | "og" | null>(
+  const [mediaOpen, setMediaOpen] = useState<"featured" | "content" | null>(
     null,
   );
-  const [slugLockedToTitle, setSlugLockedToTitle] = useState(mode === "create");
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
   const listHref = getAdminPath("/content/blog");
 
@@ -100,17 +143,23 @@ export function BlogPostForm({
   const seoTitle = useWatch({ control, name: "seoTitle" }) ?? "";
   const seoDescription = useWatch({ control, name: "seoDescription" }) ?? "";
   const featured = useWatch({ control, name: "featuredImagePath" });
-  const og = useWatch({ control, name: "ogImagePath" });
   const status = useWatch({ control, name: "status" }) ?? "draft";
   const featuredPreview = resolveCmsImageUrl(featured);
-  const ogPreview = resolveCmsImageUrl(og);
   const postPath = slug ? `/blog/${slug}` : "/blog/…";
+  const seoSourceDescription = useMemo(() => {
+    const fromExcerpt = plainTextFromMarkdown(String(excerpt || ""));
+    if (fromExcerpt) return fromExcerpt;
+    return plainTextFromMarkdown(String(content || ""));
+  }, [excerpt, content]);
+  const productSelectOptions = useMemo(
+    () => productOptions.map((p) => ({ id: p.id, label: p.name })),
+    [productOptions],
+  );
 
   useEffect(() => {
-    if (!slugLockedToTitle) return;
     const next = slugify(title);
     setValue("slug", next, { shouldValidate: Boolean(next), shouldDirty: true });
-  }, [title, slugLockedToTitle, setValue]);
+  }, [title, setValue]);
 
   function insertImageMarkdown(pathOrUrl: string, alt = "Image") {
     const url = resolveCmsImageUrl(pathOrUrl) ?? pathOrUrl;
@@ -136,10 +185,8 @@ export function BlogPostForm({
       const payload: BlogPostFormValues = {
         ...values,
         status: nextStatus,
-        slug:
-          mode === "create"
-            ? slugify(values.slug || values.title) || slugify(values.title)
-            : values.slug,
+        slug: slugify(values.title) || slugify(values.slug),
+        ogImagePath: null,
         publishedAt: values.publishedAt || null,
       };
       if (!payload.slug) {
@@ -192,7 +239,11 @@ export function BlogPostForm({
               style={adminStackStyle}
             >
               <div className={adminFieldGroup()} style={adminStackStyle}>
-                <p className="admin-field-group__title">1. Article details</p>
+                <FormSectionTitle
+                  icon={<ArticleOutlinedIcon sx={{ fontSize: 16 }} />}
+                >
+                  1. Article details
+                </FormSectionTitle>
                 <p className="admin-field-group__hint">
                   Give your post a clear name and a short summary for the blog
                   list.
@@ -213,23 +264,24 @@ export function BlogPostForm({
                   <TextField
                     label="Web address"
                     fullWidth
+                    size="small"
                     required
-                    disabled={!canSubmit || pending}
+                    disabled
                     error={Boolean(errors.slug)}
                     helperText={
-                      errors.slug
-                        ? undefined
-                        : `Appears as ${postPath} on your store`
+                      errors.slug ? undefined : `Auto from title · ${postPath}`
                     }
                     value={slug}
-                    onChange={(event) => {
-                      setSlugLockedToTitle(false);
-                      setValue("slug", slugify(event.target.value), {
-                        shouldValidate: true,
-                        shouldDirty: true,
-                      });
-                    }}
                     name="slug"
+                    slotProps={{
+                      input: {
+                        startAdornment: (
+                          <span className="mr-1 text-[var(--color-muted)]">
+                            <LinkOutlinedIcon sx={{ fontSize: 16 }} />
+                          </span>
+                        ),
+                      },
+                    }}
                   />
                   <FieldError message={errors.slug?.message} />
                 </div>
@@ -258,7 +310,11 @@ export function BlogPostForm({
               style={adminStackStyle}
             >
               <div className={adminFieldGroup()} style={adminStackStyle}>
-                <p className="admin-field-group__title">2. Write your article</p>
+                <FormSectionTitle
+                  icon={<EditNoteOutlinedIcon sx={{ fontSize: 16 }} />}
+                >
+                  2. Write your article
+                </FormSectionTitle>
                 <p className="admin-field-group__hint">
                   Use the toolbar to format text. Switch to Preview anytime to
                   see how it will look on your store.
@@ -268,7 +324,7 @@ export function BlogPostForm({
                   control={control}
                   render={({ field }) => (
                     <div>
-                      <BlogMarkdownEditor
+                      <MarkdownEditor
                         value={field.value ?? ""}
                         onChange={field.onChange}
                         textareaRef={contentRef}
@@ -276,6 +332,10 @@ export function BlogPostForm({
                         error={Boolean(errors.content)}
                         helperText={undefined}
                         onRequestImage={() => setMediaOpen("content")}
+                        placeholder={
+                          "Write your article here…\n\nTip: select text, then tap Bold or Link."
+                        }
+                        previewEmptyHint="Nothing to preview yet. Switch to Write and add your story."
                       />
                       <FieldError message={errors.content?.message} />
                     </div>
@@ -289,14 +349,19 @@ export function BlogPostForm({
               style={adminStackStyle}
             >
               <div className={adminFieldGroup()} style={adminStackStyle}>
-                <p className="admin-field-group__title">3. Cover photo</p>
+                <FormSectionTitle
+                  icon={<ImageOutlinedIcon sx={{ fontSize: 16 }} />}
+                >
+                  3. Cover photo
+                </FormSectionTitle>
                 <p className="admin-field-group__hint">
-                  Large image at the top of the article and on the blog list.
+                  Used on the article, blog list, and Google / social previews.
                 </p>
                 <ImagePickCard
                   path={featured}
                   previewUrl={featuredPreview}
                   disabled={!canSubmit || pending}
+                  compact
                   onChoose={() => setMediaOpen("featured")}
                   onClear={() =>
                     setValue("featuredImagePath", null, { shouldDirty: true })
@@ -311,76 +376,36 @@ export function BlogPostForm({
                 style={adminStackStyle}
               >
                 <div className={adminFieldGroup()} style={adminStackStyle}>
-                  <p className="admin-field-group__title">
+                  <FormSectionTitle
+                    icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 16 }} />}
+                  >
                     4. Products to show with this article
-                  </p>
+                  </FormSectionTitle>
                   <p className="admin-field-group__hint">
-                    Shoppers can open these from “Shop this article”. Pick as
-                    many as you like.
+                    Shoppers can open these from “Shop this article”. Optional.
                   </p>
                   <Controller
                     name="productIds"
                     control={control}
                     render={({ field }) => {
-                      const selected = productOptions.filter((p) =>
-                        (field.value ?? []).includes(p.id),
-                      );
+                      const selectedCount = (field.value ?? []).length;
                       return (
-                        <Autocomplete
-                          multiple
-                          disableCloseOnSelect
-                          options={productOptions}
-                          value={selected}
+                        <AdminMultiSelect
+                          options={productSelectOptions}
+                          value={field.value ?? []}
+                          onChange={field.onChange}
                           disabled={!canSubmit || pending}
-                          getOptionLabel={(option) => option.name}
-                          isOptionEqualToValue={(a, b) => a.id === b.id}
-                          onChange={(_, next) =>
-                            field.onChange(next.map((item) => item.id))
+                          label="Products"
+                          placeholder={
+                            selectedCount
+                              ? "Add another…"
+                              : "Type a product name"
                           }
-                          renderValue={(tagValue, getItemProps) =>
-                            tagValue.map((option, index) => {
-                              const { key, ...tagProps } = getItemProps({
-                                index,
-                              });
-                              return (
-                                <Chip
-                                  key={key}
-                                  label={option.name}
-                                  size="small"
-                                  {...tagProps}
-                                />
-                              );
-                            })
+                          helperText={
+                            selectedCount
+                              ? `${selectedCount} product${selectedCount === 1 ? "" : "s"} linked`
+                              : "Leave empty if none."
                           }
-                          renderOption={(props, option, { selected: on }) => {
-                            const { key, ...optionProps } = props;
-                            return (
-                              <li key={key} {...optionProps}>
-                                <Checkbox
-                                  style={{ marginRight: 8 }}
-                                  checked={on}
-                                  size="small"
-                                />
-                                {option.name}
-                              </li>
-                            );
-                          }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Search and add products"
-                              placeholder={
-                                selected.length
-                                  ? "Add another…"
-                                  : "Type a product name"
-                              }
-                              helperText={
-                                selected.length
-                                  ? `${selected.length} product${selected.length === 1 ? "" : "s"} linked`
-                                  : "Optional — leave empty if none."
-                              }
-                            />
-                          )}
                         />
                       );
                     }}
@@ -390,13 +415,16 @@ export function BlogPostForm({
             ) : null}
 
             <details className={`${adminCard()} ${adminCardPadding()}`}>
-              <summary className="cursor-pointer text-sm font-semibold text-[var(--color-foreground)]">
-                Search listing (Google)
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[var(--color-foreground)] [&::-webkit-details-marker]:hidden">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                  <TravelExploreOutlinedIcon sx={{ fontSize: 16 }} />
+                </span>
+                Search listing (Google) — optional
               </summary>
               <div className={`mt-3 ${adminFormStack()}`} style={adminStackStyle}>
                 <AdminSeoFields
                   sourceTitle={title}
-                  sourceDescription={String(excerpt || content || "")}
+                  sourceDescription={seoSourceDescription}
                   seoTitle={String(seoTitle ?? "")}
                   seoDescription={String(seoDescription ?? "")}
                   onSeoTitleChange={(value) =>
@@ -405,24 +433,16 @@ export function BlogPostForm({
                   onSeoDescriptionChange={(value) =>
                     setValue("seoDescription", value, { shouldDirty: true })
                   }
-                  previewUrl={postPath.includes("…") ? "/blog/article" : postPath}
+                  previewUrl={
+                    postPath.includes("…") ? "/blog/article" : postPath
+                  }
                   disabled={!canSubmit || pending}
                   resetKey={postId ?? "new"}
                 />
-                <div>
-                  <p className="mb-2 text-sm font-medium text-[var(--color-foreground)]">
-                    Image for social sharing (optional)
-                  </p>
-                  <ImagePickCard
-                    path={og}
-                    previewUrl={ogPreview}
-                    disabled={!canSubmit || pending}
-                    onChoose={() => setMediaOpen("og")}
-                    onClear={() =>
-                      setValue("ogImagePath", null, { shouldDirty: true })
-                    }
-                  />
-                </div>
+                <p className="text-xs text-[var(--color-muted)]">
+                  Social and Google images use the cover photo above — no
+                  separate upload needed.
+                </p>
               </div>
             </details>
           </div>
@@ -432,28 +452,28 @@ export function BlogPostForm({
               className={`${adminCard()} ${adminCardPadding()}`}
               style={adminStackStyle}
             >
-              <p className="text-sm font-semibold text-[var(--color-foreground)]">
+              <p className="flex items-center gap-2 text-sm font-semibold text-[var(--color-foreground)]">
+                <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                  <PublishOutlinedIcon sx={{ fontSize: 16 }} />
+                </span>
                 Ready to publish?
               </p>
               <Controller
                 name="status"
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    select
+                  <AdminSelect
                     label="Visibility"
-                    fullWidth
                     disabled={!canSubmit || pending}
                     value={field.value ?? "draft"}
                     onChange={field.onChange}
-                    onBlur={field.onBlur}
                     name={field.name}
-                    inputRef={field.ref}
-                  >
-                    <MenuItem value="draft">Draft (only you)</MenuItem>
-                    <MenuItem value="published">Live on store</MenuItem>
-                    <MenuItem value="archived">Archived</MenuItem>
-                  </TextField>
+                    options={[
+                      { value: "draft", label: "Draft (only you)" },
+                      { value: "published", label: "Live on store" },
+                      { value: "archived", label: "Archived" },
+                    ]}
+                  />
                 )}
               />
               <Controller
@@ -475,20 +495,21 @@ export function BlogPostForm({
                 name="isFeatured"
                 control={control}
                 render={({ field }) => (
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={Boolean(field.value)}
-                        onChange={(_, checked) => field.onChange(checked)}
-                        disabled={!canSubmit || pending}
-                      />
-                    }
+                  <AdminToggle
+                    variant="row"
+                    checked={Boolean(field.value)}
+                    onChange={field.onChange}
+                    disabled={!canSubmit || pending}
                     label="Show as featured on the blog"
                   />
                 )}
               />
               <div>
-                <p className="mb-1 text-sm font-medium text-[var(--color-foreground)]">
+                <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-[var(--color-foreground)]">
+                  <CategoryOutlinedIcon
+                    sx={{ fontSize: 16 }}
+                    className="text-[var(--color-muted)]"
+                  />
                   Topics
                 </p>
                 <Controller
@@ -536,8 +557,18 @@ export function BlogPostForm({
               <TextField
                 label="Author name"
                 fullWidth
+                size="small"
                 disabled={!canSubmit || pending}
                 helperText="Shown on the article if author is enabled in Blog settings."
+                slotProps={{
+                  input: {
+                    startAdornment: (
+                      <span className="mr-1 text-[var(--color-muted)]">
+                        <PersonOutlinedIcon sx={{ fontSize: 16 }} />
+                      </span>
+                    ),
+                  },
+                }}
                 {...register("authorName")}
               />
               <div className="flex flex-col gap-2 pt-1">
@@ -580,11 +611,6 @@ export function BlogPostForm({
               shouldDirty: true,
             });
           }
-          if (mediaOpen === "og") {
-            setValue("ogImagePath", selection.storagePath, {
-              shouldDirty: true,
-            });
-          }
           if (mediaOpen === "content") {
             insertImageMarkdown(
               selection.publicUrl || selection.storagePath,
@@ -604,27 +630,45 @@ function ImagePickCard({
   disabled,
   onChoose,
   onClear,
+  compact = false,
 }: {
   path: string | null | undefined;
   previewUrl: string | null;
   disabled?: boolean;
   onChoose: () => void;
   onClear: () => void;
+  compact?: boolean;
 }) {
   return (
     <div
-      className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] p-4"
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
+      className={`rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] p-3 ${
+        compact ? "flex flex-wrap items-center gap-3" : ""
+      }`}
+      style={
+        compact
+          ? undefined
+          : { display: "flex", flexDirection: "column", gap: "0.75rem" }
+      }
     >
       {previewUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={previewUrl}
           alt=""
-          className="h-36 w-full rounded-lg object-cover"
+          className={
+            compact
+              ? "h-20 w-28 shrink-0 rounded-lg object-cover"
+              : "h-36 w-full rounded-lg object-cover"
+          }
         />
       ) : (
-        <p className="text-sm text-[var(--color-muted)]">No image selected</p>
+        <p
+          className={`text-sm text-[var(--color-muted)] ${
+            compact ? "min-w-[7rem]" : ""
+          }`}
+        >
+          No image selected
+        </p>
       )}
       <div className="flex flex-wrap gap-2">
         <button

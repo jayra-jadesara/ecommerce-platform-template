@@ -2,7 +2,7 @@
 
 /**
  * Appearance design studio — uses native tabs/buttons for SSR-safe chrome;
- * MUI is limited to form controls (TextField, Switch, etc.).
+ * MUI is limited to form controls (TextField, Checkbox, etc.).
  */
 import { zodResolver } from "@hookform/resolvers/zod";
 import Alert from "@mui/material/Alert";
@@ -13,7 +13,6 @@ import FormGroup from "@mui/material/FormGroup";
 import FormHelperText from "@mui/material/FormHelperText";
 import FormLabel from "@mui/material/FormLabel";
 import MenuItem from "@mui/material/MenuItem";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,6 +24,7 @@ import { LogoThemeSuggest } from "@/features/admin/theme/components/LogoThemeSug
 import { Motion3DDesignStudio } from "@/features/admin/theme/components/Motion3DDesignStudio";
 import { AppearanceSplitLayout } from "@/features/admin/theme/components/AppearanceSplitLayout";
 import { TypographyStudioPanel } from "@/features/admin/theme/components/TypographyStudioPanel";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   findMatchingThemePackId,
   packsByCategory,
@@ -490,17 +490,12 @@ export function AppearanceStudio({
                     control={control}
                     name="allowUserToggle"
                     render={({ field }) => (
-                      <FormControlLabel
-                        control={
-                          <Switch
-                            checked={field.value}
-                            onChange={(event) =>
-                              field.onChange(event.target.checked)
-                            }
-                            disabled={!canUpdate || pending}
-                          />
-                        }
+                      <AdminToggle
+                        checked={Boolean(field.value)}
+                        onChange={field.onChange}
+                        disabled={!canUpdate || pending}
                         label="Allow customer theme toggle"
+                        variant="row"
                       />
                     )}
                   />

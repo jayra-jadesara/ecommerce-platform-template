@@ -21,6 +21,7 @@ export {
   BLOG_LAYOUT_PRESETS,
   BLOG_SIDEBAR_PRESETS,
   BLOG_CARD_STYLES,
+  BLOG_COVER_CTA_STYLES,
   type BlogCategoryFormValues,
   type BlogPostFormValues,
   type BlogSettingsFormValues,
@@ -29,6 +30,7 @@ export {
   type BlogLayoutPreset,
   type BlogSidebarPreset,
   type BlogCardStyle,
+  type BlogCoverCtaStyle,
 } from "@/features/blog/schemas";
 
 export type {
@@ -46,6 +48,7 @@ export type {
 export {
   normalizeSidebarPreset,
   normalizeCardStyle,
+  normalizeCoverCtaStyle,
   isListLayout,
   wantsFeaturedBlock,
   listingLayoutPreset,
@@ -57,4 +60,4 @@ export {
   isPubliclyVisiblePost,
 } from "@/features/blog/sanitize";
 
-export { MarkdownContent } from "@/features/blog/markdown";
+export { MarkdownContent } from "@/features/editor";

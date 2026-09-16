@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   createBannerAction,
   deleteBannerAction,
@@ -517,15 +516,12 @@ function BannerForm({
             name="isActive"
             control={control}
             render={({ field }) => (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={field.value}
-                    onChange={(_, checked) => field.onChange(checked)}
-                    disabled={!canSubmit || pending}
-                  />
-                }
+              <AdminToggle
+                checked={Boolean(field.value)}
+                onChange={field.onChange}
+                disabled={!canSubmit || pending}
                 label="Show on store now"
+                variant="row"
               />
             )}
           />

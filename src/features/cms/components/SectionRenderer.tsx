@@ -16,6 +16,8 @@ import {
   sectionShellClassName,
 } from "@/features/cms/section-styles";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
+import { HeroCarousel } from "@/features/cms/components/HeroCarousel";
+import { AboutHeritageTrain } from "@/features/cms/components/AboutHeritageTrain";
 import { Hero3DSlot } from "@/components/three/Hero3DSlot";
 import { defaultPlatformConfig } from "@/config/defaults";
 import {
@@ -255,6 +257,26 @@ export function SectionRenderer({
   switch (section.sectionType) {
     case "hero": {
       const c = cfg as SectionConfigMap["hero"];
+      const slides = Array.isArray(c.slides)
+        ? c.slides.filter((s) => Boolean(s?.imagePath?.trim()))
+        : [];
+
+      if (slides.length > 0) {
+        return (
+          <SectionMotion section={section} animation={animation} className={shell}>
+            <div className="relative overflow-hidden">
+              <HeroCarousel
+                slides={slides}
+                autoplayMs={c.autoplayMs ?? 5000}
+                showArrows={c.showArrows !== false}
+                fallbackTitle={c.title}
+                fallbackSubtitle={c.subtitle}
+              />
+            </div>
+          </SectionMotion>
+        );
+      }
+
       const bg = resolveCmsImageUrl(c.backgroundImagePath);
       const fg = resolveCmsImageUrl(c.foregroundImagePath);
       const preset = (c.layoutPreset ?? "SPLIT") as HeroLayoutPreset;
@@ -614,36 +636,24 @@ export function SectionRenderer({
       const captionName = c.imageCaptionName?.trim() ?? "";
       const captionRole = c.imageCaptionRole?.trim() ?? "";
       const timeline = (c.timelineItems ?? []).filter(
-        (item) => item.label?.trim() || item.year?.trim() || item.logoPath,
+        (item) =>
+          item.label?.trim() ||
+          item.year?.trim() ||
+          item.description?.trim(),
       );
+      const engineWheelUrl = resolveCmsImageUrl(c.engineWheelImagePath);
+      const trainItems = timeline.map((item) => ({
+        year: item.year?.trim() ?? "",
+        label: item.label?.trim() ?? "",
+        description: item.description?.trim() ?? "",
+        // One shared wheel image for the whole consist.
+        wheelUrl: engineWheelUrl,
+      }));
 
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div
-            className="sf-about-visionary"
-            style={{
-              width: "100%",
-              maxWidth: "40rem",
-              marginLeft: "auto",
-              marginRight: "auto",
-              paddingLeft: "1rem",
-              paddingRight: "1rem",
-              textAlign: "center",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
-            <div
-              style={{
-                width: "100%",
-                maxWidth: "36rem",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "1.25rem",
-              }}
-            >
+          <div className="sf-about-visionary">
+            <div className="sf-about-visionary__copy">
               {heading ? (
                 <SectionAccentHeading
                   title={heading}
@@ -652,124 +662,33 @@ export function SectionRenderer({
                 />
               ) : null}
               {description ? (
-                <p
-                  className="whitespace-pre-wrap text-sm leading-[1.85] text-[var(--color-muted)] md:text-[0.95rem] md:leading-[1.9]"
-                  style={{ margin: 0, textAlign: "center", width: "100%" }}
-                >
-                  {description}
-                </p>
+                <p className="sf-about-visionary__body">{description}</p>
               ) : null}
               {quote ? (
-                <blockquote style={{ margin: 0, maxWidth: "32rem", width: "100%" }}>
-                  <p
-                    className="font-[family-name:var(--font-display)] text-base italic leading-relaxed text-[var(--color-primary)] md:text-lg"
-                    style={{ margin: 0, textAlign: "center" }}
-                  >
+                <blockquote className="sf-about-visionary__quote">
+                  <p className="sf-about-visionary__quote-text">
                     “{quote}”
                     {quoteAuthor ? (
-                      <span className="not-italic"> — {quoteAuthor}</span>
+                      <span className="sf-about-visionary__quote-author">
+                        {" "}
+                        — {quoteAuthor}
+                      </span>
                     ) : null}
                   </p>
                 </blockquote>
               ) : null}
               {c.buttonText && c.buttonLink ? (
-                <div style={{ display: "flex", justifyContent: "center" }}>
+                <div className="sf-about-visionary__cta">
                   <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
                     {c.buttonText}
                   </SafeLink>
                 </div>
               ) : null}
-
-              {timeline.length > 0 ? (
-                <ul
-                  className="sf-about-timeline"
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                    alignItems: "flex-start",
-                    gap: "1.5rem",
-                    margin: "0.5rem 0 0",
-                    padding: 0,
-                    listStyle: "none",
-                    width: "100%",
-                  }}
-                >
-                  {timeline.map((item, index) => {
-                    const logoUrl = resolveCmsImageUrl(item.logoPath);
-                    return (
-                      <li
-                        key={`${item.label}-${item.year}-${index}`}
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          textAlign: "center",
-                          minWidth: "5.5rem",
-                          maxWidth: "8rem",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            height: "3.5rem",
-                            width: "3.5rem",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            overflow: "hidden",
-                            borderRadius: "999px",
-                            border: "1px solid var(--color-border)",
-                            background: "var(--color-card)",
-                          }}
-                        >
-                          {logoUrl ? (
-                            <Image
-                              src={logoUrl}
-                              alt=""
-                              width={48}
-                              height={48}
-                              unoptimized
-                              className="object-contain p-1.5"
-                            />
-                          ) : (
-                            <span className="text-[0.65rem] font-semibold text-[var(--color-primary)]">
-                              {(item.label || "?").slice(0, 2).toUpperCase()}
-                            </span>
-                          )}
-                        </div>
-                        {item.label ? (
-                          <p className="mt-2 text-xs font-semibold text-[var(--color-foreground)]">
-                            {item.label}
-                          </p>
-                        ) : null}
-                        {item.year ? (
-                          <p className="mt-0.5 text-[0.65rem] text-[var(--color-muted)]">
-                            {item.year}
-                          </p>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : null}
             </div>
 
             {portraitUrl ? (
-              <div
-                style={{
-                  position: "relative",
-                  width: "100%",
-                  maxWidth: "22rem",
-                  marginTop: "2.5rem",
-                }}
-              >
-                <div
-                  className="relative overflow-hidden rounded-[var(--radius-default,1rem)]"
-                  style={{
-                    background: "var(--color-primary)",
-                    aspectRatio: "4 / 5",
-                  }}
-                >
+              <div className="sf-about-visionary__portrait">
+                <div className="sf-about-visionary__frame">
                   <Image
                     src={portraitUrl}
                     alt={captionName || heading || "About"}
@@ -778,22 +697,7 @@ export function SectionRenderer({
                     sizes="(max-width: 768px) 90vw, 352px"
                   />
                   {captionName || captionRole ? (
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "1rem",
-                        left: "50%",
-                        transform: "translateX(-50%)",
-                        maxWidth: "85%",
-                        borderRadius: "0.4rem",
-                        padding: "0.5rem 0.75rem",
-                        textAlign: "center",
-                        background:
-                          "linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 88%, #fff), color-mix(in srgb, var(--color-primary) 55%, var(--color-accent)))",
-                        color: "var(--color-button-foreground, #fff)",
-                        boxShadow: "0 8px 20px color-mix(in srgb, #000 18%, transparent)",
-                      }}
-                    >
+                    <div className="sf-about-visionary__badge">
                       {captionName ? (
                         <p className="text-sm font-bold leading-tight">
                           {captionName}
@@ -808,6 +712,14 @@ export function SectionRenderer({
               </div>
             ) : null}
           </div>
+
+          {trainItems.length > 0 ? (
+            <AboutHeritageTrain
+              className="sf-about-train-wrap"
+              items={trainItems}
+              engineWheelUrl={engineWheelUrl}
+            />
+          ) : null}
         </SectionMotion>
       );
     }

@@ -118,6 +118,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     footer: [
       { label: "Privacy", href: "/privacy" },
       { label: "Terms", href: "/terms" },
+      { label: "Disclaimer", href: "/disclaimer" },
       { label: "Contact", href: "/contact" },
     ],
   },
@@ -159,5 +160,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     showSocial: true,
     showNewsletter: false,
     navVisible: true,
+    showFeaturedProduct: false,
+    featuredProductId: null,
   },
 };

@@ -7,6 +7,7 @@ export type {
   ColorTokens,
   ContactConfig,
   FooterChromeConfig,
+  FooterFeaturedProduct,
   HeaderChromeConfig,
   LayoutConfig,
   LogoSize,

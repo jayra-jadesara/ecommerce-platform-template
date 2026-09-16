@@ -26,7 +26,7 @@ import type {
   BlogProductOption,
 } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
@@ -264,10 +264,7 @@ export async function listAdminBlogPosts(
       slug: row.slug,
       excerpt: row.excerpt,
       featuredImagePath: row.featured_image_path,
-      featuredImageUrl:
-        resolvePublicStorageUrl("media", row.featured_image_path) ??
-        resolvePublicStorageUrl("cms", row.featured_image_path) ??
-        null,
+      featuredImageUrl: resolveStoragePathUrl(row.featured_image_path) ?? null,
       authorName: row.author_name,
       status: row.status,
       isFeatured: row.is_featured,

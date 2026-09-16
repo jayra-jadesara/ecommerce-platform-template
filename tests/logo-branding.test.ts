@@ -2,8 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   extractRepresentativeColorsFromImageData,
   hexToRgb,
+  hueDistance,
   isNearBlack,
   isNearWhite,
+  rgbHue,
+  rgbLuminance,
+  rgbSaturation,
   rgbToHex,
 } from "@/features/theme/logo-branding/extract-colors";
 import { generateBrandThemeFromColors } from "@/features/theme/logo-branding/generate-palette";
@@ -17,6 +21,24 @@ function solidImageData(hex: string, size = 8): Uint8ClampedArray {
     data[i + 1] = rgb.g;
     data[i + 2] = rgb.b;
     data[i + 3] = 255;
+  }
+  return data;
+}
+
+/** Half red, half teal — distinct chromatic hues. */
+function dualHueImageData(size = 16): Uint8ClampedArray {
+  const red = hexToRgb("#c41e3a")!;
+  const teal = hexToRgb("#0d9488")!;
+  const data = new Uint8ClampedArray(size * size * 4);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const i = (y * size + x) * 4;
+      const c = x < size / 2 ? red : teal;
+      data[i] = c.r;
+      data[i + 1] = c.g;
+      data[i + 2] = c.b;
+      data[i + 3] = 255;
+    }
   }
   return data;
 }
@@ -46,6 +68,46 @@ describe("logo color extraction", () => {
     const data = solidImageData("#ffffff");
     const colors = extractRepresentativeColorsFromImageData(data);
     expect(colors).toEqual([]);
+  });
+
+  it("extracts at least two distinct chromatic hues from multi-hue data", () => {
+    const colors = extractRepresentativeColorsFromImageData(dualHueImageData(), {
+      maxColors: 5,
+    });
+    const chromatics = colors
+      .map((c) => hexToRgb(c)!)
+      .filter((rgb) => rgbSaturation(rgb) >= 0.18);
+    expect(chromatics.length).toBeGreaterThanOrEqual(2);
+    expect(hueDistance(rgbHue(chromatics[0]!), rgbHue(chromatics[1]!))).toBeGreaterThan(
+      30,
+    );
+  });
+
+  it("does not fill the palette with low-sat greys when a brand hue exists", () => {
+    // Mostly brand red + a thin grey strip (edge noise)
+    const size = 16;
+    const red = hexToRgb("#c41e3a")!;
+    const grey = { r: 160, g: 158, b: 162 };
+    const data = new Uint8ClampedArray(size * size * 4);
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = (y * size + x) * 4;
+        const c = x === 0 ? grey : red;
+        data[i] = c.r;
+        data[i + 1] = c.g;
+        data[i + 2] = c.b;
+        data[i + 3] = 255;
+      }
+    }
+    const colors = extractRepresentativeColorsFromImageData(data, {
+      maxColors: 5,
+    });
+    expect(colors.length).toBeGreaterThan(0);
+    const first = hexToRgb(colors[0]!)!;
+    expect(rgbSaturation(first)).toBeGreaterThanOrEqual(0.18);
+    // Should not return multiple greys alongside the brand color
+    const greys = colors.filter((c) => rgbSaturation(hexToRgb(c)!) < 0.18);
+    expect(greys.length).toBeLessThanOrEqual(1);
   });
 });
 
@@ -77,6 +139,60 @@ describe("logo palette generation", () => {
     expect(theme).not.toBeNull();
     expect(theme!.light.primary).toBeTruthy();
     expect(isNearWhite(hexToRgb(theme!.light.primary)!)).toBe(false);
+  });
+
+  it("returns a curated primary/secondary/accent triad for a single-hue logo", () => {
+    const theme = generateBrandThemeFromColors(["#c41e3a"]);
+    expect(theme).not.toBeNull();
+    expect(theme!.sourceColors).toHaveLength(3);
+
+    const [primary, secondary, accent] = theme!.sourceColors.map(
+      (c) => hexToRgb(c)!,
+    );
+    expect(rgbSaturation(primary!)).toBeGreaterThanOrEqual(0.18);
+    // Food-brand secondary is charcoal (may be low-sat); accent is campaign yellow
+    expect(rgbLuminance(secondary!)).toBeLessThan(0.35);
+    expect(rgbSaturation(accent!)).toBeGreaterThanOrEqual(0.55);
+
+    expect(hueDistance(rgbHue(primary!), rgbHue(accent!))).toBeGreaterThan(15);
+
+    const unique = new Set(theme!.sourceColors.map((c) => c.toLowerCase()));
+    expect(unique.size).toBe(3);
+  });
+
+  it("uses a bright yellow footer in light and a dark footer in dark (Britannia harmony)", () => {
+    const theme = generateBrandThemeFromColors(["#c41e3a"]);
+    expect(theme).not.toBeNull();
+
+    const lightFooter = hexToRgb(theme!.light.footerBackground)!;
+    const darkFooter = hexToRgb(theme!.dark.footerBackground)!;
+    const accent = hexToRgb(theme!.sourceColors[2]!)!;
+    const secondary = hexToRgb(theme!.sourceColors[1]!)!;
+
+    expect(rgbLuminance(lightFooter)).toBeGreaterThan(0.55);
+    expect(rgbLuminance(darkFooter)).toBeLessThan(0.2);
+    expect(isNearWhite(lightFooter)).toBe(false);
+
+    // Accent in yellow band
+    const accentHue = rgbHue(accent);
+    expect(accentHue).toBeGreaterThan(30);
+    expect(accentHue).toBeLessThan(65);
+
+    // Secondary is charcoal — not muddy mid-brown wash
+    expect(rgbLuminance(secondary)).toBeLessThan(0.35);
+    expect(rgbSaturation(secondary)).toBeLessThan(0.35);
+
+    // Dark chrome is soft charcoal, not pure #000
+    expect(theme!.dark.background.toLowerCase()).not.toBe("#000000");
+    expect(theme!.dark.footerBackground.toLowerCase()).not.toBe("#000000");
+    expect(theme!.dark.footerBackground.toLowerCase()).not.toBe(
+      theme!.dark.background.toLowerCase(),
+    );
+    expect(rgbLuminance(hexToRgb(theme!.dark.background)!)).toBeLessThan(0.08);
+    expect(rgbLuminance(hexToRgb(theme!.dark.surface)!)).toBeLessThan(0.12);
+    expect(rgbLuminance(darkFooter)).toBeGreaterThan(
+      rgbLuminance(hexToRgb(theme!.dark.background)!),
+    );
   });
 
   it("round-trips hex helpers", () => {

@@ -41,21 +41,33 @@ export function AdminSection({
   children,
   className,
   actions,
+  icon,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   className?: string;
   actions?: ReactNode;
+  icon?: ReactNode;
 }) {
   return (
     <AdminCard className={className}>
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h2 className={adminSectionTitle()}>{title}</h2>
-          {description ? (
-            <p className={adminSectionDesc()}>{description}</p>
+        <div className="flex min-w-0 flex-1 gap-3">
+          {icon ? (
+            <span
+              className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
+              aria-hidden
+            >
+              {icon}
+            </span>
           ) : null}
+          <div className="min-w-0">
+            <h2 className={adminSectionTitle()}>{title}</h2>
+            {description ? (
+              <p className={adminSectionDesc()}>{description}</p>
+            ) : null}
+          </div>
         </div>
         {actions ? (
           <div className="flex flex-wrap items-center gap-2">{actions}</div>

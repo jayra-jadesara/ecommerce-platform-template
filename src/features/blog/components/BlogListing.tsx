@@ -11,6 +11,7 @@ import type {
   StorefrontBlogCategory,
   StorefrontBlogPostSummary,
 } from "@/features/blog/types";
+import { cn } from "@/lib/cn";
 
 type BlogListingProps = {
   settings: BlogSettings;
@@ -37,6 +38,11 @@ function listingHref(input: {
   return qs ? `/blog?${qs}` : "/blog";
 }
 
+function usesCoverGrid(settings: BlogSettings, isList: boolean): boolean {
+  if (isList) return false;
+  return settings.cardStyle !== "MINIMAL";
+}
+
 export function BlogListing({
   settings,
   posts,
@@ -51,17 +57,28 @@ export function BlogListing({
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasFilter = Boolean(categorySlug || q?.trim());
   const sidebarPosition = normalizeSidebarPreset(settings.sidebarPreset);
+  const isList = isListLayout(settings);
+  const coverGrid = usesCoverGrid(settings, isList);
+  const listingLayout = isList ? "list" : "grid";
 
   const showFeaturedBlock =
+    !coverGrid &&
     wantsFeaturedBlock(settings) &&
     Boolean(featured) &&
     page <= 1 &&
     !hasFilter;
 
-  const gridPosts =
-    showFeaturedBlock && featured
-      ? posts.filter((post) => post.id !== featured.id)
-      : posts;
+  /** In cover grid, pin featured as the first card when present. */
+  const gridPosts = (() => {
+    if (coverGrid && featured && page <= 1 && !hasFilter) {
+      const rest = posts.filter((post) => post.id !== featured.id);
+      return [featured, ...rest];
+    }
+    if (showFeaturedBlock && featured) {
+      return posts.filter((post) => post.id !== featured.id);
+    }
+    return posts;
+  })();
 
   const showCategoryUi =
     settings.showCategories &&
@@ -71,11 +88,13 @@ export function BlogListing({
   const useDesktopSidebar =
     showCategoryUi &&
     settings.showSidebar &&
-    (sidebarPosition === "RIGHT" || sidebarPosition === "LEFT");
+    (sidebarPosition === "RIGHT" || sidebarPosition === "LEFT") &&
+    !coverGrid;
 
   const useTopFilter =
     showCategoryUi &&
-    (sidebarPosition === "TOP" ||
+    (coverGrid ||
+      sidebarPosition === "TOP" ||
       ((sidebarPosition === "RIGHT" || sidebarPosition === "LEFT") &&
         !settings.showSidebar));
 
@@ -86,9 +105,10 @@ export function BlogListing({
     showReadingTime: settings.showReadingTime,
     showFeaturedImage: settings.showFeaturedImage,
     cardStyle: settings.cardStyle,
+    coverCtaStyle: settings.coverCtaStyle,
+    listingLayout: listingLayout as "grid" | "list",
   };
 
-  const isList = isListLayout(settings);
   const sidebarOnLeft = useDesktopSidebar && sidebarPosition === "LEFT";
 
   const postsBlock = (
@@ -102,10 +122,23 @@ export function BlogListing({
           ))}
         </ul>
       ) : (
-        <ul className="grid grid-cols-1 gap-9 sm:grid-cols-2 sm:gap-x-7 sm:gap-y-11">
-          {gridPosts.map((post) => (
-            <li key={post.id} className="min-w-0">
-              <BlogArticleCard post={post} {...cardFlags} />
+        <ul
+          className={cn(
+            "grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2",
+            coverGrid
+              ? "lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-12"
+              : "sm:gap-x-7 sm:gap-y-11 lg:grid-cols-2",
+          )}
+        >
+          {gridPosts.map((post, index) => (
+            <li key={post.id} className="min-w-0 pt-3">
+              <BlogArticleCard
+                post={post}
+                {...cardFlags}
+                featured={Boolean(
+                  featured && post.id === featured.id && index === 0,
+                )}
+              />
             </li>
           ))}
         </ul>
@@ -138,7 +171,10 @@ export function BlogListing({
       {settings.showSearch ? (
         <form
           method="get"
-          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+          className={cn(
+            "flex flex-col gap-3 sm:flex-row sm:items-center",
+            coverGrid && "mx-auto max-w-xl",
+          )}
         >
           {categorySlug ? (
             <input type="hidden" name="category" value={categorySlug} />
@@ -151,11 +187,11 @@ export function BlogListing({
             name="q"
             defaultValue={q ?? ""}
             placeholder="Search articles"
-            className="w-full min-h-11 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 py-2 text-sm text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            className="w-full min-h-11 flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2 text-sm text-[var(--color-foreground)] shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
           />
           <button
             type="submit"
-            className="min-h-11 rounded-md bg-[var(--color-primary)] px-5 py-2 text-sm font-semibold text-[var(--color-button-foreground)]"
+            className="min-h-11 rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-semibold text-[var(--color-button-foreground)]"
           >
             Search
           </button>

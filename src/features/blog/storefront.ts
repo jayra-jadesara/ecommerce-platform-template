@@ -18,7 +18,7 @@ import type {
   StorefrontBlogPostSummary,
 } from "@/features/blog/types";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import type { Tables } from "@/types/database";
 
 function mapSettings(row: Tables<"blog_settings">): BlogSettings {
@@ -35,11 +35,7 @@ function fallbackSettings(storeId: string): BlogSettings {
 }
 
 function featuredImageUrl(path: string | null): string | null {
-  return (
-    resolvePublicStorageUrl("media", path) ??
-    resolvePublicStorageUrl("cms", path) ??
-    null
-  );
+  return resolveStoragePathUrl(path) ?? null;
 }
 
 type CategoryJoin = {

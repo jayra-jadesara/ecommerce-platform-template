@@ -3,11 +3,12 @@
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import { useEffect, useState } from "react";
 
+/** Britannia-style pennant “Back to top” control using theme primary. */
 export function ScrollToTop() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 320);
+    const onScroll = () => setVisible(window.scrollY > 280);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -18,19 +19,18 @@ export function ScrollToTop() {
   return (
     <button
       type="button"
-      aria-label="Scroll to top"
+      aria-label="Back to top"
       onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-      style={{
-        position: "fixed",
-        right: 24,
-        bottom: 24,
-        left: "auto",
-        top: "auto",
-        zIndex: 50,
-      }}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-foreground)_14%,transparent)] transition-[transform,background-color,border-color] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] motion-safe:hover:-translate-y-0.5"
+      className="sf-back-to-top group fixed bottom-8 right-4 z-50 flex flex-col items-center justify-start px-2.5 pb-3 pt-2 text-[var(--color-button-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] md:bottom-12 md:right-7"
     >
-      <KeyboardArrowUpIcon fontSize="small" />
+      <KeyboardArrowUpIcon
+        className="!text-[1.15rem] transition-transform motion-safe:group-hover:-translate-y-0.5"
+        aria-hidden
+      />
+      <span className="mt-0.5 flex flex-col items-center text-center font-bold uppercase leading-[1.05] tracking-[0.04em]">
+        <span className="text-[0.52rem]">Back to</span>
+        <span className="text-[0.72rem]">Top</span>
+      </span>
     </button>
   );
 }

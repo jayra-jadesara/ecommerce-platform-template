@@ -74,7 +74,85 @@ export const optionalPhone = z
   })
   .transform((v) => (v.trim() ? v.trim() : ""));
 
-export const LOGO_SIZE_OPTIONS = ["small", "medium", "large"] as const;
+const PHONE_LIKE = /^[+0-9()\-\s.]{5,40}$/;
+
+/** Digits only for wa.me path (country code + number, no +). */
+export function whatsappDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** True if value looks like a phone (not a URL). */
+export function isWhatsappPhoneInput(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/^https?:\/\//i.test(trimmed) || /wa\.me\//i.test(trimmed)) return false;
+  return PHONE_LIKE.test(trimmed) && whatsappDigits(trimmed).length >= 8;
+}
+
+/**
+ * Normalize for DB / storefront href: phone → https://wa.me/<digits>,
+ * existing http(s)/wa.me URLs kept; empty → "".
+ */
+export function normalizeWhatsappForStorage(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (isSafeHttpUrl(trimmed) && trimmed) {
+    try {
+      const url = new URL(trimmed);
+      if (url.hostname.replace(/^www\./, "") === "wa.me") {
+        const digits = whatsappDigits(url.pathname);
+        return digits ? `https://wa.me/${digits}` : trimmed;
+      }
+      return trimmed;
+    } catch {
+      return trimmed;
+    }
+  }
+  if (isWhatsappPhoneInput(trimmed)) {
+    const digits = whatsappDigits(trimmed);
+    return digits ? `https://wa.me/${digits}` : "";
+  }
+  return trimmed;
+}
+
+/** Form display: wa.me URL → +<digits>, otherwise as stored. */
+export function whatsappDisplayValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  try {
+    if (/^https?:\/\//i.test(trimmed) || trimmed.includes("wa.me/")) {
+      const url = new URL(
+        trimmed.startsWith("http") ? trimmed : `https://${trimmed}`,
+      );
+      if (url.hostname.replace(/^www\./, "") === "wa.me") {
+        const digits = whatsappDigits(url.pathname);
+        return digits ? `+${digits}` : trimmed;
+      }
+    }
+  } catch {
+    /* fall through */
+  }
+  return trimmed;
+}
+
+function isValidWhatsappInput(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return true;
+  if (isSafeHttpUrl(trimmed)) return true;
+  return isWhatsappPhoneInput(trimmed);
+}
+
+/** Phone number or chat URL; empty allowed. Storage normalization happens on save. */
+export const optionalWhatsapp = z
+  .string()
+  .trim()
+  .max(2048)
+  .refine((v) => isValidWhatsappInput(v), {
+    message: "Enter a WhatsApp number (with country code) or a wa.me / http(s) link.",
+  })
+  .transform((v) => (v.trim() ? v.trim() : ""));
+
+export const LOGO_SIZE_OPTIONS = ["small", "medium", "large", "xlarge"] as const;
 export type LogoSizeOption = (typeof LOGO_SIZE_OPTIONS)[number];
 
 export const BRANDING_IMAGE_MIME = [

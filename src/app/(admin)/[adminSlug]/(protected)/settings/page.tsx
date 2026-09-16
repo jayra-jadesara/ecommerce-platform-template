@@ -1,4 +1,5 @@
 import Link from "next/link";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import BrushOutlinedIcon from "@mui/icons-material/BrushOutlined";
 import PaletteOutlinedIcon from "@mui/icons-material/PaletteOutlined";
@@ -15,87 +16,113 @@ import { getAdminPath } from "@/config/admin-route";
 import type { Permission } from "@/features/auth/permissions";
 import { redirect } from "next/navigation";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { AdminCard } from "@/features/admin/ui/AdminCard";
-import { adminPageStack } from "@/features/admin/ui/admin-classes";
+import { adminCard } from "@/features/admin/ui/admin-classes";
+import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
-const MODULES: Array<{
+type SettingsModule = {
   href: string;
   title: string;
   description: string;
   permission: Permission;
   icon: SvgIconComponent;
-}> = [
+};
+
+type SettingsGroup = {
+  id: string;
+  label: string;
+  modules: SettingsModule[];
+};
+
+const GROUPS: SettingsGroup[] = [
   {
-    href: "/settings/general",
-    title: "Store Information",
-    description: "Name, contact details, currency, and social links.",
-    permission: "settings.view",
-    icon: StorefrontOutlinedIcon,
+    id: "identity",
+    label: "Identity & brand",
+    modules: [
+      {
+        href: "/settings/general",
+        title: "Store Information",
+        description: "Name, contact, currency, social",
+        permission: "settings.view",
+        icon: StorefrontOutlinedIcon,
+      },
+      {
+        href: "/settings/branding",
+        title: "Logo & Branding",
+        description: "Logo, favicon, brand assets",
+        permission: "branding.view",
+        icon: BrushOutlinedIcon,
+      },
+      {
+        href: "/settings/theme",
+        title: "Appearance",
+        description: "Colors, type, dark mode",
+        permission: "theme.view",
+        icon: PaletteOutlinedIcon,
+      },
+    ],
   },
   {
-    href: "/settings/branding",
-    title: "Logo & Branding",
-    description: "Logo, favicon, and brand identity assets.",
-    permission: "branding.view",
-    icon: BrushOutlinedIcon,
+    id: "commerce",
+    label: "Selling & checkout",
+    modules: [
+      {
+        href: "/settings/shipping",
+        title: "Shipping",
+        description: "Delivery, courier, returns",
+        permission: "shipping.view",
+        icon: LocalShippingOutlinedIcon,
+      },
+      {
+        href: "/settings/payments",
+        title: "Payments",
+        description: "Checkout methods & fees",
+        permission: "payments.view",
+        icon: PaymentsOutlinedIcon,
+      },
+      {
+        href: "/settings/coupons",
+        title: "Coupons",
+        description: "Discount codes",
+        permission: "coupons.view",
+        icon: LocalOfferOutlinedIcon,
+      },
+    ],
   },
   {
-    href: "/settings/theme",
-    title: "Appearance",
-    description: "Customize colors, typography, dark mode and visual style.",
-    permission: "theme.view",
-    icon: PaletteOutlinedIcon,
-  },
-  {
-    href: "/settings/navigation",
-    title: "Menu & Navigation",
-    description: "Choose which pages appear in your store menu.",
-    permission: "navigation.view",
-    icon: MenuOutlinedIcon,
-  },
-  {
-    href: "/settings/shipping",
-    title: "Shipping",
-    description: "Delivery price, auto-deliver or courier, and return policy.",
-    permission: "shipping.view",
-    icon: LocalShippingOutlinedIcon,
-  },
-  {
-    href: "/settings/payments",
-    title: "Payments",
-    description: "How customers pay and any checkout fees.",
-    permission: "payments.view",
-    icon: PaymentsOutlinedIcon,
-  },
-  {
-    href: "/settings/coupons",
-    title: "Coupons",
-    description: "Discount codes for checkout.",
-    permission: "coupons.view",
-    icon: LocalOfferOutlinedIcon,
-  },
-  {
-    href: "/settings/seo",
-    title: "Google & SEO",
-    description: "How your store appears in search and social sharing.",
-    permission: "seo.view",
-    icon: TravelExploreOutlinedIcon,
-  },
-  {
-    href: "/settings/header",
-    title: "Header layout",
-    description: "Announcement bar, sticky header, and logo size.",
-    permission: "settings.view",
-    icon: ViewAgendaOutlinedIcon,
-  },
-  {
-    href: "/settings/footer",
-    title: "Footer layout",
-    description: "Footer text and which contact details to show.",
-    permission: "settings.view",
-    icon: VerticalAlignBottomOutlinedIcon,
+    id: "storefront",
+    label: "Storefront & discovery",
+    modules: [
+      {
+        href: "/settings/navigation",
+        title: "Menu & Navigation",
+        description: "Store menu pages",
+        permission: "navigation.view",
+        icon: MenuOutlinedIcon,
+      },
+      {
+        href: "/settings/seo",
+        title: "Google & SEO",
+        description: "Search & social sharing",
+        permission: "seo.view",
+        icon: TravelExploreOutlinedIcon,
+      },
+      {
+        href: "/settings/header",
+        title: "Header layout",
+        description: "Bar, sticky, logo size",
+        permission: "settings.view",
+        icon: ViewAgendaOutlinedIcon,
+      },
+      {
+        href: "/settings/footer",
+        title: "Footer layout",
+        description: "Footer text & contacts",
+        permission: "settings.view",
+        icon: VerticalAlignBottomOutlinedIcon,
+      },
+    ],
   },
 ];
 
@@ -119,37 +146,74 @@ export default async function AdminSettingsPage() {
     redirect(getAdminPath("/unauthorized"));
   }
 
-  const visible = MODULES.filter((mod) => hasPermission(admin, mod.permission));
+  const visibleGroups = GROUPS.map((group) => ({
+    ...group,
+    modules: group.modules.filter((mod) =>
+      hasPermission(admin, mod.permission),
+    ),
+  })).filter((group) => group.modules.length > 0);
 
   return (
-    <div className={adminPageStack()}>
-      <AdminPageHeader
-        title="Store Settings"
-        description="Manage how your store looks, works and appears to customers."
-        breadcrumbs={[{ label: "Store Settings" }]}
-      />
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {visible.map((mod) => {
-          const Icon = mod.icon;
-          return (
-            <li key={mod.href}>
-              <Link href={getAdminPath(mod.href)} className="group block h-full">
-                <AdminCard interactive className="h-full">
-                  <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
-                    <Icon fontSize="small" />
-                  </span>
-                  <p className="font-semibold tracking-tight group-hover:text-[var(--color-primary)]">
-                    {mod.title}
-                  </p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-[var(--color-muted)]">
-                    {mod.description}
-                  </p>
-                </AdminCard>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <div className="flex flex-col gap-4">
+      <div className="[&>header]:mb-2 [&>header]:space-y-1.5">
+        <AdminPageHeader
+          title="Store Settings"
+          description="Identity, checkout, and storefront — in one place."
+          breadcrumbs={[{ label: "Store Settings" }]}
+        />
+      </div>
+
+      <div className="flex flex-col gap-4">
+        {visibleGroups.map((group) => (
+          <section key={group.id} className="space-y-2">
+            <h2 className="px-0.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+              {group.label}
+            </h2>
+            <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              {group.modules.map((mod) => {
+                const Icon = mod.icon;
+                return (
+                  <li key={mod.href}>
+                    <Link
+                      href={getAdminPath(mod.href)}
+                      className="group block h-full focus-visible:outline-none"
+                    >
+                      <div
+                        className={cn(
+                          adminCard(),
+                          "flex h-full items-start gap-3 px-3.5 py-3 transition-[border-color,box-shadow] duration-150",
+                          "hover:border-[color-mix(in_srgb,var(--color-primary)_40%,var(--color-border))]",
+                          "hover:shadow-[0_6px_16px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]",
+                          "group-focus-visible:border-[color-mix(in_srgb,var(--color-primary)_50%,var(--color-border))]",
+                          "group-focus-visible:ring-2 group-focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_28%,transparent)]",
+                        )}
+                      >
+                        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                          <Icon sx={{ fontSize: 18 }} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-[13px] font-semibold tracking-tight text-[var(--color-foreground)] transition-colors group-hover:text-[var(--color-primary)]">
+                              {mod.title}
+                            </p>
+                            <ArrowForwardRoundedIcon
+                              className="shrink-0 text-[var(--color-muted)] opacity-0 transition-opacity group-hover:opacity-100 group-hover:text-[var(--color-primary)]"
+                              sx={{ fontSize: 16 }}
+                            />
+                          </div>
+                          <p className="mt-0.5 truncate text-xs leading-snug text-[var(--color-muted)]">
+                            {mod.description}
+                          </p>
+                        </div>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

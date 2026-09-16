@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ShoppingCartOutlinedIcon from "@mui/icons-material/ShoppingCartOutlined";
-import IconButton from "@mui/material/IconButton";
 import Drawer from "@mui/material/Drawer";
 import { useState } from "react";
 import {
@@ -24,22 +23,26 @@ import { EmptyState, emptyStateCtaClass } from "@/components/ui/EmptyState";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
+const cartTriggerClassName =
+  "inline-flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-header-foreground)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-header-foreground)_8%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
+
 /**
  * Suspense fallback only — must not call useQuery.
+ * Native button avoids MUI Emotion SSR/client class mismatches.
  * A zero-count HeaderCartControl fallback would seed the shared QueryClient
  * cache with 0 and cause SSR/client hydration mismatches once the real count streams in.
  */
 export function HeaderCartControlFallback() {
   return (
-    <IconButton
-      aria-label="Open cart"
-      size="medium"
-      className="!text-[var(--color-header-foreground)]"
+    <button
+      type="button"
+      aria-label="Open cart, 0 packages"
+      className={cartTriggerClassName}
     >
       <span className="relative inline-flex">
         <ShoppingCartOutlinedIcon fontSize="small" />
       </span>
-    </IconButton>
+    </button>
   );
 }
 
@@ -98,11 +101,11 @@ export function HeaderCartControl({
 
   return (
     <>
-      <IconButton
+      <button
+        type="button"
         aria-label={`Open cart, ${badgeCount} ${packageWord}`}
-        size="medium"
         onClick={openDrawer}
-        className="!text-[var(--color-header-foreground)]"
+        className={cartTriggerClassName}
       >
         <span className="relative inline-flex">
           <ShoppingCartOutlinedIcon fontSize="small" />
@@ -112,7 +115,7 @@ export function HeaderCartControl({
             </span>
           ) : null}
         </span>
-      </IconButton>
+      </button>
 
       <Drawer
         anchor="right"

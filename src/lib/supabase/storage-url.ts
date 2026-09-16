@@ -1,5 +1,25 @@
-import { type StorageBucket } from "@/lib/supabase/storage";
+import {
+  STORAGE_BUCKETS,
+  type StorageBucket,
+} from "@/lib/supabase/storage";
 import { normalizeSupabaseUrl } from "@/lib/supabase/env";
+
+const BUCKET_SET = new Set<string>(Object.values(STORAGE_BUCKETS));
+
+/**
+ * Infer the storage bucket from a stored object path.
+ * Paths are usually `{bucket}/{storeId}/…` inside that same-named bucket.
+ */
+export function inferStorageBucket(
+  path: string | null | undefined,
+): StorageBucket | null {
+  if (!path?.trim()) return null;
+  const normalized = path.trim().replace(/^\/+/, "");
+  if (/^https?:\/\//i.test(normalized)) return null;
+  const first = normalized.split("/")[0]?.toLowerCase();
+  if (first && BUCKET_SET.has(first)) return first as StorageBucket;
+  return null;
+}
 
 /**
  * Build a public object URL for Supabase Storage.
@@ -21,6 +41,37 @@ export function resolvePublicStorageUrl(
   if (!base) return undefined;
 
   return `${base}/storage/v1/object/public/${bucket}/${normalized}`;
+}
+
+/**
+ * Resolve a stored path (or absolute URL) to a public object URL.
+ * Prefers the bucket implied by the path prefix so callers do not guess wrong
+ * (e.g. cms covers must not be requested under the media bucket).
+ */
+export function resolveStoragePathUrl(
+  path: string | null | undefined,
+  preferred: StorageBucket[] = [
+    "cms",
+    "media",
+    "products",
+    "categories",
+    "branding",
+  ],
+): string | undefined {
+  if (!path?.trim()) return undefined;
+  const normalized = path.trim().replace(/^\/+/, "");
+  if (/^https?:\/\//i.test(normalized)) return normalized;
+
+  const inferred = inferStorageBucket(normalized);
+  if (inferred) {
+    return resolvePublicStorageUrl(inferred, normalized);
+  }
+
+  for (const bucket of preferred) {
+    const url = resolvePublicStorageUrl(bucket, normalized);
+    if (url) return url;
+  }
+  return undefined;
 }
 
 export type StorageImageTransform = {

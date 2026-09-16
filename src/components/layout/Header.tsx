@@ -28,7 +28,18 @@ const LOGO_HEIGHT: Record<HeaderChromeConfig["logoSize"], string> = {
   small: "h-9 md:h-10",
   medium: "h-11 md:h-12",
   large: "h-12 md:h-14",
+  xlarge: "h-14 md:h-16 lg:h-20",
 };
+
+/** One step smaller than default — Britannia-style compact bar on scroll. */
+const LOGO_HEIGHT_SCROLLED: Record<HeaderChromeConfig["logoSize"], string> = {
+  small: "h-7 md:h-8",
+  medium: "h-8 md:h-9",
+  large: "h-9 md:h-10",
+  xlarge: "h-10 md:h-11 lg:h-12",
+};
+
+const SCROLL_SHRINK_THRESHOLD_PX = 24;
 
 interface HeaderProps {
   brand: BrandConfig;
@@ -123,7 +134,8 @@ export function Header({
   }
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
+    const onScroll = () =>
+      setScrolled(window.scrollY > SCROLL_SHRINK_THRESHOLD_PX);
     const id = window.requestAnimationFrame(onScroll);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
@@ -144,17 +156,31 @@ export function Header({
   const showCart = header.cartEnabled;
   const showSearch = header.searchEnabled;
   const showTagline = isMeaningfulTagline(brand.tagline);
+  const logoSize = header.logoSize;
+  const logoHeightClass = scrolled
+    ? LOGO_HEIGHT_SCROLLED[logoSize]
+    : LOGO_HEIGHT[logoSize];
+  const textLogoClass = scrolled
+    ? "text-base md:text-lg"
+    : "text-xl md:text-[1.35rem]";
 
   return (
     <header
       className={cn(
-        "relative isolate z-50 border-b border-[var(--color-border)] bg-[var(--color-header-background)] text-[var(--color-header-foreground)]",
+        "relative isolate z-50 border-b border-[var(--color-border)] bg-[var(--color-header-background)] text-[var(--color-header-foreground)] transition-[box-shadow,border-color] duration-300 ease-out motion-reduce:transition-none",
         sticky && "sticky top-0",
         scrolled &&
-          "shadow-[0_8px_24px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]",
+          "border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]",
       )}
     >
-      <Container className="flex min-h-[4.25rem] items-center gap-4 py-2 md:min-h-[5rem] md:gap-6">
+      <Container
+        className={cn(
+          "flex items-center gap-4 transition-[min-height,padding] duration-300 ease-out motion-reduce:transition-none md:gap-6",
+          scrolled
+            ? "min-h-[3.5rem] py-1.5 md:min-h-[3.75rem]"
+            : "min-h-[4.25rem] py-2 md:min-h-[5rem]",
+        )}
+      >
         <Link
           href="/"
           className="relative z-10 flex min-w-0 shrink-0 flex-col items-start gap-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
@@ -164,15 +190,31 @@ export function Header({
             <img
               src={logoSrc}
               alt={brand.logoAlt ?? brand.name}
-              className={cn("w-auto object-contain", LOGO_HEIGHT[header.logoSize])}
+              className={cn(
+                "w-auto object-contain transition-[height,max-height] duration-300 ease-out motion-reduce:transition-none",
+                logoHeightClass,
+              )}
             />
           ) : (
-            <span className="font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight">
+            <span
+              className={cn(
+                "font-[family-name:var(--font-display)] font-semibold tracking-tight transition-[font-size] duration-300 ease-out motion-reduce:transition-none",
+                textLogoClass,
+              )}
+            >
               {brand.name}
             </span>
           )}
           {showTagline ? (
-            <span className="max-w-[11rem] truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--color-header-foreground)_62%,transparent)] sm:max-w-[14rem]">
+            <span
+              className={cn(
+                "max-w-[11rem] truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--color-header-foreground)_62%,transparent)] transition-[opacity,max-height,margin] duration-300 ease-out motion-reduce:transition-none sm:max-w-[14rem]",
+                scrolled
+                  ? "pointer-events-none max-h-0 overflow-hidden opacity-0"
+                  : "max-h-6 opacity-100",
+              )}
+              aria-hidden={scrolled || undefined}
+            >
               {brand.tagline}
             </span>
           ) : null}

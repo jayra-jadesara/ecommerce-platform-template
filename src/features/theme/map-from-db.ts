@@ -160,6 +160,8 @@ export type SettingsRow = {
   footer_show_social?: boolean | null;
   footer_show_newsletter?: boolean | null;
   footer_nav_visible?: boolean | null;
+  footer_show_featured_product?: boolean | null;
+  footer_featured_product_id?: string | null;
   copyright_text?: string | null;
 };
 
@@ -381,7 +383,14 @@ export function mapNavigationRowsToConfig(
 }
 
 function coerceLogoSize(value: string | null | undefined): LogoSize {
-  if (value === "small" || value === "medium" || value === "large") return value;
+  if (
+    value === "small" ||
+    value === "medium" ||
+    value === "large" ||
+    value === "xlarge"
+  ) {
+    return value;
+  }
   return "medium";
 }
 
@@ -452,6 +461,9 @@ export function mapSettingsRowToFooter(
     showNewsletter: row.footer_show_newsletter ?? fallback.showNewsletter,
     navVisible: row.footer_nav_visible ?? fallback.navVisible,
     copyrightText: row.copyright_text?.trim() || undefined,
+    showFeaturedProduct:
+      row.footer_show_featured_product ?? fallback.showFeaturedProduct,
+    featuredProductId: row.footer_featured_product_id ?? null,
   };
 }
 
