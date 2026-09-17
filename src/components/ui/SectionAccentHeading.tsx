@@ -156,6 +156,8 @@ export function SectionAccentHeading({
     <Tag
       className={cn(
         "font-[family-name:var(--font-display)] font-semibold tracking-tight text-[var(--color-foreground)]",
+        align === "center" && "w-full text-center",
+        align === "left" && "text-left",
         className,
       )}
       style={{

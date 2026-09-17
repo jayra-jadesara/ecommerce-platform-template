@@ -3,7 +3,11 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
+    "dev:webpack": "next dev --webpack",
+    "dev:clean": "node scripts/clean-next-cache.mjs && next dev --webpack",
+    "dev:tips": "node scripts/dev-fs-tips.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -12,7 +16,8 @@
     "init:store": "node scripts/init-store.mjs",
     "bootstrap:admin": "node scripts/create-default-admin.mjs",
     "scan:secrets": "node scripts/scan-secrets.mjs",
-    "verify:production": "node scripts/verify-production.mjs"
+    "verify:production": "node scripts/verify-production.mjs",
+    "clean:next": "node scripts/clean-next-cache.mjs"
   },
   "dependencies": {
     "@emotion/cache": "^11.14.0",

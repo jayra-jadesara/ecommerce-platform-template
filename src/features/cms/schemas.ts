@@ -273,6 +273,24 @@ export const aboutTimelineItemSchema = z.object({
     .pipe(z.string().max(500).nullable()),
 });
 
+/** About page auto-sliding gallery item. */
+export const aboutGallerySlideSchema = z.object({
+  imagePath: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => (v == null || v === "" ? null : String(v)))
+    .pipe(z.string().max(500).nullable()),
+  title: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(z.string().max(200)),
+  description: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(z.string().max(500)),
+});
+
+export type AboutGallerySlideConfig = z.infer<typeof aboutGallerySlideSchema>;
+
 export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   heading: shortTextSchema.default(""),
   description: z.string().max(4000).optional().default(""),
@@ -289,6 +307,11 @@ export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
     .optional()
     .default(null),
   timelineItems: z.array(aboutTimelineItemSchema).max(24).default([]),
+  /** Auto image gallery (below story; hidden when galleryEnabled is false). */
+  galleryEnabled: z.boolean().default(false),
+  galleryAutoplayMs: z.number().int().min(0).max(30_000).default(4500),
+  galleryShowArrows: z.boolean().default(true),
+  gallerySlides: z.array(aboutGallerySlideSchema).max(8).default([]),
   buttonText: z.string().max(80).optional().default(""),
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });

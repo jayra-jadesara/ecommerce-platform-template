@@ -369,6 +369,23 @@ export function SectionEditorPreview({
         label?: string;
       }>) ?? []
     ).filter((item) => text(item.year) || text(item.label));
+    const gallerySlides = (
+      (config.gallerySlides as Array<{
+        imagePath?: string | null;
+        title?: string;
+        description?: string;
+      }>) ?? []
+    ).filter(
+      (slide) =>
+        Boolean(slide.imagePath?.trim()) ||
+        Boolean(slide.title?.trim()) ||
+        Boolean(slide.description?.trim()),
+    );
+    const showGallery =
+      Boolean(config.galleryEnabled) && gallerySlides.length > 0;
+    const firstGallery = showGallery
+      ? resolveCmsImageUrl(gallerySlides[0]?.imagePath ?? null)
+      : null;
     return (
       <PreviewShell>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
@@ -416,6 +433,33 @@ export function SectionEditorPreview({
             ) : null}
           </div>
         </div>
+        {showGallery ? (
+          <div className="border-t border-[var(--color-border)] px-4 py-3">
+            <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              Factory & certificates · {gallerySlides.length} card
+              {gallerySlides.length === 1 ? "" : "s"}
+            </p>
+            <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[var(--color-surface)]">
+              {firstGallery ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={firstGallery}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+              ) : (
+                <p className="flex h-full items-center justify-center text-xs text-[var(--color-muted)]">
+                  Gallery slide
+                </p>
+              )}
+            </div>
+            {text(gallerySlides[0]?.title) ? (
+              <p className="mt-2 text-center text-xs font-semibold text-[var(--color-foreground)]">
+                {text(gallerySlides[0]?.title)}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
         {stops.length > 0 ? (
           <div className="border-t border-[var(--color-border)] px-4 py-3">
             <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">

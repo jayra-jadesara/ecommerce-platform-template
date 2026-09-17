@@ -1,4 +1,6 @@
-@import "tailwindcss";
+/* Limit class scanning to `src/` — avoids walking node_modules / HDD noise. */
+@import "tailwindcss" source(none);
+@source "..";
 @import "../styles/tokens.css";
 @import "../styles/storefront.css";
 @import "../styles/admin.css";

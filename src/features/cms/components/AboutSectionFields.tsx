@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import TextField from "@mui/material/TextField";
 import {
   adminFieldGroup,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { StorePageLinkField } from "@/features/admin/ui/StorePageLinkField";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 
@@ -113,6 +115,26 @@ export function AboutSectionFields({
   onChange,
   onPickMedia,
 }: AboutSectionFieldsProps) {
+  const timelineItems =
+    (config.timelineItems as Array<{
+      label?: string;
+      year?: string;
+      description?: string;
+      logoPath?: string | null;
+    }>) ?? [];
+  const [expandedBogie, setExpandedBogie] = useState<number | null>(
+    timelineItems.length > 0 ? 0 : null,
+  );
+  const gallerySlides =
+    (config.gallerySlides as Array<{
+      imagePath?: string | null;
+      title?: string;
+      description?: string;
+    }>) ?? [];
+  const [expandedGallery, setExpandedGallery] = useState<number | null>(
+    gallerySlides.length > 0 ? 0 : null,
+  );
+
   function setField(key: string, value: unknown) {
     onChange({ ...config, [key]: value });
   }
@@ -160,7 +182,7 @@ export function AboutSectionFields({
       <div className={adminFieldGroup()} style={adminStackStyle}>
         <p className="admin-field-group__title">2. Portrait</p>
         <p className="admin-field-group__hint">
-          Photo shown beside the story, with an optional name/role badge.
+          Photo shown beside the story, with an optional name/role caption.
         </p>
         <ImageField
           label="Portrait image"
@@ -173,191 +195,183 @@ export function AboutSectionFields({
           fullWidth
           value={String(config.imageCaptionName ?? "")}
           onChange={(e) => setField("imageCaptionName", e.target.value)}
-          helperText="Shown on the photo badge"
+          helperText='Optional — e.g. founder name. Clear if unused.'
         />
         <TextField
           label="Caption role"
           fullWidth
           value={String(config.imageCaptionRole ?? "")}
           onChange={(e) => setField("imageCaptionRole", e.target.value)}
-          helperText='Example: "Founder"'
+          helperText='Optional — e.g. "Founder". Clear if unused.'
         />
       </div>
 
       <div className={adminFieldGroup()} style={adminStackStyle}>
         <p className="admin-field-group__title">3. Heritage train</p>
-        <div className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-primary)_8%,var(--color-card)),var(--color-card)_55%)] shadow-[0_1px_0_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
-          <div className="border-b border-[var(--color-border)] px-4 py-3.5">
-            <p className="text-sm font-semibold tracking-tight text-[var(--color-foreground)]">
-              Engine → bogie → bogie
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
-              Each milestone appears above <strong>two bogies</strong> on the
-              storefront (Britannia-style spacing). Fill year, short title, and
-              a one-line story. Use one shared wheel photo for the whole train.
-              Leave the list empty to hide the train.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2 px-4 py-3">
-            {BOGIE_FILL_EXAMPLES.map((ex) => (
-              <div
-                key={ex.year}
-                className="min-w-[9.5rem] flex-1 rounded-xl border border-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-border))] bg-[var(--color-card)] px-3 py-2.5"
-              >
-                <p
-                  className="text-base font-bold leading-none text-[var(--color-primary)]"
-                  style={{ fontFamily: "var(--font-display), ui-serif, Georgia, serif" }}
-                >
-                  {ex.year}
-                </p>
-                <p className="mt-1 text-xs font-semibold text-[var(--color-foreground)]">
-                  {ex.label}
-                </p>
-                <p className="mt-0.5 line-clamp-2 text-[0.65rem] leading-snug text-[var(--color-muted)]">
-                  {ex.description}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="border-t border-[var(--color-border)] px-4 py-2 text-[0.65rem] text-[var(--color-muted)]">
-            Examples above — copy the pattern for your brand history (up to 24
-            bogies).
-          </p>
-        </div>
+        <p className="admin-field-group__hint">
+          Compact milestone list (year + title + story). Click a row to edit.
+          Empty list hides the train. Pattern: year “1892”, title “Founded”,
+          one short sentence.
+        </p>
         <ImageField
           label="Wheel image (same on every wheel)"
           value={(config.engineWheelImagePath as string | null) ?? null}
           onPick={() => onPickMedia("engineWheelImagePath")}
           onClear={() => setField("engineWheelImagePath", null)}
         />
-        <p className="text-xs text-[var(--color-muted)]">
-          One product photo for the locomotive and every bogie. Required for a
-          polished train look.
-        </p>
-        {(
-          (config.timelineItems as Array<{
-            label?: string;
-            year?: string;
-            description?: string;
-            logoPath?: string | null;
-          }>) ?? []
-        ).map((item, index) => {
-          const items =
-            (config.timelineItems as Array<Record<string, unknown>>) ?? [];
-          const example = bogieExample(index);
-          const updateItem = (patch: Record<string, unknown>) => {
-            const next = [...items];
-            next[index] = { ...next[index], ...patch };
-            setField("timelineItems", next);
-          };
-          const moveItem = (dir: -1 | 1) => {
-            const target = index + dir;
-            if (target < 0 || target >= items.length) return;
-            const next = [...items];
-            const [row] = next.splice(index, 1);
-            next.splice(target, 0, row);
-            setField("timelineItems", next);
-          };
-          return (
-            <div
-              key={`timeline-${index}`}
-              className="relative overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_8px_24px_color-mix(in_srgb,#000_4%,transparent)]"
-            >
-              <div
-                className="absolute inset-y-0 left-0 w-1 bg-[linear-gradient(180deg,var(--color-primary),color-mix(in_srgb,var(--color-primary)_40%,var(--color-accent)))]"
-                aria-hidden
-              />
-              <div
-                className="pl-4 pr-3 pt-3.5 pb-4"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.9rem",
-                }}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5">
-                    <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] px-2 text-xs font-bold tracking-wide text-[var(--color-primary)]">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
-                    <div>
-                      <p className="text-sm font-semibold text-[var(--color-foreground)]">
-                        Bogie {index + 1}
-                      </p>
-                      <p className="text-[0.65rem] text-[var(--color-muted)]">
-                        Milestone on the heritage train
-                      </p>
+        <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+          {timelineItems.length === 0 ? (
+            <p className="px-3 py-4 text-center text-xs text-[var(--color-muted)]">
+              No milestones yet — add your first bogie below.
+            </p>
+          ) : (
+            <ul className="divide-y divide-[var(--color-border)]">
+              {timelineItems.map((item, index) => {
+                const items =
+                  (config.timelineItems as Array<Record<string, unknown>>) ??
+                  [];
+                const example = bogieExample(index);
+                const open = expandedBogie === index;
+                const updateItem = (patch: Record<string, unknown>) => {
+                  const next = [...items];
+                  next[index] = { ...next[index], ...patch };
+                  setField("timelineItems", next);
+                };
+                const moveItem = (dir: -1 | 1) => {
+                  const target = index + dir;
+                  if (target < 0 || target >= items.length) return;
+                  const next = [...items];
+                  const [row] = next.splice(index, 1);
+                  next.splice(target, 0, row);
+                  setField("timelineItems", next);
+                  setExpandedBogie(target);
+                };
+                const year = String(item.year ?? "").trim();
+                const label = String(item.label ?? "").trim();
+                return (
+                  <li key={`timeline-${index}`}>
+                    <div className="flex items-stretch gap-1">
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
+                        onClick={() =>
+                          setExpandedBogie(open ? null : index)
+                        }
+                        aria-expanded={open}
+                      >
+                        <span className="w-6 shrink-0 text-center text-[0.7rem] font-bold tabular-nums text-[var(--color-muted)]">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <span
+                          className="w-14 shrink-0 text-sm font-bold text-[var(--color-primary)]"
+                          style={{
+                            fontFamily:
+                              "var(--font-display), ui-serif, Georgia, serif",
+                          }}
+                        >
+                          {year || "—"}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
+                          {label || "Untitled milestone"}
+                        </span>
+                        <span className="shrink-0 text-[0.65rem] text-[var(--color-muted)]">
+                          {open ? "Hide" : "Edit"}
+                        </span>
+                      </button>
+                      <div className="flex shrink-0 items-center gap-0.5 pr-2">
+                        <button
+                          type="button"
+                          className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                          disabled={index === 0}
+                          aria-label="Move up"
+                          onClick={() => moveItem(-1)}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                          disabled={index >= items.length - 1}
+                          aria-label="Move down"
+                          onClick={() => moveItem(1)}
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
+                          aria-label="Remove bogie"
+                          onClick={() => {
+                            const next = [...items];
+                            next.splice(index, 1);
+                            setField("timelineItems", next);
+                            setExpandedBogie((cur) => {
+                              if (cur == null) return null;
+                              if (cur === index) return null;
+                              if (cur > index) return cur - 1;
+                              return cur;
+                            });
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-1">
-                    <button
-                      type="button"
-                      className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-foreground)] disabled:opacity-35"
-                      disabled={index === 0}
-                      onClick={() => moveItem(-1)}
-                    >
-                      ← Left
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-muted)] transition hover:bg-[var(--color-surface)] hover:text-[var(--color-foreground)] disabled:opacity-35"
-                      disabled={index >= items.length - 1}
-                      onClick={() => moveItem(1)}
-                    >
-                      Right →
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md px-2 py-1 text-xs font-medium text-[var(--color-error)] transition hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
-                      onClick={() => {
-                        const next = [...items];
-                        next.splice(index, 1);
-                        setField("timelineItems", next);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
-                  <TextField
-                    label="Year"
-                    fullWidth
-                    size="small"
-                    value={String(item.year ?? "")}
-                    onChange={(e) => updateItem({ year: e.target.value })}
-                    placeholder={example.year}
-                    helperText={`e.g. ${example.year}`}
-                  />
-                  <TextField
-                    label="Short title"
-                    fullWidth
-                    size="small"
-                    value={String(item.label ?? "")}
-                    onChange={(e) => updateItem({ label: e.target.value })}
-                    placeholder={example.label}
-                    helperText={`e.g. “${example.label}” — sits above this bogie`}
-                  />
-                </div>
-                <TextField
-                  label="Description"
-                  fullWidth
-                  size="small"
-                  multiline
-                  minRows={2}
-                  value={String(item.description ?? "")}
-                  onChange={(e) => updateItem({ description: e.target.value })}
-                  placeholder={example.description}
-                  helperText="One or two sentences under the title on this stop"
-                />
-              </div>
-            </div>
-          );
-        })}
+                    {open ? (
+                      <div
+                        className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "0.75rem",
+                        }}
+                      >
+                        <div className="grid gap-2 sm:grid-cols-[6.5rem_minmax(0,1fr)]">
+                          <TextField
+                            label="Year"
+                            fullWidth
+                            size="small"
+                            value={String(item.year ?? "")}
+                            onChange={(e) =>
+                              updateItem({ year: e.target.value })
+                            }
+                            placeholder={example.year}
+                          />
+                          <TextField
+                            label="Short title"
+                            fullWidth
+                            size="small"
+                            value={String(item.label ?? "")}
+                            onChange={(e) =>
+                              updateItem({ label: e.target.value })
+                            }
+                            placeholder={example.label}
+                          />
+                        </div>
+                        <TextField
+                          label="Description"
+                          fullWidth
+                          size="small"
+                          multiline
+                          minRows={2}
+                          value={String(item.description ?? "")}
+                          onChange={(e) =>
+                            updateItem({ description: e.target.value })
+                          }
+                          placeholder={example.description}
+                        />
+                      </div>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
         <button
           type="button"
-          className="group flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))] px-4 py-3.5 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_9%,var(--color-card))] disabled:opacity-50"
-          disabled={((config.timelineItems as unknown[]) ?? []).length >= 24}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)] disabled:opacity-50"
+          disabled={timelineItems.length >= 24}
           onClick={() => {
             const current = (config.timelineItems as unknown[]) ?? [];
             if (current.length >= 24) return;
@@ -365,15 +379,232 @@ export function AboutSectionFields({
               ...current,
               { label: "", year: "", description: "", logoPath: null },
             ]);
+            setExpandedBogie(current.length);
           }}
         >
           <span className="text-base leading-none">+</span>
-          Add bogie / milestone
+          Add milestone
         </button>
       </div>
 
       <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">4. Button (optional)</p>
+        <p className="admin-field-group__title">4. Factory & certificates</p>
+        <p className="admin-field-group__hint">
+          Factory, quality seal, and process photos — managed like train
+          milestones. Image is optional. All cards show in one row and slide
+          together on the storefront. Toggle off to hide on /about.
+        </p>
+        <AdminToggle
+          checked={Boolean(config.galleryEnabled)}
+          onChange={(checked) => setField("galleryEnabled", checked)}
+          label="Show factory & certificate gallery on storefront"
+        />
+        {Boolean(config.galleryEnabled) ? (
+          <>
+            <TextField
+              label="Autoplay interval (seconds)"
+              type="number"
+              fullWidth
+              size="small"
+              slotProps={{ htmlInput: { min: 0, max: 30, step: 0.5 } }}
+              value={
+                Number(config.galleryAutoplayMs ?? 4500) <= 0
+                  ? 0
+                  : Number(config.galleryAutoplayMs ?? 4500) / 1000
+              }
+              onChange={(e) => {
+                const seconds = Number(e.target.value);
+                if (!Number.isFinite(seconds) || seconds <= 0) {
+                  setField("galleryAutoplayMs", 0);
+                  return;
+                }
+                setField(
+                  "galleryAutoplayMs",
+                  Math.min(30_000, Math.round(seconds * 1000)),
+                );
+              }}
+              helperText="Speed for the shared row scroll. 0 = static row (no motion)."
+            />
+            <AdminToggle
+              checked={config.galleryShowArrows !== false}
+              onChange={(checked) => setField("galleryShowArrows", checked)}
+              label="Show direction arrows (when 2+ cards)"
+            />
+            <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+              {gallerySlides.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-[var(--color-muted)]">
+                  No items yet — add factory / certificate cards below.
+                </p>
+              ) : (
+                <ul className="divide-y divide-[var(--color-border)]">
+                  {gallerySlides.map((slide, index) => {
+                    const slides =
+                      (config.gallerySlides as Array<
+                        Record<string, unknown>
+                      >) ?? [];
+                    const open = expandedGallery === index;
+                    const updateSlide = (patch: Record<string, unknown>) => {
+                      const next = [...slides];
+                      next[index] = { ...next[index], ...patch };
+                      setField("gallerySlides", next);
+                    };
+                    const moveSlide = (dir: -1 | 1) => {
+                      const target = index + dir;
+                      if (target < 0 || target >= slides.length) return;
+                      const next = [...slides];
+                      const [row] = next.splice(index, 1);
+                      next.splice(target, 0, row);
+                      setField("gallerySlides", next);
+                      setExpandedGallery(target);
+                    };
+                    const title = String(slide.title ?? "").trim();
+                    const thumb = resolveCmsImageUrl(slide.imagePath);
+                    return (
+                      <li key={`gallery-row-${index}`}>
+                        <div className="flex items-stretch gap-1">
+                          <button
+                            type="button"
+                            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
+                            onClick={() =>
+                              setExpandedGallery(open ? null : index)
+                            }
+                            aria-expanded={open}
+                          >
+                            <span className="w-6 shrink-0 text-center text-[0.7rem] font-bold tabular-nums text-[var(--color-muted)]">
+                              {String(index + 1).padStart(2, "0")}
+                            </span>
+                            <span className="relative h-9 w-12 shrink-0 overflow-hidden rounded border border-[var(--color-border)] bg-[var(--color-surface)]">
+                              {thumb ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-full items-center justify-center text-[0.55rem] text-[var(--color-muted)]">
+                                  —
+                                </span>
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
+                              {title || "Untitled card"}
+                            </span>
+                            <span className="shrink-0 text-[0.65rem] text-[var(--color-muted)]">
+                              {open ? "Hide" : "Edit"}
+                            </span>
+                          </button>
+                          <div className="flex shrink-0 items-center gap-0.5 pr-2">
+                            <button
+                              type="button"
+                              className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                              disabled={index === 0}
+                              aria-label="Move up"
+                              onClick={() => moveSlide(-1)}
+                            >
+                              ↑
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                              disabled={index >= slides.length - 1}
+                              aria-label="Move down"
+                              onClick={() => moveSlide(1)}
+                            >
+                              ↓
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
+                              aria-label="Remove card"
+                              onClick={() => {
+                                const next = [...slides];
+                                next.splice(index, 1);
+                                setField("gallerySlides", next);
+                                setExpandedGallery((cur) => {
+                                  if (cur == null) return null;
+                                  if (cur === index) return null;
+                                  if (cur > index) return cur - 1;
+                                  return cur;
+                                });
+                              }}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                        {open ? (
+                          <div
+                            className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3"
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: "0.75rem",
+                            }}
+                          >
+                            <ImageField
+                              label="Image"
+                              value={slide.imagePath}
+                              onPick={() =>
+                                onPickMedia(
+                                  `gallerySlides.${index}.imagePath`,
+                                )
+                              }
+                              onClear={() => updateSlide({ imagePath: null })}
+                            />
+                            <TextField
+                              label="Title"
+                              fullWidth
+                              size="small"
+                              value={String(slide.title ?? "")}
+                              onChange={(e) =>
+                                updateSlide({ title: e.target.value })
+                              }
+                              placeholder="Factory Operations & Logistics"
+                            />
+                            <TextField
+                              label="Description"
+                              fullWidth
+                              size="small"
+                              multiline
+                              minRows={2}
+                              value={String(slide.description ?? "")}
+                              onChange={(e) =>
+                                updateSlide({ description: e.target.value })
+                              }
+                              placeholder="Short paragraph under the image"
+                            />
+                          </div>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+            <button
+              type="button"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)] disabled:opacity-50"
+              disabled={gallerySlides.length >= 8}
+              onClick={() => {
+                const current = (config.gallerySlides as unknown[]) ?? [];
+                if (current.length >= 8) return;
+                setField("gallerySlides", [
+                  ...current,
+                  { imagePath: null, title: "", description: "" },
+                ]);
+                setExpandedGallery(current.length);
+              }}
+            >
+              <span className="text-base leading-none">+</span>
+              Add factory / certificate card
+            </button>
+          </>
+        ) : null}
+      </div>
+
+      <div className={adminFieldGroup()} style={adminStackStyle}>
+        <p className="admin-field-group__title">5. Button (optional)</p>
         <p className="admin-field-group__hint">
           Optional call-to-action under the story. Leave blank to hide.
         </p>

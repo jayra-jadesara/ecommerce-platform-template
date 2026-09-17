@@ -1981,7 +1981,7 @@ html.dark .sf-about-train__nav {
   }
 }
 
-/* —— About visionary story block —— */
+/* —— About visionary story block (split: copy left, medium portrait right) —— */
 .sf-about-visionary {
   width: 100%;
   max-width: 42rem;
@@ -1993,6 +1993,23 @@ html.dark .sf-about-train__nav {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2rem;
+}
+
+.sf-about-visionary--split {
+  max-width: 68rem;
+  text-align: left;
+  align-items: stretch;
+  gap: 2.25rem;
+}
+
+@media (min-width: 768px) {
+  .sf-about-visionary--split {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(11rem, 13.5rem);
+    column-gap: 2.75rem;
+    align-items: center;
+  }
 }
 
 .sf-about-visionary__copy {
@@ -2001,7 +2018,13 @@ html.dark .sf-about-train__nav {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.35rem;
+  gap: 1.25rem;
+}
+
+.sf-about-visionary--split .sf-about-visionary__copy {
+  max-width: none;
+  align-items: flex-start;
+  justify-content: center;
 }
 
 .sf-about-visionary__body {
@@ -2010,28 +2033,61 @@ html.dark .sf-about-train__nav {
   text-align: center;
   white-space: pre-wrap;
   font-size: 0.95rem;
-  line-height: 1.9;
+  line-height: 1.85;
   color: var(--color-muted);
+}
+
+.sf-about-visionary--split .sf-about-visionary__body {
+  text-align: left;
+  font-size: 1rem;
+  max-width: 38rem;
 }
 
 .sf-about-visionary__quote {
   margin: 0;
   max-width: 32rem;
   width: 100%;
+  padding: 0.85rem 0 0.85rem 1.1rem;
+  border-left: 3px solid var(--color-primary);
+}
+
+.sf-about-visionary--split .sf-about-visionary__quote {
+  max-width: 36rem;
 }
 
 .sf-about-visionary__quote-text {
   margin: 0;
-  text-align: center;
+  text-align: left;
   font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-size: 1.125rem;
+  font-size: 1.1rem;
   font-style: italic;
-  line-height: 1.65;
+  line-height: 1.6;
   color: var(--color-primary);
 }
 
+.sf-about-visionary:not(.sf-about-visionary--split) .sf-about-visionary__quote-text {
+  text-align: center;
+}
+
+.sf-about-visionary:not(.sf-about-visionary--split) .sf-about-visionary__quote {
+  border-left: none;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.sf-about-visionary:not(.sf-about-visionary--split) .sf-about-visionary__quote-author {
+  text-align: center;
+}
+
 .sf-about-visionary__quote-author {
+  display: block;
+  margin-top: 0.65rem;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.82rem;
   font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-foreground);
 }
 
 .sf-about-visionary__cta {
@@ -2039,46 +2095,226 @@ html.dark .sf-about-train__nav {
   justify-content: center;
 }
 
+.sf-about-visionary--split .sf-about-visionary__cta {
+  justify-content: flex-start;
+}
+
 .sf-about-visionary__portrait {
   position: relative;
   width: 100%;
-  max-width: 22rem;
-  margin-top: 2.75rem;
+  max-width: 13.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  justify-self: center;
+}
+
+@media (min-width: 768px) {
+  .sf-about-visionary--split .sf-about-visionary__portrait {
+    margin-left: 0;
+    margin-right: 0;
+    justify-self: end;
+    width: 100%;
+  }
 }
 
 .sf-about-visionary__frame {
   position: relative;
   overflow: hidden;
-  border-radius: calc(var(--radius-default, 1rem) + 0.15rem);
-  background: var(--color-primary);
+  border-radius: calc(var(--radius-default, 0.75rem) + 0.1rem);
+  background: color-mix(in srgb, var(--color-foreground) 88%, #000);
   aspect-ratio: 4 / 5;
+  max-height: 17rem;
   box-shadow:
-    0 18px 40px color-mix(in srgb, #000 12%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--color-foreground) 6%, transparent);
+    0 14px 32px color-mix(in srgb, #000 10%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-foreground) 8%, transparent);
 }
 
 html.dark .sf-about-visionary__frame {
   box-shadow:
-    0 18px 44px color-mix(in srgb, #000 40%, transparent),
+    0 14px 36px color-mix(in srgb, #000 40%, transparent),
     0 0 0 1px color-mix(in srgb, var(--color-foreground) 12%, transparent);
 }
 
-.sf-about-visionary__badge {
-  position: absolute;
-  bottom: 1rem;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 85%;
-  border-radius: 0.45rem;
-  padding: 0.55rem 0.85rem;
+.sf-about-visionary__caption {
+  margin-top: 0.75rem;
   text-align: center;
-  background: linear-gradient(
-    135deg,
-    color-mix(in srgb, var(--color-accent) 88%, #fff),
-    color-mix(in srgb, var(--color-primary) 55%, var(--color-accent))
-  );
-  color: var(--color-button-foreground, #fff);
-  box-shadow: 0 8px 20px color-mix(in srgb, #000 18%, transparent);
 }
 
+.sf-about-visionary__caption-name {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+}
+
+.sf-about-visionary__caption-role {
+  margin: 0.2rem 0 0;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+}
+
+/* —— About factory / certificate gallery (all cards, shared marquee) —— */
+.sf-about-gallery-break {
+  width: min(100%, 42rem);
+  height: 1px;
+  margin: 2.75rem auto 0;
+  background: color-mix(in srgb, var(--color-foreground) 14%, transparent);
+}
+
+.sf-about-gallery {
+  width: 100%;
+  max-width: 80rem;
+  margin: 1.75rem auto 0;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.sf-about-gallery--marquee {
+  max-width: 100%;
+}
+
+.sf-about-gallery__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sf-about-gallery__viewport {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  container-type: inline-size;
+  container-name: about-gallery;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 1.5rem,
+    #000 calc(100% - 1.5rem),
+    transparent
+  );
+}
+
+.sf-about-gallery__viewport--static {
+  overflow: visible;
+  mask-image: none;
+}
+
+.sf-about-gallery__track {
+  --sf-gallery-gap: 1.25rem;
+  --sf-gallery-visible: 4;
+  display: flex;
+  width: max-content;
+  gap: var(--sf-gallery-gap);
+  align-items: flex-start;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.sf-about-gallery__viewport--static .sf-about-gallery__track {
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+  max-width: 64rem;
+  margin-inline: auto;
+  will-change: auto;
+}
+
+/* Fit N cards in the viewport (desktop default: 4). */
+.sf-about-gallery__item {
+  flex: 0 0 auto;
+  width: calc(
+    (100cqi - (var(--sf-gallery-visible) - 1) * var(--sf-gallery-gap)) /
+      var(--sf-gallery-visible)
+  );
+}
+
+@container about-gallery (max-width: 56rem) {
+  .sf-about-gallery__track {
+    --sf-gallery-visible: 3;
+  }
+}
+
+@container about-gallery (max-width: 40rem) {
+  .sf-about-gallery__track {
+    --sf-gallery-visible: 2;
+  }
+}
+
+@container about-gallery (max-width: 24rem) {
+  .sf-about-gallery__track {
+    --sf-gallery-visible: 1;
+  }
+}
+
+.sf-about-gallery__card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  text-align: center;
+}
+
+.sf-about-gallery__media {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 12.5rem;
+  border-radius: calc(var(--radius-default, 0.65rem) + 0.05rem);
+  background: color-mix(in srgb, var(--color-foreground) 86%, #000);
+  box-shadow:
+    0 10px 28px color-mix(in srgb, #000 8%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-foreground) 8%, transparent);
+}
+
+.sf-about-gallery__body {
+  margin-top: 0.85rem;
+  padding: 0 0.25rem;
+}
+
+.sf-about-gallery__title {
+  margin: 0;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--color-foreground);
+  line-height: 1.35;
+}
+
+.sf-about-gallery__desc {
+  margin: 0.4rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--color-muted);
+}
+
+.sf-about-gallery__nav {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-foreground) 12%, transparent);
+  background: var(--color-card);
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sf-about-gallery__nav:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+
+.sf-about-gallery__nav:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
 

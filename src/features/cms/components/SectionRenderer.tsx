@@ -18,6 +18,7 @@ import {
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
 import { HeroCarousel } from "@/features/cms/components/HeroCarousel";
 import { AboutHeritageTrain } from "@/features/cms/components/AboutHeritageTrain";
+import { AboutGalleryCarousel } from "@/features/cms/components/AboutGalleryCarousel";
 import { Hero3DSlot } from "@/components/three/Hero3DSlot";
 import { defaultPlatformConfig } from "@/config/defaults";
 import {
@@ -649,16 +650,29 @@ export function SectionRenderer({
         // One shared wheel image for the whole consist.
         wheelUrl: engineWheelUrl,
       }));
+      const gallerySlides = (c.gallerySlides ?? []).filter(
+        (slide) =>
+          Boolean(slide.imagePath?.trim()) ||
+          Boolean(slide.title?.trim()) ||
+          Boolean(slide.description?.trim()),
+      );
+      const showGallery = Boolean(c.galleryEnabled) && gallerySlides.length > 0;
 
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="sf-about-visionary">
+          <div
+            className={
+              portraitUrl
+                ? "sf-about-visionary sf-about-visionary--split"
+                : "sf-about-visionary"
+            }
+          >
             <div className="sf-about-visionary__copy">
               {heading ? (
                 <SectionAccentHeading
                   title={heading}
                   {...accentFromConfig()}
-                  align="center"
+                  align={portraitUrl ? "left" : "center"}
                 />
               ) : null}
               {description ? (
@@ -666,15 +680,12 @@ export function SectionRenderer({
               ) : null}
               {quote ? (
                 <blockquote className="sf-about-visionary__quote">
-                  <p className="sf-about-visionary__quote-text">
-                    “{quote}”
-                    {quoteAuthor ? (
-                      <span className="sf-about-visionary__quote-author">
-                        {" "}
-                        — {quoteAuthor}
-                      </span>
-                    ) : null}
-                  </p>
+                  <p className="sf-about-visionary__quote-text">“{quote}”</p>
+                  {quoteAuthor ? (
+                    <footer className="sf-about-visionary__quote-author">
+                      — {quoteAuthor}
+                    </footer>
+                  ) : null}
                 </blockquote>
               ) : null}
               {c.buttonText && c.buttonLink ? (
@@ -694,24 +705,37 @@ export function SectionRenderer({
                     alt={captionName || heading || "About"}
                     fill
                     className="object-cover object-top"
-                    sizes="(max-width: 768px) 90vw, 352px"
+                    sizes="(max-width: 768px) 55vw, 216px"
                   />
-                  {captionName || captionRole ? (
-                    <div className="sf-about-visionary__badge">
-                      {captionName ? (
-                        <p className="text-sm font-bold leading-tight">
-                          {captionName}
-                        </p>
-                      ) : null}
-                      {captionRole ? (
-                        <p className="mt-0.5 text-xs opacity-95">{captionRole}</p>
-                      ) : null}
-                    </div>
-                  ) : null}
                 </div>
+                {captionName || captionRole ? (
+                  <div className="sf-about-visionary__caption">
+                    {captionName ? (
+                      <p className="sf-about-visionary__caption-name">
+                        {captionName}
+                      </p>
+                    ) : null}
+                    {captionRole ? (
+                      <p className="sf-about-visionary__caption-role">
+                        {captionRole}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
+
+          {showGallery ? (
+            <>
+              <div className="sf-about-gallery-break" aria-hidden />
+              <AboutGalleryCarousel
+                slides={gallerySlides}
+                autoplayMs={c.galleryAutoplayMs ?? 4500}
+                showArrows={c.galleryShowArrows !== false}
+              />
+            </>
+          ) : null}
 
           {trainItems.length > 0 ? (
             <AboutHeritageTrain

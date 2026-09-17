@@ -84,7 +84,7 @@ export type StorageImageTransform = {
 /**
  * Optional Supabase Image Transformation URL (hosted Pro feature).
  * Falls back to the plain public object URL when transforms are disabled.
- * Prefer Next.js `<Image>` as the primary optimizer.
+ * Next.js uses a custom passthrough image loader (no /_next/image proxy).
  */
 export function resolveOptimizedStorageUrl(
   bucket: StorageBucket,

@@ -221,9 +221,11 @@ describe("Image + wishlist performance contracts", () => {
     return readFileSync(resolve(root, rel), "utf8");
   }
 
-  it("caches optimized images longer and uses Next Image on ProductCard thumbs", () => {
+  it("uses a passthrough image loader and Next Image on ProductCard thumbs", () => {
     const config = read("next.config.ts");
     expect(config).toContain("minimumCacheTTL: 86400");
+    expect(config).toContain('loader: "custom"');
+    expect(config).toContain('loaderFile: "./src/lib/image-loader.ts"');
 
     const card = read("src/features/catalog/components/ProductCard.tsx");
     expect(card).not.toContain("unoptimized");

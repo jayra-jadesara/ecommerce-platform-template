@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { buildSecurityHeaders } from "./src/lib/security/headers";
 
 const adminRoute = process.env.ADMIN_ROUTE?.trim() || "manage-store";
+const projectRoot = process.cwd();
 
 function supabaseHostname(): string | null {
   const raw =
@@ -19,6 +20,10 @@ function supabaseHostname(): string | null {
 const supabaseHost = supabaseHostname();
 
 const nextConfig: NextConfig = {
+  // Pin Turbopack root so it does not walk parent folders looking for lockfiles.
+  turbopack: {
+    root: projectRoot,
+  },
   // Allow LAN device access to Turbopack HMR during local development.
   allowedDevOrigins: ["192.168.31.106", "localhost", "127.0.0.1"],
   // Makes ADMIN_ROUTE available to client bundles for link building only.
@@ -31,14 +36,19 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "12mb",
     },
+    optimizePackageImports: ["@mui/icons-material", "@mui/material"],
   },
   images: {
+    // Serve Supabase/CDN URLs directly — never proxy through /_next/image.
+    // The default optimizer times out fetching remote storage on slow networks
+    // (TimeoutError 500s). Optional Supabase transforms still apply via URL helpers.
+    loader: "custom",
+    loaderFile: "./src/lib/image-loader.ts",
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
     imageSizes: [64, 96, 128, 256, 384],
     // ProductCard uses 70; default Next quality is 75.
     qualities: [70, 75],
-    // Successful optimized images (heroes/detail) stay warm; grids use unoptimized.
     minimumCacheTTL: 86400,
     // Local/Windows DNS often resolves *.supabase.co via NAT64 (64:ff9b::…) which
     // Next treats as a private IP and blocks. remotePatterns still limit hosts.
@@ -96,6 +106,14 @@ const nextConfig: NextConfig = {
         ],
       },
     ];
+  },
+  // PackFileCacheStrategy rename (*.pack.gz_ → *.pack.gz) often ENOENTs on
+  // Windows HDD / Defender locks. Memory cache avoids that pack write.
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.cache = { type: "memory" };
+    }
+    return config;
   },
 };
 

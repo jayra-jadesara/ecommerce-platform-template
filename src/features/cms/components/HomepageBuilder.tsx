@@ -620,6 +620,21 @@ export function HomepageBuilder({
               };
               return { ...prev, slides };
             }
+            const galleryMatch = mediaField.match(
+              /^gallerySlides\.(\d+)\.imagePath$/,
+            );
+            if (galleryMatch) {
+              const index = Number(galleryMatch[1]);
+              const slides = [
+                ...((prev.gallerySlides as Array<Record<string, unknown>>) ??
+                  []),
+              ];
+              slides[index] = {
+                ...(slides[index] ?? {}),
+                imagePath: selection.storagePath,
+              };
+              return { ...prev, gallerySlides: slides };
+            }
             return {
               ...prev,
               [mediaField]: selection.storagePath,

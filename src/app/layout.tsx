@@ -1,23 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { Metadata } from "next";
-import {
-  Cormorant_Garamond,
-  DM_Sans,
-  Fraunces,
-  JetBrains_Mono,
-  Libre_Baskerville,
-  Lora,
-  Manrope,
-  Outfit,
-  Playfair_Display,
-  Plus_Jakarta_Sans,
-  Space_Grotesk,
-  Syne,
-} from "next/font/google";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { buildPageMetadata } from "@/lib/metadata";
 import { colorTokensToCssVars, normalizeColorTokensForMode } from "@/features/theme/css-vars";
 import { typographyCssVars } from "@/features/theme/typography-css";
+import {
+  FONT_FACE_CSS,
+  GOOGLE_FONTS_STYLESHEET_HREF,
+} from "@/features/theme/optional-google-fonts";
 import {
   motionDesignTokens,
   motionHtmlDataAttributes,
@@ -28,117 +18,6 @@ import { ServiceWorkerRegister } from "@/features/pwa/ServiceWorkerRegister";
 import { OfflineBanner } from "@/features/pwa/OfflineBanner";
 import { getAdminRouteSegment } from "@/config/admin-route";
 import "./globals.css";
-
-const fontDmSans = DM_Sans({
-  subsets: ["latin"],
-  variable: "--font-dm-sans",
-  display: "swap",
-  adjustFontFallback: true,
-});
-
-const fontFraunces = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-fraunces",
-  display: "swap",
-  adjustFontFallback: true,
-});
-
-const fontJetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontPlayfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontCormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-cormorant",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontLibreBaskerville = Libre_Baskerville({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  variable: "--font-libre-baskerville",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontOutfit = Outfit({
-  subsets: ["latin"],
-  variable: "--font-outfit",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontPlusJakarta = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  variable: "--font-plus-jakarta",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontManrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontLora = Lora({
-  subsets: ["latin"],
-  variable: "--font-lora",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontSpaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const fontSyne = Syne({
-  subsets: ["latin"],
-  variable: "--font-syne",
-  display: "swap",
-  adjustFontFallback: true,
-  preload: false,
-});
-
-const storefrontFontVariables = [
-  fontDmSans.variable,
-  fontFraunces.variable,
-  fontJetbrainsMono.variable,
-  fontPlayfair.variable,
-  fontCormorant.variable,
-  fontLibreBaskerville.variable,
-  fontOutfit.variable,
-  fontPlusJakarta.variable,
-  fontManrope.variable,
-  fontLora.variable,
-  fontSpaceGrotesk.variable,
-  fontSyne.variable,
-].join(" ");
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getPlatformConfigAsync();
@@ -188,6 +67,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const motionAttrs = motionHtmlDataAttributes(motionEffective);
 
   const layoutVars = {
+    ...FONT_FACE_CSS,
     ...colorTokensToCssVars(initialTokens),
     ...typographyCssVars(config.typography),
     ...motionVars,
@@ -204,17 +84,20 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   return (
     <html
       lang={config.store.locale.split("-")[0] ?? "en"}
-      className={`${storefrontFontVariables} h-full antialiased${defaultIsDark ? " dark" : ""}`}
+      className={`h-full antialiased${defaultIsDark ? " dark" : ""}`}
       suppressHydrationWarning
       style={layoutVars}
       data-theme-default={config.theme.defaultMode}
       {...motionAttrs}
     >
       <head>
-        {/*
-          Theme FOUC boot is injected via ThemeBootScript + useServerInsertedHTML
-          (not a <script> in the React tree — avoids React 19 client warning).
-        */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="stylesheet" href={GOOGLE_FONTS_STYLESHEET_HREF} />
         {config.brand.faviconUrl ? (
           <link rel="icon" href={config.brand.faviconUrl} />
         ) : (

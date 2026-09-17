@@ -21,6 +21,7 @@ import {
   adminFormStack,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import { AdminSaveBar } from "@/features/admin/ui/AdminSaveBar";
 import type { FieldErrors } from "@/lib/validation";
 
 type AboutPageFormProps = {
@@ -29,6 +30,25 @@ type AboutPageFormProps = {
   canUpdate: boolean;
   canPublish: boolean;
 };
+
+function buildInitialConfig(
+  defaults: AboutEditableConfig,
+  section: ContentSection,
+): AboutEditableConfig {
+  const merged: AboutEditableConfig = {
+    ...defaults,
+    ...section.config,
+    motionSource: "global",
+    threeSource: "global",
+  };
+  const items = (merged.timelineItems as unknown[]) ?? [];
+  if (items.length === 0) {
+    merged.timelineItems = [
+      { label: "", year: "", description: "", logoPath: null },
+    ];
+  }
+  return merged;
+}
 
 export function AboutPageForm({
   page,
@@ -41,26 +61,19 @@ export function AboutPageForm({
     () => defaultConfigForType("about") as AboutEditableConfig,
     [],
   );
-  const [config, setConfig] = useState<AboutEditableConfig>(() => {
-    const merged: AboutEditableConfig = {
-      ...defaults,
-      ...section.config,
-      motionSource: "global",
-      threeSource: "global",
-    };
-    const items = (merged.timelineItems as unknown[]) ?? [];
-    if (items.length === 0) {
-      merged.timelineItems = [
-        { label: "", year: "", description: "", logoPath: null },
-      ];
-    }
-    return merged;
-  });
+  const [baseline, setBaseline] = useState(() =>
+    JSON.stringify(buildInitialConfig(defaults, section)),
+  );
+  const [config, setConfig] = useState<AboutEditableConfig>(() =>
+    buildInitialConfig(defaults, section),
+  );
   const [status, setStatus] = useState(page.status);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [mediaField, setMediaField] = useState<string | null>(null);
+
+  const isDirty = JSON.stringify(config) !== baseline;
 
   function refresh() {
     router.refresh();
@@ -69,6 +82,7 @@ export function AboutPageForm({
   function save() {
     startTransition(async () => {
       setError(null);
+      setMessage(null);
       const result = await updateSectionAction({
         sectionId: section.id,
         title: section.title ?? "About",
@@ -94,13 +108,14 @@ export function AboutPageForm({
         }
         return;
       }
+      setBaseline(JSON.stringify(config));
       setMessage("Saved (draft until you publish).");
       refresh();
     });
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
         <div>
           <p className="text-sm text-[var(--color-muted)]">
@@ -113,16 +128,6 @@ export function AboutPageForm({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canUpdate ? (
-            <button
-              type="button"
-              disabled={pending}
-              className="rounded-md bg-[var(--color-button-background)] px-3 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
-              onClick={save}
-            >
-              Save
-            </button>
-          ) : null}
           {canPublish ? (
             status === "published" ? (
               <button
@@ -167,6 +172,7 @@ export function AboutPageForm({
                       setError(saveResult.error);
                       return;
                     }
+                    setBaseline(JSON.stringify(config));
                     const result = await publishPageAction(page.id);
                     if (!result.ok) {
                       setError(result.error);
@@ -192,17 +198,6 @@ export function AboutPageForm({
         </div>
       </div>
 
-      {error ? (
-        <p className="text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      ) : null}
-      {message ? (
-        <p className="text-sm text-[var(--color-muted)]" role="status">
-          {message}
-        </p>
-      ) : null}
-
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
         <div className="order-2 lg:order-1">
           <div className={adminFormStack()} style={adminStackStyle}>
@@ -217,6 +212,21 @@ export function AboutPageForm({
           <SectionEditorPreview sectionType="about" config={config} />
         </div>
       </div>
+
+      <AdminSaveBar
+        position="bottom"
+        isDirty={isDirty}
+        canUpdate={canUpdate}
+        pending={pending}
+        error={error}
+        success={message}
+        onSave={save}
+        onCancel={() => {
+          setConfig(JSON.parse(baseline) as AboutEditableConfig);
+          setError(null);
+          setMessage(null);
+        }}
+      />
 
       <MediaPicker
         open={Boolean(mediaField)}
@@ -239,6 +249,21 @@ export function AboutPageForm({
                 logoPath: selection.storagePath,
               };
               return { ...prev, timelineItems: items };
+            }
+            const galleryMatch = mediaField.match(
+              /^gallerySlides\.(\d+)\.imagePath$/,
+            );
+            if (galleryMatch) {
+              const index = Number(galleryMatch[1]);
+              const slides = [
+                ...((prev.gallerySlides as Array<Record<string, unknown>>) ??
+                  []),
+              ];
+              slides[index] = {
+                ...(slides[index] ?? {}),
+                imagePath: selection.storagePath,
+              };
+              return { ...prev, gallerySlides: slides };
             }
             return { ...prev, [mediaField]: selection.storagePath };
           });

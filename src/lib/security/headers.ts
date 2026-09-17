@@ -21,10 +21,10 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
       "form-action 'self'",
       // Next.js + theme boot + Razorpay checkout script
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com",
       "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
       "worker-src 'self' blob:",
       "media-src 'self' blob:",
