@@ -102,7 +102,9 @@ export function HomepageBuilder({
     const base =
       allowedSectionTypes?.length
         ? allowedSectionTypes
-        : SUPPORTED_SECTION_TYPES.filter((t) => t !== "text" && t !== "image");
+        : SUPPORTED_SECTION_TYPES.filter(
+            (t) => t !== "text" && t !== "image" && t !== "career",
+          );
     // Prefer About first when it’s in the list (recommended for /about).
     if (base.includes("about")) {
       return ["about" as const, ...base.filter((t) => t !== "about")];

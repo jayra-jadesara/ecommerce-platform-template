@@ -10,6 +10,7 @@ import {
 } from "@/features/cms/cache";
 import {
   ABOUT_PAGE_SLUG,
+  CAREER_PAGE_SLUG,
   HOMEPAGE_SLUG,
   isLegalPageSlug,
   LEGAL_PAGE_META,
@@ -175,7 +176,11 @@ export async function getPublishedStorefrontPage(
   if (!storeId) return null;
 
   // About & legal pages are edited often in admin — skip Data Cache so publish/save shows immediately.
-  if (slug === ABOUT_PAGE_SLUG || isLegalPageSlug(slug)) {
+  if (
+    slug === ABOUT_PAGE_SLUG ||
+    slug === CAREER_PAGE_SLUG ||
+    isLegalPageSlug(slug)
+  ) {
     return loadPublishedPageUncached(storeId, slug);
   }
 

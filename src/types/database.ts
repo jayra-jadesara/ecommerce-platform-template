@@ -63,6 +63,7 @@ export type PaymentStatus =
 export type DiscountType = "percentage" | "fixed";
 export type ShippingMethod = "flat_rate" | "free" | "percentage" | "zone";
 export type InquiryStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "SPAM";
+export type CareerApplicationStatus = "NEW" | "REVIEWED" | "ARCHIVED";
 export type AdminRoleCode =
   | "SUPER_ADMIN"
   | "ADMIN"
@@ -80,6 +81,7 @@ export type PageSectionType =
   | "faq"
   | "cta"
   | "about"
+  | "career"
   | "features"
   | "statistics"
   | "text_image"
@@ -1561,6 +1563,74 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["contact_inquiries"]["Insert"]>;
+        Relationships: [];
+      };
+      job_posts: {
+        Row: {
+          id: string;
+          store_id: string;
+          title: string;
+          department: string;
+          position: string;
+          location: string;
+          state: string;
+          description: string;
+          is_published: boolean;
+          sort_order: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          title: string;
+          department?: string;
+          position?: string;
+          location?: string;
+          state?: string;
+          description?: string;
+          is_published?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["job_posts"]["Insert"]>;
+        Relationships: [];
+      };
+      career_applications: {
+        Row: {
+          id: string;
+          store_id: string;
+          job_post_id: string | null;
+          name: string;
+          email: string;
+          phone: string;
+          state: string;
+          city: string;
+          department: string;
+          position: string;
+          linkedin_url: string | null;
+          message: string;
+          status: CareerApplicationStatus;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          job_post_id?: string | null;
+          name: string;
+          email: string;
+          phone?: string;
+          state?: string;
+          city?: string;
+          department?: string;
+          position?: string;
+          linkedin_url?: string | null;
+          message?: string;
+          status?: CareerApplicationStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["career_applications"]["Insert"]
+        >;
         Relationships: [];
       };
       certifications: {

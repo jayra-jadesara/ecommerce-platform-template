@@ -11,6 +11,7 @@ import {
 } from "@/features/cms/cache";
 import {
   ABOUT_PAGE_SLUG,
+  CAREER_PAGE_SLUG,
   HOMEPAGE_SLUG,
   SECTION_TYPE_LABELS,
   defaultConfigForType,
@@ -198,6 +199,87 @@ async function ensureAboutSection(pageId: string): Promise<void> {
   });
 }
 
+export async function getOrCreateCareerPage(): Promise<ContentPage | null> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return null;
+  const supabase = await createSupabaseServerClient();
+  const { data: existing } = await supabase
+    .from("pages")
+    .select("*")
+    .eq("store_id", storeId)
+    .eq("slug", CAREER_PAGE_SLUG)
+    .maybeSingle();
+
+  if (existing) {
+    const page = mapPage(existing);
+    await ensureCareerSection(page.id);
+    return page;
+  }
+
+  const user = await getCurrentUser();
+  const { data, error } = await supabase
+    .from("pages")
+    .insert({
+      store_id: storeId,
+      title: "Career",
+      slug: CAREER_PAGE_SLUG,
+      status: "draft",
+      content: null,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) return null;
+
+  await ensureCareerSection(data.id);
+
+  await writeContentAudit({
+    storeId,
+    userId: user?.id ?? null,
+    action: "PAGE_CREATED",
+    entityType: "page",
+    entityId: data.id,
+    metadata: {
+      slug: CAREER_PAGE_SLUG,
+      title: "Career",
+      seededSection: "career",
+    },
+  });
+
+  return mapPage(data);
+}
+
+async function ensureCareerSection(pageId: string): Promise<void> {
+  const supabase = await createSupabaseServerClient();
+  const { data: existingCareer } = await supabase
+    .from("page_sections")
+    .select("id")
+    .eq("page_id", pageId)
+    .eq("section_type", "career")
+    .limit(1)
+    .maybeSingle();
+
+  if (existingCareer) return;
+
+  const { data: maxRow } = await supabase
+    .from("page_sections")
+    .select("sort_order")
+    .eq("page_id", pageId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const careerConfig = defaultConfigForType("career");
+  await supabase.from("page_sections").insert({
+    page_id: pageId,
+    section_type: "career",
+    title: SECTION_TYPE_LABELS.career,
+    sort_order: (maxRow?.sort_order ?? -1) + 1,
+    is_active: true,
+    config: careerConfig as unknown as Json,
+  });
+}
+
 function legalStarterContent(slug: LegalPageSlug): string {
   switch (slug) {
     case "privacy":
@@ -289,6 +371,15 @@ export async function createAdminPage(raw: unknown): Promise<PageMutationResult>
       error: "The about page is managed under Content → About.",
       fieldErrors: {
         slug: "The about page is managed under Content → About.",
+      },
+    };
+  }
+  if (parsed.data.slug === CAREER_PAGE_SLUG) {
+    return {
+      ok: false,
+      error: "The career page is managed under Content → Career.",
+      fieldErrors: {
+        slug: "The career page is managed under Content → Career.",
       },
     };
   }
@@ -406,6 +497,13 @@ export async function updateAdminPage(
       fieldErrors: { slug: "The about page URL cannot be changed." },
     };
   }
+  if (current.slug === CAREER_PAGE_SLUG && values.slug !== CAREER_PAGE_SLUG) {
+    return {
+      ok: false,
+      error: "The career page URL cannot be changed.",
+      fieldErrors: { slug: "The career page URL cannot be changed." },
+    };
+  }
   if (isLegalPageSlug(current.slug) && values.slug !== current.slug) {
     return {
       ok: false,
@@ -422,6 +520,30 @@ export async function updateAdminPage(
       error: "Legal pages are managed under Content → Legal pages.",
       fieldErrors: {
         slug: "Legal pages are managed under Content → Legal pages.",
+      },
+    };
+  }
+  if (
+    values.slug === CAREER_PAGE_SLUG &&
+    current.slug !== CAREER_PAGE_SLUG
+  ) {
+    return {
+      ok: false,
+      error: "The career page is managed under Content → Career.",
+      fieldErrors: {
+        slug: "The career page is managed under Content → Career.",
+      },
+    };
+  }
+  if (
+    values.slug === ABOUT_PAGE_SLUG &&
+    current.slug !== ABOUT_PAGE_SLUG
+  ) {
+    return {
+      ok: false,
+      error: "The about page is managed under Content → About.",
+      fieldErrors: {
+        slug: "The about page is managed under Content → About.",
       },
     };
   }

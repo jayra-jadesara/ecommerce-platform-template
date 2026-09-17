@@ -2,7 +2,6 @@
 
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
-import type { SxProps, Theme } from "@mui/material/styles";
 import type { ChangeEvent, ReactNode } from "react";
 
 export type AdminSelectOption = {
@@ -27,57 +26,24 @@ type AdminSelectProps = {
   className?: string;
 };
 
-const fieldSx: SxProps<Theme> = {
-  "& .MuiInputBase-root": {
-    fontSize: "0.75rem",
-    minHeight: 36,
-    backgroundColor: "var(--color-card)",
-    borderRadius: "var(--radius-default, 0.5rem)",
-  },
-  "& .MuiOutlinedInput-notchedOutline": {
-    borderColor: "var(--color-border)",
-  },
-  "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": {
-    borderColor: "color-mix(in srgb, var(--color-primary) 45%, var(--color-border))",
-  },
-  "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-    borderColor: "var(--color-primary)",
-    borderWidth: 1.5,
-  },
-  "& .MuiInputLabel-root": {
-    fontSize: "0.75rem",
-  },
-  "& .MuiInputLabel-root.Mui-focused": {
-    color: "var(--color-primary)",
-  },
-  "& .MuiFormHelperText-root": {
-    fontSize: "0.6875rem",
-    marginLeft: 0,
-    marginTop: 4,
-  },
-  "& .MuiSelect-select": {
-    paddingTop: "8px",
-    paddingBottom: "8px",
-  },
-  "& .MuiSvgIcon-root": {
-    fontSize: "1.1rem",
-  },
-};
-
 const menuProps = {
   slotProps: {
     paper: {
       sx: {
-        borderRadius: "var(--radius-default, 0.5rem)",
+        borderRadius: "10px",
         border: "1px solid var(--color-border)",
         boxShadow:
           "0 10px 28px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
         marginTop: 4,
         maxHeight: 280,
+        backgroundColor: "var(--color-card)",
+        color: "var(--color-foreground)",
+        backgroundImage: "none",
         "& .MuiMenuItem-root": {
-          fontSize: "0.75rem",
-          minHeight: 32,
-          py: 0.5,
+          fontSize: "0.8125rem",
+          fontFamily: "inherit",
+          minHeight: 36,
+          py: 0.75,
         },
         "& .MuiMenuItem-root.Mui-selected": {
           backgroundColor:
@@ -93,7 +59,7 @@ const menuProps = {
 };
 
 /**
- * Compact admin single-select. Prefer over one-off MUI TextField select.
+ * Admin single-select — same height/font as TextField via admin.css.
  */
 export function AdminSelect({
   label,
@@ -128,10 +94,19 @@ export function AdminSelect({
       onChange={(event: ChangeEvent<HTMLInputElement>) => {
         onChange(event.target.value);
       }}
-      sx={fieldSx}
       slotProps={{
         select: {
           MenuProps: menuProps,
+          sx: {
+            fontFamily: "inherit",
+            fontSize: "inherit",
+          },
+        },
+        input: {
+          sx: {
+            fontFamily: "inherit",
+            fontSize: "inherit",
+          },
         },
       }}
     >

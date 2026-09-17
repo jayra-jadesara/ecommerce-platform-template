@@ -748,6 +748,42 @@ export function SectionRenderer({
       );
     }
 
+    case "career": {
+      const c = cfg as SectionConfigMap["career"];
+      const paragraphs = (c.introParagraphs ?? []).filter((p) =>
+        Boolean(p?.trim()),
+      );
+      return (
+        <SectionMotion section={section} animation={animation} className={shell}>
+          <div className="mx-auto max-w-3xl px-4 text-center">
+            {c.heading ? (
+              <SectionAccentHeading title={c.heading} {...accentFromConfig()} />
+            ) : null}
+            {paragraphs.map((p, i) => (
+              <p
+                key={i}
+                className="mt-4 text-sm leading-relaxed text-[var(--color-foreground)] md:text-base"
+              >
+                {p}
+              </p>
+            ))}
+            {c.ctaText ? (
+              <p className="mt-6 text-sm font-medium text-[var(--color-foreground)]">
+                {c.ctaText}
+              </p>
+            ) : null}
+            <p className="mt-4 text-xs text-[var(--color-muted)]">
+              Full careers experience (roles + apply form) lives on{" "}
+              <SafeLink href="/career" className="underline-offset-2 hover:underline">
+                /career
+              </SafeLink>
+              .
+            </p>
+          </div>
+        </SectionMotion>
+      );
+    }
+
     case "features": {
       const c = cfg as SectionConfigMap["features"];
       if (c.items.length === 0) return null;

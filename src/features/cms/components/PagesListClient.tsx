@@ -13,6 +13,7 @@ import {
 import type { ContentPage } from "@/features/cms/types";
 import {
   ABOUT_PAGE_SLUG,
+  CAREER_PAGE_SLUG,
   HOMEPAGE_SLUG,
   isLegalPageSlug,
 } from "@/features/cms/schemas";
@@ -41,6 +42,7 @@ export function PagesListClient({
     (p) =>
       p.slug !== HOMEPAGE_SLUG &&
       p.slug !== ABOUT_PAGE_SLUG &&
+      p.slug !== CAREER_PAGE_SLUG &&
       !isLegalPageSlug(p.slug),
   );
 

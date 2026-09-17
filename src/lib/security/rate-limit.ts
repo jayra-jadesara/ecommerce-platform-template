@@ -77,6 +77,7 @@ export const RATE_LIMITS = {
   auth: { limit: 20, windowMs: 15 * 60_000 },
   newsletter: { limit: 8, windowMs: 60 * 60_000 },
   contact: { limit: 8, windowMs: 60 * 60_000 },
+  career: { limit: 8, windowMs: 60 * 60_000 },
   coupon: { limit: 30, windowMs: 15 * 60_000 },
   checkout: { limit: 15, windowMs: 15 * 60_000 },
   webhook: { limit: 120, windowMs: 60_000 },

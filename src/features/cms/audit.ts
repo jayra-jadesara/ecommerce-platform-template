@@ -18,13 +18,16 @@ export type ContentAuditAction =
   | "SECTION_DELETED"
   | "BANNER_CREATED"
   | "BANNER_UPDATED"
-  | "BANNER_DELETED";
+  | "BANNER_DELETED"
+  | "JOB_POST_CREATED"
+  | "JOB_POST_UPDATED"
+  | "JOB_POST_DELETED";
 
 export async function writeContentAudit(input: {
   storeId: string;
   userId: string | null;
   action: ContentAuditAction;
-  entityType: "page" | "page_section" | "banner" | "homepage";
+  entityType: "page" | "page_section" | "banner" | "homepage" | "job_post";
   entityId: string;
   metadata?: Json;
 }): Promise<void> {

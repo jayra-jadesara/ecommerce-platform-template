@@ -25,6 +25,7 @@ export function getAdminRouteSegment(): string {
     "pages",
     "about",
     "contact",
+    "career",
     "privacy",
     "terms",
     "disclaimer",

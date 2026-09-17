@@ -543,6 +543,36 @@ export function SectionEditorPreview({
     );
   }
 
+  if (sectionType === "career") {
+    const paras = (
+      (config.introParagraphs as string[] | undefined) ?? []
+    ).filter((p) => Boolean(p?.trim()));
+    return (
+      <PreviewShell>
+        <div className="space-y-2 p-4 text-center">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+            Career
+          </p>
+          <h3 className={`${sfDisplay()} text-lg`}>
+            {text(config.heading, "Careers")}
+          </h3>
+          {paras.slice(0, 2).map((p, i) => (
+            <p
+              key={i}
+              className="text-xs leading-relaxed text-[var(--color-muted)] line-clamp-3"
+            >
+              {p}
+            </p>
+          ))}
+          <p className="text-[0.65rem] text-[var(--color-muted)]">
+            Invite: {text(config.ctaText) || "—"} · Form{" "}
+            {config.formEnabled === false ? "hidden" : "enabled"} · no CV upload
+          </p>
+        </div>
+      </PreviewShell>
+    );
+  }
+
   if (sectionType === "cta" || sectionType === "text_image") {
     return (
       <SimpleBlockPreview

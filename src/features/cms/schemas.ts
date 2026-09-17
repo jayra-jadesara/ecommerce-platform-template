@@ -47,6 +47,7 @@ export const SUPPORTED_SECTION_TYPES = [
   "banner",
   "text_image",
   "about",
+  "career",
   "features",
   "statistics",
   "testimonials",
@@ -66,6 +67,7 @@ export const SECTION_TYPE_LABELS: Record<SupportedSectionType, string> = {
   banner: "Image Banner",
   text_image: "Text + Image",
   about: "About",
+  career: "Career",
   features: "Features",
   statistics: "Statistics",
   testimonials: "Testimonials",
@@ -83,6 +85,7 @@ export const SECTION_TYPE_DESCRIPTIONS: Record<SupportedSectionType, string> = {
   banner: "Promotional image with optional button",
   text_image: "Story block with text beside an image",
   about: "Founder story, portrait, and optional heritage train milestones",
+  career: "Careers intro copy and apply-form settings (no CV upload)",
   features: "Highlight why customers choose you",
   statistics: "Key numbers about your business",
   testimonials: "Customer quotes",
@@ -316,6 +319,40 @@ export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
 
+/** Career page intro + form settings (jobs live in job_posts table). */
+export const careerSectionConfigSchema = sectionCommonSettingsSchema.extend({
+  heading: shortTextSchema.default(""),
+  introParagraphs: z
+    .array(
+      z
+        .union([z.string(), z.null(), z.undefined()])
+        .transform((v) => String(v ?? "").trim())
+        .pipe(z.string().max(2000)),
+    )
+    .max(6)
+    .default([]),
+  /** Short invite under the intro (e.g. “Fill the form below to apply”). */
+  ctaText: z.string().max(400).optional().default(""),
+  /** Optional override; empty = use store contact email. Must be valid if set. */
+  careersEmail: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => String(v ?? "").trim())
+    .pipe(
+      z.union([
+        z.literal(""),
+        z
+          .string()
+          .email("Enter a valid careers email (e.g. hr@yourbrand.com).")
+          .max(200),
+      ]),
+    )
+    .default(""),
+  formEnabled: z.boolean().default(true),
+  formTitle: shortTextSchema.default("Apply now"),
+});
+
+export type CareerSectionConfig = z.infer<typeof careerSectionConfigSchema>;
+
 export const featureItemSchema = z.object({
   icon: z.enum(FEATURE_ICON_IDS).default("star"),
   title: shortTextSchema,
@@ -402,6 +439,7 @@ const sectionConfigByType = {
   banner: bannerSectionConfigSchema,
   text_image: textImageSectionConfigSchema,
   about: aboutSectionConfigSchema,
+  career: careerSectionConfigSchema,
   features: featuresSectionConfigSchema,
   statistics: statisticsSectionConfigSchema,
   testimonials: testimonialsSectionConfigSchema,
@@ -533,6 +571,8 @@ export type BannerFormValues = z.infer<typeof bannerFormSchema>;
 export const HOMEPAGE_SLUG = "home";
 /** Dedicated storefront About route (`/about`) — sections managed under Content → About. */
 export const ABOUT_PAGE_SLUG = "about";
+/** Dedicated storefront Career route (`/career`) — managed under Content → Career. */
+export const CAREER_PAGE_SLUG = "career";
 
 /** Reserved storefront legal routes — managed under Content → Legal pages. */
 export const PRIVACY_PAGE_SLUG = "privacy";

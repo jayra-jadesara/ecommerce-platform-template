@@ -297,7 +297,9 @@
 .admin-shell .MuiOutlinedInput-input,
 .admin-shell .MuiSelect-select {
   min-height: 0 !important;
+  font-family: inherit !important;
   font-size: 0.8125rem !important;
+  font-weight: 400 !important;
   line-height: 1.35 !important;
   box-sizing: border-box !important;
 }
@@ -355,7 +357,9 @@
 
 .MuiMenuItem-root {
   min-height: 34px !important;
+  font-family: inherit !important;
   font-size: 0.8125rem !important;
+  font-weight: 400 !important;
 }
 
 .field-error {

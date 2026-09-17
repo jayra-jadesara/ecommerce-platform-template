@@ -5,6 +5,7 @@ import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 export const STORE_PAGE_OPTIONS = [
   { value: "/products", label: "Products" },
   { value: "/about", label: "About" },
+  { value: "/career", label: "Career" },
   { value: "/blog", label: "Blog" },
   { value: "/contact", label: "Contact" },
   { value: "/privacy", label: "Privacy Policy" },
