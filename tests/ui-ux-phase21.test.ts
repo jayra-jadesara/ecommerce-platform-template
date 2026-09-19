@@ -60,12 +60,14 @@ describe("phase 21 — hero layout presets", () => {
     expect(parsed.ok).toBe(false);
   });
 
-  it("SectionRenderer implements layout presets", () => {
+  it("SectionRenderer uses campaign Swiper hero", () => {
     const src = readSrc("src/features/cms/components/SectionRenderer.tsx");
-    expect(src).toContain("layoutPreset");
-    expect(src).toContain("FULL_BLEED");
-    expect(src).toContain("IMAGE_LEFT");
-    expect(src).toContain("themeHeroBackdrop");
+    expect(src).toContain("HeroCarousel");
+    expect(src).toContain("secondaryCtaLabel");
+    expect(src).toContain("autoplayMs");
+    const carousel = readSrc("src/features/cms/components/HeroCarousel.tsx");
+    expect(carousel).toContain("sf-hero-campaign");
+    expect(carousel).toContain("prefers-reduced-motion");
   });
 });
 
@@ -171,10 +173,14 @@ describe("phase 21 — theme compatibility defaults", () => {
     );
   });
 
-  it("homepage builder exposes layoutPreset control", () => {
+  it("homepage builder uses compact HeroSectionFields", () => {
     const src = readSrc("src/features/cms/components/HomepageBuilder.tsx");
-    expect(src).toContain("layoutPreset");
-    expect(src).toContain("HERO_LAYOUT_PRESETS");
+    expect(src).toContain("HeroSectionFields");
+    expect(src).toContain("mapHeroSlides");
+    expect(src).not.toContain("HERO_LAYOUT_PRESETS");
+    const fields = readSrc("src/features/cms/components/HeroSectionFields.tsx");
+    expect(fields).toContain("Campaign slides");
+    expect(fields).toContain("secondaryCtaLabel");
   });
 
   it("order timeline uses real statuses only", () => {

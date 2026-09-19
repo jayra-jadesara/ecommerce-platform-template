@@ -19,6 +19,7 @@ import {
   reorderPageSections,
   updatePageSection,
 } from "@/features/cms/sections-service";
+import { isSupportedSectionType } from "@/features/cms/schemas";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -135,9 +136,13 @@ export async function updateSectionAction(raw: unknown) {
       title: z.string().max(200).optional().nullable(),
       isActive: z.boolean().optional(),
       config: z.unknown().optional(),
+      sectionType: z.string().max(64).optional(),
     })
     .safeParse(raw);
   if (!parsed.success) return { ok: false as const, error: "Invalid section." };
+  const { sectionType: rawType, ...rest } = parsed.data;
+  const sectionType =
+    rawType && isSupportedSectionType(rawType) ? rawType : undefined;
   return runLoggedMutation(
     {
       type: "CMS",
@@ -148,7 +153,11 @@ export async function updateSectionAction(raw: unknown) {
       entityId: parsed.data.sectionId,
       route: "/content/pages",
     },
-    () => updatePageSection(parsed.data),
+    () =>
+      updatePageSection({
+        ...rest,
+        ...(sectionType ? { sectionType } : {}),
+      }),
   );
 }
 

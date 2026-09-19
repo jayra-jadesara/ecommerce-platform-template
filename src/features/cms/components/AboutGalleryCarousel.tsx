@@ -1,238 +1,202 @@
 "use client";
 
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Image from "next/image";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import type { AboutGallerySlideConfig } from "@/features/cms/schemas";
+import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import { cn } from "@/lib/cn";
 
 type GallerySlide = {
-  imagePath: string;
+  imagePath: string | null;
   title: string;
   description: string;
 };
 
-type AboutGalleryCarouselProps = {
+function normalizeSlides(
+  slides: AboutGallerySlideConfig[] | GallerySlide[],
+): GallerySlide[] {
+  return slides.map((slide) => ({
+    imagePath: slide.imagePath?.trim() || null,
+    title: slide.title?.trim() || "",
+    description: slide.description?.trim() || "",
+  }));
+}
+
+type SharedProps = {
+  slides: AboutGallerySlideConfig[] | GallerySlide[];
+  heading?: string;
+  className?: string;
+  highlightStyle?: HeadingHighlightStyle;
+};
+
+/**
+ * Balaji-inspired photo-first factory gallery — theme wash, editorial spans.
+ */
+export function AboutFactoryGallery({
+  slides,
+  heading,
+  className,
+  highlightStyle,
+}: SharedProps) {
+  const usable = normalizeSlides(slides).filter(
+    (s) =>
+      Boolean(s.imagePath) || Boolean(s.title) || Boolean(s.description),
+  );
+  if (usable.length === 0) return null;
+
+  const featured = usable.length >= 3;
+
+  return (
+    <div className={cn("sf-about-factory", className)}>
+      {heading ? (
+        <SectionAccentHeading
+          title={heading}
+          highlightStyle={highlightStyle}
+          align="center"
+          as="h2"
+          className="sf-about-factory__heading"
+        />
+      ) : null}
+      <div
+        className={cn(
+          "sf-about-factory__grid",
+          featured && "sf-about-factory__grid--featured",
+        )}
+      >
+        {usable.map((slide, index) => {
+          const url = resolveCmsImageUrl(slide.imagePath);
+          const caption = slide.title || slide.description;
+          return (
+            <figure
+              key={`factory-${index}`}
+              className={cn(
+                "sf-about-factory__tile",
+                featured && index === 0 && "sf-about-factory__tile--hero",
+              )}
+            >
+              {url ? (
+                <div className="sf-about-factory__media">
+                  <Image
+                    src={url}
+                    alt={slide.title || heading || "Factory"}
+                    fill
+                    className="object-cover"
+                    sizes={
+                      featured && index === 0
+                        ? "(max-width: 768px) 100vw, 60vw"
+                        : "(max-width: 768px) 100vw, 30vw"
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="sf-about-factory__media sf-about-factory__media--empty" />
+              )}
+              {caption ? (
+                <figcaption className="sf-about-factory__caption">
+                  {slide.title ? (
+                    <span className="sf-about-factory__caption-title">
+                      {slide.title}
+                    </span>
+                  ) : null}
+                  {slide.description ? (
+                    <span className="sf-about-factory__caption-desc">
+                      {slide.description}
+                    </span>
+                  ) : null}
+                </figcaption>
+              ) : null}
+            </figure>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Circular certification seals — image only (no titles on storefront).
+ */
+export function AboutCertificatesStrip({
+  slides,
+  heading,
+  className,
+  highlightStyle,
+}: SharedProps) {
+  const usable = normalizeSlides(slides).filter((s) => Boolean(s.imagePath));
+  if (usable.length === 0) return null;
+
+  return (
+    <div className={cn("sf-about-certs", className)}>
+      {heading ? (
+        <SectionAccentHeading
+          title={heading}
+          highlightStyle={highlightStyle}
+          align="center"
+          as="h2"
+          className="sf-about-certs__heading"
+        />
+      ) : null}
+      <ul className="sf-about-certs__row">
+        {usable.map((slide, index) => {
+          const url = resolveCmsImageUrl(slide.imagePath);
+          if (!url) return null;
+          return (
+            <li key={`cert-${index}`} className="sf-about-certs__item">
+              <div className="sf-about-certs__seal">
+                <Image
+                  src={url}
+                  alt={heading ? `${heading} ${index + 1}` : `Certificate ${index + 1}`}
+                  fill
+                  className="object-contain p-3"
+                  sizes="120px"
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** @deprecated Prefer AboutFactoryGallery / AboutCertificatesStrip. */
+export function AboutMediaGrid({
+  slides,
+  heading,
+  className,
+  variant = "factory",
+  highlightStyle,
+}: SharedProps & { variant?: "factory" | "certificates" }) {
+  if (variant === "certificates") {
+    return (
+      <AboutCertificatesStrip
+        slides={slides}
+        heading={heading}
+        className={className}
+        highlightStyle={highlightStyle}
+      />
+    );
+  }
+  return (
+    <AboutFactoryGallery
+      slides={slides}
+      heading={heading}
+      className={className}
+      highlightStyle={highlightStyle}
+    />
+  );
+}
+
+/** @deprecated Prefer AboutMediaGrid — kept so old imports keep compiling. */
+export function AboutGalleryCarousel({
+  slides,
+  className,
+}: {
   slides: AboutGallerySlideConfig[] | GallerySlide[];
   autoplayMs?: number;
   showArrows?: boolean;
   className?: string;
-};
-
-function slideHasContent(slide: GallerySlide): boolean {
-  return Boolean(slide.imagePath || slide.title || slide.description);
-}
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return reduced;
-}
-
-function GalleryCard({
-  slide,
-  priority = false,
-}: {
-  slide: GallerySlide;
-  priority?: boolean;
 }) {
-  const url = resolveCmsImageUrl(slide.imagePath || null);
-
-  return (
-    <article className="sf-about-gallery__card">
-      {url ? (
-        <div className="sf-about-gallery__media">
-          <Image
-            src={url}
-            alt={slide.title || "Factory & certificates"}
-            fill
-            priority={priority}
-            className="object-cover"
-            sizes="(max-width: 480px) 90vw, (max-width: 900px) 45vw, 25vw"
-          />
-        </div>
-      ) : null}
-      {slide.title || slide.description ? (
-        <div className="sf-about-gallery__body">
-          {slide.title ? (
-            <h3 className="sf-about-gallery__title">{slide.title}</h3>
-          ) : null}
-          {slide.description ? (
-            <p className="sf-about-gallery__desc">{slide.description}</p>
-          ) : null}
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-export function AboutGalleryCarousel({
-  slides,
-  autoplayMs = 4500,
-  showArrows = true,
-  className,
-}: AboutGalleryCarouselProps) {
-  const usable = slides
-    .map((slide) => ({
-      imagePath: (slide.imagePath ?? "").trim(),
-      title: (slide.title ?? "").trim(),
-      description: (slide.description ?? "").trim(),
-    }))
-    .filter(slideHasContent);
-
-  const reducedMotion = usePrefersReducedMotion();
-  const count = usable.length;
-  const shouldMarquee = count > 1 && autoplayMs > 0 && !reducedMotion;
-
-  const trackRef = useRef<HTMLDivElement | null>(null);
-  const offsetRef = useRef(0);
-  const halfWidthRef = useRef(0);
-  const dirRef = useRef<1 | -1>(1);
-  const pausedRef = useRef(false);
-  const rafRef = useRef(0);
-  const lastTsRef = useRef<number | null>(null);
-
-  const measure = useCallback(() => {
-    const track = trackRef.current;
-    if (!track) return;
-    // Two identical halves → loop distance is half the scroll width.
-    halfWidthRef.current = track.scrollWidth / 2;
-  }, []);
-
-  useEffect(() => {
-    if (!shouldMarquee) {
-      offsetRef.current = 0;
-      if (trackRef.current) {
-        trackRef.current.style.transform = "translate3d(0,0,0)";
-      }
-      return;
-    }
-
-    const track = trackRef.current;
-    if (!track) return;
-
-    measure();
-
-    // px/sec — gentle constant drift (slower = easier to read).
-    const speed = Math.max(16, 160 / Math.max(1, autoplayMs / 1000));
-
-    const tick = (ts: number) => {
-      if (lastTsRef.current == null) lastTsRef.current = ts;
-      const dt = Math.min(48, ts - lastTsRef.current) / 1000;
-      lastTsRef.current = ts;
-
-      if (!pausedRef.current && halfWidthRef.current > 0) {
-        offsetRef.current += dirRef.current * speed * dt;
-        const half = halfWidthRef.current;
-        while (offsetRef.current <= -half) offsetRef.current += half;
-        while (offsetRef.current > 0) offsetRef.current -= half;
-        track.style.transform = `translate3d(${offsetRef.current}px,0,0)`;
-      }
-
-      rafRef.current = window.requestAnimationFrame(tick);
-    };
-
-    rafRef.current = window.requestAnimationFrame(tick);
-
-    const ro = new ResizeObserver(() => {
-      const prevHalf = halfWidthRef.current || 1;
-      const ratio = offsetRef.current / prevHalf;
-      measure();
-      if (halfWidthRef.current > 0) {
-        offsetRef.current = ratio * halfWidthRef.current;
-      }
-    });
-    ro.observe(track);
-
-    return () => {
-      window.cancelAnimationFrame(rafRef.current);
-      ro.disconnect();
-      lastTsRef.current = null;
-    };
-  }, [shouldMarquee, autoplayMs, measure, count]);
-
-  const setPaused = (next: boolean) => {
-    pausedRef.current = next;
-  };
-
-  if (!count) return null;
-
-  const trackSlides = shouldMarquee ? [...usable, ...usable] : usable;
-
-  return (
-    <div className={cn("sf-about-gallery sf-about-gallery--marquee", className)}>
-      <div className="sf-about-gallery__stage">
-        {count > 1 && showArrows ? (
-          <button
-            type="button"
-            aria-label="Scroll gallery left"
-            onClick={() => {
-              dirRef.current = -1;
-            }}
-            className="sf-about-gallery__nav sf-about-gallery__nav--prev"
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </button>
-        ) : null}
-
-        <div
-          className={cn(
-            "sf-about-gallery__viewport",
-            !shouldMarquee && "sf-about-gallery__viewport--static",
-          )}
-          onMouseEnter={() => setPaused(true)}
-          onMouseLeave={() => setPaused(false)}
-          onFocusCapture={() => setPaused(true)}
-          onBlurCapture={(e) => {
-            if (
-              !e.currentTarget.contains(e.relatedTarget as Node | null)
-            ) {
-              setPaused(false);
-            }
-          }}
-        >
-          <div
-            ref={trackRef}
-            className="sf-about-gallery__track"
-          >
-            {trackSlides.map((slide, i) => (
-              <div
-                key={`${slide.title}-${slide.imagePath}-${i}`}
-                className="sf-about-gallery__item"
-                aria-hidden={shouldMarquee && i >= count ? true : undefined}
-              >
-                <GalleryCard slide={slide} priority={i === 0} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {count > 1 && showArrows ? (
-          <button
-            type="button"
-            aria-label="Scroll gallery right"
-            onClick={() => {
-              dirRef.current = 1;
-            }}
-            className="sf-about-gallery__nav sf-about-gallery__nav--next"
-          >
-            <ChevronRightIcon fontSize="small" />
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
+  return <AboutFactoryGallery slides={slides} className={className} />;
 }

@@ -38,10 +38,11 @@ const nextConfig: NextConfig = {
     },
     optimizePackageImports: ["@mui/icons-material", "@mui/material"],
   },
+  // Serve Supabase/CDN URLs directly — never proxy through /_next/image.
+  // The default optimizer times out fetching remote storage on slow networks
+  // (TimeoutError 500s). Custom loader must use `width` (see image-loader.ts);
+  // optional Supabase Image Transforms apply when NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM is set.
   images: {
-    // Serve Supabase/CDN URLs directly — never proxy through /_next/image.
-    // The default optimizer times out fetching remote storage on slow networks
-    // (TimeoutError 500s). Optional Supabase transforms still apply via URL helpers.
     loader: "custom",
     loaderFile: "./src/lib/image-loader.ts",
     formats: ["image/avif", "image/webp"],

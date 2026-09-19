@@ -25,18 +25,26 @@ import type {
 import type { ReactNode } from "react";
 
 const LOGO_HEIGHT: Record<HeaderChromeConfig["logoSize"], string> = {
-  small: "h-9 md:h-10",
-  medium: "h-11 md:h-12",
-  large: "h-12 md:h-14",
-  xlarge: "h-14 md:h-16 lg:h-20",
+  small: "h-8",
+  medium: "h-9 md:h-10",
+  /** Taller than the slim bar so the mark hangs into the hero. */
+  large: "h-14 md:h-16",
+  xlarge: "h-16 md:h-[4.75rem] lg:h-[5.5rem]",
 };
 
-/** One step smaller than default — Britannia-style compact bar on scroll. */
+/** Fits inside the slim bar when overlap is off. */
+const LOGO_HEIGHT_IN_BAR: Record<HeaderChromeConfig["logoSize"], string> = {
+  small: "h-7",
+  medium: "h-8",
+  large: "h-9",
+  xlarge: "h-10",
+};
+
 const LOGO_HEIGHT_SCROLLED: Record<HeaderChromeConfig["logoSize"], string> = {
-  small: "h-7 md:h-8",
-  medium: "h-8 md:h-9",
-  large: "h-9 md:h-10",
-  xlarge: "h-10 md:h-11 lg:h-12",
+  small: "h-7",
+  medium: "h-8",
+  large: "h-9",
+  xlarge: "h-10",
 };
 
 const SCROLL_SHRINK_THRESHOLD_PX = 24;
@@ -84,7 +92,7 @@ function NavLinks({
             aria-current={active ? "page" : undefined}
             className={cn(
               variant === "desktop"
-                ? "relative px-1 py-1 text-[0.9375rem] tracking-wide transition-colors"
+                ? "relative px-1 py-0.5 text-sm tracking-wide transition-colors"
                 : "rounded-lg px-3 py-3 text-base transition-colors",
               active
                 ? "font-semibold text-[var(--color-primary)]"
@@ -157,33 +165,48 @@ export function Header({
   const showSearch = header.searchEnabled;
   const showTagline = isMeaningfulTagline(brand.tagline);
   const logoSize = header.logoSize;
+  const logoHang = header.logoHang ?? "none";
+  const hangLogo = logoHang !== "none" && !scrolled;
   const logoHeightClass = scrolled
     ? LOGO_HEIGHT_SCROLLED[logoSize]
-    : LOGO_HEIGHT[logoSize];
+    : hangLogo
+      ? LOGO_HEIGHT[logoSize]
+      : LOGO_HEIGHT_IN_BAR[logoSize];
   const textLogoClass = scrolled
     ? "text-base md:text-lg"
-    : "text-xl md:text-[1.35rem]";
+    : hangLogo
+      ? "text-xl md:text-2xl"
+      : "text-lg md:text-xl";
+  /** Tagline only when logo stays inside the slim bar. */
+  const showTaglineUnderLogo = showTagline && !hangLogo;
 
   return (
     <header
       className={cn(
-        "relative isolate z-50 border-b border-[var(--color-border)] bg-[var(--color-header-background)] text-[var(--color-header-foreground)] transition-[box-shadow,border-color] duration-300 ease-out motion-reduce:transition-none",
+        "sf-header relative z-50 border-b border-[var(--color-border)] bg-[var(--color-header-background)] text-[var(--color-header-foreground)] transition-[box-shadow,border-color] duration-300 ease-out motion-reduce:transition-none",
         sticky && "sticky top-0",
+        scrolled && "sf-header--scrolled",
+        hangLogo && "sf-header--logo-hang",
+        hangLogo && `sf-header--logo-hang-${logoHang}`,
         scrolled &&
-          "border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]",
+          "border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] shadow-[0_6px_18px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]",
       )}
     >
       <Container
         className={cn(
-          "flex items-center gap-4 transition-[min-height,padding] duration-300 ease-out motion-reduce:transition-none md:gap-6",
+          "sf-header__bar relative flex items-center gap-3 overflow-visible transition-[height,min-height,padding] duration-300 ease-out motion-reduce:transition-none md:gap-5",
           scrolled
-            ? "min-h-[3.5rem] py-1.5 md:min-h-[3.75rem]"
-            : "min-h-[4.25rem] py-2 md:min-h-[5rem]",
+            ? "h-12 min-h-12 py-0"
+            : "h-[3.25rem] min-h-[3.25rem] py-0 md:h-14 md:min-h-14",
         )}
       >
         <Link
           href="/"
-          className="relative z-10 flex min-w-0 shrink-0 flex-col items-start gap-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          className={cn(
+            "sf-header-brand relative z-[60] flex shrink-0 flex-col items-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
+            hangLogo && "sf-header-brand--hang",
+            hangLogo && `sf-header-brand--hang-${logoHang}`,
+          )}
         >
           {logoSrc ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -191,7 +214,7 @@ export function Header({
               src={logoSrc}
               alt={brand.logoAlt ?? brand.name}
               className={cn(
-                "w-auto object-contain transition-[height,max-height] duration-300 ease-out motion-reduce:transition-none",
+                "sf-header-brand__img w-auto max-w-[min(40vw,11rem)] object-contain object-left transition-[height,max-height,filter] duration-300 ease-out motion-reduce:transition-none md:max-w-[13rem] lg:max-w-[15rem]",
                 logoHeightClass,
               )}
             />
@@ -205,15 +228,12 @@ export function Header({
               {brand.name}
             </span>
           )}
-          {showTagline ? (
+          {showTaglineUnderLogo ? (
             <span
               className={cn(
-                "max-w-[11rem] truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[color-mix(in_srgb,var(--color-header-foreground)_62%,transparent)] transition-[opacity,max-height,margin] duration-300 ease-out motion-reduce:transition-none sm:max-w-[14rem]",
-                scrolled
-                  ? "pointer-events-none max-h-0 overflow-hidden opacity-0"
-                  : "max-h-6 opacity-100",
+                "max-w-[10rem] truncate text-[9px] font-semibold uppercase tracking-[0.12em] text-[color-mix(in_srgb,var(--color-header-foreground)_62%,transparent)] sm:max-w-[12rem]",
+                scrolled && "hidden",
               )}
-              aria-hidden={scrolled || undefined}
             >
               {brand.tagline}
             </span>
@@ -239,7 +259,7 @@ export function Header({
               <IconButton
                 aria-label={searchOpen ? "Close search" : "Search products"}
                 aria-expanded={searchOpen}
-                size="medium"
+                size="small"
                 className="!text-[var(--color-header-foreground)]"
                 onClick={() => setSearchOpen((v) => !v)}
               >
@@ -290,7 +310,7 @@ export function Header({
               aria-current={
                 isActivePath(pathname, "/account/wishlist") ? "page" : undefined
               }
-              size="medium"
+              size="small"
               className={cn(
                 "!hidden sm:!inline-flex",
                 isActivePath(pathname, "/account/wishlist")
@@ -319,7 +339,7 @@ export function Header({
               onClick={() =>
                 setMenuPath((current) => (current === pathname ? null : pathname))
               }
-              size="medium"
+              size="small"
             >
               {open ? <CloseIcon /> : <MenuIcon />}
             </IconButton>

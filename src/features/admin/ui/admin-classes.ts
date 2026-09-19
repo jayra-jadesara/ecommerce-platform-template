@@ -34,8 +34,8 @@ export function adminSectionDesc(): string {
   return "mt-1 text-sm leading-relaxed text-[var(--color-muted)]";
 }
 
-export function adminFormStack(): string {
-  return "admin-form-stack";
+export function adminFormStack(compact = false): string {
+  return compact ? "admin-form-stack admin-form-stack--compact" : "admin-form-stack";
 }
 
 export function adminFormGrid(): string {
@@ -53,8 +53,10 @@ export function adminFieldsGrid(cols: 1 | 2 | 3 = 2): string {
   return "admin-fields-grid";
 }
 
-export function adminFieldGroup(): string {
-  return "admin-field-group";
+export function adminFieldGroup(compact = false): string {
+  return compact
+    ? "admin-field-group admin-field-group--compact"
+    : "admin-field-group";
 }
 
 /** Inline style guarantee for vertical rhythm (survives CSS-layer / cache issues). */

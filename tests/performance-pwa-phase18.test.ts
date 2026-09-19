@@ -221,11 +221,17 @@ describe("Image + wishlist performance contracts", () => {
     return readFileSync(resolve(root, rel), "utf8");
   }
 
-  it("uses a passthrough image loader and Next Image on ProductCard thumbs", () => {
+  it("uses a width-aware custom image loader and Next Image on ProductCard thumbs", () => {
     const config = read("next.config.ts");
     expect(config).toContain("minimumCacheTTL: 86400");
     expect(config).toContain('loader: "custom"');
     expect(config).toContain('loaderFile: "./src/lib/image-loader.ts"');
+
+    const loader = read("src/lib/image-loader.ts");
+    expect(loader).toContain("width");
+    expect(loader).toContain("quality");
+    expect(loader).toContain("/storage/v1/render/image/public/");
+    expect(loader).not.toMatch(/return src;\s*$/m);
 
     const card = read("src/features/catalog/components/ProductCard.tsx");
     expect(card).not.toContain("unoptimized");
@@ -234,6 +240,34 @@ describe("Image + wishlist performance contracts", () => {
     expect(card).not.toContain("isInWishlistAction");
     expect(card).toContain("getWishlistMembershipKeysAction");
     expect(card).toContain("wishlistMembershipQueryKey");
+  });
+
+  it("image loader embeds width in the returned URL", async () => {
+    const prev = process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM;
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM = "false";
+    const { default: imageLoader } = await import("../src/lib/image-loader");
+    const src =
+      "https://example.supabase.co/storage/v1/object/public/cms/store/a.jpg";
+    const a = imageLoader({ src, width: 400, quality: 70 });
+    const b = imageLoader({ src, width: 800, quality: 70 });
+    expect(a).not.toBe(src);
+    expect(a).toContain("width=400");
+    expect(b).toContain("width=800");
+    expect(a).not.toBe(b);
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM = prev;
+  });
+
+  it("image loader uses Supabase render URLs when transforms are enabled", async () => {
+    const prev = process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM;
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM = "true";
+    const { default: imageLoader } = await import("../src/lib/image-loader");
+    const src =
+      "https://example.supabase.co/storage/v1/object/public/cms/store/a.jpg";
+    const out = imageLoader({ src, width: 640, quality: 75 });
+    expect(out).toContain("/storage/v1/render/image/public/cms/store/a.jpg");
+    expect(out).toContain("width=640");
+    expect(out).toContain("quality=75");
+    process.env.NEXT_PUBLIC_SUPABASE_IMAGE_TRANSFORM = prev;
   });
 
   it("exposes batch wishlist membership actions", () => {

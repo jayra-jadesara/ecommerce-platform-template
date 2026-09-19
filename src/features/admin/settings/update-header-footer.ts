@@ -121,6 +121,7 @@ export async function updateHeaderSettings(
       header_mobile_menu_enabled: values.mobileMenuEnabled,
       header_nav_visible: values.navVisible,
       header_logo_size: values.logoSize,
+      header_logo_hang: values.logoHang,
       announcement_enabled: values.announcementEnabled,
       announcement_text: emptyToNull(values.announcementText),
       announcement_url: emptyToNull(values.announcementUrl),

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  LOGO_HANG_OPTIONS,
   LOGO_SIZE_OPTIONS,
   optionalEmail,
   optionalPhone,
@@ -69,6 +70,7 @@ export const headerSettingsSchema = z.object({
   mobileMenuEnabled: z.boolean(),
   navVisible: z.boolean(),
   logoSize: z.enum(LOGO_SIZE_OPTIONS),
+  logoHang: z.enum(LOGO_HANG_OPTIONS),
   announcementEnabled: z.boolean(),
   announcementText: optionalText(240),
   announcementUrl: optionalSafeNavHref,
@@ -183,7 +185,8 @@ export const DEFAULT_HEADER_SETTINGS: HeaderSettingsFormValues = {
   accountEnabled: true,
   mobileMenuEnabled: true,
   navVisible: true,
-  logoSize: "medium",
+  logoSize: "large",
+  logoHang: "bold",
   announcementEnabled: false,
   announcementText: "",
   announcementUrl: "",

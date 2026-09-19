@@ -710,13 +710,13 @@ export async function listPopularStorefrontProducts(input: {
     .slice(0, limit);
 }
 
-/** Resolve product cards by slug (recently viewed). Preserves slug order. */
-export async function listStorefrontProductsBySlugs(
-  slugs: string[],
+/** Resolve product cards by id. Preserves id order. */
+export async function listStorefrontProductsByIds(
+  ids: string[],
 ): Promise<StorefrontProductCard[]> {
-  const unique = [...new Set(slugs.map((s) => s.trim()).filter(Boolean))].slice(
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(
     0,
-    12,
+    24,
   );
   if (!unique.length) return [];
 
@@ -729,15 +729,15 @@ export async function listStorefrontProductsBySlugs(
     .select(PRODUCT_CARD_SELECT)
     .eq("store_id", storeId)
     .eq("status", "active")
-    .in("slug", unique);
+    .in("id", unique);
 
   if (error || !data) return [];
 
   const cards = (data as unknown as ProductListRow[]).map(
     mapProductListRowToCard,
   );
-  const bySlug = new Map(cards.map((c) => [c.slug, c]));
+  const byId = new Map(cards.map((c) => [c.id, c]));
   return unique
-    .map((slug) => bySlug.get(slug))
+    .map((id) => byId.get(id))
     .filter((c): c is StorefrontProductCard => Boolean(c));
 }

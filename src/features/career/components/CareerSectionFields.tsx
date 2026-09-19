@@ -104,20 +104,20 @@ export function CareerSectionFields({
         <div>
           <h3 className={adminSectionTitle()}>Page story</h3>
           <p className={adminSectionDesc()}>
-            The heading becomes the page name everywhere (browser title, breadcrumb,
-            admin). Write a short company story, then an invite to apply.
+            The heading appears on the storefront page, header, and footer when
+            published. Admin breadcrumbs stay labeled Career.
           </p>
         </div>
 
         <TextField
-          label="Heading (page name)"
+          label="Heading (store page name)"
           fullWidth
           size="small"
           required
           disabled={disabled}
           value={(config.heading as string) ?? ""}
           onChange={(e) => setField("heading", e.target.value)}
-          helperText="Used as the page title on the storefront and in admin."
+          helperText="Used as the H1, browser title, and Career link label in the store header/footer."
         />
 
         <div className="space-y-3">

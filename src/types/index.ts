@@ -10,6 +10,7 @@ export type {
   FooterFeaturedProduct,
   HeaderChromeConfig,
   LayoutConfig,
+  LogoHang,
   LogoSize,
   NavItem,
   NavigationConfig,

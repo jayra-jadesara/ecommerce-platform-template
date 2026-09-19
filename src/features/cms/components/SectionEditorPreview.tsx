@@ -48,104 +48,144 @@ function PreviewShell({
 }
 
 function HeroPreview({ config }: { config: PreviewConfig }) {
-  const title = text(config.title, "Your headline here");
-  const subtitle = text(config.subtitle);
-  const description = text(
+  const fallbackTitle = text(config.title, "Your headline here");
+  const fallbackSubtitle = text(config.subtitle);
+  const fallbackDescription = text(
     config.description,
     "Supporting text appears here for shoppers.",
   );
-  const bg = resolveCmsImageUrl(config.backgroundImagePath as string | null);
-  const fg = resolveCmsImageUrl(config.foregroundImagePath as string | null);
-  const align =
-    config.alignment === "center"
-      ? "items-center text-center"
-      : config.alignment === "right"
-        ? "items-end text-right"
-        : "items-start text-left";
-  const justify =
-    config.alignment === "center"
-      ? "justify-center"
-      : config.alignment === "right"
-        ? "justify-end"
-        : "justify-start";
-  const primaryLabel = text(config.primaryButtonText);
-  const secondaryLabel = text(config.secondaryButtonText);
-  const primaryHref = (config.primaryButtonLink as string) || null;
-  const secondaryHref = (config.secondaryButtonLink as string) || null;
+
+  const rawSlides = Array.isArray(config.slides) ? config.slides : [];
+  const firstSlide =
+    (rawSlides.find((item) => {
+      const s = (item ?? {}) as Record<string, unknown>;
+      return Boolean(String(s.imagePath ?? "").trim());
+    }) as Record<string, unknown> | undefined) ??
+    (rawSlides[0] as Record<string, unknown> | undefined);
+
+  const imagePath =
+    String(firstSlide?.imagePath ?? "").trim() ||
+    String(config.backgroundImagePath ?? "").trim() ||
+    null;
+  const bg = resolveCmsImageUrl(imagePath);
+
+  const title = text(firstSlide?.title, fallbackTitle);
+  const subtitle = text(firstSlide?.subtitle, fallbackSubtitle);
+  const description = text(firstSlide?.description, fallbackDescription);
+  const badge = text(firstSlide?.badge);
+  const primaryLabel = text(
+    firstSlide?.ctaLabel,
+    text(config.primaryButtonText),
+  );
+  const secondaryLabel = text(
+    firstSlide?.secondaryCtaLabel,
+    text(config.secondaryButtonText),
+  );
+  const primaryHref =
+    (firstSlide?.ctaHref as string | null | undefined) ||
+    (config.primaryButtonLink as string | null | undefined) ||
+    null;
+  const secondaryHref =
+    (firstSlide?.secondaryCtaHref as string | null | undefined) ||
+    (config.secondaryButtonLink as string | null | undefined) ||
+    null;
+  const slideCount = Math.max(rawSlides.length, imagePath || title ? 1 : 0);
 
   return (
     <PreviewShell
       footer={
         <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
           <p className="text-[11px] font-semibold text-[var(--color-foreground)]">
-            Where buttons go
+            Campaign hero
           </p>
-          {primaryLabel && primaryHref ? (
+          <p className="text-xs text-[var(--color-muted)]">
+            {slideCount} slide{slideCount === 1 ? "" : "s"} · full-bleed
+            preview of the first campaign
+          </p>
+          {primaryLabel ? (
             <p className="text-xs text-[var(--color-muted)]">
               <span className="font-semibold text-[var(--color-foreground)]">
                 {primaryLabel}
-              </span>{" "}
-              → {pageLabel(primaryHref)}{" "}
-              <code className="text-[10px] opacity-70">{primaryHref}</code>
+              </span>
+              {primaryHref ? (
+                <>
+                  {" "}
+                  → {pageLabel(primaryHref)}{" "}
+                  <code className="text-[10px] opacity-70">{primaryHref}</code>
+                </>
+              ) : null}
             </p>
           ) : (
             <p className="text-xs text-[var(--color-muted)]">Main button hidden</p>
           )}
-          {secondaryLabel && secondaryHref ? (
+          {secondaryLabel ? (
             <p className="text-xs text-[var(--color-muted)]">
               <span className="font-semibold text-[var(--color-foreground)]">
                 {secondaryLabel}
-              </span>{" "}
-              → {pageLabel(secondaryHref)}{" "}
-              <code className="text-[10px] opacity-70">{secondaryHref}</code>
+              </span>
+              {secondaryHref ? (
+                <>
+                  {" "}
+                  → {pageLabel(secondaryHref)}{" "}
+                  <code className="text-[10px] opacity-70">{secondaryHref}</code>
+                </>
+              ) : null}
             </p>
-          ) : (
-            <p className="text-xs text-[var(--color-muted)]">Second button hidden</p>
-          )}
+          ) : null}
         </div>
       }
     >
-      <div className="relative min-h-[13rem] overflow-hidden">
+      <div className="relative min-h-[14rem] overflow-hidden bg-[var(--color-foreground)]">
         {bg ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={bg} alt="" className="absolute inset-0 h-full w-full object-cover opacity-45" />
+          <img
+            src={bg}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
         ) : (
-          <div className="hero-3d-css-backdrop absolute inset-0" aria-hidden />
+          <div
+            className="absolute inset-0 bg-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-foreground))]"
+            aria-hidden
+          />
         )}
         <div
-          className="absolute inset-0 bg-gradient-to-r from-[color-mix(in_srgb,var(--color-foreground)_72%,transparent)] via-[color-mix(in_srgb,var(--color-foreground)_40%,transparent)] to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-[color-mix(in_srgb,var(--color-foreground)_78%,transparent)] via-[color-mix(in_srgb,var(--color-foreground)_45%,transparent)] to-transparent"
           aria-hidden
         />
-        <div
-          className={`relative z-[1] flex min-h-[13rem] gap-4 p-5 ${fg ? "flex-col sm:flex-row sm:items-center" : "flex-col"}`}
-        >
-          <div className={`flex max-w-md flex-1 flex-col gap-2 text-white ${align}`}>
-            {subtitle ? (
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80">
-                {subtitle}
-              </p>
-            ) : null}
-            <h3 className={`${sfDisplay()} text-xl leading-tight text-white`}>{title}</h3>
-            <p className="text-xs leading-relaxed text-white/85">{description}</p>
-            <div className={`mt-1 flex flex-wrap gap-2 ${justify}`}>
-              {primaryLabel ? (
-                <span className={`${sfBtn("primary")} pointer-events-none !min-h-9 !px-3 !text-xs`}>
-                  {primaryLabel}
-                </span>
-              ) : null}
-              {secondaryLabel ? (
-                <span className="pointer-events-none inline-flex min-h-9 items-center rounded-md border border-white/45 bg-white/10 px-3 text-xs font-semibold text-white">
-                  {secondaryLabel}
-                </span>
-              ) : null}
-            </div>
-          </div>
-          {fg ? (
-            <div className="relative mx-auto h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-white/20 bg-white/10 sm:mx-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={fg} alt="" className="h-full w-full object-contain p-2" />
-            </div>
+        <div className="relative z-[1] flex min-h-[14rem] flex-col justify-end gap-2 p-5 text-white sm:max-w-[70%] sm:justify-center">
+          {badge ? (
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-white/90">
+              {badge}
+            </p>
           ) : null}
+          {subtitle ? (
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/80">
+              {subtitle}
+            </p>
+          ) : null}
+          <h3 className={`${sfDisplay()} text-xl leading-tight text-white sm:text-2xl`}>
+            {title}
+          </h3>
+          {description ? (
+            <p className="max-w-md text-xs leading-relaxed text-white/85">
+              {description}
+            </p>
+          ) : null}
+          <div className="mt-1 flex flex-wrap gap-2">
+            {primaryLabel ? (
+              <span
+                className={`${sfBtn("primary")} pointer-events-none !min-h-9 !px-3 !text-xs`}
+              >
+                {primaryLabel}
+              </span>
+            ) : null}
+            {secondaryLabel ? (
+              <span className="pointer-events-none inline-flex min-h-9 items-center rounded-md border border-white/45 bg-white/10 px-3 text-xs font-semibold text-white">
+                {secondaryLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </PreviewShell>
@@ -259,42 +299,74 @@ function ListPreview({
 
 function ProductsPreview({ config }: { config: PreviewConfig }) {
   const source = String(config.source ?? "FEATURED_PRODUCTS");
+  const categoryId = String(config.categoryId ?? "").trim();
+  const productIds = Array.isArray(config.productIds)
+    ? (config.productIds as string[])
+    : [];
   const sourceLabel =
     source === "LATEST_PRODUCTS"
-      ? "Newest products"
+      ? "Latest products"
       : source === "CATEGORY_PRODUCTS"
-        ? "Products from one category"
+        ? categoryId
+          ? "One category"
+          : "One category (pick a category)"
         : source === "SELECTED_PRODUCTS"
-          ? "Hand-picked products"
+          ? productIds.length
+            ? `${productIds.length} hand-picked`
+            : "Hand-picked (select products)"
           : "Featured products";
   const limit = Number(config.limit ?? 8) || 8;
+  const previewCount =
+    source === "SELECTED_PRODUCTS" && productIds.length > 0
+      ? Math.min(limit, productIds.length, 6)
+      : Math.min(limit, 6);
+  const needsSetup =
+    (source === "CATEGORY_PRODUCTS" && !categoryId) ||
+    (source === "SELECTED_PRODUCTS" && productIds.length === 0);
+
   return (
     <PreviewShell
       footer={
-        <p className="text-xs text-[var(--color-muted)]">
-          Shows up to <strong>{limit}</strong> items from: {sourceLabel}
+        <p className="text-[0.7rem] text-[var(--color-muted)]">
+          Shows up to <strong>{limit}</strong> · {sourceLabel}
         </p>
       }
     >
-      <div className="p-4" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        <h3 className={`${sfDisplay()} text-lg`}>
-          {text(config.title, "Featured products")}
-        </h3>
-        {text(config.description) ? (
-          <p className="text-xs text-[var(--color-muted)]">{text(config.description)}</p>
-        ) : null}
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {Array.from({ length: Math.min(limit, 6) }, (_, i) => (
-            <div
-              key={i}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2"
-            >
-              <div className="mb-2 aspect-square rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))]" />
-              <p className="truncate text-[11px] font-medium">Product {i + 1}</p>
-              <p className="text-[10px] text-[var(--color-muted)]">From catalog</p>
-            </div>
-          ))}
+      <div className="space-y-2 p-3">
+        <div className="text-center">
+          <p className={`${sfDisplay()} text-sm`}>
+            {text(config.title, "Featured products")}
+          </p>
+          {text(config.description) ? (
+            <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--color-muted)] line-clamp-2">
+              {text(config.description)}
+            </p>
+          ) : null}
         </div>
+        {needsSetup ? (
+          <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-muted)]">
+            {source === "CATEGORY_PRODUCTS"
+              ? "Choose a category on the left"
+              : "Pick products on the left"}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+            {Array.from({ length: previewCount }, (_, i) => (
+              <div
+                key={i}
+                className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-1.5"
+              >
+                <div className="mb-1.5 aspect-square rounded bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))]" />
+                <p className="truncate text-[0.65rem] font-medium">
+                  Product {i + 1}
+                </p>
+                <p className="text-[0.6rem] text-[var(--color-muted)]">
+                  Store catalog
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </PreviewShell>
   );
@@ -303,29 +375,40 @@ function ProductsPreview({ config }: { config: PreviewConfig }) {
 function CategoriesPreview({ config }: { config: PreviewConfig }) {
   const cols = Number(config.columns ?? 3) || 3;
   const ids = Array.isArray(config.categoryIds) ? config.categoryIds : [];
+  const placeholders = ["Seasoning", "Grinded", "Blended", "Whole"];
+  const count = ids.length > 0 ? Math.min(ids.length, 4) : Math.min(cols, 4);
   return (
     <PreviewShell
       footer={
-        <p className="text-xs text-[var(--color-muted)]">
+        <p className="text-[0.7rem] text-[var(--color-muted)]">
           {ids.length
-            ? `${ids.length} selected categor${ids.length === 1 ? "y" : "ies"}`
-            : "All active categories (automatic)"}{" "}
+            ? `${ids.length} selected`
+            : "All active (automatic)"}{" "}
           · {cols} columns
         </p>
       }
     >
-      <div className="p-4" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        <h3 className={`${sfDisplay()} text-lg`}>
-          {text(config.title, "Shop by category")}
-        </h3>
+      <div className="space-y-2 p-3">
+        <div className="text-center">
+          <p className={`${sfDisplay()} text-sm`}>
+            {text(config.title, "Shop by category")}
+          </p>
+          {text(config.description) ? (
+            <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--color-muted)] line-clamp-2">
+              {text(config.description)}
+            </p>
+          ) : null}
+        </div>
         <div
-          className="grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${Math.min(cols, 3)}, minmax(0, 1fr))` }}
+          className="grid gap-1.5"
+          style={{
+            gridTemplateColumns: `repeat(${Math.min(cols, 3)}, minmax(0, 1fr))`,
+          }}
         >
-          {["Seasoning", "Grinded", "Blended"].slice(0, cols).map((name) => (
+          {placeholders.slice(0, count).map((name) => (
             <div
               key={name}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-4 text-center text-xs font-semibold"
+              className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-3 text-center text-[0.7rem] font-semibold"
             >
               {name}
             </div>
@@ -358,6 +441,37 @@ export function SectionEditorPreview({
     return <CategoriesPreview config={config} />;
   }
 
+  if (sectionType === "other_information") {
+    const picks = [
+      config.showStory ? "Story" : null,
+      config.showVisionMission ? "Vision & mission" : null,
+      config.showFactory ? "Factory" : null,
+      config.showCertificates ? "Certificates" : null,
+      config.showTrain ? "Heritage train" : null,
+    ].filter(Boolean);
+    return (
+      <PreviewShell>
+        <div className="space-y-2 p-4 text-center">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+            Other information
+          </p>
+          <p className="text-sm font-medium text-[var(--color-foreground)]">
+            From Content → About
+          </p>
+          {picks.length > 0 ? (
+            <p className="text-xs text-[var(--color-muted)]">
+              Showing: {picks.join(" · ")}
+            </p>
+          ) : (
+            <p className="text-xs text-[var(--color-muted)]">
+              Turn on at least one block to show on the homepage.
+            </p>
+          )}
+        </div>
+      </PreviewShell>
+    );
+  }
+
   if (sectionType === "about") {
     const portrait = resolveCmsImageUrl(config.imagePath as string | null);
     const engineWheel = resolveCmsImageUrl(
@@ -369,23 +483,27 @@ export function SectionEditorPreview({
         label?: string;
       }>) ?? []
     ).filter((item) => text(item.year) || text(item.label));
-    const gallerySlides = (
-      (config.gallerySlides as Array<{
+    const factorySlides = (
+      (config.factorySlides as Array<{
         imagePath?: string | null;
         title?: string;
-        description?: string;
       }>) ?? []
     ).filter(
       (slide) =>
-        Boolean(slide.imagePath?.trim()) ||
-        Boolean(slide.title?.trim()) ||
-        Boolean(slide.description?.trim()),
+        Boolean(slide.imagePath?.trim()) || Boolean(slide.title?.trim()),
     );
-    const showGallery =
-      Boolean(config.galleryEnabled) && gallerySlides.length > 0;
-    const firstGallery = showGallery
-      ? resolveCmsImageUrl(gallerySlides[0]?.imagePath ?? null)
-      : null;
+    const certSlides = (
+      (config.certificatesSlides as Array<{
+        imagePath?: string | null;
+      }>) ?? []
+    ).filter((slide) => Boolean(slide.imagePath?.trim()));
+    const showFactory =
+      Boolean(config.factoryEnabled) && factorySlides.length > 0;
+    const showCerts =
+      Boolean(config.certificatesEnabled) && certSlides.length > 0;
+    const showVm =
+      Boolean(config.visionMissionEnabled) &&
+      (Boolean(text(config.visionText)) || Boolean(text(config.missionText)));
     return (
       <PreviewShell>
         <div className="grid gap-4 p-4 sm:grid-cols-2">
@@ -433,31 +551,74 @@ export function SectionEditorPreview({
             ) : null}
           </div>
         </div>
-        {showGallery ? (
+        {showVm ? (
+          <div className="border-t border-[var(--color-border)] px-4 py-3 text-center">
+            <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              Vision & mission
+            </p>
+            <p className="text-xs text-[var(--color-foreground)] line-clamp-2">
+              {text(config.visionText) || text(config.missionText)}
+            </p>
+          </div>
+        ) : null}
+        {showFactory ? (
           <div className="border-t border-[var(--color-border)] px-4 py-3">
             <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
-              Factory & certificates · {gallerySlides.length} card
-              {gallerySlides.length === 1 ? "" : "s"}
+              {text(config.factoryHeading, "Factory")} · {factorySlides.length}{" "}
+              photo{factorySlides.length === 1 ? "" : "s"}
             </p>
-            <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-[var(--color-surface)]">
-              {firstGallery ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={firstGallery}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              ) : (
-                <p className="flex h-full items-center justify-center text-xs text-[var(--color-muted)]">
-                  Gallery slide
-                </p>
-              )}
+            <div className="grid grid-cols-3 gap-1.5">
+              {factorySlides.slice(0, 3).map((slide, i) => {
+                const src = resolveCmsImageUrl(slide.imagePath ?? null);
+                return (
+                  <div
+                    key={`prev-factory-${i}`}
+                    className={
+                      i === 0 && factorySlides.length >= 3
+                        ? "relative col-span-2 row-span-2 min-h-[4.5rem] overflow-hidden rounded-md bg-[var(--color-surface)]"
+                        : "relative aspect-[4/3] overflow-hidden rounded-md bg-[var(--color-surface)]"
+                    }
+                  >
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={src}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
             </div>
-            {text(gallerySlides[0]?.title) ? (
-              <p className="mt-2 text-center text-xs font-semibold text-[var(--color-foreground)]">
-                {text(gallerySlides[0]?.title)}
-              </p>
-            ) : null}
+          </div>
+        ) : null}
+        {showCerts ? (
+          <div className="border-t border-[var(--color-border)] px-4 py-3 text-center">
+            <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
+              {text(config.certificatesHeading, "Certificates")} ·{" "}
+              {certSlides.length} seal{certSlides.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              {certSlides.slice(0, 6).map((slide, i) => {
+                const src = resolveCmsImageUrl(slide.imagePath ?? null);
+                return (
+                  <div
+                    key={`prev-cert-${i}`}
+                    className="relative h-10 w-10 overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--color-primary)_25%,var(--color-border))] bg-[var(--color-surface)]"
+                  >
+                    {src ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={src}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-contain p-1"
+                      />
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
         {stops.length > 0 ? (
@@ -573,7 +734,54 @@ export function SectionEditorPreview({
     );
   }
 
-  if (sectionType === "cta" || sectionType === "text_image") {
+  if (sectionType === "cta") {
+    return (
+      <PreviewShell
+        footer={
+          text(config.buttonText) && config.buttonLink ? (
+            <p className="text-[0.7rem] text-[var(--color-muted)]">
+              → {pageLabel(String(config.buttonLink))}
+            </p>
+          ) : null
+        }
+      >
+        <div className="relative overflow-hidden px-3 py-4 text-center">
+          <div
+            className="pointer-events-none absolute inset-0 opacity-90"
+            aria-hidden
+            style={{
+              background:
+                "radial-gradient(ellipse 70% 55% at 50% 0%, color-mix(in srgb, var(--color-primary) 14%, transparent), transparent 72%)",
+            }}
+          />
+          <div className="relative space-y-1.5">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+              Call to action
+            </p>
+            <h3 className={`${sfDisplay()} text-base leading-snug`}>
+              {text(config.heading, "Heading")}
+            </h3>
+            {text(config.description) ? (
+              <p className="mx-auto max-w-sm text-[0.7rem] leading-relaxed text-[var(--color-muted)] line-clamp-3">
+                {text(config.description)}
+              </p>
+            ) : null}
+            {text(config.buttonText) ? (
+              <div className="pt-1">
+                <span
+                  className={`${sfBtn("primary")} pointer-events-none !min-h-8 !px-3 !text-[0.7rem]`}
+                >
+                  {text(config.buttonText)}
+                </span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </PreviewShell>
+    );
+  }
+
+  if (sectionType === "text_image") {
     return (
       <SimpleBlockPreview
         eyebrow={SECTION_TYPE_LABELS[sectionType]}
@@ -581,9 +789,7 @@ export function SectionEditorPreview({
         body={text(config.description)}
         buttonText={text(config.buttonText) || undefined}
         buttonLink={(config.buttonLink as string) || null}
-        imagePath={
-          sectionType === "cta" ? null : (config.imagePath as string | null)
-        }
+        imagePath={config.imagePath as string | null}
       />
     );
   }
@@ -627,34 +833,91 @@ export function SectionEditorPreview({
 
   if (sectionType === "features") {
     const items = Array.isArray(config.items)
-      ? (config.items as Array<{ title?: string; description?: string }>).map((i) => ({
-          title: text(i.title, "Feature"),
-          detail: text(i.description),
-        }))
+      ? (config.items as Array<{
+          icon?: string;
+          title?: string;
+          description?: string;
+        }>).filter((i) => String(i.title ?? "").trim())
       : [];
     return (
-      <ListPreview
-        title={text(config.title, "Why choose us")}
-        description={text(config.description)}
-        items={items}
-        emptyHint="Add features as: icon|title|description"
-      />
+      <PreviewShell>
+        <div className="space-y-2.5 p-3">
+          <div className="text-center">
+            <p className={`${sfDisplay()} text-sm`}>
+              {text(config.title, "Why choose us")}
+            </p>
+            {text(config.description) ? (
+              <p className="mt-1 text-[0.7rem] leading-relaxed text-[var(--color-muted)] line-clamp-2">
+                {text(config.description)}
+              </p>
+            ) : null}
+          </div>
+          {items.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-muted)]">
+              Add feature cards on the left
+            </p>
+          ) : (
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {items.slice(0, 6).map((item, index) => (
+                <li
+                  key={`${item.title}-${index}`}
+                  className="rounded-md border border-[var(--color-border)] px-2 py-2"
+                >
+                  <p className="text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                    {text(item.icon, "star")}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold leading-snug">
+                    {text(item.title, "Feature")}
+                  </p>
+                  {text(item.description) ? (
+                    <p className="mt-0.5 text-[0.65rem] leading-snug text-[var(--color-muted)] line-clamp-2">
+                      {text(item.description)}
+                    </p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PreviewShell>
     );
   }
 
   if (sectionType === "statistics") {
     const items = Array.isArray(config.items)
-      ? (config.items as Array<{ value?: string; label?: string }>).map((i) => ({
-          title: text(i.value, "0"),
-          detail: text(i.label),
-        }))
+      ? (config.items as Array<{ value?: string; label?: string }>).filter(
+          (i) => String(i.value ?? "").trim() || String(i.label ?? "").trim(),
+        )
       : [];
     return (
-      <ListPreview
-        title={text(config.title, "By the numbers")}
-        items={items}
-        emptyHint="Add stats as: value|label"
-      />
+      <PreviewShell>
+        <div className="space-y-2.5 p-3">
+          <p className={`${sfDisplay()} text-center text-sm`}>
+            {text(config.title, "By the numbers")}
+          </p>
+          {items.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-muted)]">
+              Add numbers on the left
+            </p>
+          ) : (
+            <ul className="grid grid-cols-2 gap-1.5">
+              {items.slice(0, 8).map((item, index) => (
+                <li
+                  key={`${item.value}-${item.label}-${index}`}
+                  className="rounded-md border border-[var(--color-border)] px-2 py-2 text-center"
+                >
+                  <p className={`${sfDisplay()} text-base leading-none`}>
+                    {text(item.value, "—")}
+                  </p>
+                  <p className="mt-1 text-[0.65rem] leading-snug text-[var(--color-muted)]">
+                    {text(item.label, "Label")}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PreviewShell>
     );
   }
 
@@ -676,17 +939,70 @@ export function SectionEditorPreview({
 
   if (sectionType === "faq") {
     const items = Array.isArray(config.items)
-      ? (config.items as Array<{ question?: string; answer?: string }>).map((i) => ({
-          title: text(i.question, "Question"),
-          detail: text(i.answer),
-        }))
+      ? (config.items as Array<{
+          question?: string;
+          answer?: string;
+          active?: boolean;
+        }>)
+          .filter((i) => i.active !== false && String(i.question ?? "").trim())
+          .map((i) => ({
+            question: text(i.question, "Question"),
+            answer: text(i.answer, "Answer appears here."),
+          }))
       : [];
     return (
-      <ListPreview
-        title={text(config.title, "FAQ")}
-        items={items}
-        emptyHint="Add FAQ as: question|answer"
-      />
+      <PreviewShell>
+        <div className="space-y-2 p-3">
+          <p className={`${sfDisplay()} text-center text-sm`}>
+            {text(config.title, "FAQ")}
+          </p>
+          {items.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-muted)]">
+              Add questions and answers on the left
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {items.map((item, index) => {
+                const open = index === 0;
+                return (
+                  <li
+                    key={`${item.question}-${index}`}
+                    className={`overflow-hidden rounded-md border border-[var(--color-border)] ${
+                      open
+                        ? "border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))]"
+                        : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 px-2 py-1.5">
+                      <span className="text-[0.6rem] font-bold tabular-nums text-[var(--color-primary)]">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs font-semibold leading-snug">
+                        {item.question}
+                      </span>
+                      <span
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold ${
+                          open
+                            ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                            : "border border-[var(--color-border)] text-[var(--color-primary)]"
+                        }`}
+                        aria-hidden
+                      >
+                        {open ? "−" : "+"}
+                      </span>
+                    </div>
+                    {open ? (
+                      <p className="border-t border-[var(--color-border)] px-2 py-1.5 text-[0.7rem] leading-relaxed text-[var(--color-muted)]">
+                        {item.answer}
+                      </p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </PreviewShell>
     );
   }
 

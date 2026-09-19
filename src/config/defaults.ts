@@ -151,6 +151,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     mobileMenuEnabled: true,
     navVisible: true,
     logoSize: "large",
+    logoHang: "bold",
     announcement: {
       enabled: false,
       openInNewTab: false,

@@ -163,6 +163,9 @@ export interface SocialLinksConfig {
 
 export type LogoSize = "small" | "medium" | "large" | "xlarge";
 
+/** How far the logo hangs over the hero. Independent of size. */
+export type LogoHang = "none" | "soft" | "medium" | "bold";
+
 export interface AnnouncementConfig {
   enabled: boolean;
   text?: string;
@@ -178,6 +181,7 @@ export interface HeaderChromeConfig {
   mobileMenuEnabled: boolean;
   navVisible: boolean;
   logoSize: LogoSize;
+  logoHang: LogoHang;
   announcement: AnnouncementConfig;
 }
 

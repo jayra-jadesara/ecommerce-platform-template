@@ -5,6 +5,7 @@ import type {
   ContactConfig,
   FooterChromeConfig,
   HeaderChromeConfig,
+  LogoHang,
   LogoSize,
   NavItem,
   NavigationConfig,
@@ -150,6 +151,7 @@ export type SettingsRow = {
   header_mobile_menu_enabled?: boolean | null;
   header_nav_visible?: boolean | null;
   header_logo_size?: string | null;
+  header_logo_hang?: string | null;
   announcement_enabled?: boolean | null;
   announcement_text?: string | null;
   announcement_url?: string | null;
@@ -394,6 +396,18 @@ function coerceLogoSize(value: string | null | undefined): LogoSize {
   return "medium";
 }
 
+function coerceLogoHang(value: string | null | undefined): LogoHang {
+  if (
+    value === "none" ||
+    value === "soft" ||
+    value === "medium" ||
+    value === "bold"
+  ) {
+    return value;
+  }
+  return "none";
+}
+
 export function mapSettingsRowToContact(
   row: SettingsRow | null | undefined,
 ): ContactConfig {
@@ -439,6 +453,7 @@ export function mapSettingsRowToHeader(
       row.header_mobile_menu_enabled ?? fallback.mobileMenuEnabled,
     navVisible: row.header_nav_visible ?? fallback.navVisible,
     logoSize: coerceLogoSize(row.header_logo_size),
+    logoHang: coerceLogoHang(row.header_logo_hang),
     announcement: {
       enabled: row.announcement_enabled ?? false,
       text: row.announcement_text?.trim() || undefined,

@@ -428,6 +428,11 @@
   gap: 1.25rem !important;
 }
 
+.MuiDialogContent-root .admin-form-stack--compact,
+.admin-shell .admin-form-stack--compact {
+  gap: 0.65rem !important;
+}
+
 .MuiDialogContent-root .admin-fields-grid,
 .admin-shell .admin-fields-grid {
   gap: 1.25rem !important;
@@ -447,6 +452,15 @@
 
 .MuiDialogContent-root .admin-field-group {
   gap: 1.25rem !important;
+}
+
+.admin-field-group--compact {
+  gap: 0.55rem !important;
+  padding: 0.75rem;
+}
+
+.MuiDialogContent-root .admin-field-group--compact {
+  gap: 0.55rem !important;
 }
 
 .admin-field-group__title {

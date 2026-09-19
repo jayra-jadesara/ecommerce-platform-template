@@ -12,7 +12,7 @@ import {
   headerSettingsSchema,
   type HeaderSettingsFormValues,
 } from "@/features/admin/settings/schemas";
-import { LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
+import { LOGO_HANG_OPTIONS, LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
@@ -34,13 +34,21 @@ import {
   pageOptionLabel,
   StorePageLinkField,
 } from "@/features/admin/ui/StorePageLinkField";
+import { cn } from "@/lib/cn";
 import type { BrandConfig } from "@/types";
 
 const LOGO_SIZE_LABELS: Record<(typeof LOGO_SIZE_OPTIONS)[number], string> = {
   small: "Small",
   medium: "Medium",
   large: "Large",
-  xlarge: "Extra large (brand hero)",
+  xlarge: "Extra large",
+};
+
+const LOGO_HANG_LABELS: Record<(typeof LOGO_HANG_OPTIONS)[number], string> = {
+  none: "None — stays inside the header bar",
+  soft: "Soft — slight overlap onto the hero",
+  medium: "Medium — clear hang over the hero",
+  bold: "Bold — deep hang over the hero",
 };
 
 interface HeaderSettingsFormProps {
@@ -70,6 +78,13 @@ export function HeaderSettingsForm({
         initialValues.logoSize === "xlarge"
           ? initialValues.logoSize
           : DEFAULT_HEADER_SETTINGS.logoSize,
+      logoHang:
+        initialValues.logoHang === "none" ||
+        initialValues.logoHang === "soft" ||
+        initialValues.logoHang === "medium" ||
+        initialValues.logoHang === "bold"
+          ? initialValues.logoHang
+          : DEFAULT_HEADER_SETTINGS.logoHang,
     }),
     [initialValues],
   );
@@ -95,6 +110,14 @@ export function HeaderSettingsForm({
     watched.logoSize === "xlarge"
       ? watched.logoSize
       : "medium";
+  const logoHang =
+    watched.logoHang === "none" ||
+    watched.logoHang === "soft" ||
+    watched.logoHang === "medium" ||
+    watched.logoHang === "bold"
+      ? watched.logoHang
+      : "none";
+  const hangPreview = logoHang !== "none";
 
   const previewAnnouncement = useMemo(() => {
     if (!announcementOn || !watched.announcementText?.trim()) return null;
@@ -205,10 +228,29 @@ export function HeaderSettingsForm({
                 value={logoSize}
                 onChange={field.onChange}
                 name={field.name}
-                helperText="Default size at the top of the page — logo becomes smaller when shoppers scroll"
+                helperText="How tall the logo is in the top-left (your theme header)."
                 options={LOGO_SIZE_OPTIONS.map((size) => ({
                   value: size,
                   label: LOGO_SIZE_LABELS[size],
+                }))}
+              />
+            )}
+          />
+          <Controller
+            name="logoHang"
+            control={control}
+            render={({ field }) => (
+              <AdminSelect
+                label="Logo overlap"
+                required
+                disabled={!canUpdate || pending}
+                value={logoHang}
+                onChange={field.onChange}
+                name={field.name}
+                helperText="How far the logo hangs down over the hero from the top-left. Shrinks back into the bar when shoppers scroll."
+                options={LOGO_HANG_OPTIONS.map((hang) => ({
+                  value: hang,
+                  label: LOGO_HANG_LABELS[hang],
                 }))}
               />
             )}
@@ -316,9 +358,11 @@ export function HeaderSettingsForm({
           Header preview
         </h3>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Rough look of the top of your store.
+          Rough look of the top of your store
+          {hangPreview ? " — logo hangs over the section below" : ""}
+          .
         </p>
-        <div className="mt-4 overflow-hidden rounded-xl border border-[var(--color-border)]">
+        <div className="mt-4 overflow-visible rounded-xl border border-[var(--color-border)]">
           {previewAnnouncement ? (
             <div className="bg-[var(--color-button-background)] px-3 py-2 text-center text-sm text-[var(--color-button-foreground)]">
               {previewAnnouncement}
@@ -329,36 +373,72 @@ export function HeaderSettingsForm({
               ) : null}
             </div>
           ) : null}
-          <div className="flex items-center justify-between bg-[var(--color-header-background)] px-4 py-3 text-[var(--color-header-foreground)]">
-            <span
-              className="font-semibold"
-              style={{
-                fontSize:
-                  logoSize === "small"
-                    ? "0.95rem"
-                    : logoSize === "xlarge"
-                      ? "1.55rem"
-                      : logoSize === "large"
-                        ? "1.35rem"
-                        : "1.1rem",
-              }}
-            >
-              {brand.name}
-            </span>
-            <span className="text-xs text-[var(--color-muted)]">
-              {[
-                watched.navVisible ? "Menu" : null,
-                watched.searchEnabled ? "Search" : null,
-                watched.cartEnabled ? "Cart" : null,
-                watched.accountEnabled ? "Account" : null,
-                watched.stickyHeader ? "Sticky" : null,
-              ]
-                .filter(Boolean)
-                .join(" · ") || "Minimal header"}
-            </span>
+          <div className="relative bg-[var(--color-header-background)] px-4 py-3 text-[var(--color-header-foreground)]">
+            <div className="flex items-end justify-between gap-3">
+              <div
+                className={cn(
+                  "relative z-[2] flex items-end",
+                  logoHang === "soft" && "-mb-4",
+                  logoHang === "medium" && "-mb-7",
+                  logoHang === "bold" && "-mb-10",
+                )}
+              >
+                {brand.logoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={brand.logoUrl}
+                    alt=""
+                    className="w-auto object-contain object-left"
+                    style={{
+                      height:
+                        logoSize === "small"
+                          ? "1.75rem"
+                          : logoSize === "medium"
+                            ? "2.25rem"
+                            : logoSize === "large"
+                              ? "3.25rem"
+                              : "4rem",
+                    }}
+                  />
+                ) : (
+                  <span
+                    className="font-semibold"
+                    style={{
+                      fontSize:
+                        logoSize === "small"
+                          ? "0.95rem"
+                          : logoSize === "xlarge"
+                            ? "1.55rem"
+                            : logoSize === "large"
+                              ? "1.35rem"
+                              : "1.1rem",
+                    }}
+                  >
+                    {brand.name}
+                  </span>
+                )}
+              </div>
+              <span className="relative z-[1] self-center text-xs text-[var(--color-muted)]">
+                {[
+                  watched.navVisible ? "Menu" : null,
+                  watched.searchEnabled ? "Search" : null,
+                  watched.cartEnabled ? "Cart" : null,
+                  watched.accountEnabled ? "Account" : null,
+                  watched.stickyHeader ? "Sticky" : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Minimal header"}
+              </span>
+            </div>
           </div>
+          {hangPreview ? (
+            <div
+              className="h-12 bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))]"
+              aria-hidden
+            />
+          ) : null}
         </div>
-        </section>
+      </section>
       </div>
     </form>
   );

@@ -41,7 +41,7 @@ export default async function AdminContentCareerPage() {
   const careerSection =
     sections.find((s) => s.sectionType === "career") ?? null;
 
-  const pageName = page.title?.trim() || "Career";
+  const pageName = "Career";
 
   if (!careerSection) {
     return (
@@ -66,7 +66,7 @@ export default async function AdminContentCareerPage() {
     <div className="space-y-4 pb-16">
       <AdminPageHeader
         title={pageName}
-        description="Heading sets the page name everywhere. Unpublish to hide roles and the apply form on the store."
+        description="Heading sets the storefront name (header, footer, and /career). Admin stays labeled Career."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: pageName },

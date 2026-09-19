@@ -352,7 +352,6 @@ export function AboutHeritageTrain({
   className,
 }: AboutHeritageTrainProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const [paused, setPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const uid = useId().replace(/:/g, "");
 
@@ -373,14 +372,14 @@ export function AboutHeritageTrain({
 
   const tick = useEffectEvent(() => {
     const el = viewportRef.current;
-    if (!el || paused || reduceMotion) return;
+    if (!el || reduceMotion) return;
     const max = el.scrollWidth - el.clientWidth;
     if (max <= 4) return;
     if (el.scrollLeft >= max - 1) {
       el.scrollLeft = 0;
       return;
     }
-    el.scrollLeft += 0.4;
+    el.scrollLeft += 0.85;
   });
 
   useEffect(() => {
@@ -400,24 +399,13 @@ export function AboutHeritageTrain({
 
   const engineWheel =
     engineWheelUrl || items.find((i) => i.wheelUrl)?.wheelUrl || null;
-  // Wheels keep spinning; hover pauses auto-scroll and runs landscape parallax.
   const spinning = !reduceMotion;
+  // Duplicate consist so wide viewports always have scroll overflow (Chrome/Edge).
+  const loopItems = items.length < 4 ? [...items, ...items] : items;
 
   return (
     <div
-      className={cn(
-        "sf-about-train",
-        paused && "sf-about-train--hover",
-        className,
-      )}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setPaused(false);
-        }
-      }}
+      className={cn("sf-about-train sf-about-train--live", className)}
     >
       <button
         type="button"
@@ -547,7 +535,7 @@ export function AboutHeritageTrain({
             </div>
           </div>
 
-          {items.map((item, index) => {
+          {loopItems.map((item, index) => {
             const wheel = item.wheelUrl || engineWheel;
             const initials = (item.label || item.year || "?")
               .slice(0, 2)

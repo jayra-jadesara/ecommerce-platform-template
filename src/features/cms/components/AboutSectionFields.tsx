@@ -1,16 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import TextField from "@mui/material/TextField";
 import {
-  adminFieldGroup,
+  adminCard,
+  adminCardPadding,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { StorePageLinkField } from "@/features/admin/ui/StorePageLinkField";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
+import { cn } from "@/lib/cn";
 
 export type AboutEditableConfig = Record<string, unknown>;
+
+type PanelId =
+  | "story"
+  | "vision"
+  | "factory"
+  | "certificates"
+  | "train"
+  | "button";
 
 /** Sample milestones shown as placeholders — guides merchants how to fill each bogie. */
 const BOGIE_FILL_EXAMPLES = [
@@ -36,6 +46,58 @@ const BOGIE_FILL_EXAMPLES = [
 
 function bogieExample(index: number) {
   return BOGIE_FILL_EXAMPLES[index % BOGIE_FILL_EXAMPLES.length]!;
+}
+
+function AboutPanel({
+  id,
+  step,
+  title,
+  summary,
+  open,
+  onToggle,
+  children,
+}: {
+  id: PanelId;
+  step: number;
+  title: string;
+  summary: string;
+  open: boolean;
+  onToggle: (id: PanelId) => void;
+  children: ReactNode;
+}) {
+  return (
+    <div className={cn(adminCard(), "overflow-hidden")}>
+      <button
+        type="button"
+        className="flex w-full items-start gap-3 px-4 py-3.5 text-left transition hover:bg-[var(--color-surface)] md:px-5"
+        onClick={() => onToggle(id)}
+        aria-expanded={open}
+      >
+        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[0.7rem] font-bold tabular-nums text-[var(--color-primary)]">
+          {step}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
+            {title}
+          </span>
+          <span className="mt-0.5 block text-sm leading-snug text-[var(--color-muted)]">
+            {summary}
+          </span>
+        </span>
+        <span className="mt-1 shrink-0 text-xs font-semibold text-[var(--color-primary)]">
+          {open ? "Hide" : "Edit"}
+        </span>
+      </button>
+      {open ? (
+        <div
+          className={cn(adminCardPadding(), "border-t border-[var(--color-border)] pt-4")}
+          style={adminStackStyle}
+        >
+          {children}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 type AboutSectionFieldsProps = {
@@ -125,28 +187,55 @@ export function AboutSectionFields({
   const [expandedBogie, setExpandedBogie] = useState<number | null>(
     timelineItems.length > 0 ? 0 : null,
   );
-  const gallerySlides =
-    (config.gallerySlides as Array<{
+  const factorySlides =
+    (config.factorySlides as Array<{
       imagePath?: string | null;
       title?: string;
       description?: string;
     }>) ?? [];
-  const [expandedGallery, setExpandedGallery] = useState<number | null>(
-    gallerySlides.length > 0 ? 0 : null,
+  const certificatesSlides =
+    (config.certificatesSlides as Array<{
+      imagePath?: string | null;
+      title?: string;
+      description?: string;
+    }>) ?? [];
+  const [expandedFactory, setExpandedFactory] = useState<number | null>(
+    factorySlides.length > 0 ? 0 : null,
   );
+  const [expandedCertificates, setExpandedCertificates] = useState<
+    number | null
+  >(certificatesSlides.length > 0 ? 0 : null);
+  const [openPanel, setOpenPanel] = useState<PanelId | null>("story");
 
   function setField(key: string, value: unknown) {
     onChange({ ...config, [key]: value });
   }
 
+  function togglePanel(id: PanelId) {
+    setOpenPanel((cur) => (cur === id ? null : id));
+  }
+
   return (
-    <>
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">1. Story</p>
-        <p className="admin-field-group__hint">
-          What shoppers read first on /about — heading, story, and optional
-          quote.
-        </p>
+    <div className="space-y-3">
+      <p className="text-sm text-[var(--color-muted)]">
+        Sections match the order on{" "}
+        <span className="font-medium text-[var(--color-foreground)]">/about</span>
+        . Open one at a time — preview updates on the right. To show parts on
+        the store homepage, use{" "}
+        <span className="font-medium text-[var(--color-foreground)]">
+          Content → Homepage → Other information
+        </span>{" "}
+        (same content — no retyping).
+      </p>
+
+      <AboutPanel
+        id="story"
+        step={1}
+        title="Story & portrait"
+        summary="Heading, story text, quote, and founder photo"
+        open={openPanel === "story"}
+        onToggle={togglePanel}
+      >
         <TextField
           label="Heading"
           fullWidth
@@ -177,41 +266,169 @@ export function AboutSectionFields({
           value={String(config.quoteAuthor ?? "")}
           onChange={(e) => setField("quoteAuthor", e.target.value)}
         />
-      </div>
+        <div className="border-t border-[var(--color-border)] pt-4" style={adminStackStyle}>
+          <p className="text-sm font-semibold text-[var(--color-foreground)]">
+            Portrait
+          </p>
+          <ImageField
+            label="Portrait image"
+            value={config.imagePath as string | null}
+            onPick={() => onPickMedia("imagePath")}
+            onClear={() => setField("imagePath", null)}
+          />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label="Caption name"
+              fullWidth
+              size="small"
+              value={String(config.imageCaptionName ?? "")}
+              onChange={(e) => setField("imageCaptionName", e.target.value)}
+              helperText="Optional — e.g. founder name"
+            />
+            <TextField
+              label="Caption role"
+              fullWidth
+              size="small"
+              value={String(config.imageCaptionRole ?? "")}
+              onChange={(e) => setField("imageCaptionRole", e.target.value)}
+              helperText='Optional — e.g. "Founder"'
+            />
+          </div>
+        </div>
+      </AboutPanel>
 
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">2. Portrait</p>
-        <p className="admin-field-group__hint">
-          Photo shown beside the story, with an optional name/role caption.
-        </p>
-        <ImageField
-          label="Portrait image"
-          value={config.imagePath as string | null}
-          onPick={() => onPickMedia("imagePath")}
-          onClear={() => setField("imagePath", null)}
+      <AboutPanel
+        id="vision"
+        step={2}
+        title="Vision & mission"
+        summary={
+          Boolean(config.visionMissionEnabled)
+            ? "On — two-column band on /about"
+            : "Off — hidden on /about"
+        }
+        open={openPanel === "vision"}
+        onToggle={togglePanel}
+      >
+        <AdminToggle
+          checked={Boolean(config.visionMissionEnabled)}
+          onChange={(checked) => setField("visionMissionEnabled", checked)}
+          label="Show on /about"
         />
-        <TextField
-          label="Caption name"
-          fullWidth
-          value={String(config.imageCaptionName ?? "")}
-          onChange={(e) => setField("imageCaptionName", e.target.value)}
-          helperText='Optional — e.g. founder name. Clear if unused.'
-        />
-        <TextField
-          label="Caption role"
-          fullWidth
-          value={String(config.imageCaptionRole ?? "")}
-          onChange={(e) => setField("imageCaptionRole", e.target.value)}
-          helperText='Optional — e.g. "Founder". Clear if unused.'
-        />
-      </div>
+        {Boolean(config.visionMissionEnabled) ? (
+          <div className="grid gap-3 md:grid-cols-2">
+            <div style={adminStackStyle}>
+              <TextField
+                label="Vision heading"
+                fullWidth
+                size="small"
+                value={String(config.visionHeading ?? "Our Vision")}
+                onChange={(e) => setField("visionHeading", e.target.value)}
+              />
+              <TextField
+                label="Vision text"
+                fullWidth
+                size="small"
+                multiline
+                minRows={4}
+                value={String(config.visionText ?? "")}
+                onChange={(e) => setField("visionText", e.target.value)}
+              />
+            </div>
+            <div style={adminStackStyle}>
+              <TextField
+                label="Mission heading"
+                fullWidth
+                size="small"
+                value={String(config.missionHeading ?? "Our Mission")}
+                onChange={(e) => setField("missionHeading", e.target.value)}
+              />
+              <TextField
+                label="Mission text"
+                fullWidth
+                size="small"
+                multiline
+                minRows={4}
+                value={String(config.missionText ?? "")}
+                onChange={(e) => setField("missionText", e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
+      </AboutPanel>
 
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">3. Heritage train</p>
-        <p className="admin-field-group__hint">
-          Compact milestone list (year + title + story). Click a row to edit.
-          Empty list hides the train. Pattern: year “1892”, title “Founded”,
-          one short sentence.
+      <AboutPanel
+        id="factory"
+        step={3}
+        title="Factory"
+        summary={
+          Boolean(config.factoryEnabled)
+            ? `${factorySlides.length} card${factorySlides.length === 1 ? "" : "s"}`
+            : "Off — hidden on /about"
+        }
+        open={openPanel === "factory"}
+        onToggle={togglePanel}
+      >
+        <AboutSlideCardsEditor
+          enabledLabel="Show factory on /about"
+          enabled={Boolean(config.factoryEnabled)}
+          onEnabledChange={(checked) => setField("factoryEnabled", checked)}
+          heading={String(config.factoryHeading ?? "Factory")}
+          onHeadingChange={(v) => setField("factoryHeading", v)}
+          slides={factorySlides}
+          expandedIndex={expandedFactory}
+          setExpandedIndex={setExpandedFactory}
+          fieldKey="factorySlides"
+          setField={setField}
+          onPickMedia={onPickMedia}
+          addLabel="Add factory photo"
+          mode="full"
+        />
+      </AboutPanel>
+
+      <AboutPanel
+        id="certificates"
+        step={4}
+        title="Certificates"
+        summary={
+          Boolean(config.certificatesEnabled)
+            ? `${certificatesSlides.length} seal${certificatesSlides.length === 1 ? "" : "s"}`
+            : "Off — hidden on /about"
+        }
+        open={openPanel === "certificates"}
+        onToggle={togglePanel}
+      >
+        <AboutSlideCardsEditor
+          enabledLabel="Show certificates on /about"
+          enabled={Boolean(config.certificatesEnabled)}
+          onEnabledChange={(checked) => setField("certificatesEnabled", checked)}
+          heading={String(config.certificatesHeading ?? "Certificates")}
+          onHeadingChange={(v) => setField("certificatesHeading", v)}
+          slides={certificatesSlides}
+          expandedIndex={expandedCertificates}
+          setExpandedIndex={setExpandedCertificates}
+          fieldKey="certificatesSlides"
+          setField={setField}
+          onPickMedia={onPickMedia}
+          addLabel="Add certificate seal"
+          mode="imageOnly"
+        />
+      </AboutPanel>
+
+      <AboutPanel
+        id="train"
+        step={5}
+        title="Heritage train"
+        summary={
+          timelineItems.length === 0
+            ? "No milestones — train stays hidden"
+            : `${timelineItems.length} milestone${timelineItems.length === 1 ? "" : "s"}`
+        }
+        open={openPanel === "train"}
+        onToggle={togglePanel}
+      >
+        <p className="text-sm text-[var(--color-muted)]">
+          Year + short title + one sentence per bogie. Empty list hides the
+          train.
         </p>
         <ImageField
           label="Wheel image (same on every wheel)"
@@ -222,7 +439,7 @@ export function AboutSectionFields({
         <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
           {timelineItems.length === 0 ? (
             <p className="px-3 py-4 text-center text-xs text-[var(--color-muted)]">
-              No milestones yet — add your first bogie below.
+              No milestones yet — add your first below.
             </p>
           ) : (
             <ul className="divide-y divide-[var(--color-border)]">
@@ -385,229 +602,20 @@ export function AboutSectionFields({
           <span className="text-base leading-none">+</span>
           Add milestone
         </button>
-      </div>
+      </AboutPanel>
 
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">4. Factory & certificates</p>
-        <p className="admin-field-group__hint">
-          Factory, quality seal, and process photos — managed like train
-          milestones. Image is optional. All cards show in one row and slide
-          together on the storefront. Toggle off to hide on /about.
-        </p>
-        <AdminToggle
-          checked={Boolean(config.galleryEnabled)}
-          onChange={(checked) => setField("galleryEnabled", checked)}
-          label="Show factory & certificate gallery on storefront"
-        />
-        {Boolean(config.galleryEnabled) ? (
-          <>
-            <TextField
-              label="Autoplay interval (seconds)"
-              type="number"
-              fullWidth
-              size="small"
-              slotProps={{ htmlInput: { min: 0, max: 30, step: 0.5 } }}
-              value={
-                Number(config.galleryAutoplayMs ?? 4500) <= 0
-                  ? 0
-                  : Number(config.galleryAutoplayMs ?? 4500) / 1000
-              }
-              onChange={(e) => {
-                const seconds = Number(e.target.value);
-                if (!Number.isFinite(seconds) || seconds <= 0) {
-                  setField("galleryAutoplayMs", 0);
-                  return;
-                }
-                setField(
-                  "galleryAutoplayMs",
-                  Math.min(30_000, Math.round(seconds * 1000)),
-                );
-              }}
-              helperText="Speed for the shared row scroll. 0 = static row (no motion)."
-            />
-            <AdminToggle
-              checked={config.galleryShowArrows !== false}
-              onChange={(checked) => setField("galleryShowArrows", checked)}
-              label="Show direction arrows (when 2+ cards)"
-            />
-            <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-              {gallerySlides.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-[var(--color-muted)]">
-                  No items yet — add factory / certificate cards below.
-                </p>
-              ) : (
-                <ul className="divide-y divide-[var(--color-border)]">
-                  {gallerySlides.map((slide, index) => {
-                    const slides =
-                      (config.gallerySlides as Array<
-                        Record<string, unknown>
-                      >) ?? [];
-                    const open = expandedGallery === index;
-                    const updateSlide = (patch: Record<string, unknown>) => {
-                      const next = [...slides];
-                      next[index] = { ...next[index], ...patch };
-                      setField("gallerySlides", next);
-                    };
-                    const moveSlide = (dir: -1 | 1) => {
-                      const target = index + dir;
-                      if (target < 0 || target >= slides.length) return;
-                      const next = [...slides];
-                      const [row] = next.splice(index, 1);
-                      next.splice(target, 0, row);
-                      setField("gallerySlides", next);
-                      setExpandedGallery(target);
-                    };
-                    const title = String(slide.title ?? "").trim();
-                    const thumb = resolveCmsImageUrl(slide.imagePath);
-                    return (
-                      <li key={`gallery-row-${index}`}>
-                        <div className="flex items-stretch gap-1">
-                          <button
-                            type="button"
-                            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
-                            onClick={() =>
-                              setExpandedGallery(open ? null : index)
-                            }
-                            aria-expanded={open}
-                          >
-                            <span className="w-6 shrink-0 text-center text-[0.7rem] font-bold tabular-nums text-[var(--color-muted)]">
-                              {String(index + 1).padStart(2, "0")}
-                            </span>
-                            <span className="relative h-9 w-12 shrink-0 overflow-hidden rounded border border-[var(--color-border)] bg-[var(--color-surface)]">
-                              {thumb ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                  src={thumb}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <span className="flex h-full items-center justify-center text-[0.55rem] text-[var(--color-muted)]">
-                                  —
-                                </span>
-                              )}
-                            </span>
-                            <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
-                              {title || "Untitled card"}
-                            </span>
-                            <span className="shrink-0 text-[0.65rem] text-[var(--color-muted)]">
-                              {open ? "Hide" : "Edit"}
-                            </span>
-                          </button>
-                          <div className="flex shrink-0 items-center gap-0.5 pr-2">
-                            <button
-                              type="button"
-                              className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                              disabled={index === 0}
-                              aria-label="Move up"
-                              onClick={() => moveSlide(-1)}
-                            >
-                              ↑
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                              disabled={index >= slides.length - 1}
-                              aria-label="Move down"
-                              onClick={() => moveSlide(1)}
-                            >
-                              ↓
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
-                              aria-label="Remove card"
-                              onClick={() => {
-                                const next = [...slides];
-                                next.splice(index, 1);
-                                setField("gallerySlides", next);
-                                setExpandedGallery((cur) => {
-                                  if (cur == null) return null;
-                                  if (cur === index) return null;
-                                  if (cur > index) return cur - 1;
-                                  return cur;
-                                });
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
-                        {open ? (
-                          <div
-                            className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3"
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: "0.75rem",
-                            }}
-                          >
-                            <ImageField
-                              label="Image"
-                              value={slide.imagePath}
-                              onPick={() =>
-                                onPickMedia(
-                                  `gallerySlides.${index}.imagePath`,
-                                )
-                              }
-                              onClear={() => updateSlide({ imagePath: null })}
-                            />
-                            <TextField
-                              label="Title"
-                              fullWidth
-                              size="small"
-                              value={String(slide.title ?? "")}
-                              onChange={(e) =>
-                                updateSlide({ title: e.target.value })
-                              }
-                              placeholder="Factory Operations & Logistics"
-                            />
-                            <TextField
-                              label="Description"
-                              fullWidth
-                              size="small"
-                              multiline
-                              minRows={2}
-                              value={String(slide.description ?? "")}
-                              onChange={(e) =>
-                                updateSlide({ description: e.target.value })
-                              }
-                              placeholder="Short paragraph under the image"
-                            />
-                          </div>
-                        ) : null}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-            <button
-              type="button"
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)] disabled:opacity-50"
-              disabled={gallerySlides.length >= 8}
-              onClick={() => {
-                const current = (config.gallerySlides as unknown[]) ?? [];
-                if (current.length >= 8) return;
-                setField("gallerySlides", [
-                  ...current,
-                  { imagePath: null, title: "", description: "" },
-                ]);
-                setExpandedGallery(current.length);
-              }}
-            >
-              <span className="text-base leading-none">+</span>
-              Add factory / certificate card
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <p className="admin-field-group__title">5. Button (optional)</p>
-        <p className="admin-field-group__hint">
-          Optional call-to-action under the story. Leave blank to hide.
-        </p>
+      <AboutPanel
+        id="button"
+        step={6}
+        title="Call-to-action button"
+        summary={
+          String(config.buttonText ?? "").trim()
+            ? `“${String(config.buttonText).trim()}”`
+            : "Optional — leave blank to hide"
+        }
+        open={openPanel === "button"}
+        onToggle={togglePanel}
+      >
         <TextField
           label="Button text"
           fullWidth
@@ -620,7 +628,259 @@ export function AboutSectionFields({
           fallback="/contact"
           onChange={(v) => setField("buttonLink", v)}
         />
-      </div>
-    </>
+      </AboutPanel>
+    </div>
+  );
+}
+
+type SlideRow = {
+  imagePath?: string | null;
+  title?: string;
+  description?: string;
+};
+
+function AboutSlideCardsEditor({
+  enabledLabel,
+  enabled,
+  onEnabledChange,
+  heading,
+  onHeadingChange,
+  slides,
+  expandedIndex,
+  setExpandedIndex,
+  fieldKey,
+  setField,
+  onPickMedia,
+  addLabel,
+  mode = "full",
+}: {
+  enabledLabel: string;
+  enabled: boolean;
+  onEnabledChange: (v: boolean) => void;
+  heading: string;
+  onHeadingChange: (v: string) => void;
+  slides: SlideRow[];
+  expandedIndex: number | null;
+  setExpandedIndex: (v: number | null) => void;
+  fieldKey: "factorySlides" | "certificatesSlides";
+  setField: (key: string, value: unknown) => void;
+  onPickMedia: (field: string) => void;
+  addLabel: string;
+  /** Certificates: image only — no title/description fields. */
+  mode?: "full" | "imageOnly";
+}) {
+  const imageOnly = mode === "imageOnly";
+  return (
+    <div style={adminStackStyle}>
+      <AdminToggle
+        checked={enabled}
+        onChange={onEnabledChange}
+        label={enabledLabel}
+      />
+      {enabled ? (
+        <>
+          <TextField
+            label="Section heading"
+            fullWidth
+            size="small"
+            value={heading}
+            onChange={(e) => onHeadingChange(e.target.value)}
+          />
+          {imageOnly ? (
+            <p className="text-xs text-[var(--color-muted)]">
+              Upload seal / logo images only — they show as circles on the storefront.
+            </p>
+          ) : (
+            <p className="text-xs text-[var(--color-muted)]">
+              Photos first. Title and description are optional captions on the storefront.
+            </p>
+          )}
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
+            {slides.length === 0 ? (
+              <p className="px-3 py-4 text-center text-xs text-[var(--color-muted)]">
+                {imageOnly
+                  ? "No seals yet — add certificate images below."
+                  : "No photos yet — add items below."}
+              </p>
+            ) : (
+              <ul className="divide-y divide-[var(--color-border)]">
+                {slides.map((slide, index) => {
+                  const rows =
+                    (slides as Array<Record<string, unknown>>) ?? [];
+                  const open = expandedIndex === index;
+                  const updateSlide = (patch: Record<string, unknown>) => {
+                    const next = [...rows];
+                    next[index] = { ...next[index], ...patch };
+                    setField(fieldKey, next);
+                  };
+                  const moveSlide = (dir: -1 | 1) => {
+                    const target = index + dir;
+                    if (target < 0 || target >= rows.length) return;
+                    const next = [...rows];
+                    const [row] = next.splice(index, 1);
+                    next.splice(target, 0, row);
+                    setField(fieldKey, next);
+                    setExpandedIndex(target);
+                  };
+                  const title = String(slide.title ?? "").trim();
+                  const thumb = resolveCmsImageUrl(slide.imagePath);
+                  const rowLabel = imageOnly
+                    ? `Certificate ${index + 1}`
+                    : title || "Untitled photo";
+                  return (
+                    <li key={`${fieldKey}-row-${index}`}>
+                      <div className="flex items-stretch gap-1">
+                        <button
+                          type="button"
+                          className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
+                          onClick={() =>
+                            setExpandedIndex(open ? null : index)
+                          }
+                          aria-expanded={open}
+                        >
+                          <span className="w-6 shrink-0 text-center text-[0.7rem] font-bold tabular-nums text-[var(--color-muted)]">
+                            {String(index + 1).padStart(2, "0")}
+                          </span>
+                          <span
+                            className={
+                              imageOnly
+                                ? "relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"
+                                : "relative h-9 w-12 shrink-0 overflow-hidden rounded border border-[var(--color-border)] bg-[var(--color-surface)]"
+                            }
+                          >
+                            {thumb ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={thumb}
+                                alt=""
+                                className={
+                                  imageOnly
+                                    ? "h-full w-full object-contain p-0.5"
+                                    : "h-full w-full object-cover"
+                                }
+                              />
+                            ) : (
+                              <span className="flex h-full items-center justify-center text-[0.55rem] text-[var(--color-muted)]">
+                                —
+                              </span>
+                            )}
+                          </span>
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--color-foreground)]">
+                            {rowLabel}
+                          </span>
+                          <span className="shrink-0 text-[0.65rem] text-[var(--color-muted)]">
+                            {open ? "Hide" : "Edit"}
+                          </span>
+                        </button>
+                        <div className="flex shrink-0 items-center gap-0.5 pr-2">
+                          <button
+                            type="button"
+                            className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                            disabled={index === 0}
+                            aria-label="Move up"
+                            onClick={() => moveSlide(-1)}
+                          >
+                            ↑
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
+                            disabled={index >= rows.length - 1}
+                            aria-label="Move down"
+                            onClick={() => moveSlide(1)}
+                          >
+                            ↓
+                          </button>
+                          <button
+                            type="button"
+                            className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
+                            aria-label="Remove"
+                            onClick={() => {
+                              const next = [...rows];
+                              next.splice(index, 1);
+                              setField(fieldKey, next);
+                              setExpandedIndex(
+                                expandedIndex == null
+                                  ? null
+                                  : expandedIndex === index
+                                    ? null
+                                    : expandedIndex > index
+                                      ? expandedIndex - 1
+                                      : expandedIndex,
+                              );
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                      {open ? (
+                        <div
+                          className="border-t border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3"
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.75rem",
+                          }}
+                        >
+                          <ImageField
+                            label={imageOnly ? "Seal image" : "Photo"}
+                            value={slide.imagePath}
+                            onPick={() =>
+                              onPickMedia(`${fieldKey}.${index}.imagePath`)
+                            }
+                            onClear={() => updateSlide({ imagePath: null })}
+                          />
+                          {!imageOnly ? (
+                            <>
+                              <TextField
+                                label="Title (optional caption)"
+                                fullWidth
+                                size="small"
+                                value={String(slide.title ?? "")}
+                                onChange={(e) =>
+                                  updateSlide({ title: e.target.value })
+                                }
+                              />
+                              <TextField
+                                label="Description (optional)"
+                                fullWidth
+                                size="small"
+                                multiline
+                                minRows={2}
+                                value={String(slide.description ?? "")}
+                                onChange={(e) =>
+                                  updateSlide({ description: e.target.value })
+                                }
+                              />
+                            </>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+          <button
+            type="button"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))] px-4 py-2.5 text-sm font-semibold text-[var(--color-primary)] transition hover:border-[var(--color-primary)] disabled:opacity-50"
+            disabled={slides.length >= 8}
+            onClick={() => {
+              if (slides.length >= 8) return;
+              setField(fieldKey, [
+                ...slides,
+                { imagePath: null, title: "", description: "" },
+              ]);
+              setExpandedIndex(slides.length);
+            }}
+          >
+            <span className="text-base leading-none">+</span>
+            {addLabel}
+          </button>
+        </>
+      ) : null}
+    </div>
   );
 }

@@ -47,6 +47,7 @@ export const SUPPORTED_SECTION_TYPES = [
   "banner",
   "text_image",
   "about",
+  "other_information",
   "career",
   "features",
   "statistics",
@@ -67,6 +68,7 @@ export const SECTION_TYPE_LABELS: Record<SupportedSectionType, string> = {
   banner: "Image Banner",
   text_image: "Text + Image",
   about: "About",
+  other_information: "Other information",
   career: "Career",
   features: "Features",
   statistics: "Statistics",
@@ -85,6 +87,8 @@ export const SECTION_TYPE_DESCRIPTIONS: Record<SupportedSectionType, string> = {
   banner: "Promotional image with optional button",
   text_image: "Story block with text beside an image",
   about: "Founder story, portrait, and optional heritage train milestones",
+  other_information:
+    "Show parts of Content → About on the homepage (same content — no retyping)",
   career: "Careers intro copy and apply-form settings (no CV upload)",
   features: "Highlight why customers choose you",
   statistics: "Key numbers about your business",
@@ -175,6 +179,8 @@ export const heroSlideSchema = z.object({
   badge: z.string().max(40).optional().default(""),
   ctaLabel: z.string().max(80).optional().default(""),
   ctaHref: optionalSafeUrlSchema.optional().default(null),
+  secondaryCtaLabel: z.string().max(80).optional().default(""),
+  secondaryCtaHref: optionalSafeUrlSchema.optional().default(null),
 });
 
 export type HeroSlideConfig = z.infer<typeof heroSlideSchema>;
@@ -276,7 +282,7 @@ export const aboutTimelineItemSchema = z.object({
     .pipe(z.string().max(500).nullable()),
 });
 
-/** About page auto-sliding gallery item. */
+/** About page gallery / media card item (factory or certificate). */
 export const aboutGallerySlideSchema = z.object({
   imagePath: z
     .union([z.string(), z.null(), z.undefined()])
@@ -310,14 +316,90 @@ export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
     .optional()
     .default(null),
   timelineItems: z.array(aboutTimelineItemSchema).max(24).default([]),
-  /** Auto image gallery (below story; hidden when galleryEnabled is false). */
-  galleryEnabled: z.boolean().default(false),
-  galleryAutoplayMs: z.number().int().min(0).max(30_000).default(4500),
-  galleryShowArrows: z.boolean().default(true),
-  gallerySlides: z.array(aboutGallerySlideSchema).max(8).default([]),
+
+  /** Vision & mission band (below story). */
+  visionMissionEnabled: z.boolean().default(false),
+  visionHeading: shortTextSchema.default("Our Vision"),
+  visionText: z.string().max(2000).optional().default(""),
+  missionHeading: shortTextSchema.default("Our Mission"),
+  missionText: z.string().max(2000).optional().default(""),
+
+  /** Factory media cards (static centered grid — no marquee). */
+  factoryEnabled: z.boolean().default(false),
+  factoryHeading: shortTextSchema.default("Factory"),
+  factorySlides: z.array(aboutGallerySlideSchema).max(8).default([]),
+
+  /** Certificates media cards (separate section). */
+  certificatesEnabled: z.boolean().default(false),
+  certificatesHeading: shortTextSchema.default("Certificates"),
+  certificatesSlides: z.array(aboutGallerySlideSchema).max(8).default([]),
+
+  /**
+   * Legacy homepage flags — kept for parse compat.
+   * Prefer Homepage → Other information section instead.
+   */
+  homeShowStory: z.boolean().default(false),
+  homeShowVisionMission: z.boolean().default(false),
+  homeShowFactory: z.boolean().default(false),
+  homeShowCertificates: z.boolean().default(false),
+  homeShowTrain: z.boolean().default(false),
+
   buttonText: z.string().max(80).optional().default(""),
   buttonLink: optionalSafeUrlSchema.optional().default(null),
 });
+
+export type AboutSectionConfig = z.infer<typeof aboutSectionConfigSchema>;
+
+/**
+ * Homepage section: pick which About-page blocks to show (content from Content → About).
+ */
+export const otherInformationSectionConfigSchema =
+  sectionCommonSettingsSchema.extend({
+    showStory: z.boolean().default(true),
+    showVisionMission: z.boolean().default(false),
+    showFactory: z.boolean().default(false),
+    showCertificates: z.boolean().default(false),
+    showTrain: z.boolean().default(false),
+  });
+
+export type OtherInformationSectionConfig = z.infer<
+  typeof otherInformationSectionConfigSchema
+>;
+
+/**
+ * Migrate legacy combined gallery → factory section before Zod parse.
+ * Certificates stay empty so admins can fill them separately.
+ */
+export function migrateAboutConfigInput(
+  raw: Record<string, unknown>,
+): Record<string, unknown> {
+  const next = { ...raw };
+  const hasFactorySlides = Array.isArray(next.factorySlides);
+  const legacySlides = Array.isArray(next.gallerySlides)
+    ? next.gallerySlides
+    : null;
+
+  if (!hasFactorySlides && legacySlides && legacySlides.length > 0) {
+    next.factorySlides = legacySlides;
+    if (next.factoryEnabled === undefined) {
+      next.factoryEnabled = Boolean(next.galleryEnabled);
+    }
+    if (
+      next.factoryHeading === undefined ||
+      String(next.factoryHeading ?? "").trim() === ""
+    ) {
+      next.factoryHeading = "Factory";
+    }
+  }
+
+  // Drop legacy keys so they are not re-saved after normalize.
+  delete next.gallerySlides;
+  delete next.galleryEnabled;
+  delete next.galleryAutoplayMs;
+  delete next.galleryShowArrows;
+
+  return next;
+}
 
 /** Career page intro + form settings (jobs live in job_posts table). */
 export const careerSectionConfigSchema = sectionCommonSettingsSchema.extend({
@@ -439,6 +521,7 @@ const sectionConfigByType = {
   banner: bannerSectionConfigSchema,
   text_image: textImageSectionConfigSchema,
   about: aboutSectionConfigSchema,
+  other_information: otherInformationSectionConfigSchema,
   career: careerSectionConfigSchema,
   features: featuresSectionConfigSchema,
   statistics: statisticsSectionConfigSchema,
@@ -470,7 +553,10 @@ export function parseSectionConfig(
     return { ok: false, error: "Unsupported section type." };
   }
   const schema = sectionConfigByType[sectionType];
-  const cleaned = sanitizeSectionConfigInput(config);
+  let cleaned = sanitizeSectionConfigInput(config);
+  if (sectionType === "about") {
+    cleaned = migrateAboutConfigInput(cleaned);
+  }
   const parsed = schema.safeParse(cleaned);
   if (parsed.success) {
     return { ok: true, type: sectionType, config: parsed.data };
@@ -510,6 +596,37 @@ export function defaultConfigForType(
 ): SectionConfigMap[SupportedSectionType] {
   const schema = sectionConfigByType[type];
   return schema.parse({});
+}
+
+/** Map leftover homepage About (or homeShow*) flags into Other information toggles. */
+export function aboutHomeFlagsToOtherInformationConfig(
+  raw: Record<string, unknown> = {},
+): OtherInformationSectionConfig {
+  const defaults = defaultConfigForType(
+    "other_information",
+  ) as OtherInformationSectionConfig;
+  return {
+    ...defaults,
+    showStory: Boolean(
+      raw.showStory ?? raw.homeShowStory ?? defaults.showStory,
+    ),
+    showVisionMission: Boolean(
+      raw.showVisionMission ??
+        raw.homeShowVisionMission ??
+        defaults.showVisionMission,
+    ),
+    showFactory: Boolean(
+      raw.showFactory ?? raw.homeShowFactory ?? defaults.showFactory,
+    ),
+    showCertificates: Boolean(
+      raw.showCertificates ??
+        raw.homeShowCertificates ??
+        defaults.showCertificates,
+    ),
+    showTrain: Boolean(
+      raw.showTrain ?? raw.homeShowTrain ?? defaults.showTrain,
+    ),
+  };
 }
 
 export const pageFormSchema = z.object({

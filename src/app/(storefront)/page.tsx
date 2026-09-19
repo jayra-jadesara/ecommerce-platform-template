@@ -3,7 +3,6 @@ import { Container } from "@/components/layout";
 import { getSiteUrl } from "@/config/site";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
-import { getPublishedHomepage } from "@/features/cms/storefront";
 import {
   listStorefrontCategories,
   listStorefrontProducts,
@@ -19,6 +18,7 @@ import {
 import { HomeView } from "./home-view";
 import { getStorefrontFeaturedCoupon } from "@/features/coupons/storefront";
 import { CouponPromoModal } from "@/features/coupons/components/CouponPromoModal";
+import { getPublishedHomepage } from "@/features/cms/storefront";
 
 export async function generateMetadata(): Promise<Metadata> {
   const config = await getPlatformConfigAsync();

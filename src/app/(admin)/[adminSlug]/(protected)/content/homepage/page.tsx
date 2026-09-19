@@ -4,7 +4,14 @@ import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { HomepageBuilder } from "@/features/cms/components/HomepageBuilder";
 import { getOrCreateHomepagePage } from "@/features/cms/pages-service";
-import { listPageSections } from "@/features/cms/sections-service";
+import {
+  listPageSections,
+  migrateHomepageAboutToOtherInformation,
+} from "@/features/cms/sections-service";
+import {
+  listStorefrontCategories,
+  listStorefrontProducts,
+} from "@/features/catalog/storefront";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +34,28 @@ export default async function AdminContentHomepagePage() {
     );
   }
 
-  const sections = await listPageSections(page.id);
+  if (hasPermission(admin, "content.update")) {
+    await migrateHomepageAboutToOtherInformation(page.id);
+  }
+  const [sections, categories, productsResult] = await Promise.all([
+    listPageSections(page.id),
+    listStorefrontCategories(),
+    listStorefrontProducts({
+      pageSize: 100,
+      sort: "name",
+      page: 1,
+    }),
+  ]);
+
+  const categoryOptions = categories.map((c) => ({
+    id: c.id,
+    label: c.name,
+  }));
+
+  const productOptions = productsResult.items.map((p) => ({
+    id: p.id,
+    label: p.categoryName ? `${p.name} · ${p.categoryName}` : p.name,
+  }));
 
   return (
     <div className="space-y-4 pb-16">
@@ -46,6 +74,8 @@ export default async function AdminContentHomepagePage() {
         canUpdate={hasPermission(admin, "content.update")}
         canDelete={hasPermission(admin, "content.delete")}
         canPublish={hasPermission(admin, "content.publish")}
+        categoryOptions={categoryOptions}
+        productOptions={productOptions}
       />
     </div>
   );

@@ -10,10 +10,12 @@ import {
   STOREFRONT_PAGES_CACHE_TAG,
 } from "@/features/cms/cache";
 import {
+  aboutHomeFlagsToOtherInformationConfig,
   defaultConfigForType,
   HOMEPAGE_SLUG,
   isSupportedSectionType,
   parseSectionConfig,
+  SECTION_TYPE_LABELS,
   type SupportedSectionType,
 } from "@/features/cms/schemas";
 import type { ContentSection } from "@/features/cms/types";
@@ -157,6 +159,8 @@ export async function updatePageSection(input: {
   title?: string | null;
   isActive?: boolean;
   config?: unknown;
+  /** When set, changes the section type (e.g. homepage About → Other information). */
+  sectionType?: SupportedSectionType;
 }): Promise<SectionMutationResult> {
   const storeId = await resolveActiveStoreId();
   if (!storeId) return { ok: false, error: "Store not found." };
@@ -176,12 +180,24 @@ export async function updatePageSection(input: {
     return { ok: false, error: "Section not found." };
   }
 
+  const nextType =
+    input.sectionType && isSupportedSectionType(input.sectionType)
+      ? input.sectionType
+      : current.section_type;
+
+  if (input.sectionType && !isSupportedSectionType(input.sectionType)) {
+    return { ok: false, error: "Invalid section type." };
+  }
+
   const patch: TablesUpdate<"page_sections"> = {};
   if (input.title !== undefined) patch.title = input.title;
   if (input.isActive !== undefined) patch.is_active = input.isActive;
+  if (input.sectionType && isSupportedSectionType(input.sectionType)) {
+    patch.section_type = input.sectionType;
+  }
 
   if (input.config !== undefined) {
-    const parsed = parseSectionConfig(current.section_type, input.config);
+    const parsed = parseSectionConfig(nextType, input.config);
     if (!parsed.ok) {
       return {
         ok: false,
@@ -442,4 +458,25 @@ export async function moveSection(input: {
   ordered[swapWith] = tmp;
 
   return reorderPageSections({ pageId: current.page_id, orderedIds: ordered });
+}
+
+/**
+ * Homepage once stored full About sections. Convert them to Other information
+ * (toggles only) so content stays on Content → About.
+ */
+export async function migrateHomepageAboutToOtherInformation(
+  pageId: string,
+): Promise<void> {
+  const sections = await listPageSections(pageId);
+  for (const section of sections) {
+    if (section.sectionType !== "about") continue;
+    await updatePageSection({
+      sectionId: section.id,
+      sectionType: "other_information",
+      title: SECTION_TYPE_LABELS.other_information,
+      config: aboutHomeFlagsToOtherInformationConfig(
+        section.config as Record<string, unknown>,
+      ),
+    });
+  }
 }

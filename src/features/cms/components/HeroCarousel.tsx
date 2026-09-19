@@ -1,35 +1,171 @@
 "use client";
 
-import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { Autoplay, EffectFade, Navigation, Pagination, A11y } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import "swiper/css";
+import "swiper/css/effect-fade";
+import "swiper/css/navigation";
+import "swiper/css/pagination";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import type { HeroSlideConfig } from "@/features/cms/schemas";
-import { sfBtn } from "@/components/ui/storefront-classes";
+import { sfBtn, sfDisplay } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
+export type HeroCampaignSlide = HeroSlideConfig & {
+  /** Optional product/brand image over the campaign photo */
+  foregroundImagePath?: string | null;
+};
+
 type HeroCarouselProps = {
-  slides: HeroSlideConfig[];
+  slides: HeroCampaignSlide[];
   autoplayMs?: number;
   showArrows?: boolean;
-  /** Fallback copy when a slide omits title */
   fallbackTitle?: string;
   fallbackSubtitle?: string;
+  fallbackDescription?: string;
   className?: string;
 };
 
+type ResolvedSlide = {
+  imageUrl: string | null;
+  fgUrl: string | null;
+  title: string;
+  subtitle: string;
+  description: string;
+  badge: string;
+  ctaLabel: string;
+  ctaHref: string;
+  secondaryLabel: string;
+  secondaryHref: string;
+  imagePath: string;
+};
+
+function subscribeReducedMotion(onChange: () => void) {
+  const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
 function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    setReduced(mq.matches);
-    const onChange = () => setReduced(mq.matches);
-    mq.addEventListener("change", onChange);
-    return () => mq.removeEventListener("change", onChange);
-  }, []);
-  return reduced;
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => false,
+  );
+}
+
+function safeHref(href: string | null | undefined, fallback = "/products") {
+  const t = String(href ?? "").trim();
+  return t || fallback;
+}
+
+function resolveSlide(
+  slide: HeroCampaignSlide,
+  fallbackTitle: string,
+  fallbackSubtitle: string,
+  fallbackDescription: string,
+): ResolvedSlide {
+  return {
+    imagePath: slide.imagePath,
+    imageUrl: resolveCmsImageUrl(slide.imagePath),
+    fgUrl: resolveCmsImageUrl(
+      (slide.foregroundImagePath as string | null | undefined) ?? null,
+    ),
+    title: slide.title?.trim() || fallbackTitle,
+    subtitle: slide.subtitle?.trim() || fallbackSubtitle,
+    description: slide.description?.trim() || fallbackDescription,
+    badge: slide.badge?.trim() || "",
+    ctaLabel: slide.ctaLabel?.trim() || "",
+    ctaHref: safeHref(slide.ctaHref),
+    secondaryLabel: slide.secondaryCtaLabel?.trim() || "",
+    secondaryHref: safeHref(slide.secondaryCtaHref, "/about"),
+  };
+}
+
+function HeroCampaignSlideView({
+  slide,
+  priority,
+}: {
+  slide: ResolvedSlide;
+  priority?: boolean;
+}) {
+  return (
+    <div className="sf-hero-campaign__slide">
+      <div className="sf-hero-campaign__media" aria-hidden={!slide.imageUrl}>
+        {slide.imageUrl ? (
+          <Image
+            src={slide.imageUrl}
+            alt=""
+            fill
+            priority={priority}
+            loading={priority ? "eager" : "lazy"}
+            className="sf-hero-campaign__img"
+            sizes="100vw"
+          />
+        ) : (
+          <div className="sf-hero-campaign__fallback-bg" />
+        )}
+        <div className="sf-hero-campaign__scrim" />
+      </div>
+
+      <div className="sf-hero-campaign__inner">
+        <div className="sf-hero-campaign__copy">
+          {slide.badge ? (
+            <p className="sf-hero-campaign__badge">{slide.badge}</p>
+          ) : null}
+          {slide.subtitle ? (
+            <p className="sf-hero-campaign__eyebrow">{slide.subtitle}</p>
+          ) : null}
+          {slide.title ? (
+            <h1 className={cn(sfDisplay(), "sf-hero-campaign__title")}>
+              {slide.title}
+            </h1>
+          ) : null}
+          {slide.description ? (
+            <p className="sf-hero-campaign__desc">{slide.description}</p>
+          ) : null}
+          {slide.ctaLabel || slide.secondaryLabel ? (
+            <div className="sf-hero-campaign__actions">
+              {slide.ctaLabel ? (
+                <Link
+                  href={slide.ctaHref}
+                  className={cn(sfBtn("primary"), "sf-hero-campaign__cta")}
+                >
+                  {slide.ctaLabel}
+                </Link>
+              ) : null}
+              {slide.secondaryLabel ? (
+                <Link
+                  href={slide.secondaryHref}
+                  className={cn(
+                    sfBtn("outline"),
+                    "sf-hero-campaign__cta sf-hero-campaign__cta--secondary",
+                  )}
+                >
+                  {slide.secondaryLabel}
+                </Link>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
+        {slide.fgUrl ? (
+          <div className="sf-hero-campaign__fg">
+            <Image
+              src={slide.fgUrl}
+              alt=""
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 40vw, 280px"
+            />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function HeroCarousel({
@@ -38,153 +174,81 @@ export function HeroCarousel({
   showArrows = true,
   fallbackTitle = "",
   fallbackSubtitle = "",
+  fallbackDescription = "",
   className,
 }: HeroCarouselProps) {
-  const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
+  // Swiper mutates the DOM (wrappers, loop clones, nav). Mount it only after
+  // hydration so SSR markup matches the first client paint.
+  const [mounted, setMounted] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
-  const count = slides.length;
-  const safeIndex = count ? index % count : 0;
-  const slide = slides[safeIndex];
-
-  const go = useCallback(
-    (dir: -1 | 1) => {
-      if (!count) return;
-      setIndex((current) => (current + dir + count) % count);
-    },
-    [count],
-  );
 
   useEffect(() => {
-    if (count < 2 || paused || reducedMotion || autoplayMs <= 0) return;
-    const id = window.setInterval(() => go(1), autoplayMs);
-    return () => window.clearInterval(id);
-  }, [autoplayMs, count, go, paused, reducedMotion, safeIndex]);
+    setMounted(true);
+  }, []);
 
-  if (!slide) return null;
+  const count = slides.length;
+  if (count === 0) return null;
 
-  const imageUrl = resolveCmsImageUrl(slide.imagePath);
-  const title = slide.title?.trim() || fallbackTitle;
-  const subtitle = slide.subtitle?.trim() || fallbackSubtitle;
-  const description = slide.description?.trim() || "";
-  const badge = slide.badge?.trim() || "";
-  const ctaLabel = slide.ctaLabel?.trim() || "";
-  const ctaHref = slide.ctaHref?.trim() || "/products";
+  const resolved = slides.map((slide) =>
+    resolveSlide(
+      slide,
+      fallbackTitle,
+      fallbackSubtitle,
+      fallbackDescription,
+    ),
+  );
+  const first = resolved[0]!;
+  const enableAutoplay =
+    mounted && count > 1 && !reducedMotion && autoplayMs > 0;
+  // Avoid server/client className drift from prefers-reduced-motion.
+  const reducedClass = mounted && reducedMotion;
 
   return (
     <div
-      className={cn("relative overflow-hidden", className)}
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
-          setPaused(false);
-        }
-      }}
+      className={cn(
+        "sf-hero-campaign",
+        reducedClass && "sf-hero-campaign--reduced",
+        className,
+      )}
     >
-      <div className="relative grid min-h-[22rem] md:min-h-[28rem] md:grid-cols-2">
-        <div className="relative z-10 flex flex-col justify-center gap-4 bg-[var(--color-primary)] px-6 py-12 text-[var(--color-button-foreground)] md:px-10 md:py-16 lg:px-14">
-          <div
-            className="pointer-events-none absolute -right-8 top-0 hidden h-24 w-24 bg-[var(--color-accent)] md:block"
-            style={{ clipPath: "polygon(0 0, 100% 0, 100% 100%)" }}
-            aria-hidden
-          />
-          {badge ? (
-            <p className="inline-flex w-fit rounded-full bg-[var(--color-button-foreground)] px-3 py-1 text-[0.7rem] font-bold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-              {badge}
-            </p>
-          ) : null}
-          {subtitle ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[color-mix(in_srgb,var(--color-button-foreground)_80%,transparent)]">
-              {subtitle}
-            </p>
-          ) : null}
-          {title ? (
-            <h2 className="font-[family-name:var(--font-display)] text-3xl font-bold leading-tight tracking-tight md:text-4xl lg:text-[2.75rem]">
-              {title}
-            </h2>
-          ) : null}
-          {description ? (
-            <p className="max-w-md text-sm leading-relaxed text-[color-mix(in_srgb,var(--color-button-foreground)_88%,transparent)] md:text-base">
-              {description}
-            </p>
-          ) : null}
-          {ctaLabel ? (
-            <div className="pt-2">
-              <Link
-                href={ctaHref}
-                className={cn(
-                  sfBtn("secondary"),
-                  "!bg-[var(--color-button-foreground)] !text-[var(--color-primary)]",
-                )}
-              >
-                {ctaLabel}
-              </Link>
-            </div>
-          ) : null}
+      {!mounted || count === 1 ? (
+        <div className="sf-hero-campaign__swiper">
+          <HeroCampaignSlideView slide={first} priority />
         </div>
-
-        <div className="relative min-h-[16rem] bg-[color-mix(in_srgb,var(--color-surface)_80%,var(--color-primary)_12%)] md:min-h-full">
-          {imageUrl ? (
-            <Image
-              key={slide.imagePath}
-              src={imageUrl}
-              alt=""
-              fill
-              priority={safeIndex === 0}
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
-            />
-          ) : null}
-        </div>
-      </div>
-
-      {count > 1 && showArrows ? (
-        <>
-          <button
-            type="button"
-            aria-label="Previous slide"
-            onClick={() => go(-1)}
-            className="absolute left-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[color-mix(in_srgb,#000_45%,transparent)] text-white backdrop-blur-sm transition hover:bg-[color-mix(in_srgb,#000_60%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] md:left-4"
-          >
-            <ChevronLeftIcon fontSize="small" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next slide"
-            onClick={() => go(1)}
-            className="absolute right-3 top-1/2 z-20 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[color-mix(in_srgb,#000_45%,transparent)] text-white backdrop-blur-sm transition hover:bg-[color-mix(in_srgb,#000_60%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] md:right-4"
-          >
-            <ChevronRightIcon fontSize="small" />
-          </button>
-        </>
-      ) : null}
-
-      {count > 1 ? (
-        <div
-          className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2"
-          role="tablist"
-          aria-label="Hero slides"
+      ) : (
+        <Swiper
+          modules={[EffectFade, Autoplay, Navigation, Pagination, A11y]}
+          effect="fade"
+          fadeEffect={{ crossFade: true }}
+          speed={reducedMotion ? 0 : 700}
+          /* loop + fade stacks duplicate slides and causes overlapping copy */
+          loop={false}
+          watchOverflow
+          autoplay={
+            enableAutoplay
+              ? {
+                  delay: autoplayMs,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true,
+                }
+              : false
+          }
+          navigation={count > 1 && showArrows}
+          pagination={count > 1 ? { clickable: true } : false}
+          a11y={{
+            enabled: true,
+            prevSlideMessage: "Previous slide",
+            nextSlideMessage: "Next slide",
+          }}
+          className="sf-hero-campaign__swiper"
         >
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              role="tab"
-              aria-selected={i === safeIndex}
-              aria-label={`Go to slide ${i + 1}`}
-              onClick={() => setIndex(i)}
-              className={cn(
-                "h-2.5 w-2.5 rounded-full transition",
-                i === safeIndex
-                  ? "bg-[var(--color-button-foreground)] ring-2 ring-[var(--color-primary)]"
-                  : "bg-[color-mix(in_srgb,#fff_55%,transparent)] hover:bg-white",
-              )}
-            />
+          {resolved.map((slide, index) => (
+            <SwiperSlide key={`${slide.imagePath}-${index}`}>
+              <HeroCampaignSlideView slide={slide} priority={index === 0} />
+            </SwiperSlide>
           ))}
-        </div>
-      ) : null}
+        </Swiper>
+      )}
     </div>
   );
 }

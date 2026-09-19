@@ -95,7 +95,7 @@ export function CareerPageForm({
   function save() {
     const heading = String(config.heading ?? "").trim();
     if (!heading) {
-      setError("Enter a heading — it becomes the page name everywhere.");
+      setError("Enter a heading — it appears on the store header, footer, and page.");
       setTab("content");
       return;
     }
@@ -140,7 +140,7 @@ export function CareerPageForm({
         return;
       }
 
-      // Keep CMS page title in sync with heading (nav label / SEO fallback).
+      // Sync CMS page title for storefront header/footer nav + SEO (admin chrome stays "Career").
       const pageResult = await updatePageAction(page.id, {
         title: heading,
         slug: page.slug,
@@ -158,7 +158,7 @@ export function CareerPageForm({
 
       setBaseline(JSON.stringify({ ...config, heading }));
       setConfig((prev) => ({ ...prev, heading }));
-      setMessage("Saved. Heading is now the page name everywhere.");
+      setMessage("Saved. Store header, footer, and /career use this heading.");
       refresh();
     });
   }
@@ -174,10 +174,14 @@ export function CareerPageForm({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
         <div>
           <p className="text-sm font-semibold text-[var(--color-foreground)]">
-            {pageLabel}
+            Career
           </p>
           <p className="text-xs text-[var(--color-muted)]">
-            Storefront{" "}
+            Storefront label:{" "}
+            <span className="font-medium text-[var(--color-foreground)]">
+              {pageLabel}
+            </span>
+            {" · "}
             <Link
               href="/career"
               className="font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"

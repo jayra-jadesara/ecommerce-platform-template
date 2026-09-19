@@ -1,5 +1,6 @@
 import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
+import { sfEyebrow } from "@/components/ui/storefront-classes";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
@@ -34,31 +35,32 @@ export default async function AboutPage() {
           { label: "About" },
         ]}
       />
-      <header className="mb-6 flex w-full flex-col items-center text-center md:mb-8">
+      <header className="sf-page-hero sf-page-hero--center">
+        <p className={sfEyebrow()}>{brand.name}</p>
         <StorefrontHeading
           title={title}
           as="h1"
           align="center"
-          className="w-full max-w-3xl !text-4xl md:!text-5xl"
+          className="w-full max-w-3xl"
         />
         {subtitle ? (
-          <p className="mx-auto mt-4 max-w-xl text-center text-sm leading-relaxed text-[var(--color-muted)] md:text-base">
-            {subtitle}
-          </p>
+          <p className="sf-page-hero__support">{subtitle}</p>
         ) : null}
       </header>
 
       {hasSections ? (
-        <HomepageSections
-          sections={sections}
-          animation={config.animation}
-          visualEffects={config.visualEffects}
-          currency={config.store.currency}
-          isAuthenticated={Boolean(user)}
-          headingHighlightStyle={config.typography.headingHighlightStyle}
-        />
+        <div className="sf-about-page-body">
+          <HomepageSections
+            sections={sections}
+            animation={config.animation}
+            visualEffects={config.visualEffects}
+            currency={config.store.currency}
+            isAuthenticated={Boolean(user)}
+            headingHighlightStyle={config.typography.headingHighlightStyle}
+          />
+        </div>
       ) : (
-        <p className="mx-auto max-w-lg rounded-[var(--radius-default,0.75rem)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-10 text-center text-sm leading-relaxed text-[var(--color-muted)]">
+        <p className="mx-auto mt-8 max-w-lg rounded-[var(--radius-default,0.75rem)] border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-5 py-10 text-center text-sm leading-relaxed text-[var(--color-muted)]">
           About sections are not visible yet. In admin go to{" "}
           <strong className="text-[var(--color-foreground)]">
             Content → About

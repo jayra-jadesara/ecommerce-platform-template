@@ -19,7 +19,7 @@ export default async function AdminHeaderSettingsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Header layout"
-        description="Top bar features, logo size, and announcement message."
+        description="Logo size, overlap onto the hero, and announcement bar."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Appearance", href: getAdminPath("/settings/theme") },

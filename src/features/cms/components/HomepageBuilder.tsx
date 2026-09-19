@@ -2,13 +2,34 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
+import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
+import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
+import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
+import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
+import FormatQuoteOutlinedIcon from "@mui/icons-material/FormatQuoteOutlined";
+import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
+import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import NewspaperOutlinedIcon from "@mui/icons-material/NewspaperOutlined";
+import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
+import PowerSettingsNewOutlinedIcon from "@mui/icons-material/PowerSettingsNewOutlined";
+import StarOutlineOutlinedIcon from "@mui/icons-material/StarOutlineOutlined";
+import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
+import ViewAgendaOutlinedIcon from "@mui/icons-material/ViewAgendaOutlined";
+import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
 import {
   createSectionAction,
   deleteSectionAction,
@@ -19,15 +40,15 @@ import {
   updateSectionAction,
 } from "@/features/cms/actions";
 import {
+  aboutHomeFlagsToOtherInformationConfig,
   defaultConfigForType,
-  HERO_LAYOUT_PRESETS,
-  HERO_LAYOUT_PRESET_LABELS,
+  migrateAboutConfigInput,
+  HOMEPAGE_SLUG,
   SECTION_BACKGROUND_STYLES,
   SECTION_SPACING_PRESETS,
   SECTION_TYPE_DESCRIPTIONS,
   SECTION_TYPE_LABELS,
   SUPPORTED_SECTION_TYPES,
-  type HeroLayoutPreset,
   type SectionConfigMap,
   type SupportedSectionType,
 } from "@/features/cms/schemas";
@@ -37,6 +58,23 @@ import { HomepagePreview } from "@/features/cms/components/HomepagePreview";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { SectionEditorPreview } from "@/features/cms/components/SectionEditorPreview";
 import { AboutSectionFields } from "@/features/cms/components/AboutSectionFields";
+import { CtaSectionFields } from "@/features/cms/components/CtaSectionFields";
+import { FaqSectionFields } from "@/features/cms/components/FaqSectionFields";
+import {
+  FeaturesSectionFields,
+  mapFeaturesConfigItems,
+} from "@/features/cms/components/FeaturesSectionFields";
+import {
+  ProductsSectionFields,
+  type CatalogPickerOption,
+  type ProductsSectionSource,
+} from "@/features/cms/components/ProductsSectionFields";
+import { CategoriesSectionFields } from "@/features/cms/components/CategoriesSectionFields";
+import {
+  HeroSectionFields,
+  mapHeroSlides,
+} from "@/features/cms/components/HeroSectionFields";
+import { StatisticsSectionFields } from "@/features/cms/components/StatisticsSectionFields";
 import {
   pageOptionLabel,
   StorePageLinkField,
@@ -44,6 +82,7 @@ import {
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
 import { focusFirstFieldError } from "@/features/admin/validation/form-errors";
+import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminFieldGroup,
   adminFieldsGrid,
@@ -51,6 +90,43 @@ import {
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import type { FieldErrors } from "@/lib/validation";
+import { getAdminPath } from "@/config/admin-route";
+
+const SECTION_TYPE_ICONS: Record<SupportedSectionType, ReactNode> = {
+  hero: <ViewCarouselOutlinedIcon fontSize="small" />,
+  categories: <CategoryOutlinedIcon fontSize="small" />,
+  products: <Inventory2OutlinedIcon fontSize="small" />,
+  banner: <ImageOutlinedIcon fontSize="small" />,
+  text_image: <ViewAgendaOutlinedIcon fontSize="small" />,
+  about: <InfoOutlinedIcon fontSize="small" />,
+  other_information: <InfoOutlinedIcon fontSize="small" />,
+  career: <WorkOutlineOutlinedIcon fontSize="small" />,
+  features: <StarOutlineOutlinedIcon fontSize="small" />,
+  statistics: <GridViewOutlinedIcon fontSize="small" />,
+  testimonials: <FormatQuoteOutlinedIcon fontSize="small" />,
+  faq: <HelpOutlineOutlinedIcon fontSize="small" />,
+  cta: <CampaignOutlinedIcon fontSize="small" />,
+  newsletter: <EmailOutlinedIcon fontSize="small" />,
+  text: <NotesOutlinedIcon fontSize="small" />,
+  image: <ImageOutlinedIcon fontSize="small" />,
+};
+
+function sectionIcon(type: string) {
+  if (type in SECTION_TYPE_ICONS) {
+    return SECTION_TYPE_ICONS[type as SupportedSectionType];
+  }
+  return <NewspaperOutlinedIcon fontSize="small" />;
+}
+
+function displaySectionType(
+  section: ContentSection,
+  isHomepage: boolean,
+): SupportedSectionType | string {
+  if (isHomepage && section.sectionType === "about") {
+    return "other_information";
+  }
+  return section.sectionType;
+}
 
 type Props = {
   page: ContentPage;
@@ -67,6 +143,9 @@ type Props = {
   emptyStateHint?: string;
   /** Storefront URL for “View live site” (default `/`). */
   viewLiveHref?: string;
+  /** Catalog pickers for Product Grid (and similar) editors. */
+  categoryOptions?: CatalogPickerOption[];
+  productOptions?: CatalogPickerOption[];
 };
 
 type EditableConfig = Record<string, unknown>;
@@ -82,6 +161,8 @@ export function HomepageBuilder({
   allowedSectionTypes,
   emptyStateHint = "No sections yet. Add a Hero Banner to get started.",
   viewLiveHref = "/",
+  categoryOptions = [],
+  productOptions = [],
 }: Props) {
   const router = useRouter();
   const [sections, setSections] = useState(initialSections);
@@ -98,50 +179,112 @@ export function HomepageBuilder({
   const [mediaField, setMediaField] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ContentSection | null>(null);
 
+  const isHomepage =
+    page.slug === HOMEPAGE_SLUG || pageLabel.toLowerCase() === "homepage";
+
+  const usedSectionTypes = useMemo(() => {
+    const used = new Set<string>();
+    for (const section of sections) {
+      used.add(section.sectionType);
+      if (section.sectionType === "about") used.add("other_information");
+      if (section.sectionType === "other_information") used.add("about");
+    }
+    return used;
+  }, [sections]);
+
   const addableSectionTypes = useMemo(() => {
     const base =
       allowedSectionTypes?.length
         ? allowedSectionTypes
         : SUPPORTED_SECTION_TYPES.filter(
-            (t) => t !== "text" && t !== "image" && t !== "career",
+            (t) =>
+              t !== "text" &&
+              t !== "image" &&
+              t !== "career" &&
+              // Full About is edited under Content → About; homepage uses Other information.
+              t !== "about",
           );
     // Prefer About first when it’s in the list (recommended for /about).
-    if (base.includes("about")) {
-      return ["about" as const, ...base.filter((t) => t !== "about")];
-    }
-    return [...base];
-  }, [allowedSectionTypes]);
+    const ordered = base.includes("about")
+      ? (["about" as const, ...base.filter((t) => t !== "about")] as SupportedSectionType[])
+      : [...base];
+    // Hide types already on this page (one of each).
+    return ordered.filter((type) => !usedSectionTypes.has(type));
+  }, [allowedSectionTypes, usedSectionTypes]);
 
   const editing = useMemo(
     () => sections.find((s) => s.id === editId) ?? null,
     [sections, editId],
   );
 
+  const editingType = useMemo(() => {
+    if (!editing) return null;
+    const display = displaySectionType(editing, isHomepage);
+    return SUPPORTED_SECTION_TYPES.includes(display as SupportedSectionType)
+      ? (display as SupportedSectionType)
+      : (editing.sectionType as SupportedSectionType);
+  }, [editing, isHomepage]);
+
+  const togglesOnlyEditor = editingType === "other_information";
+  const compactEditor =
+    togglesOnlyEditor ||
+    editingType === "cta" ||
+    editingType === "faq" ||
+    editingType === "statistics" ||
+    editingType === "features" ||
+    editingType === "products" ||
+    editingType === "categories" ||
+    editingType === "hero";
+
   function refresh() {
     router.refresh();
   }
 
   function openEditor(section: ContentSection) {
-    const type = section.sectionType as SupportedSectionType;
-    const defaults = defaultConfigForType(
-      SUPPORTED_SECTION_TYPES.includes(type as SupportedSectionType)
-        ? type
-        : "text",
-    );
+    const displayType = displaySectionType(section, isHomepage);
+    const type = SUPPORTED_SECTION_TYPES.includes(
+      displayType as SupportedSectionType,
+    )
+      ? (displayType as SupportedSectionType)
+      : "text";
+    const defaults = defaultConfigForType(type);
     setEditId(section.id);
     setSectionFieldErrors({});
     setEditTitle(
       section.title?.trim() ||
+        SECTION_TYPE_LABELS[type] ||
         SECTION_TYPE_LABELS[section.sectionType as SupportedSectionType] ||
         "",
     );
-    setEditConfig({
-      ...defaults,
-      ...section.config,
-      // Always inherit Appearance → Motion & 3D (no per-section UI).
-      motionSource: "global",
-      threeSource: "global",
-    });
+
+    if (type === "other_information") {
+      setEditConfig(
+        aboutHomeFlagsToOtherInformationConfig({
+          ...(section.config as Record<string, unknown>),
+        }),
+      );
+      return;
+    }
+
+    setEditConfig(
+      section.sectionType === "about"
+        ? {
+            ...defaults,
+            ...migrateAboutConfigInput({
+              ...defaults,
+              ...(section.config as Record<string, unknown>),
+            }),
+            motionSource: "global",
+            threeSource: "global",
+          }
+        : {
+            ...defaults,
+            ...section.config,
+            // Always inherit Appearance → Motion & 3D (no per-section UI).
+            motionSource: "global",
+            threeSource: "global",
+          },
+    );
   }
 
   return (
@@ -246,40 +389,55 @@ export function HomepageBuilder({
           {emptyStateHint}
         </p>
       ) : (
-        <ul className="space-y-3">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {sections.map((section, index) => {
+            const typeKey = displaySectionType(section, isHomepage);
             const label =
-              SECTION_TYPE_LABELS[section.sectionType as SupportedSectionType] ??
+              SECTION_TYPE_LABELS[typeKey as SupportedSectionType] ??
               section.sectionType;
             const description =
-              SECTION_TYPE_DESCRIPTIONS[
-                section.sectionType as SupportedSectionType
-              ] ?? "";
+              SECTION_TYPE_DESCRIPTIONS[typeKey as SupportedSectionType] ?? "";
+            const iconBtn =
+              "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] disabled:opacity-40 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]";
             return (
               <li
                 key={section.id}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-5 py-4 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
+                className="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
               >
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex gap-3">
+                  <div
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
+                    aria-hidden
+                  >
+                    {sectionIcon(typeKey)}
+                  </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium">
+                    <p className="truncate text-sm font-semibold">
                       {section.title?.trim() || label}
                     </p>
-                    <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+                    <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-muted)]">
                       {description}
                     </p>
-                    <p className="mt-1 text-xs font-medium">
-                      {section.isActive ? "ON" : "OFF"}
+                    <p
+                      className={`mt-1 text-[0.65rem] font-semibold uppercase tracking-wide ${
+                        section.isActive
+                          ? "text-emerald-700"
+                          : "text-[var(--color-muted)]"
+                      }`}
+                    >
+                      {section.isActive ? "On" : "Off"}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5 border-t border-[var(--color-border)] pt-2">
                     {canUpdate ? (
                       <>
                         <button
                           type="button"
                           disabled={pending || index === 0}
                           aria-label="Move section up"
-                          className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm disabled:opacity-40"
+                          title="Move up"
+                          className={iconBtn}
                           onClick={() => {
                             startTransition(async () => {
                               const result = await moveSectionAction({
@@ -303,13 +461,14 @@ export function HomepageBuilder({
                             });
                           }}
                         >
-                          ↑
+                          <ArrowUpwardOutlinedIcon sx={{ fontSize: 16 }} />
                         </button>
                         <button
                           type="button"
                           disabled={pending || index === sections.length - 1}
                           aria-label="Move section down"
-                          className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm disabled:opacity-40"
+                          title="Move down"
+                          className={iconBtn}
                           onClick={() => {
                             startTransition(async () => {
                               const result = await moveSectionAction({
@@ -333,19 +492,25 @@ export function HomepageBuilder({
                             });
                           }}
                         >
-                          ↓
+                          <ArrowDownwardOutlinedIcon sx={{ fontSize: 16 }} />
                         </button>
                         <button
                           type="button"
-                          className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm"
+                          aria-label="Edit section"
+                          title="Edit"
+                          className={iconBtn}
                           onClick={() => openEditor(section)}
                         >
-                          Edit
+                          <EditOutlinedIcon sx={{ fontSize: 16 }} />
                         </button>
                         <button
                           type="button"
                           disabled={pending}
-                          className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm disabled:opacity-50"
+                          aria-label={
+                            section.isActive ? "Disable section" : "Enable section"
+                          }
+                          title={section.isActive ? "Disable" : "Enable"}
+                          className={iconBtn}
                           onClick={() => {
                             startTransition(async () => {
                               const result = await updateSectionAction({
@@ -367,7 +532,7 @@ export function HomepageBuilder({
                             });
                           }}
                         >
-                          {section.isActive ? "Disable" : "Enable"}
+                          <PowerSettingsNewOutlinedIcon sx={{ fontSize: 16 }} />
                         </button>
                       </>
                     ) : null}
@@ -375,7 +540,9 @@ export function HomepageBuilder({
                       <button
                         type="button"
                         disabled={pending}
-                        className="rounded-md border border-[var(--color-border)] px-2 py-1 text-sm"
+                        aria-label="Duplicate section"
+                        title="Duplicate"
+                        className={iconBtn}
                         onClick={() => {
                           startTransition(async () => {
                             const result = await duplicateSectionAction(section.id);
@@ -390,20 +557,21 @@ export function HomepageBuilder({
                           });
                         }}
                       >
-                        Duplicate
+                        <ContentCopyOutlinedIcon sx={{ fontSize: 16 }} />
                       </button>
                     ) : null}
                     {canDelete ? (
                       <button
                         type="button"
                         disabled={pending}
-                        className="rounded-md border border-red-200 px-2 py-1 text-sm text-red-700"
+                        aria-label="Delete section"
+                        title="Delete"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-700 disabled:opacity-40 hover:bg-red-50"
                         onClick={() => setDeleteTarget(section)}
                       >
-                        Delete
+                        <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
                       </button>
                     ) : null}
-                  </div>
                 </div>
               </li>
             );
@@ -411,49 +579,61 @@ export function HomepageBuilder({
         </ul>
       )}
 
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="sm">
+      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Add section</DialogTitle>
         <DialogContent dividers>
-          <ul className="space-y-2">
-            {addableSectionTypes.map((type) => (
-              <li key={type}>
-                <button
-                  type="button"
-                  className="w-full rounded-lg border border-[var(--color-border)] px-3 py-3 text-left hover:border-[var(--color-primary)]"
-                  onClick={() => {
-                    startTransition(async () => {
-                      const result = await createSectionAction({
-                        pageId: page.id,
-                        sectionType: type,
-                        title: SECTION_TYPE_LABELS[type],
+          {addableSectionTypes.length === 0 ? (
+            <p className="py-4 text-center text-sm text-[var(--color-muted)]">
+              Every available section type is already on this page.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-2 gap-2">
+              {addableSectionTypes.map((type) => (
+                <li key={type}>
+                  <button
+                    type="button"
+                    className="flex h-full w-full flex-col items-start gap-1.5 rounded-lg border border-[var(--color-border)] p-2.5 text-left transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                    onClick={() => {
+                      startTransition(async () => {
+                        const result = await createSectionAction({
+                          pageId: page.id,
+                          sectionType: type,
+                          title: SECTION_TYPE_LABELS[type],
+                        });
+                        if (!result.ok) {
+                          setError(result.error);
+                          return;
+                        }
+                        if (result.section) {
+                          setSections((prev) => [...prev, result.section!]);
+                        }
+                        setAddOpen(false);
+                        refresh();
                       });
-                      if (!result.ok) {
-                        setError(result.error);
-                        return;
-                      }
-                      if (result.section) {
-                        setSections((prev) => [...prev, result.section!]);
-                      }
-                      setAddOpen(false);
-                      refresh();
-                    });
-                  }}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium">{SECTION_TYPE_LABELS[type]}</p>
-                    {type === "about" && allowedSectionTypes?.includes("about") ? (
-                      <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                        Recommended
+                    }}
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                      {sectionIcon(type)}
+                    </span>
+                    <span className="flex flex-wrap items-center gap-1">
+                      <span className="text-sm font-medium leading-tight">
+                        {SECTION_TYPE_LABELS[type]}
                       </span>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-[var(--color-muted)]">
-                    {SECTION_TYPE_DESCRIPTIONS[type]}
-                  </p>
-                </button>
-              </li>
-            ))}
-          </ul>
+                      {type === "about" &&
+                      allowedSectionTypes?.includes("about") ? (
+                        <span className="rounded bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                          Rec
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="line-clamp-2 text-[0.7rem] leading-snug text-[var(--color-muted)]">
+                      {SECTION_TYPE_DESCRIPTIONS[type]}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </DialogContent>
         <DialogActions>
           <button type="button" onClick={() => setAddOpen(false)} className="px-3 py-2 text-sm">
@@ -469,36 +649,53 @@ export function HomepageBuilder({
           setSectionFieldErrors({});
         }}
         fullWidth
-        maxWidth="lg"
+        maxWidth={
+          togglesOnlyEditor ? "xs" : compactEditor ? "md" : "lg"
+        }
       >
         <DialogTitle>
           Edit{" "}
-          {editing
-            ? SECTION_TYPE_LABELS[editing.sectionType as SupportedSectionType] ??
-              "section"
+          {editingType
+            ? SECTION_TYPE_LABELS[editingType] ?? "section"
             : "section"}
         </DialogTitle>
         <DialogContent dividers className="!pt-4">
-          {editing ? (
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
-              <div className="order-1 lg:order-2 lg:sticky lg:top-0">
-                <SectionEditorPreview
-                  sectionType={editing.sectionType as SupportedSectionType}
-                  config={editConfig}
-                />
+          {editing && editingType ? (
+            togglesOnlyEditor ? (
+              <SectionConfigFields
+                sectionType="other_information"
+                config={editConfig}
+                title={editTitle}
+                onTitleChange={setEditTitle}
+                onChange={setEditConfig}
+                onPickMedia={(field) => setMediaField(field)}
+                fieldErrors={sectionFieldErrors}
+                categoryOptions={categoryOptions}
+                productOptions={productOptions}
+              />
+            ) : (
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
+                <div className="order-1 lg:order-2 lg:sticky lg:top-0">
+                  <SectionEditorPreview
+                    sectionType={editingType}
+                    config={editConfig}
+                  />
+                </div>
+                <div className="order-2 lg:order-1">
+                  <SectionConfigFields
+                    sectionType={editingType}
+                    config={editConfig}
+                    title={editTitle}
+                    onTitleChange={setEditTitle}
+                    onChange={setEditConfig}
+                    onPickMedia={(field) => setMediaField(field)}
+                    fieldErrors={sectionFieldErrors}
+                    categoryOptions={categoryOptions}
+                    productOptions={productOptions}
+                  />
+                </div>
               </div>
-              <div className="order-2 lg:order-1">
-                <SectionConfigFields
-                  sectionType={editing.sectionType as SupportedSectionType}
-                  config={editConfig}
-                  title={editTitle}
-                  onTitleChange={setEditTitle}
-                  onChange={setEditConfig}
-                  onPickMedia={(field) => setMediaField(field)}
-                  fieldErrors={sectionFieldErrors}
-                />
-              </div>
-            </div>
+            )
           ) : null}
         </DialogContent>
         <DialogActions>
@@ -518,16 +715,19 @@ export function HomepageBuilder({
               disabled={pending}
               className="rounded-md bg-[var(--color-button-background)] px-3 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
               onClick={() => {
-                if (!editing) return;
+                if (!editing || !editingType) return;
+                const convertingAbout =
+                  isHomepage && editing.sectionType === "about";
                 startTransition(async () => {
                   const result = await updateSectionAction({
                     sectionId: editing.id,
                     title:
                       editTitle.trim() ||
-                      SECTION_TYPE_LABELS[
-                        editing.sectionType as SupportedSectionType
-                      ] ||
+                      SECTION_TYPE_LABELS[editingType] ||
                       null,
+                    ...(convertingAbout
+                      ? { sectionType: "other_information" as const }
+                      : {}),
                     config: {
                       ...editConfig,
                       // Motion & 3D are store-wide (Appearance only).
@@ -559,11 +759,12 @@ export function HomepageBuilder({
                       s.id === editing.id
                         ? {
                             ...s,
+                            sectionType: convertingAbout
+                              ? "other_information"
+                              : s.sectionType,
                             title:
                               editTitle.trim() ||
-                              SECTION_TYPE_LABELS[
-                                editing.sectionType as SupportedSectionType
-                              ] ||
+                              SECTION_TYPE_LABELS[editingType] ||
                               null,
                             config: {
                               ...editConfig,
@@ -577,7 +778,7 @@ export function HomepageBuilder({
                     ),
                   );
                   setEditId(null);
-                  setMessage("Section saved (draft until you publish).");
+                  setMessage("Section saved.");
                   refresh();
                 });
               }}
@@ -622,20 +823,36 @@ export function HomepageBuilder({
               };
               return { ...prev, slides };
             }
-            const galleryMatch = mediaField.match(
-              /^gallerySlides\.(\d+)\.imagePath$/,
+            const factoryMatch = mediaField.match(
+              /^factorySlides\.(\d+)\.imagePath$/,
             );
-            if (galleryMatch) {
-              const index = Number(galleryMatch[1]);
+            if (factoryMatch) {
+              const index = Number(factoryMatch[1]);
               const slides = [
-                ...((prev.gallerySlides as Array<Record<string, unknown>>) ??
+                ...((prev.factorySlides as Array<Record<string, unknown>>) ??
                   []),
               ];
               slides[index] = {
                 ...(slides[index] ?? {}),
                 imagePath: selection.storagePath,
               };
-              return { ...prev, gallerySlides: slides };
+              return { ...prev, factorySlides: slides };
+            }
+            const certMatch = mediaField.match(
+              /^certificatesSlides\.(\d+)\.imagePath$/,
+            );
+            if (certMatch) {
+              const index = Number(certMatch[1]);
+              const slides = [
+                ...((prev.certificatesSlides as Array<
+                  Record<string, unknown>
+                >) ?? []),
+              ];
+              slides[index] = {
+                ...(slides[index] ?? {}),
+                imagePath: selection.storagePath,
+              };
+              return { ...prev, certificatesSlides: slides };
             }
             return {
               ...prev,
@@ -690,6 +907,8 @@ function SectionConfigFields({
   onChange,
   onPickMedia,
   fieldErrors = {},
+  categoryOptions = [],
+  productOptions = [],
 }: {
   sectionType: SupportedSectionType;
   config: EditableConfig;
@@ -698,6 +917,8 @@ function SectionConfigFields({
   onChange: (value: EditableConfig) => void;
   onPickMedia: (field: string) => void;
   fieldErrors?: FieldErrors;
+  categoryOptions?: CatalogPickerOption[];
+  productOptions?: CatalogPickerOption[];
 }) {
   void _onTitleChange;
   function setField(key: string, value: unknown) {
@@ -705,6 +926,59 @@ function SectionConfigFields({
   }
   function err(key: string) {
     return fieldErrors[key];
+  }
+
+  if (sectionType === "other_information") {
+    return (
+      <div className={adminFormStack()} style={adminStackStyle}>
+        {Object.keys(fieldErrors).length > 0 ? (
+          <div className="space-y-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
+            {Object.entries(fieldErrors).map(([key, message]) => (
+              <FieldError key={key} message={message} className="mt-0" />
+            ))}
+          </div>
+        ) : null}
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">Show on homepage</p>
+          <p className="admin-field-group__hint">
+            Toggle which parts from Content → About appear here.{" "}
+            <Link
+              href={getAdminPath("/content/about")}
+              className="font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
+            >
+              Edit About content
+            </Link>
+          </p>
+          <div className="grid gap-2">
+            <AdminToggle
+              checked={Boolean(config.showStory)}
+              onChange={(checked) => setField("showStory", checked)}
+              label="Story & portrait"
+            />
+            <AdminToggle
+              checked={Boolean(config.showVisionMission)}
+              onChange={(checked) => setField("showVisionMission", checked)}
+              label="Vision & mission"
+            />
+            <AdminToggle
+              checked={Boolean(config.showFactory)}
+              onChange={(checked) => setField("showFactory", checked)}
+              label="Factory"
+            />
+            <AdminToggle
+              checked={Boolean(config.showCertificates)}
+              onChange={(checked) => setField("showCertificates", checked)}
+              label="Certificates"
+            />
+            <AdminToggle
+              checked={Boolean(config.showTrain)}
+              onChange={(checked) => setField("showTrain", checked)}
+              label="Heritage train"
+            />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const typeLabel = SECTION_TYPE_LABELS[sectionType];
@@ -715,18 +989,29 @@ function SectionConfigFields({
     sectionType !== "about" &&
     sectionType !== "cta" &&
     sectionType !== "text_image" &&
-    (sectionType === "categories" ||
-      sectionType === "products" ||
-      sectionType === "banner" ||
-      sectionType === "features" ||
-      sectionType === "statistics" ||
+    sectionType !== "statistics" &&
+    sectionType !== "features" &&
+    sectionType !== "products" &&
+    sectionType !== "categories" &&
+    (sectionType === "banner" ||
       sectionType === "testimonials" ||
       sectionType === "faq" ||
       sectionType === "newsletter" ||
       sectionType === "text");
 
   return (
-    <div className={adminFormStack()} style={adminStackStyle}>
+    <div
+      className={adminFormStack(
+        sectionType === "cta" ||
+          sectionType === "faq" ||
+          sectionType === "statistics" ||
+          sectionType === "features" ||
+          sectionType === "products" ||
+          sectionType === "categories" ||
+          sectionType === "hero",
+      )}
+      style={adminStackStyle}
+    >
       {Object.keys(fieldErrors).length > 0 ? (
         <div className="space-y-1 rounded-xl border border-red-200 bg-red-50 px-3 py-2">
           {Object.entries(fieldErrors).map(([key, message]) => (
@@ -734,13 +1019,21 @@ function SectionConfigFields({
           ))}
         </div>
       ) : null}
-      <TextField
-        label="Section name (in admin list)"
-        fullWidth
-        value={listLabel}
-        disabled
-        helperText="Auto-filled from the section type. Shoppers never see this."
-      />
+      {sectionType !== "cta" &&
+      sectionType !== "faq" &&
+      sectionType !== "statistics" &&
+      sectionType !== "features" &&
+      sectionType !== "products" &&
+      sectionType !== "categories" &&
+      sectionType !== "hero" ? (
+        <TextField
+          label="Section name (in admin list)"
+          fullWidth
+          value={listLabel}
+          disabled
+          helperText="Auto-filled from the section type. Shoppers never see this."
+        />
+      ) : null}
 
       {showSharedTitle ? (
         <div className={adminFieldGroup()} style={adminStackStyle}>
@@ -776,395 +1069,111 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "hero" ? (
-        <>
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">1. Hero text</p>
-            <p className="admin-field-group__hint">
-              Write what shoppers read first — preview updates instantly.
-            </p>
-            <div>
-              <TextField
-                label="Main headline"
-                fullWidth
-                name="title"
-                value={String(config.title ?? "")}
-                error={Boolean(err("title"))}
-                onChange={(e) => setField("title", e.target.value)}
-                helperText={
-                  err("title")
-                    ? undefined
-                    : "Big title — keep it short (about 6–10 words)."
-                }
-              />
-            </div>
-            <div>
-              <TextField
-                label="Small line above headline (optional)"
-                fullWidth
-                name="subtitle"
-                value={String(config.subtitle ?? "")}
-                error={Boolean(err("subtitle"))}
-                onChange={(e) => setField("subtitle", e.target.value)}
-                helperText={
-                  err("subtitle")
-                    ? undefined
-                    : "Example: LEADING MANUFACTURER OF SEASONING SPICES"
-                }
-              />
-            </div>
-            <div>
-              <TextField
-                label="Short supporting text"
-                fullWidth
-                multiline
-                minRows={3}
-                name="description"
-                value={String(config.description ?? "")}
-                error={Boolean(err("description"))}
-                onChange={(e) => setField("description", e.target.value)}
-                helperText={
-                  err("description")
-                    ? undefined
-                    : "1–2 sentences under the headline."
-                }
-              />
-            </div>
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">2. Buttons</p>
-            <p className="admin-field-group__hint">
-              Choose button text and which store page opens. See destinations in
-              the preview.
-            </p>
-
-            <div
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-            >
-              <p className="text-xs font-semibold text-[var(--color-foreground)]">
-                Main button (primary)
-              </p>
-              <TextField
-                label="Button text shoppers see"
-                fullWidth
-                value={String(config.primaryButtonText ?? "")}
-                onChange={(e) => setField("primaryButtonText", e.target.value)}
-                placeholder="Shop products"
-                helperText="Leave blank to hide this button"
-              />
-              <StorePageLinkField
-                value={config.primaryButtonLink as string | null}
-                fallback="/products"
-                onChange={(v) => setField("primaryButtonLink", v)}
-                helperText={
-                  config.primaryButtonText
-                    ? `“${String(config.primaryButtonText)}” opens ${pageOptionLabel(String(config.primaryButtonLink ?? "/products"))}`
-                    : "Pick where the button should send shoppers"
-                }
-              />
-            </div>
-
-            <div
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-            >
-              <p className="text-xs font-semibold text-[var(--color-foreground)]">
-                Second button (optional)
-              </p>
-              <TextField
-                label="Button text shoppers see"
-                fullWidth
-                value={String(config.secondaryButtonText ?? "")}
-                onChange={(e) => setField("secondaryButtonText", e.target.value)}
-                placeholder="About us"
-                helperText="Optional — leave blank to hide"
-              />
-              <StorePageLinkField
-                value={config.secondaryButtonLink as string | null}
-                fallback="/about"
-                onChange={(v) => setField("secondaryButtonLink", v)}
-                helperText={
-                  config.secondaryButtonText
-                    ? `“${String(config.secondaryButtonText)}” opens ${pageOptionLabel(String(config.secondaryButtonLink ?? "/about"))}`
-                    : "Only used when second button text is set"
-                }
-              />
-            </div>
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">3. Slideshow images</p>
-            <p className="admin-field-group__hint">
-              Add up to 8 slides for an auto-playing hero (like a brand campaign
-              banner). When slides exist, they replace the single background
-              image layout on the storefront.
-            </p>
-            {(((config.slides as Array<Record<string, unknown>>) ?? []) as Array<
-              Record<string, unknown>
-            >).map((slide, index) => (
-              <div
-                key={index}
-                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-                style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-semibold text-[var(--color-foreground)]">
-                    Slide {index + 1}
-                  </p>
-                  <button
-                    type="button"
-                    className="text-xs font-medium text-[var(--color-error,#b91c1c)]"
-                    onClick={() => {
-                      const next = [
-                        ...((config.slides as Array<Record<string, unknown>>) ??
-                          []),
-                      ];
-                      next.splice(index, 1);
-                      setField("slides", next);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <ImageField
-                  label="Slide image"
-                  value={slide.imagePath as string | null}
-                  onPick={() => onPickMedia(`slides.${index}.imagePath`)}
-                  onClear={() => {
-                    const next = [
-                      ...((config.slides as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], imagePath: "" };
-                    setField("slides", next);
-                  }}
-                />
-                <TextField
-                  label="Slide headline (optional)"
-                  fullWidth
-                  value={String(slide.title ?? "")}
-                  onChange={(e) => {
-                    const next = [
-                      ...((config.slides as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], title: e.target.value };
-                    setField("slides", next);
-                  }}
-                  helperText="Falls back to main headline if empty"
-                />
-                <TextField
-                  label="Badge (optional)"
-                  fullWidth
-                  value={String(slide.badge ?? "")}
-                  onChange={(e) => {
-                    const next = [
-                      ...((config.slides as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], badge: e.target.value };
-                    setField("slides", next);
-                  }}
-                  placeholder="SUSTAINABLE"
-                />
-                <TextField
-                  label="Slide button text (optional)"
-                  fullWidth
-                  value={String(slide.ctaLabel ?? "")}
-                  onChange={(e) => {
-                    const next = [
-                      ...((config.slides as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], ctaLabel: e.target.value };
-                    setField("slides", next);
-                  }}
-                />
-                <StorePageLinkField
-                  value={(slide.ctaHref as string | null) ?? null}
-                  fallback="/products"
-                  onChange={(v) => {
-                    const next = [
-                      ...((config.slides as Array<Record<string, unknown>>) ??
-                        []),
-                    ];
-                    next[index] = { ...next[index], ctaHref: v };
-                    setField("slides", next);
-                  }}
-                />
-              </div>
-            ))}
-            <button
-              type="button"
-              disabled={
-                (((config.slides as unknown[]) ?? []).length ?? 0) >= 8
+        <HeroSectionFields
+          title={String(config.title ?? "")}
+          subtitle={String(config.subtitle ?? "")}
+          description={String(config.description ?? "")}
+          slides={mapHeroSlides(config.slides, {
+            title: String(config.title ?? ""),
+            subtitle: String(config.subtitle ?? ""),
+            description: String(config.description ?? ""),
+            primaryButtonText: String(config.primaryButtonText ?? ""),
+            primaryButtonLink: (config.primaryButtonLink as string | null) ?? null,
+            secondaryButtonText: String(config.secondaryButtonText ?? ""),
+            secondaryButtonLink:
+              (config.secondaryButtonLink as string | null) ?? null,
+            backgroundImagePath:
+              (config.backgroundImagePath as string | null) ?? null,
+          })}
+          autoplayMs={Number(config.autoplayMs ?? 5000)}
+          showArrows={config.showArrows !== false}
+          onPickMedia={onPickMedia}
+          onChange={(patch) => {
+            const next: EditableConfig = { ...config, ...patch };
+            // Keep section-level buttons in sync with first slide for legacy fallbacks.
+            const slides = (next.slides as Array<Record<string, unknown>>) ?? [];
+            const first = slides[0];
+            if (first) {
+              next.primaryButtonText = String(first.ctaLabel ?? "");
+              next.primaryButtonLink = (first.ctaHref as string | null) ?? null;
+              next.secondaryButtonText = String(first.secondaryCtaLabel ?? "");
+              next.secondaryButtonLink =
+                (first.secondaryCtaHref as string | null) ?? null;
+              if (first.imagePath) {
+                next.backgroundImagePath = String(first.imagePath);
               }
-              onClick={() => {
-                const next = [
-                  ...((config.slides as Array<Record<string, unknown>>) ?? []),
-                  {
-                    imagePath: "",
-                    title: "",
-                    subtitle: "",
-                    description: "",
-                    badge: "",
-                    ctaLabel: "Know more",
-                    ctaHref: "/products",
-                  },
-                ];
-                setField("slides", next);
-              }}
-              className="rounded-md border border-[var(--color-primary)] px-3 py-2 text-sm font-medium text-[var(--color-primary)] disabled:opacity-50"
-            >
-              Add slide
-            </button>
-            <div className={adminFieldsGrid(2)}>
-              <TextField
-                label="Autoplay interval (ms)"
-                type="number"
-                fullWidth
-                value={Number(config.autoplayMs ?? 5000)}
-                onChange={(e) =>
-                  setField("autoplayMs", Number(e.target.value) || 5000)
-                }
-                helperText="0 disables autoplay. Default 5000."
-              />
-              <TextField
-                select
-                label="Show arrows"
-                fullWidth
-                value={config.showArrows === false ? "no" : "yes"}
-                onChange={(e) =>
-                  setField("showArrows", e.target.value === "yes")
-                }
-              >
-                <MenuItem value="yes">Yes</MenuItem>
-                <MenuItem value="no">No</MenuItem>
-              </TextField>
-            </div>
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">4. Fallback single images</p>
-            <p className="admin-field-group__hint">
-              Used when no slideshow slides are set. Background fills the hero.
-              Side image is optional.
-            </p>
-            <ImageField
-              label="Background image"
-              value={config.backgroundImagePath as string | null}
-              onPick={() => onPickMedia("backgroundImagePath")}
-              onClear={() => setField("backgroundImagePath", null)}
-            />
-            <ImageField
-              label="Product / side image (optional)"
-              value={config.foregroundImagePath as string | null}
-              onPick={() => onPickMedia("foregroundImagePath")}
-              onClear={() => setField("foregroundImagePath", null)}
-            />
-          </div>
-
-          <div className={adminFieldGroup()} style={adminStackStyle}>
-            <p className="admin-field-group__title">5. Layout</p>
-            <p className="admin-field-group__hint">
-              Full-bleed overlay is recommended for brand heroes.
-            </p>
-            <div className={adminFieldsGrid(2)}>
-              <TextField
-                select
-                label="Layout style"
-                fullWidth
-                value={String(config.layoutPreset ?? "FULL_BLEED")}
-                onChange={(e) =>
-                  setField("layoutPreset", e.target.value as HeroLayoutPreset)
-                }
-              >
-                {HERO_LAYOUT_PRESETS.map((preset) => (
-                  <MenuItem key={preset} value={preset}>
-                    {HERO_LAYOUT_PRESET_LABELS[preset]}
-                  </MenuItem>
-                ))}
-              </TextField>
-              <TextField
-                select
-                label="Text alignment"
-                fullWidth
-                value={String(config.alignment ?? "left")}
-                onChange={(e) => setField("alignment", e.target.value)}
-              >
-                <MenuItem value="left">Left</MenuItem>
-                <MenuItem value="center">Center</MenuItem>
-                <MenuItem value="right">Right</MenuItem>
-              </TextField>
-            </div>
-            <TextField
-              label="Decorative backdrop"
-              fullWidth
-              value="Soft brand glow (automatic)"
-              disabled
-              helperText="Handled by the theme — no setup needed."
-            />
-          </div>
-        </>
+            }
+            onChange(next);
+          }}
+        />
       ) : null}
 
-      {sectionType === "cta" || sectionType === "text_image" ? (
+      {sectionType === "cta" ? (
+        <CtaSectionFields
+          heading={String(config.heading ?? "")}
+          description={String(config.description ?? "")}
+          buttonText={String(config.buttonText ?? "")}
+          buttonLink={(config.buttonLink as string | null) ?? null}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+        />
+      ) : null}
+
+      {sectionType === "text_image" ? (
         <>
-          <div className={adminFieldGroup()} style={adminStackStyle}>
+          <div className={adminFieldGroup(true)}>
             <p className="admin-field-group__title">1. Content</p>
             <p className="admin-field-group__hint">
-              Heading and story shoppers read — preview updates as you type.
+              Heading, story, and image — preview updates as you type.
             </p>
             <TextField
               label="Heading"
               fullWidth
+              size="small"
               value={String(config.heading ?? "")}
               onChange={(e) => setField("heading", e.target.value)}
             />
             <TextField
               label="Description"
               fullWidth
+              size="small"
               multiline
-              minRows={4}
+              minRows={2}
+              maxRows={4}
               value={String(config.description ?? "")}
               onChange={(e) => setField("description", e.target.value)}
             />
-            {sectionType !== "cta" ? (
-              <ImageField
-                label="Image"
-                value={config.imagePath as string | null}
-                onPick={() => onPickMedia("imagePath")}
-                onClear={() => setField("imagePath", null)}
-              />
-            ) : null}
-            {sectionType === "text_image" ? (
-              <TextField
-                select
-                label="Image position"
-                fullWidth
-                value={String(config.imagePosition ?? "right")}
-                onChange={(e) => setField("imagePosition", e.target.value)}
-              >
-                <MenuItem value="left">Left</MenuItem>
-                <MenuItem value="right">Right</MenuItem>
-              </TextField>
-            ) : null}
+            <ImageField
+              label="Image"
+              value={config.imagePath as string | null}
+              onPick={() => onPickMedia("imagePath")}
+              onClear={() => setField("imagePath", null)}
+            />
+            <TextField
+              select
+              label="Image position"
+              fullWidth
+              size="small"
+              value={String(config.imagePosition ?? "right")}
+              onChange={(e) => setField("imagePosition", e.target.value)}
+            >
+              <MenuItem value="left">Left</MenuItem>
+              <MenuItem value="right">Right</MenuItem>
+            </TextField>
           </div>
 
-          <div className={adminFieldGroup()} style={adminStackStyle}>
+          <div className={adminFieldGroup(true)}>
             <p className="admin-field-group__title">2. Button</p>
             <p className="admin-field-group__hint">
-              Choose the label and which store page opens. Destination shows in
-              the preview.
+              Optional CTA under the story.
             </p>
             <div
-              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-              style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
+              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2.5"
+              style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}
             >
               <TextField
-                label="Button text shoppers see"
+                label="Button text"
                 fullWidth
+                size="small"
                 value={String(config.buttonText ?? "")}
                 onChange={(e) => setField("buttonText", e.target.value)}
                 helperText="Leave blank to hide the button"
@@ -1175,7 +1184,7 @@ function SectionConfigFields({
                 onChange={(v) => setField("buttonLink", v)}
                 helperText={
                   config.buttonText
-                    ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.buttonLink ?? "/products"))}`
+                    ? `Opens ${pageOptionLabel(String(config.buttonLink ?? "/products"))}`
                     : "Pick where the button should send shoppers"
                 }
               />
@@ -1192,7 +1201,7 @@ function SectionConfigFields({
         />
       ) : null}
 
-      {sectionType === "categories" || sectionType === "products" || sectionType === "banner" || sectionType === "newsletter" ? (
+      {sectionType === "banner" || sectionType === "newsletter" ? (
         <TextField
           label="Description"
           fullWidth
@@ -1204,90 +1213,42 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "products" ? (
-        <>
-          <TextField
-            select
-            label="Product source"
-            fullWidth
-            value={String(config.source ?? "FEATURED_PRODUCTS")}
-            onChange={(e) => setField("source", e.target.value)}
-            helperText="Featured = products marked Featured in Catalog → Products"
-          >
-            <MenuItem value="FEATURED_PRODUCTS">Featured products (recommended)</MenuItem>
-            <MenuItem value="LATEST_PRODUCTS">Latest products</MenuItem>
-            <MenuItem value="CATEGORY_PRODUCTS">Products in a category</MenuItem>
-            <MenuItem value="SELECTED_PRODUCTS">Selected products</MenuItem>
-          </TextField>
-          <TextField
-            label="How many to show"
-            type="number"
-            fullWidth
-            value={Number(config.limit ?? 8)}
-            onChange={(e) => setField("limit", Number(e.target.value) || 8)}
-            slotProps={{ htmlInput: { min: 1, max: 24 } }}
-          />
-          {config.source === "CATEGORY_PRODUCTS" ? (
-            <TextField
-              label="Category ID"
-              fullWidth
-              helperText="Paste a category ID from Products → Categories"
-              value={String(config.categoryId ?? "")}
-              onChange={(e) => setField("categoryId", e.target.value || null)}
-            />
-          ) : null}
-          {config.source === "SELECTED_PRODUCTS" ? (
-            <TextField
-              label="Product IDs (comma-separated)"
-              fullWidth
-              helperText="Paste product IDs separated by commas"
-              value={Array.isArray(config.productIds) ? (config.productIds as string[]).join(", ") : ""}
-              onChange={(e) =>
-                setField(
-                  "productIds",
-                  e.target.value
-                    .split(",")
-                    .map((v) => v.trim())
-                    .filter(Boolean),
-                )
-              }
-            />
-          ) : null}
-        </>
+        <ProductsSectionFields
+          title={String(config.title ?? "")}
+          description={String(config.description ?? "")}
+          source={
+            (config.source as ProductsSectionSource) || "FEATURED_PRODUCTS"
+          }
+          limit={Number(config.limit ?? 8) || 8}
+          categoryId={(config.categoryId as string | null) ?? null}
+          productIds={
+            Array.isArray(config.productIds)
+              ? (config.productIds as string[])
+              : []
+          }
+          categoryOptions={categoryOptions}
+          productOptions={productOptions}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+        />
       ) : null}
 
       {sectionType === "categories" ? (
-        <>
-          <TextField
-            label="Category IDs (comma-separated, optional)"
-            fullWidth
-            helperText="Leave blank to show all active categories"
-            value={
-              Array.isArray(config.categoryIds)
-                ? (config.categoryIds as string[]).join(", ")
-                : ""
-            }
-            onChange={(e) =>
-              setField(
-                "categoryIds",
-                e.target.value
-                  .split(",")
-                  .map((v) => v.trim())
-                  .filter(Boolean),
-              )
-            }
-          />
-          <TextField
-            select
-            label="Columns"
-            fullWidth
-            value={Number(config.columns ?? 3)}
-            onChange={(e) => setField("columns", Number(e.target.value))}
-          >
-            <MenuItem value={2}>2</MenuItem>
-            <MenuItem value={3}>3</MenuItem>
-            <MenuItem value={4}>4</MenuItem>
-          </TextField>
-        </>
+        <CategoriesSectionFields
+          title={String(config.title ?? "")}
+          description={String(config.description ?? "")}
+          categoryIds={
+            Array.isArray(config.categoryIds)
+              ? (config.categoryIds as string[])
+              : []
+          }
+          columns={
+            ([2, 3, 4].includes(Number(config.columns))
+              ? Number(config.columns)
+              : 3) as 2 | 3 | 4
+          }
+          categoryOptions={categoryOptions}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+        />
       ) : null}
 
       {sectionType === "banner" ? (
@@ -1328,47 +1289,33 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "features" ? (
-        <JsonListEditor
-          label="Features (one per line: icon|title|description)"
-          hint="Icons: star, shield, truck, heart, leaf, check, globe, clock, package, support"
-          value={(config.items as SectionConfigMap["features"]["items"] | undefined)
-            ?.map((i) => `${i.icon}|${i.title}|${i.description}`)
-            .join("\n") ?? ""}
-          onChange={(text) => {
-            const items = text
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .map((line) => {
-                const [icon, title, ...rest] = line.split("|");
-                return {
-                  icon: (icon || "star").trim(),
-                  title: (title || "").trim(),
-                  description: rest.join("|").trim(),
-                };
-              });
-            setField("items", items);
-          }}
+        <FeaturesSectionFields
+          title={String(config.title ?? "")}
+          description={String(config.description ?? "")}
+          items={mapFeaturesConfigItems(
+            config.items as SectionConfigMap["features"]["items"] | undefined,
+          )}
+          onTitleChange={(title) => setField("title", title)}
+          onDescriptionChange={(description) =>
+            setField("description", description)
+          }
+          onChange={(next) => setField("items", next)}
         />
       ) : null}
 
       {sectionType === "statistics" ? (
-        <JsonListEditor
-          label="Statistics (one per line: value|label)"
-          value={(config.items as SectionConfigMap["statistics"]["items"] | undefined)
-            ?.map((i) => `${i.value}|${i.label}`)
-            .join("\n") ?? ""}
-          onChange={(text) => {
-            const items = text
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .map((line) => {
-                const [value, ...rest] = line.split("|");
-                return { value: (value || "").trim(), label: rest.join("|").trim() };
-              });
-            setField("items", items);
-          }}
+        <StatisticsSectionFields
+          title={String(config.title ?? "")}
+          items={
+            (config.items as
+              | Array<{ value?: string; label?: string }>
+              | undefined)?.map((i) => ({
+              value: String(i.value ?? ""),
+              label: String(i.label ?? ""),
+            })) ?? []
+          }
+          onTitleChange={(title) => setField("title", title)}
+          onChange={(next) => setField("items", next)}
         />
       ) : null}
 
@@ -1402,26 +1349,17 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "faq" ? (
-        <JsonListEditor
-          label="FAQ (one per line: question|answer)"
-          value={(config.items as SectionConfigMap["faq"]["items"] | undefined)
-            ?.map((i) => `${i.question}|${i.answer}`)
-            .join("\n") ?? ""}
-          onChange={(text) => {
-            const items = text
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .map((line) => {
-                const [question, ...rest] = line.split("|");
-                return {
-                  question: (question || "").trim(),
-                  answer: rest.join("|").trim(),
-                  active: true,
-                };
-              });
-            setField("items", items);
-          }}
+        <FaqSectionFields
+          items={
+            (config.items as
+              | Array<{ question?: string; answer?: string; active?: boolean }>
+              | undefined)?.map((i) => ({
+              question: String(i.question ?? ""),
+              answer: String(i.answer ?? ""),
+              active: i.active !== false,
+            })) ?? []
+          }
+          onChange={(next) => setField("items", next)}
         />
       ) : null}
 

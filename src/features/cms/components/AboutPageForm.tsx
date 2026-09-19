@@ -13,14 +13,13 @@ import {
   type AboutEditableConfig,
 } from "@/features/cms/components/AboutSectionFields";
 import { SectionEditorPreview } from "@/features/cms/components/SectionEditorPreview";
-import { defaultConfigForType } from "@/features/cms/schemas";
+import {
+  defaultConfigForType,
+  migrateAboutConfigInput,
+} from "@/features/cms/schemas";
 import type { ContentPage, ContentSection } from "@/features/cms/types";
 import { MediaPicker } from "@/features/media";
 import { focusFirstFieldError } from "@/features/admin/validation/form-errors";
-import {
-  adminFormStack,
-  adminStackStyle,
-} from "@/features/admin/ui/admin-classes";
 import { AdminSaveBar } from "@/features/admin/ui/AdminSaveBar";
 import type { FieldErrors } from "@/lib/validation";
 
@@ -35,9 +34,13 @@ function buildInitialConfig(
   defaults: AboutEditableConfig,
   section: ContentSection,
 ): AboutEditableConfig {
+  const migrated = migrateAboutConfigInput({
+    ...defaults,
+    ...(section.config as Record<string, unknown>),
+  });
   const merged: AboutEditableConfig = {
     ...defaults,
-    ...section.config,
+    ...migrated,
     motionSource: "global",
     threeSource: "global",
   };
@@ -118,13 +121,14 @@ export function AboutPageForm({
     <div className="space-y-4 pb-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
         <div>
-          <p className="text-sm text-[var(--color-muted)]">
-            Edit what shoppers see on /about. Changes stay in draft until you
-            publish.
-          </p>
-          <p className="mt-1 text-sm">
-            Status:{" "}
-            <span className="font-medium capitalize">{status}</span>
+          <h1 className="text-base font-semibold tracking-tight text-[var(--color-foreground)]">
+            About page
+          </h1>
+          <p className="mt-0.5 text-sm text-[var(--color-muted)]">
+            Draft until you publish · Status:{" "}
+            <span className="font-medium capitalize text-[var(--color-foreground)]">
+              {status}
+            </span>
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -199,14 +203,12 @@ export function AboutPageForm({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
-        <div className="order-2 lg:order-1">
-          <div className={adminFormStack()} style={adminStackStyle}>
-            <AboutSectionFields
-              config={config}
-              onChange={setConfig}
-              onPickMedia={(field) => setMediaField(field)}
-            />
-          </div>
+        <div className="order-2 lg:order-1 min-w-0">
+          <AboutSectionFields
+            config={config}
+            onChange={setConfig}
+            onPickMedia={(field) => setMediaField(field)}
+          />
         </div>
         <div className="order-1 lg:order-2 lg:sticky lg:top-4">
           <SectionEditorPreview sectionType="about" config={config} />
@@ -250,20 +252,36 @@ export function AboutPageForm({
               };
               return { ...prev, timelineItems: items };
             }
-            const galleryMatch = mediaField.match(
-              /^gallerySlides\.(\d+)\.imagePath$/,
+            const factoryMatch = mediaField.match(
+              /^factorySlides\.(\d+)\.imagePath$/,
             );
-            if (galleryMatch) {
-              const index = Number(galleryMatch[1]);
+            if (factoryMatch) {
+              const index = Number(factoryMatch[1]);
               const slides = [
-                ...((prev.gallerySlides as Array<Record<string, unknown>>) ??
+                ...((prev.factorySlides as Array<Record<string, unknown>>) ??
                   []),
               ];
               slides[index] = {
                 ...(slides[index] ?? {}),
                 imagePath: selection.storagePath,
               };
-              return { ...prev, gallerySlides: slides };
+              return { ...prev, factorySlides: slides };
+            }
+            const certMatch = mediaField.match(
+              /^certificatesSlides\.(\d+)\.imagePath$/,
+            );
+            if (certMatch) {
+              const index = Number(certMatch[1]);
+              const slides = [
+                ...((prev.certificatesSlides as Array<
+                  Record<string, unknown>
+                >) ?? []),
+              ];
+              slides[index] = {
+                ...(slides[index] ?? {}),
+                imagePath: selection.storagePath,
+              };
+              return { ...prev, certificatesSlides: slides };
             }
             return { ...prev, [mediaField]: selection.storagePath };
           });

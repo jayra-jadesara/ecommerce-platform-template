@@ -21,7 +21,7 @@ import {
   type SupportedSectionType,
 } from "@/features/cms/schemas";
 import type { BannerRow, ContentPage, ParsedContentSection } from "@/features/cms/types";
-import { listStorefrontCategories, listStorefrontProducts } from "@/features/catalog/storefront";
+import { listStorefrontCategories, listStorefrontProducts, listStorefrontProductsByIds } from "@/features/catalog/storefront";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import type { Tables } from "@/types/database";
 import type { NavItem } from "@/types";
@@ -124,7 +124,9 @@ async function loadPublishedPageUncached(
       const all = await listStorefrontCategories();
       const filtered =
         cfg.categoryIds.length > 0
-          ? all.filter((c) => cfg.categoryIds.includes(c.id))
+          ? cfg.categoryIds
+              .map((id) => all.find((c) => c.id === id))
+              .filter((c): c is (typeof all)[number] => Boolean(c))
           : all.slice(0, 12);
       section.resolved = { categories: filtered };
     }
@@ -152,15 +154,8 @@ async function loadPublishedPageUncached(
         });
         items = result.items;
       } else if (cfg.source === "SELECTED_PRODUCTS" && cfg.productIds.length) {
-        const result = await listStorefrontProducts({
-          pageSize: 48,
-          sort: "newest",
-        });
-        const map = new Map(result.items.map((p) => [p.id, p]));
-        items = cfg.productIds
-          .map((id) => map.get(id))
-          .filter(Boolean)
-          .slice(0, cfg.limit) as typeof items;
+        const selected = await listStorefrontProductsByIds(cfg.productIds);
+        items = selected.slice(0, cfg.limit);
       }
       section.resolved = { products: items };
     }
@@ -248,8 +243,8 @@ export async function getLegalStorefrontPage(
 }
 
 /**
- * Published legal pages keyed by storefront path (`/privacy`, …) → admin title.
- * Used to show/hide and relabel footer (and similar) legal links.
+ * Published CMS pages keyed by storefront path → display label.
+ * Used to show/hide and relabel footer/header links (legal + career).
  */
 export async function getPublishedLegalLinkMap(): Promise<
   Map<string, string>
@@ -262,17 +257,32 @@ export async function getPublishedLegalLinkMap(): Promise<
 
   const { data } = await supabase
     .from("pages")
-    .select("slug, title")
+    .select("slug, title, status")
     .eq("store_id", storeId)
     .eq("status", "published")
-    .in("slug", [...LEGAL_PAGE_SLUGS]);
+    .in("slug", [...LEGAL_PAGE_SLUGS, CAREER_PAGE_SLUG]);
 
   const map = new Map<string, string>();
   for (const row of data ?? []) {
-    if (!isLegalPageSlug(row.slug)) continue;
-    const path = LEGAL_PAGE_META[row.slug].storefrontPath;
-    map.set(path, row.title?.trim() || LEGAL_PAGE_META[row.slug].title);
+    if (isLegalPageSlug(row.slug)) {
+      const path = LEGAL_PAGE_META[row.slug].storefrontPath;
+      map.set(path, row.title?.trim() || LEGAL_PAGE_META[row.slug].title);
+      continue;
+    }
+    if (row.slug === CAREER_PAGE_SLUG) {
+      map.set("/career", row.title?.trim() || "Career");
+    }
   }
+
+  // Prefer Career section heading when set (same copy as the page H1).
+  if (map.has("/career")) {
+    const career = await getPublishedStorefrontPage(CAREER_PAGE_SLUG);
+    const section = career?.sections.find((s) => s.sectionType === "career");
+    const cfg = (section?.config ?? {}) as Partial<SectionConfigMap["career"]>;
+    const heading = cfg.heading?.trim();
+    if (heading) map.set("/career", heading);
+  }
+
   return map;
 }
 
@@ -291,11 +301,12 @@ function normalizeNavHref(href: string): string {
   return path;
 }
 
-const LEGAL_FOOTER_PATHS = new Set(
-  LEGAL_PAGE_SLUGS.map((slug) => LEGAL_PAGE_META[slug].storefrontPath),
-);
+const MANAGED_NAV_PATHS = new Set([
+  ...LEGAL_PAGE_SLUGS.map((slug) => LEGAL_PAGE_META[slug].storefrontPath),
+  "/career",
+]);
 
-/** Drop unpublished/archived legal links; rename published ones to the admin title. */
+/** Drop unpublished managed links; rename published ones to the CMS title/heading. */
 export function applyLegalLinksToNav(
   items: NavItem[],
   publishedLegal: Map<string, string>,
@@ -307,7 +318,7 @@ export function applyLegalLinksToNav(
       ? applyLegalLinksToNav(item.children, publishedLegal)
       : undefined;
 
-    if (LEGAL_FOOTER_PATHS.has(path)) {
+    if (MANAGED_NAV_PATHS.has(path)) {
       const title = publishedLegal.get(path);
       if (!title) continue;
       next.push({

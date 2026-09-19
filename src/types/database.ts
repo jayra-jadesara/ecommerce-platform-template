@@ -81,6 +81,7 @@ export type PageSectionType =
   | "faq"
   | "cta"
   | "about"
+  | "other_information"
   | "career"
   | "features"
   | "statistics"
@@ -152,6 +153,7 @@ export type Database = {
           header_mobile_menu_enabled: boolean;
           header_nav_visible: boolean;
           header_logo_size: "small" | "medium" | "large" | "xlarge";
+          header_logo_hang: "none" | "soft" | "medium" | "bold";
           announcement_enabled: boolean;
           announcement_text: string | null;
           announcement_url: string | null;
@@ -200,6 +202,7 @@ export type Database = {
           header_mobile_menu_enabled?: boolean;
           header_nav_visible?: boolean;
           header_logo_size?: "small" | "medium" | "large" | "xlarge";
+          header_logo_hang?: "none" | "soft" | "medium" | "bold";
           announcement_enabled?: boolean;
           announcement_text?: string | null;
           announcement_url?: string | null;

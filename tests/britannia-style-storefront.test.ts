@@ -57,11 +57,38 @@ describe("britannia-style hero slides", () => {
       read("src/features/cms/components/HeroCarousel.tsx"),
     ).toContain("autoplayMs");
     expect(
+      read("src/features/cms/components/HeroCarousel.tsx"),
+    ).toContain("sf-hero-campaign");
+    expect(
+      read("src/features/cms/components/HeroSectionFields.tsx"),
+    ).toContain("Campaign slides");
+    expect(
       read("src/features/cms/components/HomepageBuilder.tsx"),
-    ).toContain("Slideshow images");
+    ).toContain("HeroSectionFields");
     expect(
       read("src/features/cms/components/SectionRenderer.tsx"),
     ).toContain("HeroCarousel");
+  });
+
+  it("accepts optional secondary CTA on slides", () => {
+    const ok = heroSectionConfigSchema.safeParse({
+      title: "Welcome",
+      slides: [
+        {
+          imagePath: "cms/hero-1.jpg",
+          title: "Slide one",
+          ctaLabel: "Shop",
+          ctaHref: "/products",
+          secondaryCtaLabel: "About us",
+          secondaryCtaHref: "/about",
+        },
+      ],
+    });
+    expect(ok.success).toBe(true);
+    if (ok.success) {
+      expect(ok.data.slides[0]?.secondaryCtaLabel).toBe("About us");
+      expect(ok.data.slides[0]?.secondaryCtaHref).toBe("/about");
+    }
   });
 });
 

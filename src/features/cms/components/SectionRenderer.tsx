@@ -7,7 +7,6 @@ import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import { coerceHeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import type { StorefrontSection } from "@/features/cms/storefront";
 import type {
-  HeroLayoutPreset,
   SectionConfigMap,
   SupportedSectionType,
 } from "@/features/cms/schemas";
@@ -17,9 +16,12 @@ import {
 } from "@/features/cms/section-styles";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
 import { HeroCarousel } from "@/features/cms/components/HeroCarousel";
-import { AboutHeritageTrain } from "@/features/cms/components/AboutHeritageTrain";
-import { AboutGalleryCarousel } from "@/features/cms/components/AboutGalleryCarousel";
-import { Hero3DSlot } from "@/components/three/Hero3DSlot";
+import { FaqAccordion } from "@/features/cms/components/FaqAccordion";
+import {
+  AboutBlocks,
+  aboutBlocksForFullPage,
+} from "@/features/cms/components/AboutBlocks";
+import { OtherInformationFromAbout } from "@/features/cms/components/OtherInformationFromAbout";
 import { defaultPlatformConfig } from "@/config/defaults";
 import {
   sfBtn,
@@ -30,9 +32,7 @@ import {
 import { ProductCard } from "@/features/catalog/components/ProductCard";
 import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
 import {
-  resolve3DConfig,
   resolveMotionConfig,
-  section3dOverrideFromConfig,
   sectionMotionOverrideFromConfig,
 } from "@/features/motion-3d";
 
@@ -110,133 +110,6 @@ function buttonClass(variant: "primary" | "secondary" = "primary") {
   return sfBtn(variant === "secondary" ? "outline" : "primary");
 }
 
-function themeHeroBackdrop() {
-  return (
-    <div
-      className="pointer-events-none absolute inset-0"
-      aria-hidden
-      style={{
-        background:
-          "radial-gradient(ellipse 70% 55% at 8% 12%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 55%), radial-gradient(ellipse 55% 50% at 92% 88%, color-mix(in srgb, var(--color-accent) 22%, transparent), transparent 50%), linear-gradient(180deg, color-mix(in srgb, var(--color-surface) 70%, transparent), transparent)",
-      }}
-    />
-  );
-}
-
-function HeroCopy({
-  c,
-  alignClass,
-  justifyClass,
-  centered,
-}: {
-  c: SectionConfigMap["hero"];
-  alignClass: string;
-  justifyClass: string;
-  centered?: boolean;
-}) {
-  return (
-    <div
-      className={`relative z-10 flex flex-col gap-4 ${alignClass} ${centered ? "mx-auto max-w-3xl" : "max-w-xl"}`}
-    >
-      {c.subtitle ? <p className={sfEyebrow()}>{c.subtitle}</p> : null}
-      {c.title ? (
-        <h1
-          className={`${sfDisplay()} text-4xl leading-[1.08] md:text-5xl lg:text-[3.25rem]`}
-        >
-          {c.title}
-        </h1>
-      ) : null}
-      {c.description ? (
-        <p className="max-w-xl text-base leading-relaxed text-[var(--color-muted)] md:text-lg">
-          {c.description}
-        </p>
-      ) : null}
-      <div className={`mt-2 flex flex-wrap gap-3 ${justifyClass}`}>
-        {c.primaryButtonText && c.primaryButtonLink ? (
-          <SafeLink href={c.primaryButtonLink} className={buttonClass("primary")}>
-            {c.primaryButtonText}
-          </SafeLink>
-        ) : null}
-        {c.secondaryButtonText && c.secondaryButtonLink ? (
-          <SafeLink
-            href={c.secondaryButtonLink}
-            className={buttonClass("secondary")}
-          >
-            {c.secondaryButtonText}
-          </SafeLink>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function HeroVisual({
-  fg,
-  hero3dOn,
-  hero3dPreset,
-  c,
-  visualEffects,
-  animation,
-}: {
-  fg: string | null;
-  hero3dOn: boolean;
-  hero3dPreset: string;
-  c: SectionConfigMap["hero"];
-  visualEffects: VisualEffectsConfig;
-  animation: AnimationConfig;
-}) {
-  return (
-    <div className="relative z-10 mx-auto min-h-[12rem] w-full max-w-md overflow-hidden rounded-[var(--radius-default,1rem)] md:mx-0 md:min-h-[16rem]">
-      {hero3dOn ? (
-        <Hero3DSlot
-          className="absolute inset-0"
-          preset={hero3dPreset}
-          quality={visualEffects.quality}
-          enabled={hero3dOn}
-          mobileEnabled={visualEffects.mobileEnabled}
-          respectReducedMotion={visualEffects.respectReducedMotion}
-          animationStoreEnabled={animation.enabled}
-          rotationSpeed={c.scene3dRotationSpeed}
-          cameraDistance={c.scene3dCameraDistance}
-          fallback={
-            fg ? null : (
-              <div
-                className="absolute inset-0"
-                aria-hidden
-                style={{
-                  background:
-                    "radial-gradient(circle at 40% 35%, color-mix(in srgb, var(--color-primary) 35%, transparent), transparent 60%)",
-                }}
-              />
-            )
-          }
-        />
-      ) : null}
-      {fg ? (
-        <div className="relative aspect-[4/3] w-full md:min-h-[16rem]">
-          <Image
-            src={fg}
-            alt=""
-            fill
-            className="object-contain p-3 md:p-4"
-            sizes="(max-width: 768px) 100vw, 360px"
-            priority
-          />
-        </div>
-      ) : !hero3dOn ? (
-        <div
-          className="absolute inset-0"
-          aria-hidden
-          style={{
-            background:
-              "radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--color-primary) 32%, transparent), transparent 58%), radial-gradient(circle at 75% 70%, color-mix(in srgb, var(--color-accent) 24%, transparent), transparent 50%)",
-          }}
-        />
-      ) : null}
-    </div>
-  );
-}
-
 export function SectionRenderer({
   section,
   animation,
@@ -258,152 +131,62 @@ export function SectionRenderer({
   switch (section.sectionType) {
     case "hero": {
       const c = cfg as SectionConfigMap["hero"];
-      const slides = Array.isArray(c.slides)
+      const configuredSlides = Array.isArray(c.slides)
         ? c.slides.filter((s) => Boolean(s?.imagePath?.trim()))
         : [];
 
-      if (slides.length > 0) {
-        return (
-          <SectionMotion section={section} animation={animation} className={shell}>
-            <div className="relative overflow-hidden">
-              <HeroCarousel
-                slides={slides}
-                autoplayMs={c.autoplayMs ?? 5000}
-                showArrows={c.showArrows !== false}
-                fallbackTitle={c.title}
-                fallbackSubtitle={c.subtitle}
-              />
-            </div>
-          </SectionMotion>
-        );
-      }
+      const slides =
+        configuredSlides.length > 0
+          ? configuredSlides.map((s) => ({
+              ...s,
+              foregroundImagePath: null as string | null,
+            }))
+          : [
+              {
+                imagePath:
+                  c.backgroundImagePath?.trim() ||
+                  c.foregroundImagePath?.trim() ||
+                  "_",
+                title: c.title,
+                subtitle: c.subtitle,
+                description: c.description,
+                badge: "",
+                ctaLabel: c.primaryButtonText ?? "",
+                ctaHref: c.primaryButtonLink ?? "/products",
+                secondaryCtaLabel: c.secondaryButtonText ?? "",
+                secondaryCtaHref: c.secondaryButtonLink ?? "/about",
+                foregroundImagePath:
+                  c.backgroundImagePath?.trim() && c.foregroundImagePath?.trim()
+                    ? c.foregroundImagePath
+                    : null,
+              },
+            ];
 
-      const bg = resolveCmsImageUrl(c.backgroundImagePath);
-      const fg = resolveCmsImageUrl(c.foregroundImagePath);
-      const preset = (c.layoutPreset ?? "SPLIT") as HeroLayoutPreset;
-      const alignClass =
-        c.alignment === "center"
-          ? "text-center items-center"
-          : c.alignment === "right"
-            ? "text-right items-end"
-            : "text-left items-start";
-      const justifyClass =
-        c.alignment === "center"
-          ? "justify-center"
-          : c.alignment === "right"
-            ? "justify-end"
-            : "justify-start";
-      const hero3dResolved = resolve3DConfig({
-        global: visualEffects,
-        animationEnabled: animation.enabled,
-        section: section3dOverrideFromConfig(c),
-        isMobile: false,
-        reducedMotion: false,
-        webglAvailable: true,
-      });
-      const hero3dOn = hero3dResolved.mayMountHero3d;
-      const hero3dPreset = hero3dResolved.heroPreset;
+      const hasRenderable =
+        configuredSlides.length > 0 ||
+        Boolean(c.backgroundImagePath?.trim()) ||
+        Boolean(c.foregroundImagePath?.trim()) ||
+        Boolean(c.title?.trim()) ||
+        Boolean(c.subtitle?.trim()) ||
+        Boolean(c.description?.trim()) ||
+        Boolean(c.primaryButtonText?.trim());
 
-      const isFullBleed = preset === "FULL_BLEED" || preset === "CENTERED";
-      const imageLeft = preset === "IMAGE_LEFT";
-      const splitLike =
-        preset === "SPLIT" ||
-        preset === "IMAGE_RIGHT" ||
-        preset === "IMAGE_LEFT";
+      if (!hasRenderable) return null;
 
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
-          <div
-            className={
-              isFullBleed
-                ? "relative overflow-hidden"
-                : `${sfSectionInner()} relative`
-            }
-          >
-            <div
-              className={`relative overflow-hidden ${
-                isFullBleed
-                  ? "min-h-[22rem] md:min-h-[26rem]"
-                  : "rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[var(--color-card)]"
-              }`}
-            >
-              {bg ? (
-                <Image
-                  src={bg}
-                  alt=""
-                  fill
-                  className={`object-cover ${isFullBleed ? "opacity-50" : "opacity-35"}`}
-                  sizes="100vw"
-                  priority
-                />
-              ) : (
-                themeHeroBackdrop()
-              )}
-
-              {isFullBleed && hero3dOn ? (
-                <Hero3DSlot
-                  className="pointer-events-none absolute inset-0 opacity-70"
-                  preset={hero3dPreset}
-                  quality={visualEffects.quality}
-                  enabled={hero3dOn}
-                  mobileEnabled={visualEffects.mobileEnabled}
-                  respectReducedMotion={visualEffects.respectReducedMotion}
-                  animationStoreEnabled={animation.enabled}
-                  rotationSpeed={c.scene3dRotationSpeed}
-                  cameraDistance={c.scene3dCameraDistance}
-                  fallback={null}
-                />
-              ) : null}
-
-              {isFullBleed ? (
-                <div
-                  className={`${sfSectionInner()} relative flex min-h-[20rem] flex-col justify-center py-12 md:min-h-[24rem] md:py-16`}
-                >
-                  <HeroCopy
-                    c={c}
-                    alignClass={alignClass}
-                    justifyClass={justifyClass}
-                    centered={preset === "CENTERED" || c.alignment === "center"}
-                  />
-                  {fg && preset === "FULL_BLEED" ? (
-                    <div className="relative mt-8 h-40 w-full max-w-md md:h-52">
-                      <Image
-                        src={fg}
-                        alt=""
-                        fill
-                        className="object-contain"
-                        sizes="400px"
-                      />
-                    </div>
-                  ) : null}
-                </div>
-              ) : (
-                <div
-                  className={`relative grid items-center gap-8 px-5 py-10 md:gap-10 md:px-10 md:py-14 ${
-                    splitLike ? "md:grid-cols-2" : ""
-                  }`}
-                >
-                  <div className={imageLeft ? "md:order-2" : undefined}>
-                    <HeroCopy
-                      c={c}
-                      alignClass={alignClass}
-                      justifyClass={justifyClass}
-                    />
-                  </div>
-                  <div className={imageLeft ? "md:order-1" : undefined}>
-                    <HeroVisual
-                      fg={fg}
-                      hero3dOn={hero3dOn}
-                      hero3dPreset={hero3dPreset}
-                      c={c}
-                      visualEffects={visualEffects}
-                      animation={animation}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+        <SectionMotion
+          section={section}
+          animation={animation}
+          className="w-full bg-transparent py-0"
+        >
+          <HeroCarousel
+            slides={slides}
+            autoplayMs={c.autoplayMs ?? 5000}
+            showArrows={c.showArrows !== false}
+            fallbackTitle={c.title}
+            fallbackSubtitle={c.subtitle}
+            fallbackDescription={c.description}
+          />
         </SectionMotion>
       );
     }
@@ -629,122 +412,33 @@ export function SectionRenderer({
 
     case "about": {
       const c = cfg as SectionConfigMap["about"];
-      const heading = c.heading?.trim() ?? "";
-      const description = c.description?.trim() ?? "";
-      const quote = c.quote?.trim() ?? "";
-      const quoteAuthor = c.quoteAuthor?.trim() ?? "";
-      const portraitUrl = resolveCmsImageUrl(c.imagePath);
-      const captionName = c.imageCaptionName?.trim() ?? "";
-      const captionRole = c.imageCaptionRole?.trim() ?? "";
-      const timeline = (c.timelineItems ?? []).filter(
-        (item) =>
-          item.label?.trim() ||
-          item.year?.trim() ||
-          item.description?.trim(),
-      );
-      const engineWheelUrl = resolveCmsImageUrl(c.engineWheelImagePath);
-      const trainItems = timeline.map((item) => ({
-        year: item.year?.trim() ?? "",
-        label: item.label?.trim() ?? "",
-        description: item.description?.trim() ?? "",
-        // One shared wheel image for the whole consist.
-        wheelUrl: engineWheelUrl,
-      }));
-      const gallerySlides = (c.gallerySlides ?? []).filter(
-        (slide) =>
-          Boolean(slide.imagePath?.trim()) ||
-          Boolean(slide.title?.trim()) ||
-          Boolean(slide.description?.trim()),
-      );
-      const showGallery = Boolean(c.galleryEnabled) && gallerySlides.length > 0;
-
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div
-            className={
-              portraitUrl
-                ? "sf-about-visionary sf-about-visionary--split"
-                : "sf-about-visionary"
-            }
-          >
-            <div className="sf-about-visionary__copy">
-              {heading ? (
-                <SectionAccentHeading
-                  title={heading}
-                  {...accentFromConfig()}
-                  align={portraitUrl ? "left" : "center"}
-                />
-              ) : null}
-              {description ? (
-                <p className="sf-about-visionary__body">{description}</p>
-              ) : null}
-              {quote ? (
-                <blockquote className="sf-about-visionary__quote">
-                  <p className="sf-about-visionary__quote-text">“{quote}”</p>
-                  {quoteAuthor ? (
-                    <footer className="sf-about-visionary__quote-author">
-                      — {quoteAuthor}
-                    </footer>
-                  ) : null}
-                </blockquote>
-              ) : null}
-              {c.buttonText && c.buttonLink ? (
-                <div className="sf-about-visionary__cta">
-                  <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
-                    {c.buttonText}
-                  </SafeLink>
-                </div>
-              ) : null}
-            </div>
-
-            {portraitUrl ? (
-              <div className="sf-about-visionary__portrait">
-                <div className="sf-about-visionary__frame">
-                  <Image
-                    src={portraitUrl}
-                    alt={captionName || heading || "About"}
-                    fill
-                    className="object-cover object-top"
-                    sizes="(max-width: 768px) 55vw, 216px"
-                  />
-                </div>
-                {captionName || captionRole ? (
-                  <div className="sf-about-visionary__caption">
-                    {captionName ? (
-                      <p className="sf-about-visionary__caption-name">
-                        {captionName}
-                      </p>
-                    ) : null}
-                    {captionRole ? (
-                      <p className="sf-about-visionary__caption-role">
-                        {captionRole}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-
-          {showGallery ? (
-            <>
-              <div className="sf-about-gallery-break" aria-hidden />
-              <AboutGalleryCarousel
-                slides={gallerySlides}
-                autoplayMs={c.galleryAutoplayMs ?? 4500}
-                showArrows={c.galleryShowArrows !== false}
-              />
-            </>
-          ) : null}
-
-          {trainItems.length > 0 ? (
-            <AboutHeritageTrain
-              className="sf-about-train-wrap"
-              items={trainItems}
-              engineWheelUrl={engineWheelUrl}
-            />
-          ) : null}
+          <AboutBlocks
+            config={c}
+            blocks={aboutBlocksForFullPage()}
+            headingHighlightStyle={highlightStyle}
+            priorityStoryImage
+          />
         </SectionMotion>
+      );
+    }
+
+    case "other_information": {
+      const c = cfg as SectionConfigMap["other_information"];
+      return (
+        <OtherInformationFromAbout
+          flags={{
+            showStory: c.showStory,
+            showVisionMission: c.showVisionMission,
+            showFactory: c.showFactory,
+            showCertificates: c.showCertificates,
+            showTrain: c.showTrain,
+            backgroundStyle: c.backgroundStyle,
+            spacingPreset: c.spacingPreset,
+          }}
+          headingHighlightStyle={highlightStyle}
+        />
       );
     }
 
@@ -831,17 +525,20 @@ export function SectionRenderer({
 
     case "statistics": {
       const c = cfg as SectionConfigMap["statistics"];
-      if (c.items.length === 0) return null;
+      const items = c.items.filter(
+        (i) => i.value.trim() || i.label.trim(),
+      );
+      if (items.length === 0) return null;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-6xl px-4">
+          <div className={sfSectionInner()}>
             {c.title ? (
               <div className="mb-6 text-center">
                 <SectionAccentHeading title={c.title} {...accentFromConfig()} />
               </div>
             ) : null}
-            <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {c.items.map((item, index) => (
+            <ul className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {items.map((item, index) => (
                 <li key={`${item.label}-${index}`} className="text-center">
                   <p className="font-[family-name:var(--font-display)] text-3xl font-semibold">
                     {item.value}
@@ -895,29 +592,23 @@ export function SectionRenderer({
 
     case "faq": {
       const c = cfg as SectionConfigMap["faq"];
-      const items = c.items.filter((i) => i.active);
+      const items = c.items
+        .filter((i) => i.active && i.question.trim())
+        .map((i) => ({ question: i.question, answer: i.answer }));
       if (items.length === 0) return null;
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-3xl px-4">
-            {c.title ? (
-              <div className="text-center">
-                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
-              </div>
-            ) : null}
-            <dl className="mt-6 space-y-4">
-              {items.map((item, index) => (
-                <div
-                  key={`${item.question}-${index}`}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-                >
-                  <dt className="font-medium">{item.question}</dt>
-                  <dd className="mt-2 whitespace-pre-wrap text-sm text-[var(--color-muted)]">
-                    {item.answer}
-                  </dd>
+          <div className={sfSectionInner()}>
+            <div className="mx-auto max-w-3xl">
+              {c.title ? (
+                <div className="text-center">
+                  <SectionAccentHeading title={c.title} {...accentFromConfig()} />
                 </div>
-              ))}
-            </dl>
+              ) : null}
+              <div className={c.title ? "mt-6" : undefined}>
+                <FaqAccordion items={items} />
+              </div>
+            </div>
           </div>
         </SectionMotion>
       );

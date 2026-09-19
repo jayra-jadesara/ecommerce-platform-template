@@ -155,6 +155,9 @@ export const optionalWhatsapp = z
 export const LOGO_SIZE_OPTIONS = ["small", "medium", "large", "xlarge"] as const;
 export type LogoSizeOption = (typeof LOGO_SIZE_OPTIONS)[number];
 
+export const LOGO_HANG_OPTIONS = ["none", "soft", "medium", "bold"] as const;
+export type LogoHangOption = (typeof LOGO_HANG_OPTIONS)[number];
+
 export const BRANDING_IMAGE_MIME = [
   "image/jpeg",
   "image/png",
