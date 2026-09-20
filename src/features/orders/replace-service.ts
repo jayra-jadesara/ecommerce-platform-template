@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { writeOrderActivity, writeOrderAudit } from "@/features/orders/activity";
 import type { OrderReplaceRequestView } from "@/features/orders/types";
 import {
+  coerceCancelReasonOptions,
   coerceReplaceMaxAttempts,
   coerceReplaceReasonOptions,
   coerceReplaceWindowHours,
@@ -125,6 +126,19 @@ export async function getReplaceStoreRules(
     maxAttempts: coerceReplaceMaxAttempts(data?.replace_max_attempts),
     reasonOptions: coerceReplaceReasonOptions(data?.replace_reason_options),
   };
+}
+
+export async function getCancelReasonOptions(
+  storeId: string,
+): Promise<string[]> {
+  const supabase = createSupabaseServiceClient();
+  const { data } = await supabase
+    .from("shipping_settings")
+    .select("cancel_reason_options")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  return coerceCancelReasonOptions(data?.cancel_reason_options);
 }
 
 /** @deprecated Prefer getReplaceStoreRules */

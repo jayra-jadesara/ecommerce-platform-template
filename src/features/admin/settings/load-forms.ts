@@ -146,6 +146,9 @@ export async function loadHeaderSettingsForm(): Promise<HeaderSettingsFormValues
       row?.header_mobile_menu_enabled ??
       DEFAULT_HEADER_SETTINGS.mobileMenuEnabled,
     navVisible: row?.header_nav_visible ?? DEFAULT_HEADER_SETTINGS.navVisible,
+    productsCategoryMenu:
+      row?.header_products_category_menu ??
+      DEFAULT_HEADER_SETTINGS.productsCategoryMenu,
     logoSize: row?.header_logo_size ?? DEFAULT_HEADER_SETTINGS.logoSize,
     logoHang: row?.header_logo_hang ?? DEFAULT_HEADER_SETTINGS.logoHang,
     announcementEnabled:

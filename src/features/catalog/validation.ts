@@ -41,8 +41,8 @@ export const categoryFormSchema = z.object({
     .transform((v) => v.trim()),
   parentId: z.string().uuid().nullable(),
   imagePath: z.preprocess(
-    (value) => (value === "" || value === undefined ? null : value),
-    z.string().trim().max(512).nullable(),
+    (value) => (value === "" || value === undefined || value === null ? "" : value),
+    z.string().trim().min(1, "Image is required").max(512),
   ),
   sortOrder: z.coerce.number().int().min(0).max(100_000),
   isActive: z.boolean(),
@@ -202,7 +202,7 @@ export type ProductSortOption = (typeof PRODUCT_SORT_OPTIONS)[number];
 
 export const productListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(100).default(10),
   q: z.string().trim().max(120).optional().default(""),
   categoryId: z.string().uuid().optional().or(z.literal("")).transform((v) => v || undefined),
   status: z
@@ -227,7 +227,7 @@ export const DEFAULT_CATEGORY_FORM: CategoryFormValues = {
   slug: "",
   description: "",
   parentId: null,
-  imagePath: null,
+  imagePath: "",
   sortOrder: 0,
   isActive: true,
   seoTitle: "",

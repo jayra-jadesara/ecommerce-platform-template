@@ -19,6 +19,7 @@ import {
   type ShippingSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
 import {
+  coerceCancelReasonOptions,
   coerceReplaceMaxAttempts,
   coerceReplaceReasonOptions,
   coerceReplaceWindowHours,
@@ -38,7 +39,19 @@ export async function loadShippingSettingsForm(): Promise<{
   values: ShippingSettingsFormValues;
   currency: string;
   storeId: string | null;
+  courierSecrets: {
+    delhiveryToken: boolean;
+    bluedartLicence: boolean;
+    bluedartApiKey: boolean;
+    bluedartApiSecret: boolean;
+  };
 }> {
+  const emptySecrets = {
+    delhiveryToken: false,
+    bluedartLicence: false,
+    bluedartApiKey: false,
+    bluedartApiSecret: false,
+  };
   const supabase = await createSupabaseServerClient();
   const store = await resolveActiveStore(supabase);
   if (!store) {
@@ -46,6 +59,7 @@ export async function loadShippingSettingsForm(): Promise<{
       values: DEFAULT_SHIPPING_SETTINGS,
       currency: "INR",
       storeId: null,
+      courierSecrets: emptySecrets,
     };
   }
 
@@ -62,9 +76,17 @@ export async function loadShippingSettingsForm(): Promise<{
       .maybeSingle(),
   ]);
 
+  const courierSecrets = {
+    delhiveryToken: Boolean(shipping?.delhivery_api_token?.trim()),
+    bluedartLicence: Boolean(shipping?.bluedart_licence_key?.trim()),
+    bluedartApiKey: Boolean(shipping?.bluedart_api_key?.trim()),
+    bluedartApiSecret: Boolean(shipping?.bluedart_api_secret?.trim()),
+  };
+
   return {
     storeId: store.id,
     currency: settings?.currency || "INR",
+    courierSecrets,
     values: shipping
       ? {
           enabled: Boolean(shipping.enabled),
@@ -103,6 +125,24 @@ export async function loadShippingSettingsForm(): Promise<{
           replaceReasonOptions: coerceReplaceReasonOptions(
             shipping.replace_reason_options,
           ),
+          cancelReasonOptions: coerceCancelReasonOptions(
+            shipping.cancel_reason_options,
+          ),
+          courierDefaultProvider:
+            shipping.courier_default_provider === "bluedart"
+              ? "bluedart"
+              : shipping.courier_default_provider === "delhivery"
+                ? "delhivery"
+                : DEFAULT_SHIPPING_SETTINGS.courierDefaultProvider,
+          courierSandbox: shipping.courier_sandbox !== false,
+          // Never re-send secrets to the browser — empty = keep on save
+          delhiveryApiToken: null,
+          delhiveryClientName: shipping.delhivery_client_name,
+          bluedartLoginId: shipping.bluedart_login_id,
+          bluedartLicenceKey: null,
+          bluedartApiKey: null,
+          bluedartApiSecret: null,
+          bluedartOriginArea: shipping.bluedart_origin_area,
         }
       : DEFAULT_SHIPPING_SETTINGS,
   };
@@ -213,6 +253,25 @@ export async function updateShippingSettings(
     replace_window_hours: values.replaceWindowHours,
     replace_max_attempts: values.replaceMaxAttempts,
     replace_reason_options: values.replaceReasonOptions,
+    cancel_reason_options: values.cancelReasonOptions,
+    courier_default_provider: values.courierDefaultProvider,
+    courier_sandbox: values.courierSandbox,
+    delhivery_client_name: values.delhiveryClientName,
+    bluedart_login_id: values.bluedartLoginId,
+    bluedart_origin_area: values.bluedartOriginArea,
+    // Keep existing secrets when form sends blank (masked fields)
+    delhivery_api_token: values.delhiveryApiToken
+      ? values.delhiveryApiToken
+      : (existing?.delhivery_api_token ?? null),
+    bluedart_licence_key: values.bluedartLicenceKey
+      ? values.bluedartLicenceKey
+      : (existing?.bluedart_licence_key ?? null),
+    bluedart_api_key: values.bluedartApiKey
+      ? values.bluedartApiKey
+      : (existing?.bluedart_api_key ?? null),
+    bluedart_api_secret: values.bluedartApiSecret
+      ? values.bluedartApiSecret
+      : (existing?.bluedart_api_secret ?? null),
   };
 
   const { error } = await supabase

@@ -1,9 +1,11 @@
 import { z } from "zod";
 import {
+  DEFAULT_CANCEL_REASON_OPTIONS,
   DEFAULT_REPLACE_REASON_OPTIONS,
   FULFILLMENT_MODES,
   REPLACE_WINDOW_HOURS,
   RETURN_POLICIES,
+  coerceCancelReasonOptions,
   coerceReplaceReasonOptions,
 } from "@/features/shipping/policies";
 
@@ -66,6 +68,22 @@ export const shippingSettingsSchema = z
       .array(z.string().trim().min(1).max(80))
       .min(1)
       .max(12),
+    cancelReasonOptions: z
+      .array(z.string().trim().min(1).max(80))
+      .min(1)
+      .max(12),
+    courierDefaultProvider: z
+      .enum(["delhivery", "bluedart"])
+      .nullable()
+      .optional(),
+    courierSandbox: z.coerce.boolean(),
+    delhiveryApiToken: z.string().max(500).optional().nullable(),
+    delhiveryClientName: z.string().max(120).optional().nullable(),
+    bluedartLoginId: z.string().max(120).optional().nullable(),
+    bluedartLicenceKey: z.string().max(500).optional().nullable(),
+    bluedartApiKey: z.string().max(500).optional().nullable(),
+    bluedartApiSecret: z.string().max(500).optional().nullable(),
+    bluedartOriginArea: z.string().max(40).optional().nullable(),
   })
   .superRefine((value, ctx) => {
     const min = value.estimatedDeliveryMinDays;
@@ -108,6 +126,15 @@ export const shippingSettingsSchema = z
           path: ["replaceReasonOptions"],
         });
       }
+    }
+
+    const cancelOptions = coerceCancelReasonOptions(value.cancelReasonOptions);
+    if (cancelOptions.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Add at least one cancel reason plus Other.",
+        path: ["cancelReasonOptions"],
+      });
     }
   })
   .transform((value) => {
@@ -152,6 +179,21 @@ export const shippingSettingsSchema = z
       replaceReasonOptions: replaceOnly
         ? coerceReplaceReasonOptions(value.replaceReasonOptions)
         : [...DEFAULT_REPLACE_REASON_OPTIONS],
+      cancelReasonOptions: coerceCancelReasonOptions(value.cancelReasonOptions),
+      courierDefaultProvider:
+        value.fulfillmentMode === "courier_api"
+          ? value.courierDefaultProvider === "bluedart"
+            ? "bluedart"
+            : "delhivery"
+          : null,
+      courierSandbox: Boolean(value.courierSandbox),
+      delhiveryApiToken: value.delhiveryApiToken?.trim() || null,
+      delhiveryClientName: value.delhiveryClientName?.trim() || null,
+      bluedartLoginId: value.bluedartLoginId?.trim() || null,
+      bluedartLicenceKey: value.bluedartLicenceKey?.trim() || null,
+      bluedartApiKey: value.bluedartApiKey?.trim() || null,
+      bluedartApiSecret: value.bluedartApiSecret?.trim() || null,
+      bluedartOriginArea: value.bluedartOriginArea?.trim() || null,
     };
   });
 
@@ -173,6 +215,16 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettingsFormValues = {
   replaceWindowHours: 72,
   replaceMaxAttempts: 1,
   replaceReasonOptions: [...DEFAULT_REPLACE_REASON_OPTIONS],
+  cancelReasonOptions: [...DEFAULT_CANCEL_REASON_OPTIONS],
+  courierDefaultProvider: "delhivery",
+  courierSandbox: true,
+  delhiveryApiToken: null,
+  delhiveryClientName: null,
+  bluedartLoginId: null,
+  bluedartLicenceKey: null,
+  bluedartApiKey: null,
+  bluedartApiSecret: null,
+  bluedartOriginArea: null,
 };
 
 export const paymentSettingsSchema = z

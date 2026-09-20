@@ -15,6 +15,8 @@ interface UploadDropzoneProps {
   onFiles: (files: File[]) => void | Promise<void>;
   label?: string;
   hint?: string;
+  /** Tighter padding and single-row layout for forms. */
+  compact?: boolean;
 }
 
 export function UploadDropzone({
@@ -23,6 +25,7 @@ export function UploadDropzone({
   onFiles,
   label = "Upload images",
   hint = "JPEG, PNG, or WebP · max 5 MB each",
+  compact = false,
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -60,7 +63,9 @@ export function UploadDropzone({
 
   return (
     <div
-      className={`rounded-xl border border-dashed p-6 text-center transition-colors ${
+      className={`rounded-xl border border-dashed text-center transition-colors ${
+        compact ? "px-3 py-2.5" : "p-6"
+      } ${
         dragging
           ? "border-[var(--color-primary)] bg-[var(--color-surface)]"
           : "border-[var(--color-border)] bg-[var(--color-card)]"
@@ -81,32 +86,59 @@ export function UploadDropzone({
         void handleFiles(event.dataTransfer.files);
       }}
     >
-      <p className="font-medium">{label}</p>
-      <p className="mt-1 text-sm text-[var(--color-muted)]">{hint}</p>
-      <div className="mt-4">
-        <Button
-          type="button"
-          variant="outlined"
-          disabled={disabled || busy}
-          onClick={() => inputRef.current?.click()}
-        >
-          {busy ? "Uploading…" : "Choose files"}
-        </Button>
-        <input
-          ref={inputRef}
-          type="file"
-          hidden
-          multiple={multiple}
-          accept={ALLOWED_IMAGE_MIME.join(",")}
-          onChange={(event) => {
-            if (event.target.files) void handleFiles(event.target.files);
-            event.target.value = "";
-          }}
-        />
-      </div>
-      {busy ? <LinearProgress className="mt-4" /> : null}
+      {compact ? (
+        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
+          <div className="min-w-0 text-left sm:text-center">
+            <p className="text-sm font-medium leading-snug">{label}</p>
+            <p className="text-[11px] leading-snug text-[var(--color-muted)]">
+              {hint}
+            </p>
+          </div>
+          <Button
+            type="button"
+            size="small"
+            variant="outlined"
+            disabled={disabled || busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            {busy ? "Uploading…" : "Choose files"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          <p className="font-medium">{label}</p>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">{hint}</p>
+          <div className="mt-4">
+            <Button
+              type="button"
+              variant="outlined"
+              disabled={disabled || busy}
+              onClick={() => inputRef.current?.click()}
+            >
+              {busy ? "Uploading…" : "Choose files"}
+            </Button>
+          </div>
+        </>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        hidden
+        multiple={multiple}
+        accept={ALLOWED_IMAGE_MIME.join(",")}
+        onChange={(event) => {
+          if (event.target.files) void handleFiles(event.target.files);
+          event.target.value = "";
+        }}
+      />
+      {busy ? (
+        <LinearProgress className={compact ? "mt-2" : "mt-4"} />
+      ) : null}
       {error ? (
-        <p className="mt-3 text-sm text-[var(--color-error)]" role="alert">
+        <p
+          className={`text-sm text-[var(--color-error)] ${compact ? "mt-1.5" : "mt-3"}`}
+          role="alert"
+        >
           {error}
         </p>
       ) : null}

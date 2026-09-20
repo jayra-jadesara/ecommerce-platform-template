@@ -11,6 +11,7 @@ import {
 } from "@/features/catalog/products-service";
 import { ProductImagesPanel } from "@/features/media/components/ProductImagesPanel";
 import { listProductImages } from "@/features/media/product-images-service";
+import { listAdminSizeOptions } from "@/features/catalog/size-options-service";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
@@ -70,8 +71,9 @@ export default async function AdminCatalogProductsPage({
       );
     }
 
-    const [categories, storeId, shipping] = await Promise.all([
+    const [categories, sizeOptions, storeId, shipping] = await Promise.all([
       listAdminCategories(),
+      listAdminSizeOptions({ activeOnly: true }),
       resolveActiveStoreId(),
       loadShippingSettingsForm(),
     ]);
@@ -100,6 +102,7 @@ export default async function AdminCatalogProductsPage({
         <ProductForm
           mode="create"
           categories={categories}
+          sizeOptions={sizeOptions}
           canUpdate={canCreate}
           canDelete={false}
           storeReturnPolicy={
@@ -114,9 +117,10 @@ export default async function AdminCatalogProductsPage({
 
   if (panel === "edit" || panel === "view") {
     if (!productId) notFound();
-    const [detail, categories, images, shipping] = await Promise.all([
+    const [detail, categories, sizeOptions, images, shipping] = await Promise.all([
       getAdminProduct(productId),
       listAdminCategories(),
+      listAdminSizeOptions({ activeOnly: true }),
       listProductImages(productId),
       loadShippingSettingsForm(),
     ]);
@@ -128,13 +132,11 @@ export default async function AdminCatalogProductsPage({
       : "no_return_refund";
 
     return (
-      <div className="space-y-8 pb-24">
+      <div className="space-y-3 pb-24">
         <AdminPageHeader
           title={detail.product.name}
           description={
-            isView
-              ? "Product details (view only)."
-              : "Update details, pricing, images and visibility."
+            isView ? "View product details." : "Edit details, price, and visibility."
           }
           breadcrumbs={[
             { label: "Products", href: listHref },
@@ -146,31 +148,29 @@ export default async function AdminCatalogProductsPage({
           productId={detail.product.id}
           initialValues={toProductFormValues(detail)}
           categories={categories}
+          sizeOptions={sizeOptions}
           canUpdate={canUpdate}
           canDelete={canDelete}
           storeReturnPolicy={storeReturnPolicy}
+          imagesSlot={
+            !isView || images.length > 0 ? (
+              <ProductImagesPanel
+                productId={detail.product.id}
+                initialImages={images}
+                canUpload={
+                  !isView && hasPermission(admin, "product_images.upload")
+                }
+                canUpdate={
+                  !isView && hasPermission(admin, "product_images.update")
+                }
+                canDelete={
+                  !isView && hasPermission(admin, "product_images.delete")
+                }
+                embedded
+              />
+            ) : null
+          }
         />
-        {!isView ? (
-          <section className="space-y-3">
-            <ProductImagesPanel
-              productId={detail.product.id}
-              initialImages={images}
-              canUpload={hasPermission(admin, "product_images.upload")}
-              canUpdate={hasPermission(admin, "product_images.update")}
-              canDelete={hasPermission(admin, "product_images.delete")}
-            />
-          </section>
-        ) : images.length > 0 ? (
-          <section className="space-y-3 pb-4">
-            <ProductImagesPanel
-              productId={detail.product.id}
-              initialImages={images}
-              canUpload={false}
-              canUpdate={false}
-              canDelete={false}
-            />
-          </section>
-        ) : null}
       </div>
     );
   }

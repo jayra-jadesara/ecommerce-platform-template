@@ -1,2 +1,2 @@
-/** Shipping feature foundation — rates & fulfillment in a later phase. */
-export {};
+/** Shipping feature — policies + courier adapters (Delhivery / Blue Dart). */
+export * from "@/features/shipping/courier";

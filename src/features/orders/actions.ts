@@ -33,6 +33,12 @@ const trackingSchema = z.object({
   orderId: z.string().uuid(),
   shippingProvider: z.string().max(120),
   trackingNumber: z.string().max(120),
+  courierProvider: z.enum(["delhivery", "bluedart", "manual"]).optional(),
+});
+
+const courierActionSchema = z.object({
+  orderId: z.string().uuid(),
+  provider: z.enum(["delhivery", "bluedart"]).optional(),
 });
 
 const refundSchema = z.object({
@@ -115,6 +121,88 @@ export async function adminUpdateOrderTrackingAction(
         actorUserId: admin.user.id,
         shippingProvider: parsed.data.shippingProvider,
         trackingNumber: parsed.data.trackingNumber,
+        courierProvider: parsed.data.courierProvider,
+      }),
+  );
+
+  if (result.ok) revalidateOrderPaths(parsed.data.orderId);
+  return result;
+}
+
+export async function adminSyncOrderTrackingAction(
+  raw: unknown,
+): Promise<OrderMutationResult> {
+  const admin = await requirePermission("orders.update");
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return { ok: false, error: "No active store." };
+
+  const parsed = courierActionSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Invalid order." };
+
+  const { refreshOrderTracking } = await import(
+    "@/features/shipping/courier/service"
+  );
+
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "SYNC_ORDER_TRACKING",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: parsed.data.orderId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      refreshOrderTracking({
+        orderId: parsed.data.orderId,
+        storeId,
+        actorUserId: admin.user.id,
+        force: true,
+      }),
+  );
+
+  if (result.ok) revalidateOrderPaths(parsed.data.orderId);
+  return result;
+}
+
+export async function adminCreateCourierShipmentAction(
+  raw: unknown,
+): Promise<OrderMutationResult> {
+  const admin = await requirePermission("orders.update");
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return { ok: false, error: "No active store." };
+
+  const parsed = courierActionSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: "Invalid request." };
+
+  const provider = parsed.data.provider;
+  if (!provider) {
+    return { ok: false, error: "Choose Delhivery or Blue Dart." };
+  }
+
+  const { createCourierShipmentForOrder } = await import(
+    "@/features/shipping/courier/service"
+  );
+
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "CREATE_COURIER_SHIPMENT",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: parsed.data.orderId,
+      storeId,
+      route: "/orders",
+    },
+    () =>
+      createCourierShipmentForOrder({
+        orderId: parsed.data.orderId,
+        storeId,
+        actorUserId: admin.user.id,
+        provider,
       }),
   );
 
@@ -239,6 +327,8 @@ export async function requestOrderReplaceAction(
 
 const cancelOwnOrderSchema = z.object({
   orderId: z.string().uuid(),
+  reasonCode: z.string().trim().min(1).max(80),
+  reason: z.string().trim().min(1).max(240),
 });
 
 /**
@@ -255,13 +345,17 @@ export async function cancelOwnOrderAction(
   const { createSupabaseServiceClient } = await import(
     "@/lib/supabase/admin"
   );
+  const {
+    coerceCancelReasonOptions,
+    isOtherCancelReason,
+  } = await import("@/features/shipping/policies");
 
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Please sign in to continue." };
 
   const parsed = cancelOwnOrderSchema.safeParse(raw);
   if (!parsed.success) {
-    return { ok: false, error: "Invalid order." };
+    return { ok: false, error: "Invalid cancel request." };
   }
 
   const supabase = createSupabaseServiceClient();
@@ -297,6 +391,30 @@ export async function cancelOwnOrderAction(
     };
   }
 
+  const { data: shipping } = await supabase
+    .from("shipping_settings")
+    .select("cancel_reason_options")
+    .eq("store_id", order.store_id)
+    .maybeSingle();
+
+  const allowed = coerceCancelReasonOptions(shipping?.cancel_reason_options);
+  const reasonCode = parsed.data.reasonCode.trim();
+  if (!allowed.some((option) => option === reasonCode)) {
+    return { ok: false, error: "Please choose a valid cancel reason." };
+  }
+
+  let reason = parsed.data.reason.trim();
+  if (isOtherCancelReason(reasonCode)) {
+    if (reason.length < 3) {
+      return {
+        ok: false,
+        error: "Please write a short reason (at least 3 characters).",
+      };
+    }
+  } else {
+    reason = reasonCode;
+  }
+
   const result = await runLoggedMutation(
     {
       type: "ORDER",
@@ -314,6 +432,8 @@ export async function cancelOwnOrderAction(
         storeId: order.store_id,
         actorUserId: user.id,
         nextStatus: "CANCELLED",
+        cancelReasonCode: reasonCode,
+        cancelReason: reason,
       }),
   );
 

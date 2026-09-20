@@ -27,8 +27,8 @@ export const FULFILLMENT_MODE_OPTIONS: Array<{
     value: "courier_api",
     title: "Courier API",
     description:
-      "Track with a courier partner. Delivery status follows tracking (manual tracking works today; API connect next).",
-    badge: "Tracking based",
+      "Pick one carrier (Delhivery or Blue Dart). Create AWB and sync tracking; Delivered when that carrier reports it.",
+    badge: "One courier",
   },
 ];
 
@@ -148,6 +148,15 @@ export const DEFAULT_REPLACE_REASON_OPTIONS = [
   "Other",
 ] as const;
 
+export const DEFAULT_CANCEL_REASON_OPTIONS = [
+  "Changed mind",
+  "Ordered by mistake",
+  "Wrong address / details",
+  "Found better price",
+  "Delivery too slow",
+  "Other",
+] as const;
+
 export function coerceReplaceWindowHours(value: unknown): ReplaceWindowHours {
   const n = typeof value === "number" ? value : Number(value);
   if ((REPLACE_WINDOW_HOURS as readonly number[]).includes(n)) {
@@ -164,6 +173,18 @@ export function coerceReplaceMaxAttempts(value: unknown): number {
 
 export function coerceReplaceReasonOptions(value: unknown): string[] {
   const fallback = [...DEFAULT_REPLACE_REASON_OPTIONS];
+  if (!Array.isArray(value)) return fallback;
+  const cleaned = value
+    .map((item) => (typeof item === "string" ? item.trim() : ""))
+    .filter((item) => item.length > 0 && item.length <= 80)
+    .slice(0, 12);
+  if (!cleaned.length) return fallback;
+  const hasOther = cleaned.some((item) => item.toLowerCase() === "other");
+  return hasOther ? cleaned : [...cleaned, "Other"];
+}
+
+export function coerceCancelReasonOptions(value: unknown): string[] {
+  const fallback = [...DEFAULT_CANCEL_REASON_OPTIONS];
   if (!Array.isArray(value)) return fallback;
   const cleaned = value
     .map((item) => (typeof item === "string" ? item.trim() : ""))
@@ -280,5 +301,9 @@ export function evaluateReplaceEligibility(input: {
 }
 
 export function isOtherReplaceReason(label: string): boolean {
+  return label.trim().toLowerCase() === "other";
+}
+
+export function isOtherCancelReason(label: string): boolean {
   return label.trim().toLowerCase() === "other";
 }

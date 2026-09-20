@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getAdminPath } from "@/config/admin-route";
-import { hasPermission, requirePermission } from "@/features/auth/session";
+import { requirePermission } from "@/features/auth/session";
 import { AdminErrorLogDetailClient } from "@/features/error-monitoring/components/AdminErrorLogDetailClient";
 import { getErrorLogById } from "@/features/error-monitoring/queries";
 
@@ -14,7 +14,7 @@ export default async function AdminErrorLogDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await requirePermission("error_logs.view");
+  await requirePermission("error_logs.view");
   const storeId = await resolveActiveStoreId();
   const { id } = await params;
   if (!storeId) notFound();
@@ -26,7 +26,7 @@ export default async function AdminErrorLogDetailPage({
     <div>
       <AdminPageHeader
         title={log.reference_id}
-        description="Investigate this error and update its status."
+        description="What went wrong, where it happened, and how to copy the full report."
         breadcrumbs={[
           { label: "Error Logs", href: getAdminPath("/error-logs") },
           { label: log.reference_id },
@@ -40,10 +40,7 @@ export default async function AdminErrorLogDetailPage({
           </Link>
         }
       />
-      <AdminErrorLogDetailClient
-        log={log}
-        canUpdate={hasPermission(admin, "error_logs.update")}
-      />
+      <AdminErrorLogDetailClient log={log} />
     </div>
   );
 }

@@ -84,7 +84,7 @@ const paperSx: SxProps<Theme> = {
   border: "1px solid var(--color-border)",
   boxShadow:
     "0 10px 28px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
-  marginTop: 4,
+  marginTop: "4px",
   overflow: "hidden",
 };
 

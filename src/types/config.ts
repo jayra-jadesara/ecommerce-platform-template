@@ -180,6 +180,8 @@ export interface HeaderChromeConfig {
   accountEnabled: boolean;
   mobileMenuEnabled: boolean;
   navVisible: boolean;
+  /** When true, Products nav item shows an active-categories dropdown. Default false. */
+  productsCategoryMenu: boolean;
   logoSize: LogoSize;
   logoHang: LogoHang;
   announcement: AnnouncementConfig;

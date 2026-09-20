@@ -21,6 +21,20 @@ export default async function AdminOrderDetailPage({
   await autoDeliverShippedOrders({ storeId, limit: 50 }).catch(() => null);
 
   const { id } = await params;
+
+  const { loadCourierCredentials, refreshOrderTracking } = await import(
+    "@/features/shipping/courier/service"
+  );
+  const credentials = await loadCourierCredentials(storeId);
+  const activeCourier =
+    credentials.defaultProvider === "bluedart" ? "bluedart" : "delhivery";
+
+  await refreshOrderTracking({
+    orderId: id,
+    storeId,
+    force: false,
+  }).catch(() => null);
+
   const order = await getOrderDetail({
     orderId: id,
     storeId,
@@ -40,6 +54,7 @@ export default async function AdminOrderDetailPage({
       />
       <AdminOrderDetailClient
         initialOrder={order}
+        activeCourier={activeCourier}
         canUpdate={hasPermission(admin, "orders.update")}
         canRefund={
           hasPermission(admin, "orders.update") &&

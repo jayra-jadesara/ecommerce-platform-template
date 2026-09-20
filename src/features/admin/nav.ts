@@ -9,7 +9,12 @@ export type AdminNavIcon =
   | "content"
   | "settings"
   | "categories"
+  | "sizes"
+  | "errors"
   | "homepage"
+  | "about"
+  | "career"
+  | "legal"
   | "pages"
   | "banners"
   | "blog"
@@ -77,20 +82,29 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     children: [
       {
         kind: "link",
-        id: "products-all",
-        label: "All Products",
-        href: p("/catalog/products"),
-        permissions: ["products.view"],
-        icon: "products",
-        section: "catalog",
-      },
-      {
-        kind: "link",
         id: "products-categories",
         label: "Categories",
         href: p("/catalog/categories"),
         permissions: ["categories.view"],
         icon: "categories",
+        section: "catalog",
+      },
+      {
+        kind: "link",
+        id: "products-sizes",
+        label: "Size / pack",
+        href: p("/catalog/sizes"),
+        permissions: ["products.view"],
+        icon: "sizes",
+        section: "catalog",
+      },
+      {
+        kind: "link",
+        id: "products-all",
+        label: "All Products",
+        href: p("/catalog/products"),
+        permissions: ["products.view"],
+        icon: "products",
         section: "catalog",
       },
     ],
@@ -110,7 +124,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     label: "Error Logs",
     href: p("/error-logs"),
     permissions: ["error_logs.view"],
-    icon: "orders",
+    icon: "errors",
     section: "sales",
   },
   {
@@ -144,7 +158,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "About",
         href: p("/content/about"),
         permissions: ["content.view", "cms.view"],
-        icon: "pages",
+        icon: "about",
         section: "content",
       },
       {
@@ -153,7 +167,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Career",
         href: p("/content/career"),
         permissions: ["content.view", "cms.view"],
-        icon: "pages",
+        icon: "career",
         section: "content",
       },
       {
@@ -162,7 +176,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         label: "Legal pages",
         href: p("/content/legal"),
         permissions: ["content.view", "cms.view"],
-        icon: "pages",
+        icon: "legal",
         section: "content",
       },
       {
@@ -292,6 +306,22 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         permissions: ["seo.view"],
         section: "store",
       },
+      {
+        kind: "link",
+        id: "settings-header",
+        label: "Header layout",
+        href: p("/settings/header"),
+        permissions: ["settings.view"],
+        section: "store",
+      },
+      {
+        kind: "link",
+        id: "settings-footer",
+        label: "Footer layout",
+        href: p("/settings/footer"),
+        permissions: ["settings.view"],
+        section: "store",
+      },
     ],
   },
 ];
@@ -304,11 +334,12 @@ export const ADMIN_NAV_SECTION_LABELS: Record<AdminNavSection, string> = {
   store: "Store",
 };
 
-/** Sidebar prefers a compact flat list: Products/Categories + Content children + Store Settings hub only. */
+/** Sidebar order follows setup flow: Categories → Size / pack → Products. */
 export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "dashboard",
-  "products-all",
   "products-categories",
+  "products-sizes",
+  "products-all",
   "orders",
   "error-logs",
   "customers",
@@ -403,6 +434,38 @@ export function getAdminSidebarLinks(
   return links;
 }
 
+/**
+ * All navigable admin pages for the top search dropdown.
+ * Does not drive the sidebar — sidebar uses {@link getAdminSidebarLinks}.
+ */
+export function getAdminSearchableLinks(
+  tree: AdminNavEntry[],
+): Array<AdminNavLink & { section: AdminNavSection }> {
+  const links: Array<AdminNavLink & { section: AdminNavSection }> = [];
+  const seen = new Set<string>();
+
+  function push(link: AdminNavLink, fallbackSection: AdminNavSection) {
+    if (seen.has(link.id)) return;
+    seen.add(link.id);
+    links.push({
+      ...link,
+      section: link.section ?? fallbackSection,
+    });
+  }
+
+  for (const entry of tree) {
+    if (entry.kind === "link") {
+      push(entry, entry.section ?? "main");
+      continue;
+    }
+    const section = entry.section ?? "main";
+    for (const child of entry.children) {
+      push(child, section);
+    }
+  }
+  return links;
+}
+
 export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   catalog: "Catalog",
@@ -428,7 +491,7 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   payments: "Payments",
   coupons: "Coupons",
   seo: "Google & SEO",
-  header: "Header",
-  footer: "Footer",
+  header: "Header layout",
+  footer: "Footer layout",
   new: "Add Product",
 };

@@ -150,6 +150,7 @@ export type SettingsRow = {
   header_account_enabled?: boolean | null;
   header_mobile_menu_enabled?: boolean | null;
   header_nav_visible?: boolean | null;
+  header_products_category_menu?: boolean | null;
   header_logo_size?: string | null;
   header_logo_hang?: string | null;
   announcement_enabled?: boolean | null;
@@ -453,6 +454,8 @@ export function mapSettingsRowToHeader(
     mobileMenuEnabled:
       row.header_mobile_menu_enabled ?? fallback.mobileMenuEnabled,
     navVisible: row.header_nav_visible ?? fallback.navVisible,
+    productsCategoryMenu:
+      row.header_products_category_menu ?? fallback.productsCategoryMenu,
     logoSize: coerceLogoSize(row.header_logo_size),
     logoHang: coerceLogoHang(row.header_logo_hang),
     announcement: {

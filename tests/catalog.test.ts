@@ -38,12 +38,25 @@ describe("category and product validation", () => {
       slug: "Spices Pack",
       description: "Aromatic blends",
       parentId: null,
-      imagePath: null,
+      imagePath: "categories/spices.webp",
       sortOrder: 1,
       isActive: true,
     });
     expect(parsed.success).toBe(true);
     if (parsed.success) expect(parsed.data.slug).toBe("spices-pack");
+  });
+
+  it("requires a category image", () => {
+    const parsed = categoryFormSchema.safeParse({
+      name: "Spices",
+      slug: "spices",
+      description: "",
+      parentId: null,
+      imagePath: null,
+      sortOrder: 0,
+      isActive: true,
+    });
+    expect(parsed.success).toBe(false);
   });
 
   it("validates variant prices and inventory bounds", () => {

@@ -1,4 +1,3 @@
-import { EmptyState } from "@/components/ui/EmptyState";
 import { requirePermission } from "@/features/auth/session";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
@@ -7,21 +6,37 @@ import { listStoreCustomers } from "@/features/customers/service";
 
 export const dynamic = "force-dynamic";
 
+type ActivityFilter = "ALL" | "REPEAT" | "SINGLE";
+
+function parseActivity(value: string | undefined): ActivityFilter {
+  if (value === "REPEAT" || value === "SINGLE") return value;
+  return "ALL";
+}
+
 export default async function AdminCustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{
+    page?: string;
+    pageSize?: string;
+    q?: string;
+    activity?: string;
+  }>;
 }) {
   await requirePermission("customers.view");
   const storeId = await resolveActiveStoreId();
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
+  const rawPageSize = Number(params.pageSize) || 10;
+  const pageSize = rawPageSize === 25 ? 25 : 10;
+  const activity = parseActivity(params.activity);
 
   const result = await listStoreCustomers({
     storeId,
     page,
-    pageSize: 20,
+    pageSize,
     search: params.q ?? "",
+    activity,
   });
 
   return (
@@ -31,25 +46,14 @@ export default async function AdminCustomersPage({
         description="People who have paid for an order in your store."
         breadcrumbs={[{ label: "Customers" }]}
       />
-      {!result.items.length && !params.q ? (
-        <EmptyState
-          title="No customers yet"
-          description="Customers appear here after a successful paid order (failed checkouts are not counted)."
-        />
-      ) : !result.items.length ? (
-        <EmptyState
-          title="No matches"
-          description="Try a different name, email, or phone search."
-        />
-      ) : (
-        <AdminCustomerListClient
-          initialItems={result.items}
-          total={result.total}
-          page={result.page}
-          pageSize={result.pageSize}
-          initialSearch={params.q ?? ""}
-        />
-      )}
+      <AdminCustomerListClient
+        initialItems={result.items}
+        total={result.total}
+        page={result.page}
+        pageSize={result.pageSize}
+        initialSearch={params.q ?? ""}
+        initialActivity={activity}
+      />
     </div>
   );
 }

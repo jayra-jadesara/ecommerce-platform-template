@@ -1,11 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
+import CloseIcon from "@mui/icons-material/Close";
+import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import TextField from "@mui/material/TextField";
 import { getAdminPath } from "@/config/admin-route";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
-import { adminBtn } from "@/features/admin/ui/admin-classes";
+import { adminBtn, adminCard } from "@/features/admin/ui/admin-classes";
+import { formatErrorLogForAi } from "@/features/error-monitoring/format-error-for-ai";
 import type { ErrorLogCounts } from "@/features/error-monitoring/queries";
 import type {
   ErrorLogRow,
@@ -13,33 +20,43 @@ import type {
   ErrorSeverity,
   ErrorStatus,
 } from "@/features/error-monitoring/types";
+import { ERROR_SEVERITIES } from "@/features/error-monitoring/types";
 import { cn } from "@/lib/cn";
+import { formatDateTime } from "@/lib/format-date";
+
+const PAGE_SIZE_OPTIONS = [
+  { value: "10", label: "10" },
+  { value: "25", label: "25" },
+] as const;
 
 function severityTone(
   severity: string,
 ): "error" | "warning" | "info" | "neutral" {
-  if (severity === "CRITICAL") return "error";
-  if (severity === "ERROR") return "error";
+  if (severity === "CRITICAL" || severity === "ERROR") return "error";
   if (severity === "WARNING") return "warning";
   if (severity === "INFO") return "info";
   return "neutral";
 }
 
-function statusTone(
-  status: string,
-): "success" | "warning" | "error" | "info" | "neutral" {
-  if (status === "RESOLVED") return "success";
-  if (status === "INVESTIGATING") return "info";
-  if (status === "IGNORED") return "neutral";
-  return "warning";
-}
-
-function formatTime(iso: string) {
-  try {
-    return new Date(iso).toLocaleString();
-  } catch {
-    return iso;
+function buildPageItems(
+  current: number,
+  totalPages: number,
+): Array<number | "ellipsis"> {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
   }
+
+  const items: Array<number | "ellipsis"> = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(totalPages - 1, current + 1);
+
+  if (start > 2) items.push("ellipsis");
+  for (let page = start; page <= end; page += 1) {
+    items.push(page);
+  }
+  if (end < totalPages - 1) items.push("ellipsis");
+  items.push(totalPages);
+  return items;
 }
 
 export function AdminErrorLogsClient({
@@ -68,266 +85,433 @@ export function AdminErrorLogsClient({
   todayOnly: boolean;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const [search, setSearch] = useState(initialSearch);
+  const [severity, setSeverity] = useState(initialSeverity);
+  const [status, setStatus] = useState(initialStatus);
   const [pending, startTransition] = useTransition();
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  function pushParams(patch: Record<string, string | null>) {
-    const next = new URLSearchParams(searchParams.toString());
-    for (const [key, value] of Object.entries(patch)) {
-      if (value == null || value === "" || value === "ALL" || value === "false") {
-        next.delete(key);
-      } else {
-        next.set(key, value);
-      }
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const rangeEnd = Math.min(page * pageSize, total);
+  const pageItems = useMemo(
+    () => buildPageItems(page, totalPages),
+    [page, totalPages],
+  );
+
+  const severityOptions = useMemo(
+    () => [
+      { value: "ALL", label: "All severities" },
+      ...ERROR_SEVERITIES.map((value) => ({ value, label: value })),
+    ],
+    [],
+  );
+
+  function applyFilters(options?: {
+    page?: number;
+    search?: string;
+    pageSize?: number;
+    tab?: ErrorLogTab;
+    severity?: string;
+    status?: string;
+    payment?: boolean;
+    today?: boolean;
+  }) {
+    const nextPage = options?.page ?? 1;
+    const nextSearch = (options?.search ?? search).trim();
+    const nextPageSize = options?.pageSize ?? pageSize;
+    const nextTab = options?.tab ?? tab;
+    const nextSeverity = options?.severity ?? severity;
+    const nextStatus = options?.status ?? status;
+    const nextPayment = options?.payment ?? paymentOnly;
+    const nextToday = options?.today ?? todayOnly;
+
+    const params = new URLSearchParams();
+    if (nextTab !== "browser") params.set("tab", nextTab);
+    if (nextSearch) params.set("q", nextSearch);
+    if (nextSeverity && nextSeverity !== "ALL") {
+      params.set("severity", nextSeverity);
     }
-    if (!("page" in patch)) next.delete("page");
+    if (nextStatus && nextStatus !== "ALL") {
+      params.set("status", nextStatus);
+    }
+    if (nextPayment) params.set("payment", "1");
+    if (nextToday) params.set("today", "1");
+    if (nextPageSize !== 10) params.set("pageSize", String(nextPageSize));
+    if (nextPage > 1) params.set("page", String(nextPage));
+
+    const qs = params.toString();
     startTransition(() => {
-      router.push(`${getAdminPath("/error-logs")}?${next.toString()}`);
+      router.push(getAdminPath(`/error-logs${qs ? `?${qs}` : ""}`));
     });
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  function commitSearch() {
+    const next = search.trim();
+    if (next === initialSearch.trim()) return;
+    applyFilters({ search: next });
+  }
+
+  function clearFilters() {
+    setSearch("");
+    setSeverity("ALL");
+    setStatus("ALL");
+    applyFilters({
+      search: "",
+      severity: "ALL",
+      status: "ALL",
+      payment: false,
+      today: false,
+    });
+  }
+
+  const hasActiveFilters =
+    Boolean(search.trim()) ||
+    Boolean(initialSearch.trim()) ||
+    severity !== "ALL" ||
+    status !== "ALL" ||
+    paymentOnly ||
+    todayOnly;
+
+  async function copyDetails(row: ErrorLogRow) {
+    try {
+      await navigator.clipboard.writeText(formatErrorLogForAi(row));
+      setCopiedId(row.id);
+      window.setTimeout(() => setCopiedId(null), 1600);
+    } catch {
+      setCopiedId(null);
+    }
+  }
+
+  const scopeFilters = [
+    {
+      id: "open",
+      label: "Open",
+      count: counts.open,
+      active: status === "OPEN",
+      onClick: () => {
+        const next = status === "OPEN" ? "ALL" : "OPEN";
+        setStatus(next);
+        applyFilters({ status: next });
+      },
+    },
+    {
+      id: "critical",
+      label: "Critical",
+      count: counts.critical,
+      active: severity === "CRITICAL",
+      onClick: () => {
+        const next = severity === "CRITICAL" ? "ALL" : "CRITICAL";
+        setSeverity(next);
+        applyFilters({ severity: next });
+      },
+    },
+    {
+      id: "today",
+      label: "Today",
+      count: counts.today,
+      active: todayOnly,
+      onClick: () => applyFilters({ today: !todayOnly }),
+    },
+    {
+      id: "payment",
+      label: "Payment",
+      count: counts.payment,
+      active: paymentOnly,
+      onClick: () => applyFilters({ payment: !paymentOnly }),
+    },
+  ] as const;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 text-sm">
-        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-warning)_14%,transparent)] px-3 py-1 font-medium">
-          Open {counts.open}
-        </span>
-        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-error)_14%,transparent)] px-3 py-1 font-medium">
-          Critical {counts.critical}
-        </span>
-        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] px-3 py-1 font-medium">
-          Today {counts.today}
-        </span>
-        <span className="rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] px-3 py-1 font-medium">
-          Payment {counts.payment}
-        </span>
-      </div>
+    <div className="space-y-2.5">
+      {/* Toolbar: scope + quick counts */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="inline-flex rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-0.5">
+          {(["browser", "server"] as const).map((id) => {
+            const active = tab === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                disabled={pending}
+                onClick={() => applyFilters({ tab: id })}
+                className={cn(
+                  "rounded-[10px] px-3 py-1.5 text-xs font-semibold capitalize transition-colors",
+                  active
+                    ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                    : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
+                )}
+              >
+                {id}
+              </button>
+            );
+          })}
+        </div>
 
-      <div
-        role="tablist"
-        aria-label="Error log categories"
-        className="flex flex-wrap gap-2 border-b border-[var(--color-border)] pb-2"
-      >
-        {(
-          [
-            ["browser", "Page & Browser Errors"],
-            ["server", "Database & Server Errors"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            className={cn(
-              adminBtn(tab === id ? "primary" : "outline"),
-              "!min-h-9",
-            )}
-            onClick={() => pushParams({ tab: id, page: null })}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-3 md:flex-row md:items-end">
-        <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
-          <span className="font-medium">Search</span>
-          <input
-            type="search"
-            defaultValue={initialSearch}
-            placeholder="Reference, message, route, login, order or payment ID"
-            className="min-h-10 rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] px-3"
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                pushParams({
-                  q: (event.target as HTMLInputElement).value.trim() || null,
-                });
-              }
-            }}
-          />
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["all", !paymentOnly && !todayOnly && initialSeverity === "ALL" && initialStatus === "ALL", () =>
-                pushParams({
-                  payment: null,
-                  today: null,
-                  severity: null,
-                  status: null,
-                })],
-              ["Critical", initialSeverity === "CRITICAL", () =>
-                pushParams({ severity: "CRITICAL" })],
-              ["Open", initialStatus === "OPEN", () =>
-                pushParams({ status: "OPEN" })],
-              ["Payment", paymentOnly, () =>
-                pushParams({ payment: paymentOnly ? null : "1" })],
-              ["Today", todayOnly, () =>
-                pushParams({ today: todayOnly ? null : "1" })],
-            ] as const
-          ).map(([label, active, onClick]) => (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {scopeFilters.map((item) => (
             <button
-              key={String(label)}
+              key={item.id}
               type="button"
+              disabled={pending}
+              onClick={item.onClick}
               className={cn(
-                adminBtn(active ? "primary" : "outline"),
-                "!min-h-8 !px-2.5 !text-xs",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                item.active
+                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] text-[var(--color-primary)]"
+                  : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
               )}
-              onClick={onClick}
             >
-              {label === "all" ? "All" : label}
+              {item.label}
+              <span
+                className={cn(
+                  "tabular-nums",
+                  item.active
+                    ? "text-[var(--color-primary)]"
+                    : "text-[var(--color-foreground)]",
+                )}
+              >
+                {item.count}
+              </span>
             </button>
           ))}
         </div>
       </div>
 
-      <div className={cn(pending && "opacity-60")}>
-        {/* Desktop table */}
-        <div className="hidden overflow-x-auto rounded-xl border border-[var(--color-border)] md:block">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-[var(--color-surface)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
-              <tr>
-                <th className="px-3 py-2 font-semibold">Time</th>
-                <th className="px-3 py-2 font-semibold">Severity</th>
-                <th className="px-3 py-2 font-semibold">
-                  {tab === "browser" ? "Page" : "Area"}
-                </th>
-                <th className="px-3 py-2 font-semibold">Error</th>
-                <th className="px-3 py-2 font-semibold">
-                  {tab === "browser" ? "Browser" : "Route"}
-                </th>
-                <th className="px-3 py-2 font-semibold">User</th>
-                <th className="px-3 py-2 font-semibold">Status</th>
-                <th className="px-3 py-2 font-semibold">Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan={8}
-                    className="px-3 py-8 text-center text-[var(--color-muted)]"
+      {/* Search + severity */}
+      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10.5rem]">
+        <TextField
+          size="small"
+          fullWidth
+          label="Search"
+          placeholder="Reference, message, page, user…"
+          value={search}
+          disabled={pending}
+          onChange={(event) => setSearch(event.target.value)}
+          onBlur={commitSearch}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              commitSearch();
+            }
+          }}
+          slotProps={{
+            input: {
+              endAdornment: hasActiveFilters ? (
+                <InputAdornment position="end">
+                  <IconButton
+                    type="button"
+                    size="small"
+                    edge="end"
+                    aria-label="Clear filters"
+                    disabled={pending}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={clearFilters}
+                    sx={{
+                      color: "var(--color-muted)",
+                      "&:hover": { color: "var(--color-foreground)" },
+                    }}
                   >
-                    No errors match these filters.
-                  </td>
-                </tr>
-              ) : (
-                items.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-t border-[var(--color-border)] hover:bg-[color-mix(in_srgb,var(--color-primary)_4%,transparent)]"
-                  >
-                    <td className="whitespace-nowrap px-3 py-2.5 text-xs">
-                      {formatTime(row.last_seen_at)}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <AdminStatusBadge tone={severityTone(row.severity)}>
-                        {row.severity}
-                      </AdminStatusBadge>
-                    </td>
-                    <td className="max-w-[9rem] truncate px-3 py-2.5">
-                      {tab === "browser"
-                        ? row.page_name || row.route || "—"
-                        : row.feature || row.error_type}
-                    </td>
-                    <td className="max-w-[16rem] truncate px-3 py-2.5">
-                      <Link
-                        href={getAdminPath(`/error-logs/${row.id}`)}
-                        className="font-medium text-[var(--color-primary)] hover:underline"
-                      >
-                        {row.message}
-                      </Link>
-                    </td>
-                    <td className="max-w-[10rem] truncate px-3 py-2.5 text-xs text-[var(--color-muted)]">
-                      {tab === "browser"
-                        ? [row.browser_name, row.browser_version]
-                            .filter(Boolean)
-                            .join(" ") || "—"
-                        : row.route || row.request_path || "—"}
-                    </td>
-                    <td className="max-w-[8rem] truncate px-3 py-2.5 text-xs">
-                      {row.user_login || "Anonymous"}
-                    </td>
-                    <td className="px-3 py-2.5">
-                      <AdminStatusBadge tone={statusTone(row.status)}>
-                        {row.status}
-                      </AdminStatusBadge>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2.5 font-mono text-xs">
-                      {row.reference_id}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    <CloseIcon sx={{ fontSize: 18 }} />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            },
+          }}
+        />
+        <AdminSelect
+          label="Severity"
+          value={severity}
+          disabled={pending}
+          options={severityOptions}
+          onChange={(next) => {
+            setSeverity(next as ErrorSeverity | "ALL");
+            applyFilters({ severity: next });
+          }}
+        />
+      </div>
 
-        {/* Mobile cards */}
-        <div className="space-y-3 md:hidden">
-          {items.length === 0 ? (
-            <p className="rounded-xl border border-[var(--color-border)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
-              No errors match these filters.
-            </p>
+      {/* Count + pagination */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-[var(--color-muted)]">
+          {total === 0 ? (
+            <>0 errors</>
           ) : (
-            items.map((row) => (
-              <Link
-                key={row.id}
-                href={getAdminPath(`/error-logs/${row.id}`)}
-                className="block rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <AdminStatusBadge tone={severityTone(row.severity)}>
-                    {row.severity}
-                  </AdminStatusBadge>
-                  <span className="font-mono text-xs text-[var(--color-muted)]">
-                    {row.reference_id}
-                  </span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-sm font-medium">
-                  {row.message}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  {formatTime(row.last_seen_at)} ·{" "}
-                  {row.page_name || row.route || row.feature || row.error_type}
-                </p>
-                <div className="mt-2">
-                  <AdminStatusBadge tone={statusTone(row.status)}>
-                    {row.status}
-                  </AdminStatusBadge>
-                </div>
-              </Link>
-            ))
+            <>
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {rangeStart}–{rangeEnd}
+              </span>{" "}
+              of{" "}
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {total}
+              </span>
+              <span className="mx-1.5 text-[var(--color-muted)]">|</span>
+              Page{" "}
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {page}
+              </span>
+              /
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {totalPages}
+              </span>
+            </>
           )}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {total > 0 ? (
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                type="button"
+                disabled={page <= 1 || pending}
+                onClick={() => applyFilters({ page: page - 1 })}
+                className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-medium disabled:opacity-40"
+              >
+                Prev
+              </button>
+              {pageItems.map((item, index) =>
+                item === "ellipsis" ? (
+                  <span
+                    key={`ellipsis-${index}`}
+                    className="px-1 text-xs text-[var(--color-muted)]"
+                  >
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    type="button"
+                    disabled={pending || item === page}
+                    onClick={() => applyFilters({ page: item })}
+                    className={cn(
+                      "h-8 min-w-8 rounded-lg border px-2 text-xs font-medium transition-colors disabled:opacity-100",
+                      item === page
+                        ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)] disabled:opacity-40",
+                    )}
+                  >
+                    {item}
+                  </button>
+                ),
+              )}
+              <button
+                type="button"
+                disabled={page >= totalPages || pending}
+                onClick={() => applyFilters({ page: page + 1 })}
+                className="h-8 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 text-xs font-medium disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          ) : null}
+
+          <div className="w-[6.75rem]">
+            <AdminSelect
+              label="Rows"
+              value={String(pageSize)}
+              disabled={pending}
+              fullWidth
+              options={PAGE_SIZE_OPTIONS}
+              onChange={(value) => {
+                const next = value === "25" ? 25 : 10;
+                applyFilters({ pageSize: next, page: 1 });
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {totalPages > 1 ? (
-        <div className="flex items-center justify-between gap-2 text-sm">
-          <button
-            type="button"
-            className={adminBtn("outline")}
-            disabled={page <= 1}
-            onClick={() => pushParams({ page: String(page - 1) })}
-          >
-            Previous
-          </button>
-          <span className="text-[var(--color-muted)]">
-            Page {page} of {totalPages}
-          </span>
-          <button
-            type="button"
-            className={adminBtn("outline")}
-            disabled={page >= totalPages}
-            onClick={() => pushParams({ page: String(page + 1) })}
-          >
-            Next
-          </button>
+      {!items.length ? (
+        <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-10 text-center">
+          <p className="text-sm font-semibold">No errors match</p>
+          <p className="mt-1 text-xs text-[var(--color-muted)]">
+            Try a different search or clear filters.
+          </p>
         </div>
-      ) : null}
+      ) : (
+        <div className={cn(adminCard(), "overflow-x-auto")}>
+          <table className="min-w-full text-left text-sm">
+            <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
+              <tr>
+                <th className="px-4 py-3 font-medium">Error</th>
+                <th className="px-4 py-3 font-medium">
+                  {tab === "browser" ? "Page" : "Area"}
+                </th>
+                <th className="px-4 py-3 font-medium">Severity</th>
+                <th className="px-4 py-3 font-medium">
+                  {tab === "browser" ? "Browser" : "Route"}
+                </th>
+                <th className="px-4 py-3 font-medium">User</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((row) => (
+                <tr
+                  key={row.id}
+                  className="border-b border-[var(--color-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--color-surface)_70%,transparent)]"
+                >
+                  <td className="px-4 py-3">
+                    <p className="max-w-[22rem] truncate font-semibold">
+                      {row.message}
+                    </p>
+                    <p className="mt-0.5 font-mono text-[10px] text-[var(--color-muted)]">
+                      {row.reference_id}
+                      {row.occurrence_count > 1
+                        ? ` · ×${row.occurrence_count}`
+                        : ""}
+                    </p>
+                    <p className="mt-0.5 whitespace-nowrap text-xs text-[var(--color-muted)]">
+                      {formatDateTime(row.last_seen_at)}
+                    </p>
+                  </td>
+                  <td className="max-w-[9rem] truncate px-4 py-3 text-[var(--color-muted)]">
+                    {tab === "browser"
+                      ? row.page_name || row.route || "—"
+                      : row.feature || row.error_type}
+                  </td>
+                  <td className="px-4 py-3">
+                    <AdminStatusBadge tone={severityTone(row.severity)}>
+                      {row.severity}
+                    </AdminStatusBadge>
+                  </td>
+                  <td className="max-w-[9rem] truncate px-4 py-3 text-xs text-[var(--color-muted)]">
+                    {tab === "browser"
+                      ? [row.browser_name, row.browser_version]
+                          .filter(Boolean)
+                          .join(" ") || "—"
+                      : row.route || row.request_path || "—"}
+                  </td>
+                  <td className="max-w-[8rem] truncate px-4 py-3 text-xs">
+                    {row.user_login || "Anonymous"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Link
+                        href={getAdminPath(`/error-logs/${row.id}`)}
+                        className={cn(adminBtn("ghost"), "!min-h-9 !px-3 !text-xs")}
+                      >
+                        View
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => copyDetails(row)}
+                        className={cn(
+                          adminBtn("outline"),
+                          "!min-h-9 !gap-1 !px-3 !text-xs inline-flex items-center",
+                        )}
+                      >
+                        <ContentCopyIcon sx={{ fontSize: 14 }} />
+                        {copiedId === row.id ? "Copied" : "Copy all"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

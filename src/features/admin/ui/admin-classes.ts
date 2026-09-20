@@ -10,7 +10,7 @@ export function adminAppBg(): string {
 }
 
 export function adminSidebarBg(): string {
-  return "bg-[var(--color-surface)]";
+  return "bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-card)_12%)]";
 }
 
 export function adminCard(className = ""): string {
@@ -103,7 +103,7 @@ export function adminScrollHide(): string {
 }
 
 export function adminNavSectionLabel(): string {
-  return "px-3 pb-1.5 pt-4 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)] first:pt-1";
+  return "px-3.5 pb-1.5 pt-4 text-[11px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)] first:pt-2";
 }
 
 export function adminTopBar(): string {

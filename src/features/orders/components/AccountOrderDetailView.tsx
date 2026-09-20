@@ -39,6 +39,8 @@ import {
   returnPolicyLabel,
   replaceRequestStatusLabel,
 } from "@/features/shipping/policies";
+import { trackingStatusLabel } from "@/features/shipping/courier/types";
+import { publicTrackingUrl } from "@/features/shipping/courier/urls";
 import { cn } from "@/lib/cn";
 
 function addressLines(address: ShippingAddressSnapshot): string[] {
@@ -133,6 +135,14 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             <p className="text-xs text-[var(--color-muted)] sm:text-sm">
               {formatDateTime(order.createdAt)} · {orderStatusLabel(order.status)}
             </p>
+            {order.status === "CANCELLED" && order.cancelReason ? (
+              <p className="text-xs text-[var(--color-muted)] sm:text-sm">
+                Cancel reason:{" "}
+                <span className="font-medium text-[var(--color-foreground)]">
+                  {order.cancelReason}
+                </span>
+              </p>
+            ) : null}
           </div>
 
           <div className="flex shrink-0 items-center gap-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
@@ -167,6 +177,7 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
         orderId={order.id}
         status={order.status}
         paymentProvider={paymentProvider}
+        reasonOptions={order.cancelReasonOptions}
       />
 
       {hasRestrictedPolicy ? (
@@ -363,14 +374,72 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             <div className="md:border-l md:border-[var(--color-border)] md:pl-8">
               <h3 className="text-sm font-semibold">Tracking</h3>
               {order.trackingNumber ? (
-                <p className="mt-3 text-sm">
-                  <span className="font-medium text-[var(--color-foreground)]">
-                    {order.shippingProvider
-                      ? `${order.shippingProvider} · `
-                      : ""}
-                    {order.trackingNumber}
-                  </span>
-                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm">
+                    <span className="font-medium text-[var(--color-foreground)]">
+                      {order.shippingProvider
+                        ? `${order.shippingProvider} · `
+                        : ""}
+                      {order.trackingNumber}
+                    </span>
+                  </p>
+                  {order.trackingStatus ? (
+                    <p className="text-xs text-[var(--color-muted)]">
+                      Status:{" "}
+                      <span className="font-semibold text-[var(--color-foreground)]">
+                        {trackingStatusLabel(
+                          order.trackingStatus as
+                            | "PENDING"
+                            | "PICKED_UP"
+                            | "IN_TRANSIT"
+                            | "OUT_FOR_DELIVERY"
+                            | "DELIVERED"
+                            | "EXCEPTION"
+                            | "CANCELLED",
+                        )}
+                      </span>
+                    </p>
+                  ) : null}
+                  {publicTrackingUrl(
+                    order.courierProvider ?? order.shippingProvider,
+                    order.trackingNumber,
+                  ) ? (
+                    <a
+                      href={
+                        publicTrackingUrl(
+                          order.courierProvider ?? order.shippingProvider,
+                          order.trackingNumber,
+                        )!
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={cn(
+                        sfBtn("outline"),
+                        "!mt-1 !min-h-9 !px-3 !text-xs",
+                      )}
+                    >
+                      Track package
+                    </a>
+                  ) : null}
+                  {order.trackingPayload?.events &&
+                  order.trackingPayload.events.length > 0 ? (
+                    <ul className="mt-2 space-y-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 text-[11px]">
+                      {order.trackingPayload.events.slice(0, 6).map((ev, i) => (
+                        <li key={`${ev.at}-${i}`} className="leading-snug">
+                          <span className="font-medium text-[var(--color-foreground)]">
+                            {ev.status}
+                          </span>
+                          {ev.location ? (
+                            <span className="text-[var(--color-muted)]">
+                              {" "}
+                              · {ev.location}
+                            </span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
               ) : (
                 <p className="mt-3 text-sm text-[var(--color-muted)]">
                   Tracking number will appear here if the store adds one.

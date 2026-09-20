@@ -14,8 +14,26 @@ export default async function AccountOrderDetailPage({
   if (!user) redirect("/login?next=/account/orders");
 
   const { id } = await params;
-  const order = await getOrderDetail({ orderId: id, userId: user.id });
+  let order = await getOrderDetail({ orderId: id, userId: user.id });
   if (!order) notFound();
+
+  if (
+    order.status === "SHIPPED" &&
+    order.trackingNumber &&
+    (order.courierProvider === "delhivery" ||
+      order.courierProvider === "bluedart")
+  ) {
+    const { refreshOrderTracking } = await import(
+      "@/features/shipping/courier/service"
+    );
+    await refreshOrderTracking({
+      orderId: order.id,
+      storeId: order.storeId,
+      force: false,
+    }).catch(() => null);
+    order =
+      (await getOrderDetail({ orderId: id, userId: user.id })) ?? order;
+  }
 
   return <AccountOrderDetailView order={order} />;
 }

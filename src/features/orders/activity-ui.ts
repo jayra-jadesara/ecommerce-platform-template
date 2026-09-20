@@ -75,6 +75,8 @@ export function activityEventPill(
       return { label: "Cancelled", tone: "error" };
     case "TRACKING_UPDATED":
       return { label: "Tracking", tone: "neutral" };
+    case "COURIER_SHIPMENT_CREATED":
+      return { label: "Courier", tone: "info" };
     case "COUPON_REDEEMED":
       return { label: "Coupon", tone: "success" };
     case "COUPON_REDEMPTION_FAILED":

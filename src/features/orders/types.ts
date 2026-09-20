@@ -101,9 +101,28 @@ export type OrderDetail = {
   billingAddress: ShippingAddressSnapshot;
   shippingProvider: string | null;
   trackingNumber: string | null;
+  courierProvider: string | null;
+  courierShipmentId: string | null;
+  trackingStatus: string | null;
+  trackingSyncedAt: string | null;
+  trackingPayload: {
+    status?: string;
+    awb?: string;
+    provider?: string;
+    events?: Array<{
+      at: string | null;
+      status: string;
+      location?: string | null;
+      detail?: string | null;
+    }>;
+    syncedAt?: string;
+    rawSummary?: string | null;
+  } | null;
   shippedAt: string | null;
   deliveredAt: string | null;
   cancelledAt: string | null;
+  cancelReasonCode: string | null;
+  cancelReason: string | null;
   inventoryFinalizedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -114,6 +133,8 @@ export type OrderDetail = {
   /** @deprecated Prefer replaceRules.photoRequired */
   replacePhotoRequired: boolean;
   replaceRules: ReplaceStoreRules;
+  /** Admin-configured COD cancel reason presets */
+  cancelReasonOptions: string[];
   customerEmail?: string | null;
   customerName?: string | null;
 };

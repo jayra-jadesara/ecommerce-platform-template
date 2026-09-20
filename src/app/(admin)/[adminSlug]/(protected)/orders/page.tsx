@@ -13,6 +13,7 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: Promise<{
     page?: string;
+    pageSize?: string;
     q?: string;
     status?: string;
     payment?: string;
@@ -25,6 +26,8 @@ export default async function AdminOrdersPage({
   }
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
+  const rawPageSize = Number(params.pageSize) || 10;
+  const pageSize = rawPageSize === 25 ? 25 : 10;
   const status = (params.status as OrderStatus | "ALL" | undefined) ?? "ALL";
   const paymentStatus =
     (params.payment as PaymentStatus | "ALL" | undefined) ?? "ALL";
@@ -32,7 +35,7 @@ export default async function AdminOrdersPage({
   const result = await listAdminOrders({
     storeId,
     page,
-    pageSize: 20,
+    pageSize,
     search: params.q ?? "",
     status,
     paymentStatus,

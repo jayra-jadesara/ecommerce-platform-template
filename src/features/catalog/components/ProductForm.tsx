@@ -22,7 +22,6 @@ import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
   adminBtn,
   adminCard,
-  adminCardPadding,
   adminFieldsGrid,
 } from "@/features/admin/ui/admin-classes";
 import {
@@ -31,12 +30,11 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import type { CategoryRow } from "@/features/catalog/categories-service";
+import type { SizeOptionRow } from "@/features/catalog/size-options-service";
 import { autoSkuFromSlug, slugify } from "@/features/catalog/slug";
 import {
   DEFAULT_PRODUCT_FORM,
   emptyVariant,
-  PRODUCT_SIZE_OPTIONS,
-  PRODUCT_UNIT_OPTIONS,
   productFormSchema,
   type ProductFormValues,
 } from "@/features/catalog/validation";
@@ -51,23 +49,31 @@ import { cn } from "@/lib/cn";
 
 const STORE_DEFAULT_POLICY = "store_default";
 
-function sizeMenuItems(current: string) {
-  const options = PRODUCT_SIZE_OPTIONS as readonly string[];
-  if (current && !options.includes(current)) {
-    return [current, ...options];
-  }
-  return [...options];
-}
-
 interface ProductFormProps {
   mode: "create" | "edit" | "view";
   productId?: string;
   initialValues?: ProductFormValues;
   categories: CategoryRow[];
+  /** Active Size / pack master options for the variant dropdown. */
+  sizeOptions?: SizeOptionRow[];
   canUpdate: boolean;
   canDelete: boolean;
   /** Store Delivery & returns default — products inherit this unless overridden. */
   storeReturnPolicy?: ReturnPolicy;
+  /** Photos panel rendered as step 4 on edit/view (needs a saved product id). */
+  imagesSlot?: ReactNode;
+}
+
+function sizeSelectOptions(
+  sizeOptions: SizeOptionRow[],
+  current: string,
+): { value: string; label: string }[] {
+  const labels = sizeOptions.map((row) => row.label);
+  const options = labels.map((label) => ({ value: label, label }));
+  if (current && !labels.includes(current)) {
+    options.unshift({ value: current, label: `${current} (current)` });
+  }
+  return options;
 }
 
 function friendlyError(message: string) {
@@ -89,32 +95,36 @@ function StepCard({
 }: {
   step: number;
   title: string;
-  description: string;
+  description?: string;
   action?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className={`${adminCard()} ${adminCardPadding()}`}>
-      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-        <div className="flex min-w-0 gap-3">
+    <section className={cn(adminCard(), "overflow-hidden")}>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-3.5 py-2.5">
+        <div className="flex min-w-0 items-center gap-2.5">
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-sm font-semibold text-[var(--color-button-foreground)]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--color-button-background)] text-[11px] font-bold text-[var(--color-button-foreground)]"
             aria-hidden
           >
             {step}
           </span>
           <div className="min-w-0">
-            <h2 className="text-base font-semibold tracking-tight text-[var(--color-foreground)]">
+            <h2 className="text-sm font-semibold tracking-tight text-[var(--color-foreground)]">
               {title}
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
-              {description}
-            </p>
+            {description ? (
+              <p className="text-[11px] leading-snug text-[var(--color-muted)]">
+                {description}
+              </p>
+            ) : null}
           </div>
         </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
-      <div className="admin-form-stack">{children}</div>
+      <div className="admin-form-stack admin-form-stack--compact p-3.5">
+        {children}
+      </div>
     </section>
   );
 }
@@ -124,9 +134,11 @@ export function ProductForm({
   productId,
   initialValues,
   categories,
+  sizeOptions = [],
   canUpdate,
   canDelete,
   storeReturnPolicy = "no_return_refund",
+  imagesSlot,
 }: ProductFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -243,13 +255,13 @@ export function ProductForm({
 
   return (
     <form
-      className="admin-form-stack pb-24"
+      className="admin-form-stack admin-form-stack--compact pb-24"
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
     >
-      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-primary)_8%)] px-2 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-3 lg:left-[var(--admin-sidebar-width,15.5rem)]">
+      <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_92%,var(--color-primary)_8%)] px-2 py-2.5 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] sm:px-3 lg:left-[var(--admin-sidebar-width,16.75rem)]">
         <div className="flex w-full flex-wrap items-center gap-2">
           <Button type="button" href={listHref} size="small">
             ← Back to list
@@ -351,17 +363,16 @@ export function ProductForm({
       {success ? <Alert severity="success">{success}</Alert> : null}
 
       {mode === "create" ? (
-        <ol className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
-          <li>1. Name the product and add a short description</li>
-          <li>2. Set size, price, and stock</li>
-          <li>3. Choose Draft or Active, then Save — photos come next</li>
-        </ol>
+        <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
+          Fill basics → set price &amp; stock → choose status → Save. Photos come
+          after save.
+        </p>
       ) : null}
 
       <StepCard
         step={1}
-        title="What are you selling?"
-        description="Name, category, and what customers should know."
+        title="Basics"
+        description="Name, category, description, ingredients"
       >
         <div className={adminFieldsGrid(2) + " admin-fields-grid--2-md"}>
           <Controller
@@ -371,6 +382,7 @@ export function ProductForm({
               <div>
                 <TextField
                   {...field}
+                  size="small"
                   label="Product name"
                   placeholder="e.g. Garam Masala"
                   fullWidth
@@ -403,13 +415,12 @@ export function ProductForm({
             control={control}
             render={({ field }) => (
               <AdminSelect
-                label="Category (product group)"
+                label="Category"
                 disabled={!fieldsEditable}
                 value={field.value ?? ""}
                 onChange={(next) => field.onChange(next || null)}
                 allowEmpty
                 emptyLabel="No category"
-                helperText="Optional. Groups this product for shopping (e.g. Spices, Snacks). Add groups under Products → Categories."
                 options={categories.map((category) => ({
                   value: category.id,
                   label: category.name,
@@ -424,11 +435,12 @@ export function ProductForm({
               render={({ field }) => (
                 <TextField
                   {...field}
+                  size="small"
                   label="Short description"
-                  placeholder="One or two lines for product cards"
+                  placeholder="One line for product cards"
                   fullWidth
                   multiline
-                  minRows={2}
+                  minRows={1}
                   disabled={!fieldsEditable}
                 />
               )}
@@ -441,11 +453,48 @@ export function ProductForm({
               render={({ field }) => (
                 <TextField
                   {...field}
+                  size="small"
                   label="Full description"
-                  placeholder="Tell customers about this product"
+                  placeholder="Details customers see on the product page"
                   fullWidth
                   multiline
-                  minRows={4}
+                  minRows={2}
+                  disabled={!fieldsEditable}
+                />
+              )}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Controller
+              name="ingredients"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="Ingredients"
+                  placeholder="List ingredients if food or cosmetics"
+                  fullWidth
+                  multiline
+                  minRows={1}
+                  disabled={!fieldsEditable}
+                />
+              )}
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Controller
+              name="usageInstructions"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  size="small"
+                  label="How to use"
+                  placeholder="Short tips or instructions"
+                  fullWidth
+                  multiline
+                  minRows={1}
                   disabled={!fieldsEditable}
                 />
               )}
@@ -459,14 +508,14 @@ export function ProductForm({
         title="Price & stock"
         description={
           productName
-            ? `Sizes / packs for “${productName}”.`
-            : "Each size has its own price and stock."
+            ? `Packs for “${productName}” — price, cost, stock`
+            : "Size, sell price, your cost, and stock"
         }
         action={
           <button
             type="button"
             disabled={!fieldsEditable}
-            className={cn(adminBtn("outline"), "!min-h-9")}
+            className={cn(adminBtn("outline"), "!min-h-8 !px-2.5 !text-xs")}
             onClick={() => {
               const slug = getValues("slug") || slugify(getValues("name") || "");
               const nextIndex = visibleVariants.length;
@@ -478,118 +527,181 @@ export function ProductForm({
               });
             }}
           >
-            + Add size / pack
+            + Add size
           </button>
         }
       >
-        <div className="space-y-3">
+        <div className="space-y-2">
           {visibleVariants.map(({ field, index }) => {
             const variant = variants[index];
             if (!variant) return null;
             return (
               <div
                 key={field.fieldId}
-                className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
+                className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5"
               >
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-                  <div className="lg:col-span-4">
-                    <Controller
-                      name={`variants.${index}.name`}
-                      control={control}
-                      render={({ field: f, fieldState }) => (
-                        <AdminSelect
-                          label="Size / pack"
-                          required
-                          disabled={!fieldsEditable}
-                          error={Boolean(fieldState.error)}
-                          helperText={
-                            fieldState.error?.message ??
-                            "What customers pick at checkout"
-                          }
-                          value={f.value ?? ""}
-                          onChange={f.onChange}
-                          options={sizeMenuItems(f.value).map((option) => ({
-                            value: option,
-                            label: option,
-                          }))}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <Controller
-                      name={`variants.${index}.price`}
-                      control={control}
-                      render={({ field: f, fieldState }) => (
-                        <TextField
-                          {...f}
-                          size="small"
-                          type="number"
-                          label="Price"
-                          fullWidth
-                          required
-                          disabled={!fieldsEditable}
-                          error={Boolean(fieldState.error)}
-                          helperText={fieldState.error?.message}
-                          onChange={(event) =>
-                            f.onChange(Number(event.target.value))
-                          }
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="lg:col-span-2">
-                    <Controller
-                      name={`variants.${index}.quantity`}
-                      control={control}
-                      render={({ field: f, fieldState }) => (
-                        <TextField
-                          {...f}
-                          size="small"
-                          type="number"
-                          label="Stock"
-                          fullWidth
-                          required
-                          disabled={!fieldsEditable}
-                          error={Boolean(fieldState.error)}
-                          helperText={fieldState.error?.message}
-                          onChange={(event) =>
-                            f.onChange(Number(event.target.value) || 0)
-                          }
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-center lg:col-span-2 lg:pb-1">
-                    <Controller
-                      name={`variants.${index}.isActive`}
-                      control={control}
-                      render={({ field: f }) => (
-                        <AdminToggle
-                          checked={f.value}
-                          disabled={!fieldsEditable}
-                          label={f.value ? "On sale" : "Hidden"}
-                          onChange={f.onChange}
-                        />
-                      )}
-                    />
-                  </div>
-                  <div className="flex items-center justify-end lg:col-span-2 lg:pb-1">
-                    <button
-                      type="button"
-                      disabled={!fieldsEditable || visibleVariants.length <= 1}
-                      className={cn(
-                        adminBtn("ghost"),
-                        "!min-h-9 text-[var(--color-error)] disabled:opacity-40",
-                      )}
-                      onClick={() =>
-                        update(index, { ...variant, _delete: true })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </div>
-                </div>
+                {(() => {
+                  const sell = Number(variant.price) || 0;
+                  const cost =
+                    variant.costPrice == null
+                      ? null
+                      : Number(variant.costPrice);
+                  const profit =
+                    cost != null && !Number.isNaN(cost) ? sell - cost : null;
+                  const margin =
+                    profit != null && sell > 0
+                      ? Math.round((profit / sell) * 100)
+                      : null;
+                  return (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="min-w-[10rem] flex-[1.4]">
+                          <Controller
+                            name={`variants.${index}.name`}
+                            control={control}
+                            render={({ field: f, fieldState }) => (
+                              <AdminSelect
+                                label="Size / pack"
+                                required
+                                disabled={!fieldsEditable}
+                                error={Boolean(fieldState.error)}
+                                helperText={fieldState.error?.message}
+                                value={f.value ?? ""}
+                                onChange={f.onChange}
+                                options={sizeSelectOptions(
+                                  sizeOptions,
+                                  f.value ?? "",
+                                )}
+                                allowEmpty={sizeOptions.length === 0}
+                                emptyLabel="Select size"
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="w-[6.75rem] shrink-0">
+                          <Controller
+                            name={`variants.${index}.price`}
+                            control={control}
+                            render={({ field: f, fieldState }) => (
+                              <TextField
+                                {...f}
+                                size="small"
+                                type="number"
+                                label="Sell price"
+                                fullWidth
+                                required
+                                disabled={!fieldsEditable}
+                                error={Boolean(fieldState.error)}
+                                helperText={fieldState.error?.message}
+                                onChange={(event) =>
+                                  f.onChange(Number(event.target.value))
+                                }
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="w-[6.75rem] shrink-0">
+                          <Controller
+                            name={`variants.${index}.costPrice`}
+                            control={control}
+                            render={({ field: f }) => (
+                              <TextField
+                                type="number"
+                                label="Your cost"
+                                size="small"
+                                fullWidth
+                                disabled={!fieldsEditable}
+                                value={f.value ?? ""}
+                                title="Private cost — used for profit"
+                                onChange={(event) =>
+                                  f.onChange(
+                                    event.target.value === ""
+                                      ? null
+                                      : Number(event.target.value),
+                                  )
+                                }
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="w-[6.75rem] shrink-0">
+                          <Controller
+                            name={`variants.${index}.quantity`}
+                            control={control}
+                            render={({ field: f, fieldState }) => (
+                              <TextField
+                                {...f}
+                                size="small"
+                                type="number"
+                                label="In stock"
+                                fullWidth
+                                required
+                                disabled={!fieldsEditable}
+                                error={Boolean(fieldState.error)}
+                                helperText={fieldState.error?.message}
+                                onChange={(event) =>
+                                  f.onChange(Number(event.target.value) || 0)
+                                }
+                              />
+                            )}
+                          />
+                        </div>
+                        <div className="flex h-10 shrink-0 items-center gap-1">
+                          <Controller
+                            name={`variants.${index}.isActive`}
+                            control={control}
+                            render={({ field: f }) => (
+                              <AdminToggle
+                                checked={f.value}
+                                disabled={!fieldsEditable}
+                                label={f.value ? "On sale" : "Hidden"}
+                                onChange={f.onChange}
+                              />
+                            )}
+                          />
+                          <button
+                            type="button"
+                            disabled={
+                              !fieldsEditable || visibleVariants.length <= 1
+                            }
+                            className={cn(
+                              adminBtn("ghost"),
+                              "!min-h-8 !px-2 !text-xs text-[var(--color-error)] disabled:opacity-40",
+                            )}
+                            onClick={() =>
+                              update(index, { ...variant, _delete: true })
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+                        {sizeOptions.length === 0 ? (
+                          <span>
+                            Add options under Products → Size / pack
+                          </span>
+                        ) : null}
+                        {profit == null ? (
+                          <span>Enter cost to see profit</span>
+                        ) : (
+                          <span
+                            className={cn(
+                              "font-semibold",
+                              profit >= 0
+                                ? "text-[var(--color-success)]"
+                                : "text-[var(--color-error)]",
+                            )}
+                          >
+                            Profit {profit >= 0 ? "" : "−"}
+                            {Math.abs(profit).toFixed(0)}
+                            {margin != null ? ` · ${margin}%` : ""}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             );
           })}
@@ -598,10 +710,10 @@ export function ProductForm({
 
       <StepCard
         step={3}
-        title="Show on your store?"
-        description="Draft stays private. Active means customers can buy it."
+        title="Visibility"
+        description="Draft is private. Active is for sale."
       >
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid items-center gap-2 lg:grid-cols-2">
           <Controller
             name="status"
             control={control}
@@ -614,7 +726,7 @@ export function ProductForm({
                 onChange={field.onChange}
                 name={field.name}
                 options={[
-                  { value: "draft", label: "Draft — not visible yet" },
+                  { value: "draft", label: "Draft — not visible" },
                   { value: "active", label: "Active — for sale" },
                   { value: "archived", label: "Archived — hidden" },
                 ]}
@@ -627,15 +739,17 @@ export function ProductForm({
             render={({ field }) => (
               <AdminToggle
                 variant="row"
+                className="!py-1.5"
                 checked={field.value}
                 disabled={!fieldsEditable}
-                label="Featured product"
-                description="Show it in featured sections on the homepage."
+                label="Featured"
+                description="Show in homepage featured sections"
                 onChange={field.onChange}
               />
             )}
           />
-          <div className="lg:col-span-2">
+        </div>
+        <div className="mt-2">
             <Controller
               name="returnPolicy"
               control={control}
@@ -645,9 +759,9 @@ export function ProductForm({
                   resolveReturnPolicy(field.value, storeReturnPolicy),
                 );
                 return (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <AdminSelect
-                      label="Return / replace policy"
+                      label="Return / replace"
                       disabled={!fieldsEditable}
                       value={selectValue}
                       onChange={(next) => {
@@ -657,11 +771,10 @@ export function ProductForm({
                             : (next as ReturnPolicy),
                         );
                       }}
-                      helperText="Use store default to follow Delivery & returns. Override only when this product needs a different rule."
                       options={[
                         {
                           value: STORE_DEFAULT_POLICY,
-                          label: `Use store default — ${returnPolicyLabel(storeReturnPolicy)}`,
+                          label: `Store default — ${returnPolicyLabel(storeReturnPolicy)}`,
                         },
                         {
                           value: "no_return_refund",
@@ -671,86 +784,62 @@ export function ProductForm({
                         { value: "replace_only", label: "Replace only" },
                       ]}
                     />
-                    <p className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]">
+                    <p className="text-[11px] text-[var(--color-muted)]">
                       Customers see:{" "}
-                      <span className="font-semibold">{customersSee}</span>
+                      <span className="font-semibold text-[var(--color-foreground)]">
+                        {customersSee}
+                      </span>
                     </p>
                   </div>
                 );
               }}
             />
-          </div>
         </div>
       </StepCard>
 
-      {mode === "create" ? (
-        <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
-          After you save, you can upload product photos on the next screen.
+      {imagesSlot ? (
+        <StepCard
+          step={4}
+          title="Photos"
+          description="Shown on the product page and in listings"
+        >
+          {imagesSlot}
+        </StepCard>
+      ) : mode === "create" ? (
+        <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
+          After save, upload photos in step 4 on the edit screen.
         </p>
       ) : null}
 
       <details
-        className={`${adminCard()} ${adminCardPadding()}`}
+        className={cn(adminCard(), "overflow-hidden")}
         open={showAdvanced}
         onToggle={(event) =>
           setShowAdvanced((event.target as HTMLDetailsElement).open)
         }
       >
-        <summary className="cursor-pointer text-sm font-semibold text-[var(--color-foreground)]">
-          Extra details (optional)
+        <summary className="cursor-pointer border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-foreground)]">
+          Extra details
+          <span className="ml-1.5 text-[11px] font-normal text-[var(--color-muted)]">
+            Brand &amp; SEO
+          </span>
         </summary>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Brand, ingredients, shipping weight, and SEO.
-        </p>
-        <div className={`mt-4 ${adminFieldsGrid(2)}`}>
+        <div className={`p-3.5 ${adminFieldsGrid(2)}`}>
           <Controller
             name="brand"
             control={control}
             render={({ field }) => (
               <TextField
                 {...field}
-                label="Brand (who makes it)"
-                placeholder="e.g. your brand name"
+                size="small"
+                label="Brand (optional)"
+                placeholder="e.g. Nestlé, local mill name"
                 fullWidth
                 disabled={!fieldsEditable}
-                helperText="Shown on the product page when filled in."
+                helperText="Only if this product is from a named maker — leave blank for your own store brand"
               />
             )}
           />
-          <div className="md:col-span-2">
-            <Controller
-              name="ingredients"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="What's inside (ingredients)"
-                  placeholder="List ingredients if this is food or cosmetics"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  disabled={!fieldsEditable}
-                />
-              )}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Controller
-              name="usageInstructions"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="How customers should use it"
-                  placeholder="Short tips or instructions"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  disabled={!fieldsEditable}
-                />
-              )}
-            />
-          </div>
           <div className="md:col-span-2">
             <p className="mb-2 text-sm font-semibold text-[var(--color-foreground)]">
               Google &amp; SEO
@@ -768,167 +857,9 @@ export function ProductForm({
               }
               previewUrl={`/products/${slugWatch || "product-slug"}`}
               disabled={!fieldsEditable}
+              forceAutomatic
             />
           </div>
-          {visibleVariants.map(({ field, index }) => {
-            const variant = variants[index];
-            if (!variant) return null;
-            return (
-              <div
-                key={`extra-${field.fieldId}`}
-                className="md:col-span-2 grid gap-3 rounded-lg border border-[var(--color-border)] p-3 md:grid-cols-3"
-              >
-                <p className="md:col-span-3 text-sm font-medium">
-                  Pricing &amp; shipping — {variant.name || "pack"}
-                </p>
-                <Controller
-                  name={`variants.${index}.compareAtPrice`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <TextField
-                      type="number"
-                      label="Was price (strikethrough)"
-                      size="small"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                      value={f.value ?? ""}
-                      helperText="Old price to show a discount"
-                      onChange={(event) =>
-                        f.onChange(
-                          event.target.value === ""
-                            ? null
-                            : Number(event.target.value),
-                        )
-                      }
-                    />
-                  )}
-                />
-                <Controller
-                  name={`variants.${index}.costPrice`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <TextField
-                      type="number"
-                      label="Your cost (private)"
-                      size="small"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                      value={f.value ?? ""}
-                      helperText="Only for your records"
-                      onChange={(event) =>
-                        f.onChange(
-                          event.target.value === ""
-                            ? null
-                            : Number(event.target.value),
-                        )
-                      }
-                    />
-                  )}
-                />
-                <Controller
-                  name={`variants.${index}.weight`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <TextField
-                      type="number"
-                      label="Shipping weight"
-                      size="small"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                      value={f.value ?? ""}
-                      helperText="Used for shipping rates"
-                      onChange={(event) =>
-                        f.onChange(
-                          event.target.value === ""
-                            ? null
-                            : Number(event.target.value),
-                        )
-                      }
-                    />
-                  )}
-                />
-                <Controller
-                  name={`variants.${index}.unit`}
-                  control={control}
-                  render={({ field: f }) => {
-                    const unitOptions = [
-                      ...PRODUCT_UNIT_OPTIONS.filter(Boolean).map((unit) => ({
-                        value: unit,
-                        label: unit,
-                      })),
-                      ...(f.value &&
-                      !(PRODUCT_UNIT_OPTIONS as readonly string[]).includes(
-                        f.value,
-                      )
-                        ? [{ value: f.value, label: f.value }]
-                        : []),
-                    ];
-                    return (
-                      <AdminSelect
-                        label="Weight unit"
-                        disabled={!fieldsEditable}
-                        value={f.value ?? ""}
-                        onChange={f.onChange}
-                        allowEmpty
-                        emptyLabel="Not set"
-                        options={unitOptions}
-                      />
-                    );
-                  }}
-                />
-                <Controller
-                  name={`variants.${index}.lowStockThreshold`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <TextField
-                      {...f}
-                      size="small"
-                      type="number"
-                      label="Warn when stock falls below"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                      onChange={(event) =>
-                        f.onChange(Number(event.target.value) || 0)
-                      }
-                    />
-                  )}
-                />
-                <Controller
-                  name={`variants.${index}.trackInventory`}
-                  control={control}
-                  render={({ field: f }) => (
-                    <AdminToggle
-                      checked={f.value}
-                      disabled={!fieldsEditable}
-                      label="Track stock for this size"
-                      onChange={f.onChange}
-                    />
-                  )}
-                />
-                <Controller
-                  name={`variants.${index}.reservedQuantity`}
-                  control={control}
-                  render={({ field: f, fieldState }) => (
-                    <TextField
-                      {...f}
-                      type="number"
-                      label="Held for open orders"
-                      size="small"
-                      fullWidth
-                      disabled={!fieldsEditable}
-                      error={Boolean(fieldState.error)}
-                      helperText={
-                        fieldState.error?.message ?? "Usually leave at 0"
-                      }
-                      onChange={(event) =>
-                        f.onChange(Number(event.target.value) || 0)
-                      }
-                    />
-                  )}
-                />
-              </div>
-            );
-          })}
         </div>
       </details>
 

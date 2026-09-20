@@ -14,7 +14,7 @@ export default async function AdminCategoriesPage() {
     <div className="w-full min-w-0 space-y-3">
       <AdminPageHeader
         title="Categories"
-        description="Organize products into categories customers can browse."
+        description="Group products. Google text fills in automatically."
         breadcrumbs={[
           { label: "Products", href: getAdminPath("/catalog/products") },
           { label: "Categories" },

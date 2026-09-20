@@ -21,6 +21,8 @@ interface ProductImagesPanelProps {
   canUpload: boolean;
   canUpdate: boolean;
   canDelete: boolean;
+  /** When true, omit outer card/title (parent StepCard provides them). */
+  embedded?: boolean;
 }
 
 function imageUrl(row: ProductImageRow): string {
@@ -37,6 +39,7 @@ export function ProductImagesPanel({
   canUpload,
   canUpdate,
   canDelete,
+  embedded = false,
 }: ProductImagesPanelProps) {
   const router = useRouter();
   const [images, setImages] = useState(initialImages);
@@ -76,15 +79,22 @@ export function ProductImagesPanel({
     [productId, router],
   );
 
-  return (
-    <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:p-5">
-      <div>
-        <h2 className="font-semibold">Product images</h2>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Photos are shown in full (no stretch or crop). The primary image is
-          used on product cards and the product page.
+  const body = (
+    <>
+      {!embedded ? (
+        <div>
+          <h2 className="font-semibold">Product images</h2>
+          <p className="mt-1 text-sm text-[var(--color-muted)]">
+            Photos are shown in full (no stretch or crop). The primary image is
+            used on product cards and the product page.
+          </p>
+        </div>
+      ) : (
+        <p className="text-[11px] leading-snug text-[var(--color-muted)]">
+          Full photos (no crop). The primary image is used on cards and the
+          product page.
         </p>
-      </div>
+      )}
 
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
@@ -92,8 +102,9 @@ export function ProductImagesPanel({
       <UploadDropzone
         disabled={!canUpload || pending}
         onFiles={uploadFiles}
-        label="Drop product images here"
-        hint="JPEG, PNG, or WebP · max 5 MB each"
+        label="Drop images or choose files"
+        hint="JPEG, PNG, WebP · max 5 MB"
+        compact={embedded}
       />
 
       <SortableImageList
@@ -183,6 +194,16 @@ export function ProductImagesPanel({
           });
         }}
       />
+    </>
+  );
+
+  if (embedded) {
+    return <div className="space-y-3">{body}</div>;
+  }
+
+  return (
+    <section className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 md:p-5">
+      {body}
     </section>
   );
 }

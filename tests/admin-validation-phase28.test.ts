@@ -116,7 +116,7 @@ describe("Phase 28 — catalog Zod contracts", () => {
       slug: "spices",
       description: "",
       parentId: null,
-      imagePath: null,
+      imagePath: "categories/spices.webp",
       sortOrder: 0,
       isActive: true,
       seoTitle: "",

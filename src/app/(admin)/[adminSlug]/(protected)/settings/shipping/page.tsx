@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function AdminShippingSettingsPage() {
   const admin = await requireAdmin("shipping.view");
   const canUpdate = hasPermission(admin, "shipping.update");
-  const { values, currency, storeId } = await loadShippingSettingsForm();
+  const { values, currency, storeId, courierSecrets } =
+    await loadShippingSettingsForm();
   if (!storeId) {
     redirect(getAdminPath("/unauthorized"));
   }
@@ -19,7 +20,7 @@ export default async function AdminShippingSettingsPage() {
     <div>
       <AdminPageHeader
         title="Delivery & returns"
-        description="Set delivery price, how orders become Delivered, and the return policy customers see."
+        description="Fees, fulfillment, returns, and cancel reasons — compact store controls."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Delivery & returns" },
@@ -27,6 +28,7 @@ export default async function AdminShippingSettingsPage() {
       />
       <ShippingSettingsForm
         initialValues={values}
+        courierSecrets={courierSecrets}
         currency={currency}
         canUpdate={canUpdate}
       />

@@ -100,7 +100,7 @@ export function AdminSeoFields({
     <div style={adminStackStyle}>
       <p className="text-sm text-[var(--color-muted)]">
         {forceAutomatic
-          ? "Search text is filled automatically from the page title and document body. It cannot be customized for legal pages."
+          ? "Search text is filled automatically from the name and description. Editing is locked."
           : "This is what Google (and similar search engines) can show for this page. It is filled automatically from the title and summary above — leave it alone unless you need different search text."}
       </p>
       {!forceAutomatic ? (

@@ -1,10 +1,17 @@
 "use client";
 
 import CloseIcon from "@mui/icons-material/Close";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { HeaderAccountMenu } from "@/components/common/HeaderAccountMenu";
+import { ProductsCategoryMenuPanel } from "@/components/layout/ProductsCategoryMenuPanel";
+import {
+  buildCategoryMenuTree,
+  isProductsNavHref,
+  type CategoryMenuSource,
+} from "@/features/catalog/category-menu";
 import { isActivePath } from "@/lib/is-active-path";
 import { cn } from "@/lib/cn";
 import type { BrandConfig, NavigationConfig } from "@/types";
@@ -23,6 +30,8 @@ export function MobileNavOverlay({
   navigation,
   pathname,
   showAccount,
+  categoryMenuEnabled = false,
+  categoryMenu = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -31,10 +40,19 @@ export function MobileNavOverlay({
   navigation: NavigationConfig;
   pathname: string;
   showAccount: boolean;
+  categoryMenuEnabled?: boolean;
+  categoryMenu?: CategoryMenuSource[];
 }) {
   const [mounted, setMounted] = useState(false);
   const [rendered, setRendered] = useState(false);
   const [entered, setEntered] = useState(false);
+  const [productsOpen, setProductsOpen] = useState(false);
+
+  const categoryTree = useMemo(
+    () =>
+      categoryMenuEnabled ? buildCategoryMenuTree(categoryMenu) : [],
+    [categoryMenu, categoryMenuEnabled],
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -50,6 +68,7 @@ export function MobileNavOverlay({
     }
 
     setEntered(false);
+    setProductsOpen(false);
     if (!rendered) return;
     const timeout = window.setTimeout(() => setRendered(false), MENU_MOTION_MS);
     return () => window.clearTimeout(timeout);
@@ -136,6 +155,54 @@ export function MobileNavOverlay({
               {navigation.primary.map((item, index) => {
                 const active = isActivePath(pathname, item.href);
                 const isLast = index === navigation.primary.length - 1;
+                const showCategoryAccordion =
+                  categoryMenuEnabled && isProductsNavHref(item.href);
+
+                if (showCategoryAccordion) {
+                  return (
+                    <li key={`${item.href}-${item.label}`}>
+                      <button
+                        type="button"
+                        aria-expanded={productsOpen}
+                        onClick={() => setProductsOpen((v) => !v)}
+                        className={cn(
+                          "flex w-full items-center justify-between py-3 text-left font-[family-name:var(--font-display)] text-base font-medium leading-snug tracking-tight transition-colors",
+                          !isLast &&
+                            !productsOpen &&
+                            "border-b border-[color-mix(in_srgb,var(--color-border)_70%,transparent)]",
+                          active
+                            ? "text-[var(--color-primary)]"
+                            : "text-[var(--color-foreground)]",
+                        )}
+                      >
+                        {item.label}
+                        <KeyboardArrowDownIcon
+                          sx={{ fontSize: 20 }}
+                          className={cn(
+                            "opacity-70 transition-transform",
+                            productsOpen && "rotate-180",
+                          )}
+                        />
+                      </button>
+                      {productsOpen ? (
+                        <div
+                          className={cn(
+                            "mb-2 mt-1",
+                            !isLast &&
+                              "border-b border-[color-mix(in_srgb,var(--color-border)_70%,transparent)] pb-3",
+                          )}
+                        >
+                          <ProductsCategoryMenuPanel
+                            categoryTree={categoryTree}
+                            onNavigate={onClose}
+                            variant="mobile"
+                          />
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                }
+
                 return (
                   <li key={`${item.href}-${item.label}`}>
                     <Link

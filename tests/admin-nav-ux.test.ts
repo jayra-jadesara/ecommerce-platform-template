@@ -71,6 +71,8 @@ describe("admin navigation structure", () => {
     expect(labels).toContain("Appearance");
     expect(labels).toContain("Menu & Navigation");
     expect(labels).toContain("Google & SEO");
+    expect(labels).toContain("Header layout");
+    expect(labels).toContain("Footer layout");
     expect(labels).toContain("Coupons");
     expect(labels).not.toContain("CMS");
     expect(labels).not.toContain("Theme");

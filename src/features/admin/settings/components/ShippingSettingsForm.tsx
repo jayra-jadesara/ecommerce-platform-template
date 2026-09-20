@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { saveShippingSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
@@ -15,16 +15,11 @@ import {
 import { calculateOrderPricing } from "@/features/pricing/engine";
 import { majorToMinor } from "@/features/pricing/money";
 import { formatMoney } from "@/features/catalog/money";
+import { AdminReasonOptionsEditor } from "@/features/admin/ui/AdminReasonOptionsEditor";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import {
   adminCard,
-  adminCardPadding,
-  adminCardSpanFull,
-  adminCardsGrid,
   adminFieldsGrid,
-  adminSectionDesc,
-  adminSectionTitle,
-  adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { FieldError } from "@/features/admin/ui/FieldError";
@@ -37,9 +32,11 @@ import {
   FULFILLMENT_MODE_OPTIONS,
   REPLACE_WINDOW_HOURS,
   RETURN_POLICY_OPTIONS,
+  coerceCancelReasonOptions,
   coerceReplaceMaxAttempts,
   coerceReplaceReasonOptions,
   coerceReplaceWindowHours,
+  isOtherCancelReason,
   isOtherReplaceReason,
   returnPolicyLabel,
   type FulfillmentMode,
@@ -51,6 +48,65 @@ interface ShippingSettingsFormProps {
   initialValues: ShippingSettingsFormValues;
   currency: string;
   canUpdate: boolean;
+  courierSecrets?: {
+    delhiveryToken: boolean;
+    bluedartLicence: boolean;
+    bluedartApiKey: boolean;
+    bluedartApiSecret: boolean;
+  };
+}
+
+function Section({
+  title,
+  hint,
+  children,
+  dimmed,
+  badge,
+  className,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+  dimmed?: boolean;
+  badge?: string;
+  className?: string;
+}) {
+  return (
+    <section
+      className={cn(
+        adminCard(),
+        "p-3.5 md:p-4",
+        dimmed && "opacity-50",
+        className,
+      )}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.75rem",
+        width: "100%",
+        pointerEvents: dimmed ? "none" : undefined,
+      }}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+            {title}
+          </h2>
+          {hint ? (
+            <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+              {hint}
+            </p>
+          ) : null}
+        </div>
+        {badge ? (
+          <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            {badge}
+          </span>
+        ) : null}
+      </header>
+      {children}
+    </section>
+  );
 }
 
 function ChoiceCard({
@@ -74,44 +130,56 @@ function ChoiceCard({
       disabled={disabled}
       onClick={onSelect}
       className={cn(
-        "rounded-2xl border px-4 py-4 text-left transition-[border-color,background-color,box-shadow]",
-        "outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_35%,transparent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-background)]",
-        "disabled:cursor-not-allowed disabled:opacity-50 disabled:!bg-[var(--color-card)] disabled:!shadow-none",
+        "rounded-xl border px-3 py-2.5 text-left transition",
+        "outline-none focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_35%,transparent)]",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         selected
-          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] shadow-[0_0_0_1px_var(--color-primary)] disabled:!bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))]"
-          : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[color-mix(in_srgb,var(--color-foreground)_22%,var(--color-border))]",
+          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-card))] shadow-[inset_0_0_0_1px_var(--color-primary)]"
+          : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[color-mix(in_srgb,var(--color-foreground)_18%,var(--color-border))]",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <span className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
           {title}
         </span>
         <span
           className={cn(
-            "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2",
+            "inline-flex h-3.5 w-3.5 shrink-0 rounded-full border-2",
             selected
               ? "border-[var(--color-primary)] bg-[var(--color-primary)]"
-              : "border-[var(--color-border)] bg-transparent",
+              : "border-[var(--color-border)]",
           )}
           aria-hidden
         />
       </div>
       {badge ? (
-        <span className="mt-2 inline-block rounded-md bg-[var(--color-surface)] px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+        <span className="mt-1 inline-block rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wider text-[var(--color-muted)]">
           {badge}
         </span>
       ) : null}
-      <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-1 text-[11px] leading-snug text-[var(--color-muted)]">
         {description}
       </p>
     </button>
   );
 }
 
+const fieldSx = {
+  "& .MuiInputBase-root": { fontSize: 13 },
+  "& .MuiInputLabel-root": { fontSize: 13 },
+  "& .MuiFormHelperText-root": { fontSize: 11, marginTop: "4px" },
+} as const;
+
 export function ShippingSettingsForm({
   initialValues,
   currency,
   canUpdate,
+  courierSecrets = {
+    delhiveryToken: false,
+    bluedartLicence: false,
+    bluedartApiKey: false,
+    bluedartApiSecret: false,
+  },
 }: ShippingSettingsFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -149,6 +217,21 @@ export function ShippingSettingsForm({
       replaceReasonOptions: coerceReplaceReasonOptions(
         initialValues.replaceReasonOptions,
       ),
+      cancelReasonOptions: coerceCancelReasonOptions(
+        initialValues.cancelReasonOptions,
+      ),
+      courierDefaultProvider:
+        initialValues.courierDefaultProvider === "bluedart"
+          ? "bluedart"
+          : "delhivery",
+      courierSandbox: initialValues.courierSandbox !== false,
+      delhiveryApiToken: initialValues.delhiveryApiToken ?? null,
+      delhiveryClientName: initialValues.delhiveryClientName ?? null,
+      bluedartLoginId: initialValues.bluedartLoginId ?? null,
+      bluedartLicenceKey: initialValues.bluedartLicenceKey ?? null,
+      bluedartApiKey: initialValues.bluedartApiKey ?? null,
+      bluedartApiSecret: initialValues.bluedartApiSecret ?? null,
+      bluedartOriginArea: initialValues.bluedartOriginArea ?? null,
       autoDeliverAfterDays:
         initialValues.autoDeliverAfterDays ??
         DEFAULT_SHIPPING_SETTINGS.autoDeliverAfterDays,
@@ -176,6 +259,11 @@ export function ShippingSettingsForm({
 
   const reasonOptions =
     (useWatch({ control, name: "replaceReasonOptions" }) as
+      | string[]
+      | undefined) ?? [];
+
+  const cancelReasonOptions =
+    (useWatch({ control, name: "cancelReasonOptions" }) as
       | string[]
       | undefined) ?? [];
 
@@ -287,8 +375,7 @@ export function ShippingSettingsForm({
         event.preventDefault();
         onSave();
       }}
-      className="w-full"
-      style={adminStackStyle}
+      className="flex w-full flex-col gap-3"
       noValidate
     >
       <SettingsFormToolbar
@@ -306,18 +393,13 @@ export function ShippingSettingsForm({
         onResetDefaults={() => reset(DEFAULT_SHIPPING_SETTINGS)}
       />
 
-      <div className={adminCardsGrid()}>
-        <section
-          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
-          style={adminStackStyle}
+      <div className="grid gap-3 lg:grid-cols-2">
+        {/* Delivery master + fulfillment */}
+        <Section
+          title="Delivery"
+          hint="Master switch for checkout delivery fees and fulfillment."
+          className="lg:col-span-2"
         >
-          <div>
-            <h2 className={adminSectionTitle()}>Delivery</h2>
-            <p className={adminSectionDesc()}>
-              Turn delivery on, then choose how orders are completed and what
-              customers see for returns.
-            </p>
-          </div>
           <Controller
             name="enabled"
             control={control}
@@ -331,27 +413,23 @@ export function ShippingSettingsForm({
                     ? "Delivery is on for this store"
                     : "Delivery is off"
                 }
+                description={
+                  deliveryOn
+                    ? "Fees and delivery estimates show at checkout."
+                    : "Turn on to configure pricing and delivery time."
+                }
                 onChange={field.onChange}
               />
             )}
           />
-        </section>
+        </Section>
 
-        <section
-          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
-          style={{
-            ...adminStackStyle,
-            opacity: deliveryOn ? 1 : 0.5,
-            pointerEvents: deliveryOn ? "auto" : "none",
-          }}
+        <Section
+          title="Mark as delivered"
+          hint="Only the selected flow runs for this store."
+          dimmed={!deliveryOn}
         >
-          <div>
-            <h2 className={adminSectionTitle()}>How orders become Delivered</h2>
-            <p className={adminSectionDesc()}>
-              Pick one flow for this store. Only the selected option runs.
-            </p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-2 sm:grid-cols-2">
             {FULFILLMENT_MODE_OPTIONS.map((option) => (
               <ChoiceCard
                 key={option.value}
@@ -379,270 +457,211 @@ export function ShippingSettingsForm({
               />
             ))}
           </div>
-
           {fulfillmentMode === "auto_days" ? (
-            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+            <div>
               <TextField
-                label="Mark delivered after (days)"
+                label="Days after shipped"
                 type="number"
+                size="small"
                 fullWidth
                 disabled={locked || !deliveryOn}
                 placeholder="7"
-                helperText="Recommended 5–7. After you mark Shipped, status becomes Delivered automatically."
+                helperText="Recommended 5–7. Auto-marks Delivered after Shipped."
                 error={Boolean(errors.autoDeliverAfterDays)}
+                sx={fieldSx}
                 {...register("autoDeliverAfterDays")}
               />
               <FieldError message={errors.autoDeliverAfterDays?.message} />
             </div>
           ) : (
-            <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-muted)]">
-              Courier API mode: use tracking on each order. Partner API connect
-              can be added later — auto-deliver is off while this is selected.
-            </div>
-          )}
-        </section>
-
-        <section
-          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
-          style={adminStackStyle}
-        >
-          <div>
-            <h2 className={adminSectionTitle()}>Return & replace policy</h2>
-            <p className={adminSectionDesc()}>
-              Shown on the product page and order screens. Products can override
-              this later if needed.
-            </p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {RETURN_POLICY_OPTIONS.map((option) => (
-              <ChoiceCard
-                key={option.value}
-                selected={returnPolicy === option.value}
-                disabled={locked}
-                title={option.title}
-                description={option.description}
-                onSelect={() => {
-                  setValue("returnPolicy", option.value, {
-                    shouldDirty: true,
-                    shouldValidate: true,
-                  });
-                  if (option.value !== "replace_only") {
-                    setValue("replacePhotoRequired", false, {
-                      shouldDirty: true,
-                    });
-                  }
-                }}
-              />
-            ))}
-          </div>
-          <p className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 text-sm text-[var(--color-foreground)]">
-            Customers will see:{" "}
-            <span className="font-semibold">{returnPolicyLabel(returnPolicy)}</span>
-          </p>
-          {returnPolicy === "replace_only" ? (
-            <div className="space-y-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-4">
-              <Controller
-                name="replacePhotoRequired"
-                control={control}
-                render={({ field }) => (
-                  <AdminToggle
-                    variant="row"
-                    checked={Boolean(field.value)}
-                    disabled={locked}
-                    label="Require photo for replace requests"
-                    description="Off by default to save free-tier storage. Turn on only if you need evidence (max 1 MB per photo)."
-                    onChange={field.onChange}
-                  />
-                )}
-              />
-
-              <div className={adminFieldsGrid()}>
+            <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+              <p className="text-[11px] leading-snug text-[var(--color-muted)]">
+                Enable one courier for this store. Create AWB and sync tracking
+                from orders. Leave secret fields blank to keep saved values.
+              </p>
+              <div className={adminFieldsGrid(2)}>
                 <Controller
-                  name="replaceWindowHours"
+                  name="courierDefaultProvider"
                   control={control}
                   render={({ field }) => (
                     <AdminSelect
-                      label="Replace window after delivery"
-                      disabled={locked}
-                      value={String(coerceReplaceWindowHours(field.value))}
-                      onChange={(next) => field.onChange(Number(next))}
-                      helperText="Customers can request a replacement only within this time after Delivered."
-                      options={REPLACE_WINDOW_HOURS.map((hours) => ({
-                        value: String(hours),
-                        label:
-                          hours === 168
-                            ? "7 days (168 hours)"
-                            : `${hours} hours`,
-                      }))}
+                      label="Active courier"
+                      disabled={locked || !deliveryOn}
+                      value={
+                        field.value === "bluedart" ? "bluedart" : "delhivery"
+                      }
+                      onChange={(next) =>
+                        field.onChange(
+                          next === "bluedart" ? "bluedart" : "delhivery",
+                        )
+                      }
+                      helperText="Only one service runs at a time."
+                      options={[
+                        { value: "delhivery", label: "Delhivery" },
+                        { value: "bluedart", label: "Blue Dart" },
+                      ]}
                     />
                   )}
                 />
                 <Controller
-                  name="replaceMaxAttempts"
+                  name="courierSandbox"
                   control={control}
                   render={({ field }) => (
-                    <TextField
-                      label="Max attempts per item"
-                      type="number"
-                      fullWidth
-                      disabled={locked}
-                      value={coerceReplaceMaxAttempts(field.value)}
-                      onChange={(event) =>
-                        field.onChange(
-                          coerceReplaceMaxAttempts(event.target.value),
-                        )
-                      }
-                      helperText="How many times a customer may request replace for the same line (1–5)."
-                      slotProps={{ htmlInput: { min: 1, max: 5 } }}
+                    <AdminToggle
+                      variant="row"
+                      checked={Boolean(field.value)}
+                      disabled={locked || !deliveryOn}
+                      label="Sandbox / staging"
+                      description="ON = Delhivery staging URLs. OFF = live production. Use the matching token (staging vs live)."
+                      onChange={field.onChange}
                     />
                   )}
                 />
               </div>
-              <FieldError message={errors.replaceWindowHours?.message} />
-              <FieldError message={errors.replaceMaxAttempts?.message} />
 
-              <div>
-                <p className="text-sm font-medium text-[var(--color-foreground)]">
-                  Reason options
-                </p>
-                <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                  Shown in the customer request dialog. Always keep an Other
-                  option so shoppers can write their own.
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {reasonOptions.map((option, index) => {
-                    const isOther = isOtherReplaceReason(option);
-                    return (
-                      <li
-                        key={`${index}-${option}`}
-                        className="flex flex-wrap items-center gap-2"
-                      >
-                        <TextField
-                          size="small"
-                          fullWidth
-                          disabled={locked || isOther}
-                          value={option}
-                          onChange={(event) => {
-                            const next = [...reasonOptions];
-                            next[index] = event.target.value;
-                            setValue(
-                              "replaceReasonOptions",
-                              coerceReplaceReasonOptions(next),
-                              { shouldDirty: true },
-                            );
-                          }}
-                          className="min-w-[12rem] flex-1"
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            type="button"
-                            disabled={locked || index === 0}
-                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs disabled:opacity-40"
-                            onClick={() => {
-                              if (index === 0) return;
-                              const next = [...reasonOptions];
-                              const tmp = next[index - 1]!;
-                              next[index - 1] = next[index]!;
-                              next[index] = tmp;
-                              setValue(
-                                "replaceReasonOptions",
-                                coerceReplaceReasonOptions(next),
-                                { shouldDirty: true },
-                              );
-                            }}
-                          >
-                            Up
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              locked || index >= reasonOptions.length - 1
-                            }
-                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs disabled:opacity-40"
-                            onClick={() => {
-                              if (index >= reasonOptions.length - 1) return;
-                              const next = [...reasonOptions];
-                              const tmp = next[index + 1]!;
-                              next[index + 1] = next[index]!;
-                              next[index] = tmp;
-                              setValue(
-                                "replaceReasonOptions",
-                                coerceReplaceReasonOptions(next),
-                                { shouldDirty: true },
-                              );
-                            }}
-                          >
-                            Down
-                          </button>
-                          <button
-                            type="button"
-                            disabled={
-                              locked ||
-                              isOther ||
-                              reasonOptions.filter(
-                                (item) => !isOtherReplaceReason(item),
-                              ).length <= 1
-                            }
-                            className="rounded-lg border border-[var(--color-border)] px-2 py-1 text-xs text-red-700 disabled:opacity-40"
-                            onClick={() => {
-                              const next = reasonOptions.filter(
-                                (_, i) => i !== index,
-                              );
-                              setValue(
-                                "replaceReasonOptions",
-                                coerceReplaceReasonOptions(next),
-                                { shouldDirty: true },
-                              );
-                            }}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <button
-                  type="button"
-                  disabled={locked || reasonOptions.length >= 12}
-                  className="mt-3 rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-sm disabled:opacity-40"
-                  onClick={() => {
-                    const withoutOther = reasonOptions.filter(
-                      (item) => !isOtherReplaceReason(item),
-                    );
-                    setValue(
-                      "replaceReasonOptions",
-                      coerceReplaceReasonOptions([
-                        ...withoutOther,
-                        "New reason",
-                        "Other",
-                      ]),
-                      { shouldDirty: true },
-                    );
-                  }}
-                >
-                  Add reason
-                </button>
-                <FieldError message={errors.replaceReasonOptions?.message} />
-              </div>
+              {(watched.courierDefaultProvider === "bluedart"
+                ? "bluedart"
+                : "delhivery") === "delhivery" ? (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[12px] font-semibold text-[var(--color-foreground)]">
+                      Delhivery credentials
+                    </p>
+                    {courierSecrets.delhiveryToken ? (
+                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,var(--color-card))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-success)]">
+                        Token saved
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                        No token yet
+                      </span>
+                    )}
+                  </div>
+                  <div className={adminFieldsGrid(2)}>
+                    <TextField
+                      label="API token"
+                      size="small"
+                      fullWidth
+                      type="password"
+                      autoComplete="off"
+                      disabled={locked || !deliveryOn}
+                      placeholder={
+                        courierSecrets.delhiveryToken
+                          ? "•••••••• (saved — leave blank to keep)"
+                          : "Paste API token"
+                      }
+                      helperText={
+                        courierSecrets.delhiveryToken
+                          ? "Token is stored securely and never shown again. Paste a new one only to replace it."
+                          : "From Delhivery One → Settings → API Setup. Paste once and Save."
+                      }
+                      sx={fieldSx}
+                      {...register("delhiveryApiToken")}
+                    />
+                    <TextField
+                      label="Client / warehouse name"
+                      size="small"
+                      fullWidth
+                      disabled={locked || !deliveryOn}
+                      helperText="Must match Delhivery registered pickup name."
+                      sx={fieldSx}
+                      {...register("delhiveryClientName")}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-[12px] font-semibold text-[var(--color-foreground)]">
+                      Blue Dart credentials
+                    </p>
+                    {courierSecrets.bluedartLicence &&
+                    courierSecrets.bluedartApiKey &&
+                    courierSecrets.bluedartApiSecret ? (
+                      <span className="rounded-full border border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_10%,var(--color-card))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-success)]">
+                        Keys saved
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-[var(--color-border)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                        Keys incomplete
+                      </span>
+                    )}
+                  </div>
+                  <div className={adminFieldsGrid(2)}>
+                    <TextField
+                      label="Login ID"
+                      size="small"
+                      fullWidth
+                      disabled={locked || !deliveryOn}
+                      sx={fieldSx}
+                      {...register("bluedartLoginId")}
+                    />
+                    <TextField
+                      label="Origin area"
+                      size="small"
+                      fullWidth
+                      disabled={locked || !deliveryOn}
+                      helperText="e.g. DEL — must match pincode region."
+                      sx={fieldSx}
+                      {...register("bluedartOriginArea")}
+                    />
+                    <TextField
+                      label="Licence key"
+                      size="small"
+                      fullWidth
+                      type="password"
+                      autoComplete="off"
+                      disabled={locked || !deliveryOn}
+                      placeholder={
+                        courierSecrets.bluedartLicence
+                          ? "•••••••• (saved — leave blank to keep)"
+                          : "Paste licence key"
+                      }
+                      sx={fieldSx}
+                      {...register("bluedartLicenceKey")}
+                    />
+                    <TextField
+                      label="API key (Client ID)"
+                      size="small"
+                      fullWidth
+                      type="password"
+                      autoComplete="off"
+                      disabled={locked || !deliveryOn}
+                      placeholder={
+                        courierSecrets.bluedartApiKey
+                          ? "•••••••• (saved — leave blank to keep)"
+                          : "Paste API key"
+                      }
+                      sx={fieldSx}
+                      {...register("bluedartApiKey")}
+                    />
+                    <TextField
+                      label="API secret"
+                      size="small"
+                      fullWidth
+                      type="password"
+                      autoComplete="off"
+                      disabled={locked || !deliveryOn}
+                      placeholder={
+                        courierSecrets.bluedartApiSecret
+                          ? "•••••••• (saved — leave blank to keep)"
+                          : "Paste API secret"
+                      }
+                      sx={fieldSx}
+                      {...register("bluedartApiSecret")}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
-          ) : null}
-        </section>
+          )}
+        </Section>
 
-        <section
-          className={`${adminCard()} ${adminCardPadding()}`}
-          style={{
-            ...adminStackStyle,
-            opacity: deliveryOn ? 1 : 0.5,
-            pointerEvents: deliveryOn ? "auto" : "none",
-          }}
+        <Section
+          title="Price & ETA"
+          hint="Checkout fee and the delivery window customers see."
+          dimmed={!deliveryOn}
         >
-          <div>
-            <h2 className={adminSectionTitle()}>Delivery price</h2>
-            <p className={adminSectionDesc()}>
-              What customers pay for delivery at checkout.
-            </p>
-          </div>
           <Controller
             name="method"
             control={control}
@@ -666,7 +685,7 @@ export function ShippingSettingsForm({
                   options={[
                     {
                       value: "flat_rate",
-                      label: "Fixed fee (free above a certain amount)",
+                      label: "Fixed fee (free above threshold)",
                     },
                     { value: "free", label: "Always free" },
                     { value: "percentage", label: "% of order total" },
@@ -681,107 +700,101 @@ export function ShippingSettingsForm({
             )}
           />
 
-          {showFlatFields ? (
-            <div>
-              <TextField
-                label={`Delivery fee (${currency})`}
-                type="number"
-                fullWidth
-                required
-                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-                disabled={locked || !deliveryOn}
-                error={Boolean(errors.defaultShippingFee)}
-                {...register("defaultShippingFee")}
-              />
-              <FieldError message={errors.defaultShippingFee?.message} />
-            </div>
-          ) : null}
-
-          {showFreeThreshold ? (
-            <div>
-              <TextField
-                label={`Free delivery from (${currency})`}
-                type="number"
-                fullWidth
-                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-                disabled={locked || !deliveryOn}
-                error={Boolean(errors.freeShippingThreshold)}
-                helperText={`Example: ${formatMoney(500, currency)}+ gets free delivery.`}
-                {...register("freeShippingThreshold")}
-              />
-              <FieldError message={errors.freeShippingThreshold?.message} />
-            </div>
-          ) : null}
-
-          {showPercentage ? (
-            <div>
-              <TextField
-                label="Delivery % of order"
-                type="number"
-                fullWidth
-                slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
-                disabled={locked || !deliveryOn}
-                error={Boolean(errors.percentageRate)}
-                {...register("percentageRate")}
-              />
-              <FieldError message={errors.percentageRate?.message} />
-            </div>
-          ) : null}
-        </section>
-
-        <section
-          className={`${adminCard()} ${adminCardPadding()}`}
-          style={{
-            ...adminStackStyle,
-            opacity: deliveryOn ? 1 : 0.5,
-            pointerEvents: deliveryOn ? "auto" : "none",
-          }}
-        >
-          <div>
-            <h2 className={adminSectionTitle()}>Delivery time</h2>
-            <p className={adminSectionDesc()}>
-              Shown so customers know when to expect the parcel.
-            </p>
-          </div>
           <div className={adminFieldsGrid(2)}>
+            {showFlatFields ? (
+              <div>
+                <TextField
+                  label={`Fee (${currency})`}
+                  type="number"
+                  size="small"
+                  fullWidth
+                  required
+                  slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                  disabled={locked || !deliveryOn}
+                  error={Boolean(errors.defaultShippingFee)}
+                  sx={fieldSx}
+                  {...register("defaultShippingFee")}
+                />
+                <FieldError message={errors.defaultShippingFee?.message} />
+              </div>
+            ) : null}
+            {showFreeThreshold ? (
+              <div>
+                <TextField
+                  label={`Free from (${currency})`}
+                  type="number"
+                  size="small"
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                  disabled={locked || !deliveryOn}
+                  error={Boolean(errors.freeShippingThreshold)}
+                  sx={fieldSx}
+                  {...register("freeShippingThreshold")}
+                />
+                <FieldError message={errors.freeShippingThreshold?.message} />
+              </div>
+            ) : null}
+            {showPercentage ? (
+              <div>
+                <TextField
+                  label="Delivery %"
+                  type="number"
+                  size="small"
+                  fullWidth
+                  slotProps={{ htmlInput: { min: 0, max: 100, step: "0.01" } }}
+                  disabled={locked || !deliveryOn}
+                  error={Boolean(errors.percentageRate)}
+                  sx={fieldSx}
+                  {...register("percentageRate")}
+                />
+                <FieldError message={errors.percentageRate?.message} />
+              </div>
+            ) : null}
             <TextField
               label="Fastest (days)"
               type="number"
+              size="small"
               fullWidth
               disabled={locked || !deliveryOn}
+              sx={fieldSx}
               {...register("estimatedDeliveryMinDays")}
             />
             <TextField
               label="Longest (days)"
               type="number"
+              size="small"
               fullWidth
               disabled={locked || !deliveryOn}
+              sx={fieldSx}
               {...register("estimatedDeliveryMaxDays")}
             />
           </div>
+
           <TextField
             label="Customer message (optional)"
+            size="small"
             fullWidth
             disabled={locked || !deliveryOn}
-            placeholder="Delivered in 3–7 working days across India"
+            placeholder="Delivered in 3–7 working days"
+            sx={fieldSx}
             {...register("estimatedDeliveryLabel")}
           />
 
-          <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-            <p className="text-sm font-medium text-[var(--color-foreground)]">
-              Price preview
+          <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+              Fee preview
             </p>
             {!deliveryOn ? (
-              <p className="mt-2 text-sm text-[var(--color-muted)]">
-                Turn delivery on to see examples.
+              <p className="mt-1 text-[11px] text-[var(--color-muted)]">
+                Turn delivery on to preview.
               </p>
             ) : (
-              <ul className="mt-3 space-y-2 text-sm">
+              <ul className="mt-1.5 space-y-1 text-[12px]">
                 <li className="flex justify-between gap-2">
                   <span className="text-[var(--color-muted)]">
-                    Order {formatMoney(preview.sampleBelow, currency)}
+                    {formatMoney(preview.sampleBelow, currency)}
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold tabular-nums">
                     {preview.below
                       ? formatMoney(preview.below.shipping.major, currency)
                       : "—"}
@@ -789,9 +802,9 @@ export function ShippingSettingsForm({
                 </li>
                 <li className="flex justify-between gap-2">
                   <span className="text-[var(--color-muted)]">
-                    Order {formatMoney(preview.sampleAt, currency)}
+                    {formatMoney(preview.sampleAt, currency)}
                   </span>
-                  <span className="font-semibold">
+                  <span className="font-semibold tabular-nums">
                     {preview.at
                       ? formatMoney(preview.at.shipping.major, currency)
                       : "—"}
@@ -800,7 +813,141 @@ export function ShippingSettingsForm({
               </ul>
             )}
           </div>
-        </section>
+        </Section>
+
+        {/* Returns */}
+        <Section
+          title="Return & replace"
+          hint="Default policy on product and order screens."
+          className="lg:col-span-2"
+        >
+          <div className="grid gap-2 sm:grid-cols-3">
+            {RETURN_POLICY_OPTIONS.map((option) => (
+              <ChoiceCard
+                key={option.value}
+                selected={returnPolicy === option.value}
+                disabled={locked}
+                title={option.title}
+                description={option.description}
+                onSelect={() => {
+                  setValue("returnPolicy", option.value, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  });
+                  if (option.value !== "replace_only") {
+                    setValue("replacePhotoRequired", false, {
+                      shouldDirty: true,
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+          <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[12px] text-[var(--color-foreground)]">
+            Customers see:{" "}
+            <span className="font-semibold">{returnPolicyLabel(returnPolicy)}</span>
+          </p>
+
+          {returnPolicy === "replace_only" ? (
+            <div className="space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+              <Controller
+                name="replacePhotoRequired"
+                control={control}
+                render={({ field }) => (
+                  <AdminToggle
+                    variant="row"
+                    checked={Boolean(field.value)}
+                    disabled={locked}
+                    label="Require photo"
+                    description="Off by default (saves storage). Max 1 MB."
+                    onChange={field.onChange}
+                  />
+                )}
+              />
+              <div className={adminFieldsGrid(2)}>
+                <Controller
+                  name="replaceWindowHours"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminSelect
+                      label="Replace window"
+                      disabled={locked}
+                      value={String(coerceReplaceWindowHours(field.value))}
+                      onChange={(next) => field.onChange(Number(next))}
+                      helperText="After Delivered."
+                      options={REPLACE_WINDOW_HOURS.map((hours) => ({
+                        value: String(hours),
+                        label:
+                          hours === 168
+                            ? "7 days (168h)"
+                            : `${hours} hours`,
+                      }))}
+                    />
+                  )}
+                />
+                <Controller
+                  name="replaceMaxAttempts"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Max attempts / item"
+                      type="number"
+                      size="small"
+                      fullWidth
+                      disabled={locked}
+                      value={coerceReplaceMaxAttempts(field.value)}
+                      onChange={(event) =>
+                        field.onChange(
+                          coerceReplaceMaxAttempts(event.target.value),
+                        )
+                      }
+                      helperText="1–5 per line item"
+                      slotProps={{ htmlInput: { min: 1, max: 5 } }}
+                      sx={fieldSx}
+                    />
+                  )}
+                />
+              </div>
+              <FieldError message={errors.replaceWindowHours?.message} />
+              <FieldError message={errors.replaceMaxAttempts?.message} />
+              <div>
+                <p className="mb-1.5 text-[12px] font-medium text-[var(--color-foreground)]">
+                  Replace reasons
+                </p>
+                <AdminReasonOptionsEditor
+                  options={reasonOptions}
+                  locked={locked}
+                  isOther={isOtherReplaceReason}
+                  coerce={coerceReplaceReasonOptions}
+                  onChange={(next) =>
+                    setValue("replaceReasonOptions", next, {
+                      shouldDirty: true,
+                    })
+                  }
+                  error={errors.replaceReasonOptions?.message}
+                />
+              </div>
+            </div>
+          ) : null}
+        </Section>
+
+        <Section
+          title="COD cancel reasons"
+          hint="Asked when a shopper cancels COD before shipping."
+          badge="Customer dialog"
+          className="lg:col-span-2"
+        >
+          <AdminReasonOptionsEditor
+            options={cancelReasonOptions}
+            locked={locked}
+            isOther={isOtherCancelReason}
+            coerce={coerceCancelReasonOptions}
+            onChange={(next) =>
+              setValue("cancelReasonOptions", next, { shouldDirty: true })
+            }
+            error={errors.cancelReasonOptions?.message}
+          />
+        </Section>
       </div>
     </form>
   );

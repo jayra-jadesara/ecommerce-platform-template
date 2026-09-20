@@ -11,7 +11,7 @@ import type {
   OrderListResult,
   OrderPaymentView,
 } from "@/features/orders/types";
-import { listReplaceRequestsForOrder, getReplaceStoreRules } from "@/features/orders/replace-service";
+import { listReplaceRequestsForOrder, getReplaceStoreRules, getCancelReasonOptions } from "@/features/orders/replace-service";
 import { coercePaymentInstrument } from "@/features/payments/razorpay-instrument";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { ReplaceRequestStatus } from "@/features/shipping/policies";
@@ -185,13 +185,14 @@ export async function getOrderDetail(input: {
   const { data: order } = await query.maybeSingle();
   if (!order) return null;
 
-  const [items, payment, activities, replaceRequests, replaceRules] =
+  const [items, payment, activities, replaceRequests, replaceRules, cancelReasonOptions] =
     await Promise.all([
       mapItems(order.id),
       mapPayment(order.id),
       mapActivities(order.id),
       listReplaceRequestsForOrder(order.id),
       getReplaceStoreRules(order.store_id),
+      getCancelReasonOptions(order.store_id),
     ]);
 
   const customerNameParts: string[] = [];
@@ -229,9 +230,21 @@ export async function getOrderDetail(input: {
     billingAddress: asAddress(order.billing_address),
     shippingProvider: order.shipping_provider,
     trackingNumber: order.tracking_number,
+    courierProvider: order.courier_provider ?? null,
+    courierShipmentId: order.courier_shipment_id ?? null,
+    trackingStatus: order.tracking_status ?? null,
+    trackingSyncedAt: order.tracking_synced_at ?? null,
+    trackingPayload:
+      order.tracking_payload &&
+      typeof order.tracking_payload === "object" &&
+      !Array.isArray(order.tracking_payload)
+        ? (order.tracking_payload as OrderDetail["trackingPayload"])
+        : null,
     shippedAt: order.shipped_at,
     deliveredAt: order.delivered_at,
     cancelledAt: order.cancelled_at,
+    cancelReasonCode: order.cancel_reason_code ?? null,
+    cancelReason: order.cancel_reason ?? null,
     inventoryFinalizedAt: order.inventory_finalized_at,
     createdAt: order.created_at,
     updatedAt: order.updated_at,
@@ -241,6 +254,7 @@ export async function getOrderDetail(input: {
     replaceRequests,
     replacePhotoRequired: replaceRules.photoRequired,
     replaceRules,
+    cancelReasonOptions,
     customerEmail,
     customerName,
   };

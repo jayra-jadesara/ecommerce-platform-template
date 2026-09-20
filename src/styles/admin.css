@@ -479,13 +479,13 @@
 }
 
 .admin-shell {
-  --admin-sidebar-width: 15.5rem;
+  --admin-sidebar-width: 16.75rem;
   --admin-topbar-height: 3.5rem;
 }
 
 @media (min-width: 1280px) {
   .admin-shell {
-    --admin-sidebar-width: 16.5rem;
+    --admin-sidebar-width: 17.25rem;
   }
 }
 

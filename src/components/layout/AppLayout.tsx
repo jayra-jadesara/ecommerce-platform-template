@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
 import creditJson from "@/data/developer-credit.json";
 import type { FooterFeaturedProduct, PlatformConfig } from "@/types";
+import type { CategoryMenuSource } from "@/features/catalog/category-menu";
 
 interface AppLayoutProps {
   config: PlatformConfig;
@@ -13,6 +14,8 @@ interface AppLayoutProps {
   /** Streamed cart control (Suspense). Falls back to empty badge if omitted. */
   cartSlot?: ReactNode;
   featuredProduct?: FooterFeaturedProduct | null;
+  /** Active categories for Products dropdown (empty when setting is off). */
+  categoryMenu?: CategoryMenuSource[];
 }
 
 /** Storefront chrome: header, footer, and scroll affordance. */
@@ -21,6 +24,7 @@ export function AppLayout({
   children,
   cartSlot,
   featuredProduct = null,
+  categoryMenu = [],
 }: AppLayoutProps) {
   const showDevCredit = Boolean(
     (creditJson as { enabled?: boolean }).enabled,
@@ -38,6 +42,7 @@ export function AppLayout({
         layout={config.layout}
         header={config.header}
         cartSlot={cartSlot}
+        categoryMenu={categoryMenu}
       />
       {children}
       <Footer

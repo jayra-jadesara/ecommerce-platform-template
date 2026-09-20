@@ -22,8 +22,10 @@ import {
 } from "@/features/admin/ui/admin-classes";
 import { formatMoney } from "@/features/catalog/money";
 import {
+  adminCreateCourierShipmentAction,
   adminMarkOrderRefundedAction,
   adminReviewReplaceRequestAction,
+  adminSyncOrderTrackingAction,
   adminUpdateOrderStatusAction,
   adminUpdateOrderTrackingAction,
 } from "@/features/orders/actions";
@@ -36,6 +38,12 @@ import {
   orderStatusLabel,
 } from "@/features/orders/state-machine";
 import type { OrderDetail } from "@/features/orders/types";
+import {
+  courierProviderLabel,
+  trackingStatusLabel,
+  type CourierProvider,
+} from "@/features/shipping/courier/types";
+import { publicTrackingUrl } from "@/features/shipping/courier/urls";
 import {
   returnPolicyBlocksRefund,
   returnPolicyLabel,
@@ -138,17 +146,27 @@ export function AdminOrderDetailClient({
   initialOrder,
   canUpdate,
   canRefund,
+  activeCourier = "delhivery",
 }: {
   initialOrder: OrderDetail;
   canUpdate: boolean;
   canRefund: boolean;
+  /** Store's single enabled API courier (Delhivery or Blue Dart). */
+  activeCourier?: "delhivery" | "bluedart";
 }) {
   const router = useRouter();
   const tabsId = useId();
   const [order, setOrder] = useState(initialOrder);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [provider, setProvider] = useState(order.shippingProvider ?? "");
+  const [provider, setProvider] = useState<CourierProvider>(() => {
+    const c = initialOrder.courierProvider;
+    if (c === "delhivery" || c === "bluedart" || c === "manual") return c;
+    const label = (initialOrder.shippingProvider ?? "").toLowerCase();
+    if (label.includes("delhivery")) return "delhivery";
+    if (label.includes("blue")) return "bluedart";
+    return activeCourier;
+  });
   const [tracking, setTracking] = useState(order.trackingNumber ?? "");
   const [pending, startTransition] = useTransition();
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
@@ -183,7 +201,15 @@ export function AdminOrderDetailClient({
   /* eslint-disable react-hooks/set-state-in-effect -- sync refreshed server order into local editable state */
   useEffect(() => {
     setOrder(initialOrder);
-    setProvider(initialOrder.shippingProvider ?? "");
+    const c = initialOrder.courierProvider;
+    if (c === "delhivery" || c === "bluedart" || c === "manual") {
+      setProvider(c);
+    } else {
+      const label = (initialOrder.shippingProvider ?? "").toLowerCase();
+      if (label.includes("delhivery")) setProvider("delhivery");
+      else if (label.includes("blue")) setProvider("bluedart");
+      else setProvider("manual");
+    }
     setTracking(initialOrder.trackingNumber ?? "");
   }, [initialOrder]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -220,7 +246,7 @@ export function AdminOrderDetailClient({
         adminUpdateOrderStatusAction({
           orderId: order.id,
           nextStatus: "SHIPPED",
-          shippingProvider: provider,
+          shippingProvider: courierProviderLabel(provider),
           trackingNumber: tracking,
         }),
       );
@@ -290,6 +316,21 @@ export function AdminOrderDetailClient({
             <p className="mt-1 text-sm text-[var(--color-muted)]">
               Placed {formatDateTime(order.createdAt)}
             </p>
+            {order.status === "CANCELLED" && order.cancelReason ? (
+              <p className="mt-1.5 text-sm text-[var(--color-muted)]">
+                Cancel reason:{" "}
+                <span className="font-medium text-[var(--color-foreground)]">
+                  {order.cancelReason}
+                </span>
+                {order.cancelReasonCode &&
+                order.cancelReasonCode !== order.cancelReason ? (
+                  <span className="text-[var(--color-muted)]">
+                    {" "}
+                    ({order.cancelReasonCode})
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
           </div>
           <div className="text-right">
             <p className="text-xs text-[var(--color-muted)]">Grand total</p>
@@ -706,19 +747,50 @@ export function AdminOrderDetailClient({
                         Tracking
                       </SectionTitle>
                       <p className="mt-1 text-sm text-[var(--color-muted)]">
-                        Optional. Add before or after marking shipped.
+                        Delhivery / Blue Dart API or manual AWB. Sync updates
+                        status; Delivered from carrier marks the order delivered.
                       </p>
+                      {order.trackingStatus ? (
+                        <p className="mt-2 text-xs text-[var(--color-muted)]">
+                          Status:{" "}
+                          <span className="font-semibold text-[var(--color-foreground)]">
+                            {trackingStatusLabel(
+                              order.trackingStatus as
+                                | "PENDING"
+                                | "PICKED_UP"
+                                | "IN_TRANSIT"
+                                | "OUT_FOR_DELIVERY"
+                                | "DELIVERED"
+                                | "EXCEPTION"
+                                | "CANCELLED",
+                            )}
+                          </span>
+                          {order.trackingSyncedAt
+                            ? ` · synced ${formatDateTime(order.trackingSyncedAt)}`
+                            : ""}
+                        </p>
+                      ) : null}
                       <div className="mt-3 space-y-2">
-                        <input
-                          value={provider}
-                          onChange={(event) => setProvider(event.target.value)}
-                          placeholder="Courier name (e.g. Delhivery)"
+                        <select
+                          value={
+                            provider === "manual" || provider === activeCourier
+                              ? provider
+                              : activeCourier
+                          }
+                          onChange={(event) =>
+                            setProvider(event.target.value as CourierProvider)
+                          }
                           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
-                        />
+                        >
+                          <option value={activeCourier}>
+                            {courierProviderLabel(activeCourier)}
+                          </option>
+                          <option value="manual">Manual / other</option>
+                        </select>
                         <input
                           value={tracking}
                           onChange={(event) => setTracking(event.target.value)}
-                          placeholder="Tracking number"
+                          placeholder="AWB / tracking number"
                           className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 text-sm"
                         />
                         <button
@@ -728,8 +800,9 @@ export function AdminOrderDetailClient({
                             run(() =>
                               adminUpdateOrderTrackingAction({
                                 orderId: order.id,
-                                shippingProvider: provider,
+                                shippingProvider: courierProviderLabel(provider),
                                 trackingNumber: tracking,
+                                courierProvider: provider,
                               }),
                             )
                           }
@@ -737,6 +810,79 @@ export function AdminOrderDetailClient({
                         >
                           Save tracking
                         </button>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            disabled={pending || provider !== activeCourier}
+                            onClick={() =>
+                              run(() =>
+                                adminCreateCourierShipmentAction({
+                                  orderId: order.id,
+                                  provider: activeCourier,
+                                }),
+                              )
+                            }
+                            className={cn(adminBtn("outline"), "w-full !text-xs")}
+                            title={
+                              provider === activeCourier
+                                ? `Create AWB via ${courierProviderLabel(activeCourier)}`
+                                : "Select the store’s active courier"
+                            }
+                          >
+                            Create AWB
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              pending ||
+                              !tracking.trim() ||
+                              provider !== activeCourier
+                            }
+                            onClick={() =>
+                              run(() =>
+                                adminSyncOrderTrackingAction({
+                                  orderId: order.id,
+                                }),
+                              )
+                            }
+                            className={cn(adminBtn("outline"), "w-full !text-xs")}
+                          >
+                            Sync status
+                          </button>
+                        </div>
+                        {publicTrackingUrl(provider, tracking) ? (
+                          <a
+                            href={publicTrackingUrl(provider, tracking)!}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block text-center text-xs font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
+                          >
+                            Open on carrier site
+                          </a>
+                        ) : null}
+                        {order.trackingPayload?.events &&
+                        order.trackingPayload.events.length > 0 ? (
+                          <ul className="mt-2 max-h-40 space-y-1.5 overflow-y-auto rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-2 text-[11px]">
+                            {order.trackingPayload.events.slice(0, 8).map((ev, i) => (
+                              <li key={`${ev.at}-${i}`} className="leading-snug">
+                                <span className="font-medium text-[var(--color-foreground)]">
+                                  {ev.status}
+                                </span>
+                                {ev.location ? (
+                                  <span className="text-[var(--color-muted)]">
+                                    {" "}
+                                    · {ev.location}
+                                  </span>
+                                ) : null}
+                                {ev.at ? (
+                                  <span className="block text-[var(--color-muted)]">
+                                    {ev.at}
+                                  </span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     </div>
                   </section>

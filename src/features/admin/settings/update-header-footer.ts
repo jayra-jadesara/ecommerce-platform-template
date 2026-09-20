@@ -120,6 +120,7 @@ export async function updateHeaderSettings(
       header_account_enabled: values.accountEnabled,
       header_mobile_menu_enabled: values.mobileMenuEnabled,
       header_nav_visible: values.navVisible,
+      header_products_category_menu: values.productsCategoryMenu,
       header_logo_size: values.logoSize,
       header_logo_hang: values.logoHang,
       announcement_enabled: values.announcementEnabled,

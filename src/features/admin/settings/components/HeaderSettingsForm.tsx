@@ -15,15 +15,7 @@ import {
 import { LOGO_HANG_OPTIONS, LOGO_SIZE_OPTIONS } from "@/features/admin/settings/validation";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
-import {
-  adminCard,
-  adminCardPadding,
-  adminCardsGrid,
-  adminCardSpanFull,
-  adminFieldGroup,
-  adminFieldsGrid,
-  adminStackStyle,
-} from "@/features/admin/ui/admin-classes";
+import { adminCard } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
 import {
   applyServerFieldErrors,
@@ -45,16 +37,78 @@ const LOGO_SIZE_LABELS: Record<(typeof LOGO_SIZE_OPTIONS)[number], string> = {
 };
 
 const LOGO_HANG_LABELS: Record<(typeof LOGO_HANG_OPTIONS)[number], string> = {
-  none: "None — stays inside the header bar",
-  soft: "Soft — slight overlap onto the hero",
-  medium: "Medium — clear hang over the hero",
-  bold: "Bold — deep hang over the hero",
+  none: "None — stays in the bar",
+  soft: "Soft — slight hang over hero",
+  medium: "Medium — clear hang over hero",
+  bold: "Bold — deep hang over hero",
 };
+
+const FEATURE_ROWS: Array<{
+  name:
+    | "stickyHeader"
+    | "searchEnabled"
+    | "cartEnabled"
+    | "accountEnabled"
+    | "mobileMenuEnabled"
+    | "navVisible";
+  label: string;
+  hint: string;
+}> = [
+  {
+    name: "stickyHeader",
+    label: "Stick while scrolling",
+    hint: "Keeps the top bar on screen as shoppers scroll down.",
+  },
+  {
+    name: "navVisible",
+    label: "Show menu links",
+    hint: "Home, Products, About, and other pages in the center.",
+  },
+  {
+    name: "searchEnabled",
+    label: "Show search",
+    hint: "Search icon so shoppers can find products quickly.",
+  },
+  {
+    name: "cartEnabled",
+    label: "Show cart",
+    hint: "Bag / cart icon with item count.",
+  },
+  {
+    name: "accountEnabled",
+    label: "Show account",
+    hint: "Login / account menu and wishlist shortcut.",
+  },
+  {
+    name: "mobileMenuEnabled",
+    label: "Show mobile menu",
+    hint: "Hamburger menu on phones and tablets.",
+  },
+];
 
 interface HeaderSettingsFormProps {
   initialValues: HeaderSettingsFormValues;
   brand: BrandConfig;
   canUpdate: boolean;
+}
+
+function SectionTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
+  return (
+    <div className="mb-2.5">
+      <h2 className="text-sm font-semibold text-[var(--color-foreground)]">
+        {title}
+      </h2>
+      <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+        {subtitle}
+      </p>
+    </div>
+  );
 }
 
 export function HeaderSettingsForm({
@@ -153,8 +207,7 @@ export function HeaderSettingsForm({
         event.preventDefault();
         onSubmit();
       }}
-      className="w-full"
-      style={adminStackStyle}
+      className="w-full space-y-3"
       noValidate
     >
       <SettingsFormToolbar
@@ -175,270 +228,322 @@ export function HeaderSettingsForm({
         }}
       />
 
-      <p className="text-sm text-[var(--color-muted)]">
-        Control the top bar shoppers see on every page — logo size, menu, and
-        optional announcement strip.
-      </p>
-
-      <div className={adminCardsGrid()}>
-        <section
-          className={`${adminCard()} ${adminCardPadding()}`}
-          style={adminStackStyle}
-        >
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">1. What shows in the header</p>
-          <p className="admin-field-group__hint">
-            Turn features on or off. Most stores leave all of these on.
-          </p>
-            <div className={adminFieldsGrid(3)}>
-              {(
-                [
-                  ["stickyHeader", "Stick to top while scrolling"],
-                  ["searchEnabled", "Show search"],
-                  ["cartEnabled", "Show cart"],
-                  ["accountEnabled", "Show account / login"],
-                  ["mobileMenuEnabled", "Show mobile menu"],
-                  ["navVisible", "Show menu links"],
-                ] as const
-              ).map(([name, label]) => (
-              <Controller
-                key={name}
-                name={name}
-                control={control}
-                render={({ field }) => (
-                  <AdminToggle
-                    checked={Boolean(field.value)}
-                    onChange={field.onChange}
-                    disabled={!canUpdate || pending}
-                    label={label}
-                    variant="row"
-                  />
-                )}
-              />
-            ))}
-          </div>
-          <Controller
-            name="logoSize"
-            control={control}
-            render={({ field }) => (
-              <AdminSelect
-                label="Logo size"
-                required
-                disabled={!canUpdate || pending}
-                value={logoSize}
-                onChange={field.onChange}
-                name={field.name}
-                helperText="How tall the logo is in the top-left (your theme header)."
-                options={LOGO_SIZE_OPTIONS.map((size) => ({
-                  value: size,
-                  label: LOGO_SIZE_LABELS[size],
-                }))}
-              />
-            )}
-          />
-          <Controller
-            name="logoHang"
-            control={control}
-            render={({ field }) => (
-              <AdminSelect
-                label="Logo overlap"
-                required
-                disabled={!canUpdate || pending}
-                value={logoHang}
-                onChange={field.onChange}
-                name={field.name}
-                helperText="How far the logo hangs down over the hero from the top-left. Shrinks back into the bar when shoppers scroll."
-                options={LOGO_HANG_OPTIONS.map((hang) => ({
-                  value: hang,
-                  label: LOGO_HANG_LABELS[hang],
-                }))}
-              />
-            )}
-          />
-        </div>
-        </section>
-
-        <section
-          className={`${adminCard()} ${adminCardPadding()}`}
-          style={adminStackStyle}
-        >
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">2. Announcement bar</p>
-          <p className="admin-field-group__hint">
-            Optional strip above the header for offers or short news.
-          </p>
-          <Controller
-            name="announcementEnabled"
-            control={control}
-            render={({ field }) => (
-              <AdminToggle
-                checked={Boolean(field.value)}
-                onChange={field.onChange}
-                disabled={!canUpdate || pending}
-                label={
-                  announcementOn
-                    ? "Yes — show announcement bar"
-                    : "No — hide announcement bar"
-                }
-                variant="row"
-              />
-            )}
-          />
-
-          {announcementOn ? (
-            <>
-              <Controller
-                name="announcementText"
-                control={control}
-                render={({ field }) => (
-                  <TextField
-                    {...field}
-                    value={field.value ?? ""}
-                    label="Message shoppers see"
-                    fullWidth
-                    multiline
-                    minRows={2}
-                    disabled={!canUpdate || pending}
-                    placeholder="Example: Free shipping on orders over ₹500"
-                    helperText="Keep it short — one line works best"
-                  />
-                )}
-              />
-              <Controller
-                name="announcementUrl"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <div>
-                    <StorePageLinkField
-                      label="Opens this page when clicked"
-                      value={field.value}
-                      fallback="/"
-                      allowEmpty
-                      emptyLabel="No link (text only)"
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,21rem)] lg:items-start">
+        <div className="space-y-3">
+          <section className={cn(adminCard(), "p-3.5 sm:p-4")}>
+            <SectionTitle
+              title="What shoppers see"
+              subtitle="Each switch turns a part of the store header on or off."
+            />
+            <div className="divide-y divide-[var(--color-border)] overflow-hidden rounded-xl border border-[var(--color-border)]">
+              {FEATURE_ROWS.map((row) => (
+                <Controller
+                  key={row.name}
+                  name={row.name}
+                  control={control}
+                  render={({ field }) => (
+                    <AdminToggle
+                      checked={Boolean(field.value)}
+                      onChange={field.onChange}
                       disabled={!canUpdate || pending}
-                      error={Boolean(fieldState.error)}
-                      onChange={(value) => field.onChange(value ?? "")}
-                      helperText={
-                        fieldState.error
-                          ? undefined
-                          : "Pick a store page — no need to type a URL"
-                      }
+                      label={row.label}
+                      description={row.hint}
+                      variant="row"
+                      className="!rounded-none !border-0 !bg-transparent !px-3 !py-2.5"
                     />
-                    <FieldError message={fieldState.error?.message} />
-                  </div>
-                )}
-              />
+                  )}
+                />
+              ))}
+            </div>
+
+            <div className="mt-3">
               <Controller
-                name="announcementOpenInNewTab"
+                name="productsCategoryMenu"
                 control={control}
                 render={({ field }) => (
                   <AdminToggle
                     checked={Boolean(field.value)}
                     onChange={field.onChange}
                     disabled={!canUpdate || pending}
-                    label="Open link in a new browser tab"
+                    label="Categories under Products"
+                    description={
+                      field.value
+                        ? "On — Products opens a menu of your store categories (plus All products)."
+                        : "Off — Products is a normal link to the full catalog. Default."
+                    }
                     variant="row"
+                    className="!border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] !bg-[color-mix(in_srgb,var(--color-primary)_5%,var(--color-surface))]"
                   />
                 )}
               />
-            </>
-          ) : (
-            <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-muted)]">
-              Announcement bar is off. Turn it on to show a message above the
-              header.
-            </p>
-          )}
-        </div>
-        </section>
-
-        <section
-          className={`${adminCard()} ${adminCardPadding()} ${adminCardSpanFull()}`}
-        >
-        <h3 className="text-base font-semibold text-[var(--color-foreground)]">
-          Header preview
-        </h3>
-        <p className="mt-1 text-sm text-[var(--color-muted)]">
-          Rough look of the top of your store
-          {hangPreview ? " — logo hangs over the section below" : ""}
-          .
-        </p>
-        <div className="mt-4 overflow-visible rounded-xl border border-[var(--color-border)]">
-          {previewAnnouncement ? (
-            <div className="bg-[var(--color-button-background)] px-3 py-2 text-center text-sm text-[var(--color-button-foreground)]">
-              {previewAnnouncement}
-              {watched.announcementUrl?.trim() ? (
-                <span className="mt-1 block text-xs opacity-80">
-                  Links to {pageOptionLabel(watched.announcementUrl.trim())}
-                </span>
-              ) : null}
             </div>
-          ) : null}
-          <div className="relative bg-[var(--color-header-background)] px-4 py-3 text-[var(--color-header-foreground)]">
-            <div className="flex items-end justify-between gap-3">
-              <div
-                className={cn(
-                  "relative z-[2] flex items-end",
-                  logoHang === "soft" && "-mb-4",
-                  logoHang === "medium" && "-mb-7",
-                  logoHang === "bold" && "-mb-10",
-                )}
-              >
-                {brand.logoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={brand.logoUrl}
-                    alt=""
-                    className="w-auto object-contain object-left"
-                    style={{
-                      height:
-                        logoSize === "small"
-                          ? "1.75rem"
-                          : logoSize === "medium"
-                            ? "2.25rem"
-                            : logoSize === "large"
-                              ? "3.25rem"
-                              : "4rem",
-                    }}
+          </section>
+
+          <section className={cn(adminCard(), "p-3.5 sm:p-4")}>
+            <SectionTitle
+              title="Logo"
+              subtitle="Controls the mark in the top-left of every store page."
+            />
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              <Controller
+                name="logoSize"
+                control={control}
+                render={({ field }) => (
+                  <AdminSelect
+                    label="Logo size"
+                    required
+                    disabled={!canUpdate || pending}
+                    value={logoSize}
+                    onChange={field.onChange}
+                    name={field.name}
+                    helperText="How tall the logo is inside the header."
+                    options={LOGO_SIZE_OPTIONS.map((size) => ({
+                      value: size,
+                      label: LOGO_SIZE_LABELS[size],
+                    }))}
                   />
+                )}
+              />
+              <Controller
+                name="logoHang"
+                control={control}
+                render={({ field }) => (
+                  <AdminSelect
+                    label="Overlap onto hero"
+                    required
+                    disabled={!canUpdate || pending}
+                    value={logoHang}
+                    onChange={field.onChange}
+                    name={field.name}
+                    helperText="Hang over the hero image; snaps back on scroll."
+                    options={LOGO_HANG_OPTIONS.map((hang) => ({
+                      value: hang,
+                      label: LOGO_HANG_LABELS[hang],
+                    }))}
+                  />
+                )}
+              />
+            </div>
+          </section>
+
+          <section className={cn(adminCard(), "p-3.5 sm:p-4")}>
+            <SectionTitle
+              title="Announcement bar"
+              subtitle="Thin strip above the header for a short offer or notice."
+            />
+            <Controller
+              name="announcementEnabled"
+              control={control}
+              render={({ field }) => (
+                <AdminToggle
+                  checked={Boolean(field.value)}
+                  onChange={field.onChange}
+                  disabled={!canUpdate || pending}
+                  label={
+                    announcementOn
+                      ? "Announcement bar is on"
+                      : "Announcement bar is off"
+                  }
+                  description={
+                    announcementOn
+                      ? "Shoppers see your message above the logo bar."
+                      : "Turn on to show a one-line message site-wide."
+                  }
+                  variant="row"
+                  className="!py-2"
+                />
+              )}
+            />
+
+            {announcementOn ? (
+              <div className="mt-3 space-y-3">
+                <Controller
+                  name="announcementText"
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      {...field}
+                      value={field.value ?? ""}
+                      size="small"
+                      label="Message"
+                      fullWidth
+                      disabled={!canUpdate || pending}
+                      placeholder="e.g. Free shipping on orders over ₹500"
+                      helperText="One short line works best."
+                    />
+                  )}
+                />
+                <Controller
+                  name="announcementUrl"
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <div className="pt-0.5">
+                      <StorePageLinkField
+                        label="Link when clicked"
+                        value={field.value}
+                        fallback="/"
+                        allowEmpty
+                        emptyLabel="No link (text only)"
+                        disabled={!canUpdate || pending}
+                        error={Boolean(fieldState.error)}
+                        onChange={(value) => field.onChange(value ?? "")}
+                        helperText={
+                          fieldState.error
+                            ? undefined
+                            : "Choose a store page, or leave empty for text only."
+                        }
+                      />
+                      <FieldError message={fieldState.error?.message} />
+                    </div>
+                  )}
+                />
+                <Controller
+                  name="announcementOpenInNewTab"
+                  control={control}
+                  render={({ field }) => (
+                    <AdminToggle
+                      checked={Boolean(field.value)}
+                      onChange={field.onChange}
+                      disabled={!canUpdate || pending}
+                      label="Open link in a new tab"
+                      description="Only applies when a link is set above."
+                      variant="row"
+                      className="!py-2"
+                    />
+                  )}
+                />
+              </div>
+            ) : null}
+          </section>
+        </div>
+
+        <aside className={cn(adminCard(), "p-3.5 sm:p-4 lg:sticky lg:top-16")}>
+          <SectionTitle
+            title="Live preview"
+            subtitle="Rough mock of what shoppers see at the top."
+          />
+
+          <div className="overflow-hidden rounded-xl border border-[var(--color-border)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]">
+            {previewAnnouncement ? (
+              <div className="bg-[var(--color-button-background)] px-2.5 py-1.5 text-center text-[10px] leading-snug text-[var(--color-button-foreground)]">
+                {previewAnnouncement}
+                {watched.announcementUrl?.trim() ? (
+                  <span className="mt-0.5 block text-[9px] opacity-80">
+                    Opens {pageOptionLabel(watched.announcementUrl.trim())}
+                    {watched.announcementOpenInNewTab ? " (new tab)" : ""}
+                  </span>
                 ) : (
-                  <span
-                    className="font-semibold"
-                    style={{
-                      fontSize:
-                        logoSize === "small"
-                          ? "0.95rem"
-                          : logoSize === "xlarge"
-                            ? "1.55rem"
-                            : logoSize === "large"
-                              ? "1.35rem"
-                              : "1.1rem",
-                    }}
-                  >
-                    {brand.name}
+                  <span className="mt-0.5 block text-[9px] opacity-80">
+                    Text only — no link
                   </span>
                 )}
               </div>
-              <span className="relative z-[1] self-center text-xs text-[var(--color-muted)]">
-                {[
-                  watched.navVisible ? "Menu" : null,
-                  watched.searchEnabled ? "Search" : null,
-                  watched.cartEnabled ? "Cart" : null,
-                  watched.accountEnabled ? "Account" : null,
-                  watched.stickyHeader ? "Sticky" : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ") || "Minimal header"}
-              </span>
+            ) : (
+              <div className="border-b border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1 text-center text-[9px] text-[var(--color-muted)]">
+                No announcement bar
+              </div>
+            )}
+
+            <div className="relative bg-[var(--color-header-background)] px-3 py-2.5 text-[var(--color-header-foreground)]">
+              <div className="flex items-center justify-between gap-2">
+                <div
+                  className={cn(
+                    "relative z-[2] flex shrink-0 items-end",
+                    logoHang === "soft" && "-mb-3",
+                    logoHang === "medium" && "-mb-5",
+                    logoHang === "bold" && "-mb-7",
+                  )}
+                >
+                  {brand.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={brand.logoUrl}
+                      alt=""
+                      className="w-auto object-contain object-left"
+                      style={{
+                        height:
+                          logoSize === "small"
+                            ? "1.25rem"
+                            : logoSize === "medium"
+                              ? "1.6rem"
+                              : logoSize === "large"
+                                ? "2.1rem"
+                                : "2.5rem",
+                      }}
+                    />
+                  ) : (
+                    <span className="text-xs font-semibold tracking-tight">
+                      {brand.name}
+                    </span>
+                  )}
+                </div>
+
+                {watched.navVisible ? (
+                  <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 truncate text-[9px] font-medium text-[var(--color-muted)] sm:flex">
+                    <span>Home</span>
+                    <span className="text-[var(--color-primary)]">
+                      Products{watched.productsCategoryMenu ? " ▾" : ""}
+                    </span>
+                    <span>About</span>
+                  </div>
+                ) : (
+                  <span className="flex-1 text-center text-[9px] text-[var(--color-muted)]">
+                    Menu hidden
+                  </span>
+                )}
+
+                <div className="relative z-[1] flex shrink-0 items-center gap-1 text-[9px] text-[var(--color-muted)]">
+                  {watched.searchEnabled ? <span>Search</span> : null}
+                  {watched.accountEnabled ? <span>Account</span> : null}
+                  {watched.cartEnabled ? <span>Cart</span> : null}
+                  {!watched.searchEnabled &&
+                  !watched.accountEnabled &&
+                  !watched.cartEnabled ? (
+                    <span>—</span>
+                  ) : null}
+                </div>
+              </div>
             </div>
+
+            {hangPreview ? (
+              <div
+                className="flex h-9 items-end bg-[color-mix(in_srgb,var(--color-primary)_14%,var(--color-surface))] px-3 pb-1.5"
+                aria-hidden
+              >
+                <span className="text-[9px] text-[var(--color-muted)]">
+                  Hero area (logo overlaps here)
+                </span>
+              </div>
+            ) : (
+              <div className="bg-[var(--color-surface)] px-3 py-1.5 text-[9px] text-[var(--color-muted)]">
+                Page content starts below the header
+              </div>
+            )}
           </div>
-          {hangPreview ? (
-            <div
-              className="h-12 bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))]"
-              aria-hidden
-            />
-          ) : null}
-        </div>
-      </section>
+
+          <ul className="mt-3 space-y-1 text-[11px] leading-snug text-[var(--color-muted)]">
+            <li>
+              <span className="font-medium text-[var(--color-foreground)]">
+                Sticky:
+              </span>{" "}
+              {watched.stickyHeader ? "stays on scroll" : "scrolls away"}
+            </li>
+            <li>
+              <span className="font-medium text-[var(--color-foreground)]">
+                Products:
+              </span>{" "}
+              {watched.productsCategoryMenu
+                ? "category dropdown"
+                : "simple catalog link"}
+            </li>
+            <li>
+              <span className="font-medium text-[var(--color-foreground)]">
+                Mobile menu:
+              </span>{" "}
+              {watched.mobileMenuEnabled ? "shown on small screens" : "hidden"}
+            </li>
+          </ul>
+        </aside>
       </div>
     </form>
   );

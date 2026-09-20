@@ -20,6 +20,7 @@ export default async function AdminErrorLogsPage({
   searchParams: Promise<{
     tab?: string;
     page?: string;
+    pageSize?: string;
     q?: string;
     severity?: string;
     status?: string;
@@ -32,7 +33,10 @@ export default async function AdminErrorLogsPage({
   const params = await searchParams;
   const tab: ErrorLogTab = params.tab === "server" ? "server" : "browser";
   const page = Math.max(1, Number(params.page) || 1);
-  const severity = (params.severity as ErrorSeverity | "ALL" | undefined) ?? "ALL";
+  const rawPageSize = Number(params.pageSize) || 10;
+  const pageSize = rawPageSize === 25 ? 25 : 10;
+  const severity =
+    (params.severity as ErrorSeverity | "ALL" | undefined) ?? "ALL";
   const status = (params.status as ErrorStatus | "ALL" | undefined) ?? "ALL";
   const paymentOnly = params.payment === "1";
   const todayOnly = params.today === "1";
@@ -42,7 +46,7 @@ export default async function AdminErrorLogsPage({
       <div>
         <AdminPageHeader
           title="Error Logs"
-          description="Review problems that occurred in your store and investigate what happened."
+          description="Browse and copy store error reports."
           breadcrumbs={[{ label: "Error Logs" }]}
         />
         <p className="text-sm text-[var(--color-muted)]">No active store found.</p>
@@ -55,7 +59,7 @@ export default async function AdminErrorLogsPage({
       storeId,
       tab,
       page,
-      pageSize: 20,
+      pageSize,
       q: params.q ?? "",
       severity,
       status,
@@ -69,7 +73,7 @@ export default async function AdminErrorLogsPage({
     <div>
       <AdminPageHeader
         title="Error Logs"
-        description="Review problems that occurred in your store and investigate what happened."
+        description="Browse and copy store error reports."
         breadcrumbs={[{ label: "Error Logs" }]}
       />
       <AdminErrorLogsClient

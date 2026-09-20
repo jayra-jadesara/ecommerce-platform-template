@@ -16,10 +16,10 @@ export default async function AdminHeaderSettingsPage() {
   const canUpdate = hasPermission(admin, "settings.update");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <AdminPageHeader
         title="Header layout"
-        description="Logo size, overlap onto the hero, and announcement bar."
+        description="Choose what appears in the store top bar — menu, search, cart, logo, and optional announcement."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Header layout" },

@@ -14,6 +14,8 @@ export type AdminFormDialogProps = {
   description?: string;
   /** Prefer compact forms so the dialog fits without an inner scrollbar. */
   maxWidth?: "xs" | "sm" | "md" | "lg";
+  /** Tighter title, padding, and actions for simple forms. */
+  dense?: boolean;
   pending?: boolean;
   error?: string | null;
   cancelLabel?: string;
@@ -33,6 +35,7 @@ export function AdminFormDialog({
   title,
   description,
   maxWidth = "sm",
+  dense = false,
   pending = false,
   error = null,
   cancelLabel = "Cancel",
@@ -59,7 +62,7 @@ export function AdminFormDialog({
         paper: {
           className: "admin-form-dialog-paper",
           sx: {
-            margin: 2,
+            margin: dense ? 1.5 : 2,
             maxHeight: "calc(100vh - 2rem)",
             display: "flex",
             flexDirection: "column",
@@ -68,21 +71,29 @@ export function AdminFormDialog({
         },
       }}
     >
-      <DialogTitle id={titleId} className="!pb-1 !pt-4 !text-lg">
+      <DialogTitle
+        id={titleId}
+        className={
+          dense ? "!px-3.5 !pb-0.5 !pt-3 !text-base" : "!pb-1 !pt-4 !text-lg"
+        }
+      >
         {title}
       </DialogTitle>
       <DialogContent
-        className="!pt-2"
+        className={dense ? "!px-3.5 !pt-1.5" : "!pt-2"}
         sx={{
           overflow: "visible",
           flex: "0 1 auto",
-          pb: 1,
+          pb: dense ? 0.5 : 1,
         }}
       >
         {description ? (
           <p
             id={descId}
-            className="mb-3 text-sm leading-snug text-[var(--color-muted)]"
+            className={cn(
+              "leading-snug text-[var(--color-muted)]",
+              dense ? "mb-2 text-[11px]" : "mb-3 text-sm",
+            )}
           >
             {description}
           </p>
@@ -94,10 +105,17 @@ export function AdminFormDialog({
         ) : null}
         {children}
       </DialogContent>
-      <DialogActions className="gap-2 !px-4 !pb-3 !pt-1">
+      <DialogActions
+        className={
+          dense ? "gap-1.5 !px-3.5 !pb-2.5 !pt-0.5" : "gap-2 !px-4 !pb-3 !pt-1"
+        }
+      >
         <button
           type="button"
-          className={cn(adminBtn("secondary"))}
+          className={cn(
+            adminBtn("secondary"),
+            dense && "!min-h-8 !px-2.5 !text-xs",
+          )}
           disabled={pending}
           onClick={onClose}
         >
@@ -105,7 +123,10 @@ export function AdminFormDialog({
         </button>
         <button
           type="button"
-          className={adminBtn("primary")}
+          className={cn(
+            adminBtn("primary"),
+            dense && "!min-h-8 !px-2.5 !text-xs",
+          )}
           disabled={pending}
           onClick={onConfirm}
         >

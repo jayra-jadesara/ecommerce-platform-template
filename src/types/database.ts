@@ -153,6 +153,7 @@ export type Database = {
           header_account_enabled: boolean;
           header_mobile_menu_enabled: boolean;
           header_nav_visible: boolean;
+          header_products_category_menu: boolean;
           header_logo_size: "small" | "medium" | "large" | "xlarge";
           header_logo_hang: "none" | "soft" | "medium" | "bold";
           announcement_enabled: boolean;
@@ -203,6 +204,7 @@ export type Database = {
           header_account_enabled?: boolean;
           header_mobile_menu_enabled?: boolean;
           header_nav_visible?: boolean;
+          header_products_category_menu?: boolean;
           header_logo_size?: "small" | "medium" | "large" | "xlarge";
           header_logo_hang?: "none" | "soft" | "medium" | "bold";
           announcement_enabled?: boolean;
@@ -458,6 +460,16 @@ export type Database = {
           replace_window_hours: number;
           replace_max_attempts: number;
           replace_reason_options: Json;
+          cancel_reason_options: Json;
+          courier_default_provider: string | null;
+          courier_sandbox: boolean;
+          delhivery_api_token: string | null;
+          delhivery_client_name: string | null;
+          bluedart_login_id: string | null;
+          bluedart_licence_key: string | null;
+          bluedart_api_key: string | null;
+          bluedart_api_secret: string | null;
+          bluedart_origin_area: string | null;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -477,6 +489,16 @@ export type Database = {
           replace_window_hours?: number;
           replace_max_attempts?: number;
           replace_reason_options?: Json;
+          cancel_reason_options?: Json;
+          courier_default_provider?: string | null;
+          courier_sandbox?: boolean;
+          delhivery_api_token?: string | null;
+          delhivery_client_name?: string | null;
+          bluedart_login_id?: string | null;
+          bluedart_licence_key?: string | null;
+          bluedart_api_key?: string | null;
+          bluedart_api_secret?: string | null;
+          bluedart_origin_area?: string | null;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -692,6 +714,28 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["categories"]["Insert"]>;
         Relationships: [];
       };
+      product_size_options: {
+        Row: {
+          id: string;
+          store_id: string;
+          label: string;
+          sort_order: number;
+          is_active: boolean;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          label: string;
+          sort_order?: number;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["product_size_options"]["Insert"]
+        >;
+        Relationships: [];
+      };
       products: {
         Row: {
           id: string;
@@ -832,9 +876,16 @@ export type Database = {
           coupon_code: string | null;
           shipping_provider: string | null;
           tracking_number: string | null;
+          courier_provider: string | null;
+          courier_shipment_id: string | null;
+          tracking_status: string | null;
+          tracking_synced_at: string | null;
+          tracking_payload: Json | null;
           shipped_at: string | null;
           delivered_at: string | null;
           cancelled_at: string | null;
+          cancel_reason_code: string | null;
+          cancel_reason: string | null;
           inventory_finalized_at: string | null;
           inventory_restored_at: string | null;
         } & Timestamps;
@@ -857,9 +908,16 @@ export type Database = {
           coupon_code?: string | null;
           shipping_provider?: string | null;
           tracking_number?: string | null;
+          courier_provider?: string | null;
+          courier_shipment_id?: string | null;
+          tracking_status?: string | null;
+          tracking_synced_at?: string | null;
+          tracking_payload?: Json | null;
           shipped_at?: string | null;
           delivered_at?: string | null;
           cancelled_at?: string | null;
+          cancel_reason_code?: string | null;
+          cancel_reason?: string | null;
           inventory_finalized_at?: string | null;
           inventory_restored_at?: string | null;
           created_at?: string;

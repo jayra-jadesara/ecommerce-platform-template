@@ -136,14 +136,24 @@ export async function createCategory(
   const slugConflict = await assertUniqueCategorySlug(storeId, values.slug);
   if (slugConflict) return { ok: false, error: slugConflict };
 
+  const { data: maxRow } = await supabase
+    .from("categories")
+    .select("sort_order")
+    .eq("store_id", storeId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextSortOrder =
+    typeof maxRow?.sort_order === "number" ? maxRow.sort_order + 1 : 0;
+
   const payload = {
     store_id: storeId,
     name: values.name.trim(),
     slug: values.slug,
     description: emptyToNull(values.description),
     parent_id: values.parentId,
-    image_path: values.imagePath ?? null,
-    sort_order: values.sortOrder,
+    image_path: values.imagePath,
+    sort_order: nextSortOrder,
     is_active: values.isActive,
     seo_title: emptyToNull(values.seoTitle),
     seo_description: emptyToNull(values.seoDescription),
@@ -241,8 +251,8 @@ export async function updateCategory(
     slug: values.slug,
     description: emptyToNull(values.description),
     parent_id: values.parentId,
-    image_path: values.imagePath ?? null,
-    sort_order: values.sortOrder,
+    image_path: values.imagePath,
+    sort_order: existing.sort_order,
     is_active: values.isActive,
     seo_title: emptyToNull(values.seoTitle),
     seo_description: emptyToNull(values.seoDescription),
@@ -411,6 +421,73 @@ export async function deleteCategory(id: string): Promise<CatalogResult> {
 
   revalidateCatalogCategories(id);
   return { ok: true, message: "Category deleted." };
+}
+
+export async function moveCategory(
+  id: string,
+  direction: "up" | "down",
+): Promise<CatalogResult> {
+  const admin = await getCurrentAdmin();
+  if (!admin || !hasPermission(admin, "categories.update")) {
+    return { ok: false, error: "You do not have permission to update categories." };
+  }
+
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const categories = await listAdminCategories();
+  const index = categories.findIndex((c) => c.id === id);
+  if (index < 0) return { ok: false, error: "Category not found." };
+
+  const swapWith = direction === "up" ? index - 1 : index + 1;
+  if (swapWith < 0 || swapWith >= categories.length) {
+    return { ok: true, message: "Already at the edge.", id };
+  }
+
+  const a = categories[index];
+  const b = categories[swapWith];
+  const reordered = [...categories];
+  reordered[index] = b;
+  reordered[swapWith] = a;
+
+  const supabase = await createSupabaseServerClient();
+
+  for (let i = 0; i < reordered.length; i += 1) {
+    const row = reordered[i];
+    if (row.sort_order === i) continue;
+    const { error } = await supabase
+      .from("categories")
+      .update({ sort_order: i })
+      .eq("id", row.id)
+      .eq("store_id", storeId);
+    if (error) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "REORDER_CATEGORY",
+        feature: "CATEGORIES",
+        message: "Unable to reorder category",
+        error,
+        databaseCode: error.code,
+        storeId,
+        entityType: "categories",
+        entityId: id,
+        route: CATEGORIES_ROUTE,
+      });
+    }
+  }
+
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: admin.user.id,
+    action: "CATEGORY_UPDATED",
+    entity_type: "categories",
+    entity_id: a.id,
+    metadata: { reorder: direction, swapped_with: b.id },
+  });
+
+  revalidateCatalogCategories(id);
+  return { ok: true, message: "Order updated.", id };
 }
 
 export function suggestCategorySlug(name: string): string {

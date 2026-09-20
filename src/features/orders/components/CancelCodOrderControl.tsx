@@ -1,13 +1,18 @@
 "use client";
 
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
+import FormControl from "@mui/material/FormControl";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Radio from "@mui/material/Radio";
+import RadioGroup from "@mui/material/RadioGroup";
 import { useRouter } from "next/navigation";
-import { useId, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
+import { StorefrontDialog } from "@/components/ui/StorefrontDialog";
 import { cancelOwnOrderAction } from "@/features/orders/actions";
 import { canCustomerCancelCodOrder } from "@/features/orders/customer-cancel";
+import {
+  coerceCancelReasonOptions,
+  isOtherCancelReason,
+} from "@/features/shipping/policies";
 import type { OrderStatus } from "@/types/database";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
@@ -16,21 +21,35 @@ export function CancelCodOrderControl({
   orderId,
   status,
   paymentProvider,
+  reasonOptions: reasonOptionsProp,
 }: {
   orderId: string;
   status: OrderStatus;
   paymentProvider: string | null | undefined;
+  reasonOptions?: string[];
 }) {
   const router = useRouter();
-  const titleId = useId();
-  const descId = useId();
+  const reasonLabelId = useId();
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const reasonOptions = useMemo(
+    () => coerceCancelReasonOptions(reasonOptionsProp),
+    [reasonOptionsProp],
+  );
+  const defaultReason = reasonOptions[0] ?? "Other";
+  const [reasonCode, setReasonCode] = useState(defaultReason);
+  const [otherText, setOtherText] = useState("");
+
   if (!canCustomerCancelCodOrder({ status, paymentProvider })) {
     return null;
   }
+
+  const otherSelected = isOtherCancelReason(reasonCode);
+  const canSubmit =
+    Boolean(reasonCode) &&
+    (!otherSelected || otherText.trim().length >= 3);
 
   function close() {
     if (pending) return;
@@ -38,10 +57,32 @@ export function CancelCodOrderControl({
     setError(null);
   }
 
+  function openDialog() {
+    setError(null);
+    setReasonCode(defaultReason);
+    setOtherText("");
+    setOpen(true);
+  }
+
   function confirmCancel() {
     setError(null);
+    if (!canSubmit) {
+      setError(
+        otherSelected
+          ? "Please write a short reason (at least 3 characters)."
+          : "Please choose a cancel reason.",
+      );
+      return;
+    }
+
+    const reason = otherSelected ? otherText.trim() : reasonCode;
+
     startTransition(async () => {
-      const result = await cancelOwnOrderAction({ orderId });
+      const result = await cancelOwnOrderAction({
+        orderId,
+        reasonCode,
+        reason,
+      });
       if (!result.ok) {
         setError(result.error);
         return;
@@ -66,57 +107,111 @@ export function CancelCodOrderControl({
         <button
           type="button"
           className={cn(sfBtn("outline"), "shrink-0 !min-h-10 !px-4 !text-sm")}
-          onClick={() => {
-            setError(null);
-            setOpen(true);
-          }}
+          onClick={openDialog}
         >
           Cancel order
         </button>
       </div>
 
-      <Dialog
+      <StorefrontDialog
         open={open}
         onClose={close}
-        maxWidth="sm"
-        fullWidth
-        aria-labelledby={titleId}
-        aria-describedby={descId}
-      >
-        <DialogTitle id={titleId}>Cancel this order?</DialogTitle>
-        <DialogContent>
-          <p id={descId} className="text-sm text-[var(--color-muted)]">
-            This Cash on Delivery order will be cancelled and stock returned to
-            the store. You can place a new order anytime.
-          </p>
-          {error ? (
-            <p
-              className="mt-3 rounded-md border border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-3 py-2 text-sm text-[var(--color-error)]"
-              role="alert"
+        pending={pending}
+        compact
+        title="Why are you cancelling?"
+        description="COD order will be cancelled and stock returned. You can order again anytime."
+        actions={
+          <>
+            <button
+              type="button"
+              className={cn(sfBtn("ghost"), "!min-h-8 !px-3 !text-xs")}
+              disabled={pending}
+              onClick={close}
             >
-              {error}
-            </p>
-          ) : null}
-        </DialogContent>
-        <DialogActions className="gap-2 px-4 pb-4">
-          <button
-            type="button"
-            className={cn(sfBtn("ghost"), "!min-h-10")}
-            disabled={pending}
-            onClick={close}
+              Keep order
+            </button>
+            <button
+              type="button"
+              className={cn(sfBtn("danger"), "!min-h-8 !px-3 !text-xs")}
+              disabled={pending || !canSubmit}
+              onClick={confirmCancel}
+            >
+              {pending ? "Cancelling…" : "Cancel order"}
+            </button>
+          </>
+        }
+      >
+        <FormControl disabled={pending} className="!block w-full">
+          <p
+            id={reasonLabelId}
+            className="mb-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-muted)]"
           >
-            Keep order
-          </button>
-          <button
-            type="button"
-            className={cn(sfBtn("danger"), "!min-h-10")}
-            disabled={pending}
-            onClick={confirmCancel}
+            Select a reason
+          </p>
+          <RadioGroup
+            aria-labelledby={reasonLabelId}
+            value={reasonCode}
+            onChange={(event) => setReasonCode(event.target.value)}
+            className="!gap-0"
           >
-            {pending ? "Cancelling…" : "Cancel order"}
-          </button>
-        </DialogActions>
-      </Dialog>
+            {reasonOptions.map((option) => (
+              <FormControlLabel
+                key={option}
+                value={option}
+                control={
+                  <Radio
+                    size="small"
+                    sx={{
+                      padding: "4px",
+                      color: "var(--color-muted)",
+                      "&.Mui-checked": { color: "var(--color-primary)" },
+                    }}
+                  />
+                }
+                label={
+                  <span className="text-[13px] leading-tight text-[var(--color-foreground)]">
+                    {isOtherCancelReason(option)
+                      ? "Other (write your own)"
+                      : option}
+                  </span>
+                }
+                className="!mx-0 !min-h-0 !rounded-md !py-0 !pl-0.5 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
+                sx={{
+                  marginBottom: 0,
+                  alignItems: "center",
+                  "& .MuiFormControlLabel-label": { marginLeft: "2px" },
+                }}
+              />
+            ))}
+          </RadioGroup>
+        </FormControl>
+
+        {otherSelected ? (
+          <label className="mt-2 block">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--color-muted)]">
+              Tell us briefly
+            </span>
+            <textarea
+              value={otherText}
+              onChange={(event) => setOtherText(event.target.value)}
+              disabled={pending}
+              rows={2}
+              maxLength={240}
+              placeholder="Short reason…"
+              className="w-full resize-y rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2.5 py-1.5 text-[13px] text-[var(--color-foreground)] outline-none transition placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_25%,transparent)] disabled:opacity-60"
+            />
+          </label>
+        ) : null}
+
+        {error ? (
+          <p
+            className="mt-2 rounded-md border border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-2.5 py-1.5 text-xs text-[var(--color-error)]"
+            role="alert"
+          >
+            {error}
+          </p>
+        ) : null}
+      </StorefrontDialog>
     </>
   );
 }

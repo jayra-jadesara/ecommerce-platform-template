@@ -150,6 +150,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     accountEnabled: true,
     mobileMenuEnabled: true,
     navVisible: true,
+    productsCategoryMenu: false,
     logoSize: "large",
     logoHang: "bold",
     announcement: {

@@ -24,6 +24,8 @@ export async function updateOrderStatus(input: {
   trackingNumber?: string | null;
   autoDelivered?: boolean;
   autoDeliverAfterDays?: number;
+  cancelReasonCode?: string | null;
+  cancelReason?: string | null;
 }): Promise<OrderMutationResult> {
   const supabase = createSupabaseServiceClient();
   const { data: order } = await supabase
@@ -64,6 +66,12 @@ export async function updateOrderStatus(input: {
   }
   if (input.nextStatus === "CANCELLED") {
     patch.cancelled_at = new Date().toISOString();
+    if (input.cancelReasonCode !== undefined) {
+      patch.cancel_reason_code = input.cancelReasonCode?.trim() || null;
+    }
+    if (input.cancelReason !== undefined) {
+      patch.cancel_reason = input.cancelReason?.trim() || null;
+    }
   }
 
   const { error } = await supabase
@@ -151,6 +159,8 @@ export async function updateOrderStatus(input: {
       trackingNumber: input.trackingNumber ?? null,
       autoDelivered: Boolean(input.autoDelivered),
       autoDeliverAfterDays: input.autoDeliverAfterDays ?? null,
+      cancelReasonCode: input.cancelReasonCode ?? null,
+      cancelReason: input.cancelReason ?? null,
     },
   });
 
@@ -168,6 +178,8 @@ export async function updateOrderStatus(input: {
       from: order.status,
       to: input.nextStatus,
       autoDelivered: Boolean(input.autoDelivered),
+      cancelReasonCode: input.cancelReasonCode ?? null,
+      cancelReason: input.cancelReason ?? null,
     },
   });
 
@@ -196,6 +208,7 @@ export async function updateOrderTracking(input: {
   actorUserId: string;
   shippingProvider: string;
   trackingNumber: string;
+  courierProvider?: "delhivery" | "bluedart" | "manual" | null;
 }): Promise<OrderMutationResult> {
   const supabase = createSupabaseServiceClient();
   const { data: order } = await supabase
@@ -207,11 +220,20 @@ export async function updateOrderTracking(input: {
 
   if (!order) return { ok: false, error: "Order not found." };
 
+  const courierProvider = input.courierProvider ?? null;
+  const label =
+    courierProvider === "delhivery"
+      ? "Delhivery"
+      : courierProvider === "bluedart"
+        ? "Blue Dart"
+        : input.shippingProvider.trim() || null;
+
   const { error } = await supabase
     .from("orders")
     .update({
-      shipping_provider: input.shippingProvider.trim() || null,
+      shipping_provider: label,
       tracking_number: input.trackingNumber.trim() || null,
+      courier_provider: courierProvider,
     })
     .eq("id", order.id);
 
@@ -240,6 +262,7 @@ export async function updateOrderTracking(input: {
     metadata: {
       shippingProvider: input.shippingProvider,
       trackingNumber: input.trackingNumber,
+      courierProvider: input.courierProvider ?? null,
     },
   });
 
