@@ -1,7 +1,7 @@
 "use client";
 
 import CheckRoundedIcon from "@mui/icons-material/CheckRounded";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 import { motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
@@ -16,8 +16,7 @@ import {
   StatusPill,
 } from "@/features/payments/components/payment-status-ui";
 import type { ReceiptTotals } from "@/features/payments/receipt-totals";
-import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
-import { sfBtn, sfCard, sfDisplay } from "@/components/ui/storefront-classes";
+import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
 export type PaymentSuccessViewProps = {
@@ -28,234 +27,197 @@ export type PaymentSuccessViewProps = {
   paymentStatus: string;
   orderStatus: string;
   finalized: boolean;
+  paymentMethod?: "razorpay" | "cod";
   items: OrderItemView[];
   shippingAddress: ShippingAddressSnapshot;
   totals: ReceiptTotals;
 };
 
 export function PaymentSuccessView({
+  orderId,
   orderNumber,
   amount,
   currency,
   paymentStatus,
   orderStatus,
   finalized,
+  paymentMethod = "razorpay",
   items,
   shippingAddress,
   totals,
 }: PaymentSuccessViewProps) {
   const [receiptOpen, setReceiptOpen] = useState(false);
   const reduceMotion = useReducedMotion();
-  const previewItems = items.slice(0, 4);
+  const previewItems = items.slice(0, 3);
   const extraCount = Math.max(0, items.length - previewItems.length);
+  const isCod = paymentMethod === "cod";
+  const cityLine = [shippingAddress.city, shippingAddress.state, shippingAddress.postalCode]
+    .filter(Boolean)
+    .join(", ");
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <motion.section
-        className="flex flex-col items-center text-center"
-        initial={reduceMotion ? false : { opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      >
-        <div className="relative mb-5 flex h-24 w-24 items-center justify-center md:h-28 md:w-28">
-          {!reduceMotion ? (
-            <>
-              <motion.span
-                aria-hidden
-                className="absolute inset-0 rounded-full bg-[color-mix(in_srgb,var(--color-success)_18%,transparent)]"
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1.35, opacity: 0 }}
-                transition={{ duration: 1.1, ease: "easeOut" }}
-              />
-              <motion.span
-                aria-hidden
-                className="absolute inset-[10%] rounded-full border border-[color-mix(in_srgb,var(--color-success)_35%,transparent)]"
-                initial={{ scale: 0.85, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.05 }}
-              />
-            </>
-          ) : null}
-          <motion.div
-            className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--color-success)] text-white shadow-[0_14px_34px_color-mix(in_srgb,var(--color-success)_35%,transparent)] md:h-[4.5rem] md:w-[4.5rem]"
-            initial={reduceMotion ? false : { scale: 0.5, rotate: -12 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ type: "spring", stiffness: 320, damping: 18 }}
-          >
-            <CheckRoundedIcon className="!text-4xl" aria-hidden />
-          </motion.div>
-        </div>
-
-        <StorefrontHeading
-          title="Payment successful"
-          as="h1"
-          align="center"
-          className="!text-3xl md:!text-4xl"
-        />
-        <p className="mt-3 max-w-md text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
-          {finalized
-            ? "Your payment was verified and your order is confirmed."
-            : "Your payment was verified. Your order is being finalized."}
-        </p>
-        <p
-          className={cn(
-            sfDisplay(),
-            "mt-4 text-3xl tracking-tight text-[var(--color-foreground)] md:text-4xl",
-          )}
-        >
-          {formatMoney(amount, currency)}
-        </p>
-        <p className="mt-1 text-xs font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">
-          Order {orderNumber}
-        </p>
-      </motion.section>
-
-      {previewItems.length > 0 ? (
-        <motion.section
-          className="mt-8"
-          initial={reduceMotion ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.12 }}
-          aria-label="Items in this order"
-        >
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {previewItems.map((item, index) => (
-              <li
-                key={item.id}
-                className={cn(
-                  sfCard(),
-                  "flex items-center gap-3 p-3 text-left",
-                )}
-              >
-                <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[calc(var(--radius-default,0.75rem)-2px)] bg-[var(--color-surface)]">
-                  {item.imageUrl ? (
-                    <Image
-                      src={item.imageUrl}
-                      alt=""
-                      fill
-                      unoptimized
-                      className="object-contain p-1.5"
-                      sizes="64px"
-                      priority={index === 0}
-                    />
-                  ) : (
-                    <span
-                      className="flex h-full items-center justify-center text-sm font-semibold text-[var(--color-muted)]"
-                      aria-hidden
-                    >
-                      {item.productName.slice(0, 1).toUpperCase()}
-                    </span>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
-                    {item.productName}
-                  </p>
-                  {item.variantName ? (
-                    <p className="truncate text-xs text-[var(--color-muted)]">
-                      {item.variantName}
-                    </p>
-                  ) : null}
-                  <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                    Qty {item.quantity} ·{" "}
-                    {formatMoney(item.lineTotal, currency)}
-                  </p>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {extraCount > 0 ? (
-            <p className="mt-2 text-center text-xs text-[var(--color-muted)]">
-              +{extraCount} more item{extraCount === 1 ? "" : "s"} on your order
-            </p>
-          ) : null}
-        </motion.section>
-      ) : null}
-
-      <motion.section
-        className={cn(sfCard(), "mt-6 overflow-hidden text-left")}
+    <div className="relative mx-auto w-full max-w-3xl">
+      <motion.div
+        className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_16px_40px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]"
         initial={reduceMotion ? false : { opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.18 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-5 py-4">
-          <div className="min-w-0">
-            <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-              <LocalShippingOutlinedIcon className="!text-base" aria-hidden />
-              Delivering to
-            </p>
-            <p className="mt-1 truncate text-sm font-semibold text-[var(--color-foreground)]">
-              {shippingAddress.fullName || "Customer"}
-            </p>
-            <p className="mt-0.5 truncate text-xs text-[var(--color-muted)]">
-              {[shippingAddress.city, shippingAddress.state, shippingAddress.postalCode]
-                .filter(Boolean)
-                .join(", ") || "Address on file"}
-            </p>
-          </div>
-        </div>
+        <div className="grid md:grid-cols-[1.05fr_0.95fr]">
+          {/* Left: confirmation */}
+          <div className="relative flex flex-col justify-center border-b border-[var(--color-border)] px-5 py-6 md:border-b-0 md:border-r md:px-7 md:py-7">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-success)] text-white shadow-sm">
+                <CheckRoundedIcon className="!text-[1.5rem]" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+                  {isCod ? "Cash on delivery" : "Payment"}
+                </p>
+                <h1 className="mt-0.5 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-[1.75rem]">
+                  {isCod ? "Order placed" : "Payment successful"}
+                </h1>
+                <p className="mt-1.5 text-sm leading-snug text-[var(--color-muted)]">
+                  {isCod
+                    ? "Pay cash when it arrives. No online fee."
+                    : finalized
+                      ? "Payment verified — order confirmed."
+                      : "Payment verified — finalizing order."}
+                </p>
+              </div>
+            </div>
 
-        <dl className="grid gap-0 sm:grid-cols-2">
-          <div className="border-b border-[var(--color-border)] px-5 py-3.5 sm:border-r">
-            <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-              Payment status
-            </dt>
-            <dd className="mt-2">
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-3 border-t border-[var(--color-border)] pt-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  Total
+                </p>
+                <p className="mt-0.5 font-[family-name:var(--font-display)] text-3xl font-semibold tracking-tight text-[var(--color-foreground)]">
+                  {formatMoney(amount, currency)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                  Order
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-[var(--color-foreground)]">
+                  {orderNumber}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2">
               <StatusPill
-                status={paymentStatus}
-                tone={paymentStatusTone(paymentStatus)}
+                status={
+                  isCod && paymentStatus === "PENDING"
+                    ? "Pay on delivery"
+                    : paymentStatus
+                }
+                tone={
+                  isCod && paymentStatus === "PENDING"
+                    ? "warning"
+                    : paymentStatusTone(paymentStatus)
+                }
               />
-            </dd>
-          </div>
-          <div className="border-b border-[var(--color-border)] px-5 py-3.5">
-            <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-              Order status
-            </dt>
-            <dd className="mt-2">
               <StatusPill
                 status={orderStatus}
                 tone={orderStatusTone(orderStatus)}
               />
-            </dd>
-          </div>
-          <div className="border-b border-[var(--color-border)] px-5 py-3.5 sm:border-r">
-            <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-              Amount paid
-            </dt>
-            <dd className="mt-1 text-sm font-semibold text-[var(--color-foreground)]">
-              {formatMoney(amount, currency)}
-            </dd>
-          </div>
-          <div className="border-b border-[var(--color-border)] px-5 py-3.5">
-            <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-              Order number
-            </dt>
-            <dd className="mt-1 text-sm font-semibold text-[var(--color-foreground)]">
-              {orderNumber}
-            </dd>
-          </div>
-        </dl>
-      </motion.section>
+            </div>
 
-      <motion.div
-        className="mt-7 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center"
-        initial={reduceMotion ? false : { opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, delay: 0.24 }}
-      >
-        <button
-          type="button"
-          onClick={() => setReceiptOpen(true)}
-          className={cn(sfBtn("primary"), "sm:min-w-[10rem]")}
-        >
-          View order
-        </button>
-        <Link
-          href="/products"
-          className={cn(sfBtn("outline"), "sm:min-w-[10rem]")}
-        >
-          Continue shopping
-        </Link>
+            <p className="mt-3 truncate text-xs text-[var(--color-muted)]">
+              Deliver to{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {shippingAddress.fullName || "Customer"}
+              </span>
+              {cityLine ? ` · ${cityLine}` : ""}
+            </p>
+
+            <div className="mt-5 space-y-2.5">
+              <Link
+                href={`/account/orders/${orderId}`}
+                className={cn(
+                  sfBtn("primary"),
+                  "!min-h-11 w-full !justify-center !text-sm",
+                )}
+              >
+                <ReceiptLongOutlinedIcon className="!text-base" aria-hidden />
+                View my order
+              </Link>
+              <div className="flex items-center justify-center gap-4 pt-0.5 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setReceiptOpen(true)}
+                  className="font-medium text-[var(--color-muted)] underline-offset-4 transition-colors hover:text-[var(--color-foreground)] hover:underline"
+                >
+                  Download receipt
+                </button>
+                <span className="text-[var(--color-border)]" aria-hidden>
+                  ·
+                </span>
+                <Link
+                  href="/products"
+                  className="inline-flex items-center gap-1 font-medium text-[var(--color-muted)] underline-offset-4 transition-colors hover:text-[var(--color-foreground)] hover:underline"
+                >
+                  Shop more
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: items */}
+          <div className="bg-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-card))] px-5 py-5 md:px-6 md:py-6">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
+              Items · {items.length}
+            </p>
+            <ul className="mt-3 space-y-2.5">
+              {previewItems.map((item, index) => (
+                <li
+                  key={item.id}
+                  className="flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2"
+                >
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-[var(--color-surface)]">
+                    {item.imageUrl ? (
+                      <Image
+                        src={item.imageUrl}
+                        alt=""
+                        fill
+                        unoptimized
+                        className="object-contain p-1"
+                        sizes="48px"
+                        priority={index === 0}
+                      />
+                    ) : (
+                      <span
+                        className="flex h-full items-center justify-center text-xs font-semibold text-[var(--color-muted)]"
+                        aria-hidden
+                      >
+                        {item.productName.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
+                      {item.productName}
+                    </p>
+                    <p className="truncate text-[11px] text-[var(--color-muted)]">
+                      {item.variantName ? `${item.variantName} · ` : ""}
+                      Qty {item.quantity}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold tabular-nums text-[var(--color-foreground)]">
+                    {formatMoney(item.lineTotal, currency)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {extraCount > 0 ? (
+              <p className="mt-2 text-center text-[11px] text-[var(--color-muted)]">
+                +{extraCount} more on receipt
+              </p>
+            ) : null}
+          </div>
+        </div>
       </motion.div>
 
       <OrderReceiptDialog

@@ -5,27 +5,33 @@ import {
   getCheckoutSummary,
   removeCheckoutIssueItem,
 } from "@/features/checkout/service";
-import type { CheckoutSummary } from "@/features/checkout/types";
+import type { CheckoutPaymentMethod, CheckoutSummary } from "@/features/checkout/types";
 import { z } from "zod";
+
+const paymentMethodSchema = z.enum(["razorpay", "cod"]).optional().nullable();
 
 const selectAddressSchema = z.object({
   addressId: z.string().uuid("Invalid address."),
   couponCode: z.string().max(64).optional().nullable(),
+  paymentMethod: paymentMethodSchema,
 });
 
 const removeItemSchema = z.object({
   cartItemId: z.string().uuid("Invalid cart item."),
   couponCode: z.string().max(64).optional().nullable(),
+  paymentMethod: paymentMethodSchema,
 });
 
 const couponSchema = z.object({
   code: z.string().max(64),
   selectedAddressId: z.string().uuid().optional().nullable(),
+  paymentMethod: paymentMethodSchema,
 });
 
 const refreshSchema = z.object({
   selectedAddressId: z.string().uuid().optional().nullable(),
   couponCode: z.string().max(64).optional().nullable(),
+  paymentMethod: paymentMethodSchema,
 });
 
 function revalidateCheckoutPaths() {
@@ -33,15 +39,15 @@ function revalidateCheckoutPaths() {
   revalidatePath("/cart");
 }
 
-export async function getCheckoutSummaryAction(
-  input?: {
-    selectedAddressId?: string | null;
-    couponCode?: string | null;
-  },
-): Promise<CheckoutSummary> {
+export async function getCheckoutSummaryAction(input?: {
+  selectedAddressId?: string | null;
+  couponCode?: string | null;
+  paymentMethod?: CheckoutPaymentMethod | null;
+}): Promise<CheckoutSummary> {
   return getCheckoutSummary({
     selectedAddressId: input?.selectedAddressId,
     couponCode: input?.couponCode,
+    paymentMethod: input?.paymentMethod,
   });
 }
 
@@ -55,6 +61,7 @@ export async function selectCheckoutAddressAction(
   return getCheckoutSummary({
     selectedAddressId: parsed.data.addressId,
     couponCode: parsed.data.couponCode,
+    paymentMethod: parsed.data.paymentMethod,
   });
 }
 
@@ -70,6 +77,13 @@ export async function removeCheckoutItemAction(
     parsed.data.couponCode,
   );
   revalidateCheckoutPaths();
+  if (parsed.data.paymentMethod) {
+    return getCheckoutSummary({
+      couponCode: summary.couponCode,
+      paymentMethod: parsed.data.paymentMethod,
+      selectedAddressId: summary.selectedAddressId,
+    });
+  }
   return summary;
 }
 
@@ -84,6 +98,7 @@ export async function applyCheckoutCouponAction(
   return getCheckoutSummary({
     selectedAddressId: parsed.data.selectedAddressId,
     couponCode: parsed.data.code,
+    paymentMethod: parsed.data.paymentMethod,
   });
 }
 
@@ -97,5 +112,20 @@ export async function removeCheckoutCouponAction(
   return getCheckoutSummary({
     selectedAddressId: parsed.data.selectedAddressId,
     couponCode: null,
+    paymentMethod: parsed.data.paymentMethod,
+  });
+}
+
+export async function setCheckoutPaymentMethodAction(
+  raw: unknown,
+): Promise<CheckoutSummary> {
+  const parsed = refreshSchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    return getCheckoutSummary();
+  }
+  return getCheckoutSummary({
+    selectedAddressId: parsed.data.selectedAddressId,
+    couponCode: parsed.data.couponCode,
+    paymentMethod: parsed.data.paymentMethod,
   });
 }

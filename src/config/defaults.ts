@@ -162,6 +162,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     showContact: true,
     showSocial: true,
     showNewsletter: false,
+    showLogo: false,
     navVisible: true,
     showFeaturedProduct: false,
     featuredProductId: null,

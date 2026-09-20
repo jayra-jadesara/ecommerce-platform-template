@@ -65,10 +65,7 @@ export function Footer({
   if (!footer.enabled) return null;
 
   const year = new Date().getFullYear();
-  const rawCopyright =
-    footer.copyrightText?.trim() ||
-    `©Copyright ${year} ${brand.name}, All rights reserved.`;
-  const copyright = rawCopyright.replaceAll("{year}", String(year));
+  const copyright = `© ${year} ${brand.name}. All rights reserved.`;
 
   const socialLinks = SOCIAL_ITEMS.filter(({ key }) => Boolean(social[key]));
   const hasContact =
@@ -85,6 +82,7 @@ export function Footer({
   const supportLinks = navigation.footer;
   const showFeatured =
     footer.showFeaturedProduct && Boolean(featuredProduct);
+  const showLogo = Boolean(footer.showLogo && brand.logoUrl);
 
   const brandBlurb =
     footer.description?.trim() ||
@@ -141,6 +139,16 @@ export function Footer({
                 <p className="sf-footer-muted mt-2.5 max-w-[16rem] text-sm leading-relaxed">
                   {brandBlurb}
                 </p>
+              ) : null}
+              {showLogo ? (
+                <div className="mt-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={brand.logoUrl!}
+                    alt={brand.logoAlt ?? brand.name}
+                    className="h-12 w-auto max-w-[10rem] object-contain object-left md:h-14"
+                  />
+                </div>
               ) : null}
             </div>
 

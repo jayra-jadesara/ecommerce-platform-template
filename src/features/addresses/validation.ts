@@ -3,7 +3,7 @@ import {
   REGISTER_COUNTRY_CODE,
   registerPhoneSchema,
 } from "@/features/auth/validations";
-import { normalizePhoneForCompare } from "@/features/auth/recovery-crypto";
+import { normalizePhoneForCompare } from "@/features/auth/phone-normalize";
 
 /** Strip control chars / obvious script payloads; keep international text. */
 function sanitizePlainText(value: string): string {

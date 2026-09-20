@@ -259,6 +259,8 @@ async function ensureStoreSettingsStub(
     await supabase.from("payment_settings").insert({
       store_id: storeId,
       provider: "none",
+      razorpay_enabled: false,
+      cod_enabled: false,
     });
   }
 }

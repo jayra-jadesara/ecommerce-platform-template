@@ -88,6 +88,17 @@ export async function updateOrderStatus(input: {
     });
   }
 
+  if (input.nextStatus === "DELIVERED") {
+    const { captureCodPaymentOnDelivered } = await import(
+      "@/features/payments/cod-capture"
+    );
+    await captureCodPaymentOnDelivered({
+      orderId: order.id,
+      storeId: input.storeId,
+      actorUserId: input.actorUserId,
+    });
+  }
+
   if (input.nextStatus === "CANCELLED" || input.nextStatus === "REFUNDED") {
     const restored = await restoreOrderInventory(order.id);
     if (restored.ok && !restored.alreadyRestored && !restored.nothingToRestore) {

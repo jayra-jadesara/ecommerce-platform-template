@@ -1,16 +1,14 @@
 import "server-only";
 
-import { getPlatformConfigAsync } from "@/config/site.server";
 import { getCurrentUser } from "@/features/auth/session";
 import {
   customerFacingError,
   logPaymentError,
 } from "@/features/error-monitoring/logger";
 import { writePaymentAudit } from "@/features/payments/audit";
-import { getPaymentProvider } from "@/features/payments/providers";
-import { getRazorpayEnvOptional } from "@/features/payments/env";
-import type { StartCheckoutPaymentResult } from "@/features/payments/types";
+import type { PaymentActionResult } from "@/features/payments/types";
 import { getCheckoutSummary } from "@/features/checkout/service";
+import { finalizeCodOrder } from "@/features/orders/finalize";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveReturnPolicy } from "@/features/shipping/policies";
@@ -23,36 +21,22 @@ function buildOrderNumber(): string {
   return `ORD-${stamp}-${rand}`;
 }
 
-function buildReceipt(): string {
-  return `rcpt_${randomBytes(8).toString("hex")}`.slice(0, 40);
-}
-
 /**
- * Create pending order + payment, then Razorpay Order (server-side).
- * Amounts come only from the centralized pricing engine.
+ * Place a Cash on Delivery order: confirm stock, no online payment, fee off.
  */
-export async function createCheckoutPaymentSession(input: {
+export async function createCodCheckoutOrder(input: {
   addressId: string;
   couponCode?: string | null;
-}): Promise<StartCheckoutPaymentResult> {
+}): Promise<PaymentActionResult> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, error: "Sign in to continue to payment.", code: "UNAUTHORIZED" };
-  }
-
-  const razorpayEnv = getRazorpayEnvOptional();
-  if (!razorpayEnv) {
-    return {
-      ok: false,
-      error: "Online payment is not configured yet.",
-      code: "PROVIDER_NOT_CONFIGURED",
-    };
+    return { ok: false, error: "Sign in to place your order.", code: "UNAUTHORIZED" };
   }
 
   const summary = await getCheckoutSummary({
     selectedAddressId: input.addressId,
     couponCode: input.couponCode,
-    paymentMethod: "razorpay",
+    paymentMethod: "cod",
   });
 
   if (input.couponCode?.trim() && summary.couponMessage && !summary.couponCode) {
@@ -66,7 +50,7 @@ export async function createCheckoutPaymentSession(input: {
   if (summary.step !== "READY_FOR_PAYMENT" || !summary.canProceed) {
     return {
       ok: false,
-      error: "Resolve cart and address issues before paying.",
+      error: "Resolve cart and address issues before placing the order.",
       code: "NOT_READY",
     };
   }
@@ -79,30 +63,10 @@ export async function createCheckoutPaymentSession(input: {
     };
   }
 
-  if (!summary.enabledPaymentMethods.includes("razorpay")) {
+  if (!summary.enabledPaymentMethods.includes("cod")) {
     return {
       ok: false,
-      error: "Online payment is disabled for this store.",
-      code: "PROVIDER_DISABLED",
-    };
-  }
-
-  const supabaseUser = await createSupabaseServerClient();
-  const { data: paymentSettings } = await supabaseUser
-    .from("payment_settings")
-    .select("razorpay_enabled, provider")
-    .eq("store_id", summary.storeId)
-    .maybeSingle();
-
-  const razorpayOn =
-    typeof paymentSettings?.razorpay_enabled === "boolean"
-      ? paymentSettings.razorpay_enabled
-      : paymentSettings?.provider === "razorpay";
-
-  if (!razorpayOn) {
-    return {
-      ok: false,
-      error: "Online payment is disabled for this store.",
+      error: "Cash on Delivery is not available for this store.",
       code: "PROVIDER_DISABLED",
     };
   }
@@ -117,9 +81,32 @@ export async function createCheckoutPaymentSession(input: {
     };
   }
 
+  // COD totals must never include a payment/gateway fee.
+  if (summary.pricing.paymentFee.minor !== 0) {
+    return {
+      ok: false,
+      error: "Could not price Cash on Delivery order.",
+      code: "INVALID_FEE",
+    };
+  }
+
+  const supabaseUser = await createSupabaseServerClient();
+  const { data: paymentSettings } = await supabaseUser
+    .from("payment_settings")
+    .select("cod_enabled")
+    .eq("store_id", summary.storeId)
+    .maybeSingle();
+
+  if (!paymentSettings?.cod_enabled) {
+    return {
+      ok: false,
+      error: "Cash on Delivery is disabled for this store.",
+      code: "PROVIDER_DISABLED",
+    };
+  }
+
   const supabase = createSupabaseServiceClient();
 
-  // Fail any other open payment attempts for this user/store (retry safety).
   const { data: openPayments } = await supabase
     .from("payments")
     .select("id, order_id, status, orders!inner(store_id, user_id, status)")
@@ -139,7 +126,7 @@ export async function createCheckoutPaymentSession(input: {
       .from("payments")
       .update({
         status: "FAILED",
-        failure_reason: "Superseded by a new payment attempt.",
+        failure_reason: "Superseded by a new order attempt.",
       })
       .eq("id", row.id)
       .in("status", ["CREATED", "PENDING"]);
@@ -151,7 +138,6 @@ export async function createCheckoutPaymentSession(input: {
   }
 
   const orderNumber = buildOrderNumber();
-  const receipt = buildReceipt();
   const addressJson = summary.shippingSnapshot as unknown as Json;
 
   const { data: order, error: orderError } = await supabase
@@ -164,7 +150,7 @@ export async function createCheckoutPaymentSession(input: {
       subtotal: summary.pricing.subtotal.major,
       discount_amount: summary.pricing.discount.major,
       shipping_amount: summary.pricing.shipping.major,
-      gateway_fee: summary.pricing.paymentFee.major,
+      gateway_fee: 0,
       tax_amount: summary.pricing.tax.major,
       grand_total: summary.pricing.grandTotal.major,
       currency,
@@ -178,7 +164,7 @@ export async function createCheckoutPaymentSession(input: {
 
   if (orderError || !order) {
     const logged = await logPaymentError({
-      message: orderError?.message || "Order create failed before payment",
+      message: orderError?.message || "COD order create failed",
       error: orderError,
       type: "ORDER",
       source: "DATABASE",
@@ -267,16 +253,17 @@ export async function createCheckoutPaymentSession(input: {
     .insert({
       order_id: order.id,
       user_id: user.id,
-      provider: "razorpay",
+      provider: "cod",
       amount: summary.pricing.grandTotal.major,
       amount_minor: amountMinor,
       currency,
-      status: "CREATED",
+      status: "PENDING",
       pricing_version: summary.pricing.version,
-      receipt,
+      payment_method: "cod",
       metadata: {
         addressId: input.addressId,
         lineCount: summary.lines.length,
+        method: "cod",
       } as Json,
     })
     .select("id")
@@ -285,7 +272,7 @@ export async function createCheckoutPaymentSession(input: {
   if (paymentError || !payment) {
     await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
     const logged = await logPaymentError({
-      message: paymentError?.message || "Payment row create failed",
+      message: paymentError?.message || "COD payment row create failed",
       error: paymentError,
       source: "DATABASE",
       type: "PAYMENT",
@@ -307,177 +294,51 @@ export async function createCheckoutPaymentSession(input: {
     };
   }
 
-  let providerOrder;
-  try {
-    const provider = getPaymentProvider("razorpay");
-    providerOrder = await provider.createOrder({
-      amountMinor,
-      currency,
-      receipt,
-      notes: {
-        payment_id: payment.id,
-        order_id: order.id,
-        store_id: summary.storeId,
-      },
-    });
-  } catch (providerError) {
+  const finalized = await finalizeCodOrder({
+    paymentId: payment.id,
+    orderId: order.id,
+    storeId: summary.storeId,
+    userId: user.id,
+  });
+
+  if (!finalized.ok) {
     await supabase
       .from("payments")
       .update({
         status: "FAILED",
-        failure_reason: "Provider order creation failed.",
+        failure_reason: finalized.error.slice(0, 500),
       })
       .eq("id", payment.id);
-    await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
-    const logged = await logPaymentError({
-      message:
-        providerError instanceof Error
-          ? providerError.message
-          : "Razorpay order creation failed",
-      error: providerError,
-      source: "PROVIDER",
-      severity: "ERROR",
-      operation: "CREATE_PAYMENT",
-      storeId: summary.storeId,
-      userId: user.id,
-      userLogin: user.email,
-      orderId: order.id,
-      paymentId: payment.id,
-      errorCode: "PROVIDER_ORDER_FAILED",
-      route: "/checkout",
-      metadata: { currency, amountMinor },
-    });
-    return {
-      ok: false,
-      ...customerFacingError(logged.referenceId, true),
-      code: "PROVIDER_ORDER_FAILED",
-      referenceId: logged.referenceId,
-    };
-  }
-
-  if (
-    providerOrder.amountMinor !== amountMinor ||
-    providerOrder.currency.toUpperCase() !== currency
-  ) {
     await supabase
-      .from("payments")
-      .update({
-        status: "FAILED",
-        failure_reason: "Provider amount mismatch.",
-      })
-      .eq("id", payment.id);
-    await supabase.from("orders").update({ status: "CANCELLED" }).eq("id", order.id);
-    const logged = await logPaymentError({
-      message: "Provider amount or currency mismatch on order create",
-      source: "PROVIDER",
-      severity: "CRITICAL",
-      operation: "CREATE_PAYMENT",
-      storeId: summary.storeId,
-      userId: user.id,
-      userLogin: user.email,
-      orderId: order.id,
-      paymentId: payment.id,
-      providerOrderId: providerOrder.providerOrderId,
-      errorCode: "PROVIDER_AMOUNT_MISMATCH",
-      route: "/checkout",
-      metadata: {
-        expectedMinor: amountMinor,
-        actualMinor: providerOrder.amountMinor,
-        currency,
-        providerCurrency: providerOrder.currency,
-      },
-    });
+      .from("orders")
+      .update({ status: "CANCELLED" })
+      .eq("id", order.id)
+      .eq("status", "PENDING");
     return {
       ok: false,
-      ...customerFacingError(logged.referenceId, true),
-      code: "PROVIDER_AMOUNT_MISMATCH",
-      referenceId: logged.referenceId,
+      error: finalized.error,
+      code: "FINALIZE_FAILED",
     };
   }
-
-  await supabase
-    .from("payments")
-    .update({
-      provider_order_id: providerOrder.providerOrderId,
-      status: "PENDING",
-    })
-    .eq("id", payment.id);
 
   await writePaymentAudit({
     storeId: summary.storeId,
     userId: user.id,
-    action: "PAYMENT_INTENT_CREATED",
+    action: "COD_ORDER_PLACED",
     entityType: "payment",
     entityId: payment.id,
     metadata: {
       orderId: order.id,
+      orderNumber: order.order_number,
       amountMinor,
-      currency,
-      providerOrderId: providerOrder.providerOrderId,
     },
   });
 
-  const config = await getPlatformConfigAsync();
-  const profileClient = await createSupabaseServerClient();
-  const { data: profile } = await profileClient
-    .from("user_profiles")
-    .select("first_name, last_name, phone")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const name = [profile?.first_name, profile?.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-
-  const themeColor = toRazorpayHex(
-    config.theme.light.buttonBackground || config.theme.light.primary,
-  );
-
   return {
     ok: true,
-    session: {
-      paymentId: payment.id,
-      orderId: order.id,
-      orderNumber: order.order_number,
-      provider: "razorpay",
-      keyId: razorpayEnv.keyId,
-      razorpayOrderId: providerOrder.providerOrderId,
-      amountMinor,
-      currency,
-      brandName: config.brand.name,
-      brandLogoUrl: config.brand.logoUrl || undefined,
-      themeColor,
-      description: `Order ${order.order_number}`,
-      prefill: {
-        name: name || undefined,
-        email: user.email ?? undefined,
-        contact: profile?.phone ?? undefined,
-      },
-    },
+    paymentId: payment.id,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    status: "PENDING",
   };
-}
-
-/** Razorpay checkout only accepts solid hex accents (not CSS vars / rgb()). */
-function toRazorpayHex(color: string, fallback = "#9f1239"): string {
-  const value = color.trim();
-  const hex = value.match(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/);
-  if (hex) {
-    const body = hex[1];
-    if (body.length === 3) {
-      return `#${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`.toLowerCase();
-    }
-    return `#${body}`.toLowerCase();
-  }
-  const rgb = value.match(
-    /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*[\d.]+\s*)?\)$/i,
-  );
-  if (rgb) {
-    const channel = (n: string) =>
-      Math.max(0, Math.min(255, Math.round(Number(n))))
-        .toString(16)
-        .padStart(2, "0");
-    return `#${channel(rgb[1])}${channel(rgb[2])}${channel(rgb[3])}`;
-  }
-  return fallback;
 }

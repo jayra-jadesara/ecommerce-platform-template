@@ -191,6 +191,7 @@ export interface FooterChromeConfig {
   showContact: boolean;
   showSocial: boolean;
   showNewsletter: boolean;
+  showLogo: boolean;
   navVisible: boolean;
   copyrightText?: string;
   showFeaturedProduct: boolean;

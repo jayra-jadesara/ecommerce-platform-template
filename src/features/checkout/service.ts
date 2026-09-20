@@ -25,6 +25,7 @@ import {
   isCheckoutBlockingIssue,
   type CheckoutIssue,
   type CheckoutLine,
+  type CheckoutPaymentMethod,
   type CheckoutSummary,
 } from "@/features/checkout/types";
 import { calculateOrderPricingService } from "@/features/pricing/service";
@@ -60,7 +61,39 @@ function emptySummary(
     selectedAddressId: null,
     shippingSnapshot: null,
     step: "CART_REVIEW",
+    enabledPaymentMethods: [],
+    selectedPaymentMethod: null,
   };
+}
+
+async function loadEnabledPaymentMethods(
+  storeId: string,
+): Promise<CheckoutPaymentMethod[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("payment_settings")
+    .select("razorpay_enabled, cod_enabled, provider")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (!data) return [];
+
+  const methods: CheckoutPaymentMethod[] = [];
+  const razorpayOn =
+    typeof data.razorpay_enabled === "boolean"
+      ? data.razorpay_enabled
+      : data.provider === "razorpay";
+  if (razorpayOn) methods.push("razorpay");
+  if (data.cod_enabled) methods.push("cod");
+  return methods;
+}
+
+function resolveSelectedPaymentMethod(
+  enabled: CheckoutPaymentMethod[],
+  preferred?: CheckoutPaymentMethod | null,
+): CheckoutPaymentMethod | null {
+  if (preferred && enabled.includes(preferred)) return preferred;
+  return enabled[0] ?? null;
 }
 
 /**
@@ -247,6 +280,7 @@ async function validateLine(
 export async function getCheckoutSummary(input?: {
   selectedAddressId?: string | null;
   couponCode?: string | null;
+  paymentMethod?: CheckoutPaymentMethod | null;
 }): Promise<CheckoutSummary> {
   const user = await getCurrentUser();
   if (!user) {
@@ -262,6 +296,14 @@ export async function getCheckoutSummary(input?: {
     validateCheckoutCart(),
     getCustomerAddresses(),
   ]);
+
+  const enabledPaymentMethods = storeId
+    ? await loadEnabledPaymentMethods(storeId)
+    : [];
+  const selectedPaymentMethod = resolveSelectedPaymentMethod(
+    enabledPaymentMethods,
+    input?.paymentMethod,
+  );
 
   let selectedAddressId: string | null =
     input?.selectedAddressId ??
@@ -302,6 +344,7 @@ export async function getCheckoutSummary(input?: {
       storeId,
       userId: user.id,
       couponCode: input?.couponCode ?? null,
+      paymentMethod: selectedPaymentMethod,
       lines: availableLines.map((line) => ({
         productId: line.productId,
         variantId: line.variantId,
@@ -358,6 +401,8 @@ export async function getCheckoutSummary(input?: {
       canProceed: finalCanProceed,
       selectedAddressId,
     }),
+    enabledPaymentMethods,
+    selectedPaymentMethod,
   };
 }
 

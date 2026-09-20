@@ -14,6 +14,7 @@ import {
   DEFAULT_SHIPPING_SETTINGS,
   paymentSettingsSchema,
   shippingSettingsSchema,
+  syncedPaymentProvider,
   type PaymentSettingsFormValues,
   type ShippingSettingsFormValues,
 } from "@/features/admin/settings/shipping-payment-schemas";
@@ -140,12 +141,11 @@ export async function loadPaymentSettingsForm(): Promise<{
     currency: settings?.currency || "INR",
     values: payment
       ? {
-          provider:
-            payment.provider === "none" ||
-            payment.provider === "razorpay" ||
-            payment.provider === "other"
-              ? payment.provider
-              : DEFAULT_PAYMENT_SETTINGS.provider,
+          razorpayEnabled:
+            typeof payment.razorpay_enabled === "boolean"
+              ? payment.razorpay_enabled
+              : payment.provider === "razorpay",
+          codEnabled: Boolean(payment.cod_enabled),
           feeEnabled: Boolean(payment.fee_enabled),
           feeType:
             payment.fee_type === "PERCENTAGE" || payment.fee_type === "FIXED"
@@ -302,7 +302,9 @@ export async function updatePaymentSettings(
 
   const payload = {
     store_id: store.id,
-    provider: values.provider,
+    razorpay_enabled: values.razorpayEnabled,
+    cod_enabled: values.codEnabled,
+    provider: syncedPaymentProvider(values),
     fee_enabled: values.feeEnabled,
     fee_type: values.feeType,
     fee_value: values.feeValue,
@@ -335,7 +337,11 @@ export async function updatePaymentSettings(
   const changed = diffChangedKeys(
     existing
       ? {
-          provider: existing.provider,
+          razorpayEnabled:
+            typeof existing.razorpay_enabled === "boolean"
+              ? existing.razorpay_enabled
+              : existing.provider === "razorpay",
+          codEnabled: Boolean(existing.cod_enabled),
           feeEnabled: existing.fee_enabled,
           feeType: existing.fee_type,
           feeValue: Number(existing.fee_value),
@@ -346,7 +352,8 @@ export async function updatePaymentSettings(
         }
       : {},
     {
-      provider: values.provider,
+      razorpayEnabled: values.razorpayEnabled,
+      codEnabled: values.codEnabled,
       feeEnabled: values.feeEnabled,
       feeType: values.feeType,
       feeValue: values.feeValue,

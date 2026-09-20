@@ -61,7 +61,7 @@ export async function getStoreSetupChecklist(): Promise<{
       .maybeSingle(),
     supabase
       .from("payment_settings")
-      .select("provider")
+      .select("razorpay_enabled, cod_enabled, provider")
       .eq("store_id", storeId)
       .maybeSingle(),
     supabase
@@ -80,7 +80,9 @@ export async function getStoreSetupChecklist(): Promise<{
   const productsDone = (productCount ?? 0) > 0;
   const shippingDone = Boolean(shipping);
   const paymentsDone =
-    Boolean(payment?.provider) && payment?.provider !== "none";
+    Boolean(payment?.razorpay_enabled) ||
+    Boolean(payment?.cod_enabled) ||
+    (Boolean(payment?.provider) && payment?.provider !== "none");
 
   const items: SetupChecklistItem[] = [
     {

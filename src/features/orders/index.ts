@@ -11,4 +11,4 @@ export {
   orderStatusLabel,
 } from "@/features/orders/state-machine";
 
-export { finalizePaidOrder } from "@/features/orders/finalize";
+export { finalizePaidOrder, finalizeCodOrder } from "@/features/orders/finalize";

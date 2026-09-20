@@ -2,6 +2,11 @@ import { jsPDF } from "jspdf";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
 import type { OrderItemView } from "@/features/orders/types";
 import {
+  orderStatusTone,
+  paymentStatusTone,
+  type PaymentStatusTone,
+} from "@/features/payments/components/payment-status-ui";
+import {
   receiptTotalRows,
   type ReceiptTotals,
 } from "@/features/payments/receipt-totals";
@@ -159,13 +164,27 @@ export async function downloadOrderReceiptPdf(
   const margin = 40;
   const contentW = pageW - margin * 2;
 
-  const primary = hexToRgb(input.colors.primary);
+  const primary = hexToRgb(
+    input.colors.buttonBackground || input.colors.primary,
+  );
+  const onPrimary = hexToRgb(input.colors.buttonForeground || "#ffffff");
   const success = hexToRgb(input.colors.success);
+  const warning = hexToRgb(input.colors.warning);
+  const error = hexToRgb(input.colors.error);
   const muted = hexToRgb(input.colors.muted);
   const foreground = hexToRgb(input.colors.foreground);
   const surface = hexToRgb(input.colors.surface);
   const border = hexToRgb(input.colors.border);
   const card = hexToRgb(input.colors.card);
+
+  const toneRgb = (tone: PaymentStatusTone) => {
+    if (tone === "success") return success;
+    if (tone === "error") return error;
+    if (tone === "warning") return warning;
+    return muted;
+  };
+  const payTone = toneRgb(paymentStatusTone(input.paymentStatus));
+  const ordTone = toneRgb(orderStatusTone(input.orderStatus));
 
   const [logo, ...itemImages] = await Promise.all([
     input.logoUrl ? loadPdfImage(input.logoUrl, 220) : Promise.resolve(null),
@@ -174,8 +193,8 @@ export async function downloadOrderReceiptPdf(
     ),
   ]);
 
-  // Soft page background
-  doc.setFillColor(252, 252, 252);
+  // Soft page background (theme surface)
+  doc.setFillColor(surface.r, surface.g, surface.b);
   doc.rect(0, 0, pageW, pageH, "F");
 
   // Compact brand header strip
@@ -198,7 +217,7 @@ export async function downloadOrderReceiptPdf(
     }
   }
 
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(onPrimary.r, onPrimary.g, onPrimary.b);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.text(input.brandName || "Store", brandTextX, 32);
@@ -207,7 +226,7 @@ export async function downloadOrderReceiptPdf(
   const tagline = input.brandTagline?.trim() || "Payment receipt";
   doc.text(tagline, brandTextX, 48);
 
-  // Paid badge
+  // Paid badge — theme success (not brand primary)
   doc.setFillColor(255, 255, 255);
   doc.roundedRect(pageW - margin - 70, 22, 70, 28, 14, 14, "F");
   doc.setFillColor(success.r, success.g, success.b);
@@ -248,7 +267,7 @@ export async function downloadOrderReceiptPdf(
   doc.setFillColor(card.r, card.g, card.b);
   doc.setDrawColor(border.r, border.g, border.b);
   doc.roundedRect(margin, y, contentW, 58, 8, 8, "FD");
-  doc.setFillColor(success.r, success.g, success.b);
+  doc.setFillColor(primary.r, primary.g, primary.b);
   doc.rect(margin, y, 4, 58, "F");
 
   doc.setTextColor(muted.r, muted.g, muted.b);
@@ -263,11 +282,11 @@ export async function downloadOrderReceiptPdf(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(success.r, success.g, success.b);
+  doc.setTextColor(payTone.r, payTone.g, payTone.b);
   doc.text(input.paymentStatus, pageW - margin - 16, y + 24, {
     align: "right",
   });
-  doc.setTextColor(muted.r, muted.g, muted.b);
+  doc.setTextColor(ordTone.r, ordTone.g, ordTone.b);
   doc.text(input.orderStatus, pageW - margin - 16, y + 40, { align: "right" });
 
   y += 78;

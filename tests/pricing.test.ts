@@ -292,7 +292,8 @@ describe("settings validation and permissions", () => {
     ).toBe(false);
     expect(
       paymentSettingsSchema.safeParse({
-        provider: "none",
+        razorpayEnabled: false,
+        codEnabled: false,
         feeEnabled: true,
         feeType: "PERCENTAGE",
         feeValue: 200,
@@ -302,6 +303,20 @@ describe("settings validation and permissions", () => {
         taxValue: 0,
       }).success,
     ).toBe(false);
+
+    expect(
+      paymentSettingsSchema.safeParse({
+        razorpayEnabled: true,
+        codEnabled: true,
+        feeEnabled: true,
+        feeType: "FIXED",
+        feeValue: 50,
+        feeBasis: "SUBTOTAL_PLUS_SHIPPING",
+        taxEnabled: false,
+        taxType: "PERCENTAGE",
+        taxValue: 0,
+      }).success,
+    ).toBe(true);
   });
 
   it("enforces shipping/payment update permissions by role", () => {

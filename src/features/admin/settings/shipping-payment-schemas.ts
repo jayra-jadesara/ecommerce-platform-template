@@ -177,7 +177,8 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettingsFormValues = {
 
 export const paymentSettingsSchema = z
   .object({
-    provider: z.enum(["none", "razorpay", "other"]),
+    razorpayEnabled: z.coerce.boolean(),
+    codEnabled: z.coerce.boolean(),
     feeEnabled: z.coerce.boolean(),
     feeType: z.enum(["PERCENTAGE", "FIXED"]),
     feeValue: z.coerce
@@ -214,7 +215,8 @@ export const paymentSettingsSchema = z
 export type PaymentSettingsFormValues = z.infer<typeof paymentSettingsSchema>;
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettingsFormValues = {
-  provider: "none",
+  razorpayEnabled: false,
+  codEnabled: false,
   feeEnabled: false,
   feeType: "PERCENTAGE",
   feeValue: 0,
@@ -223,3 +225,10 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettingsFormValues = {
   taxType: "PERCENTAGE",
   taxValue: 0,
 };
+
+/** Synced legacy provider column for older readers. */
+export function syncedPaymentProvider(
+  values: Pick<PaymentSettingsFormValues, "razorpayEnabled">,
+): "razorpay" | "none" {
+  return values.razorpayEnabled ? "razorpay" : "none";
+}

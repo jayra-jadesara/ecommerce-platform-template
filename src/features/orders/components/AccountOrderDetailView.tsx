@@ -339,7 +339,11 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
                   <div className="flex justify-between gap-2">
                     <dt className="text-[var(--color-muted)]">Provider</dt>
                     <dd className="font-medium capitalize">
-                      {order.payment.provider}
+                      {order.payment.provider === "cod"
+                        ? "Cash on Delivery"
+                        : order.payment.provider === "razorpay"
+                          ? "Razorpay"
+                          : order.payment.provider}
                     </dd>
                   </div>
                   {order.payment.paymentMethod ? (

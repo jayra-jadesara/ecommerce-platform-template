@@ -39,6 +39,11 @@ export type CalculateOrderPricingParams = {
    * Checkout and payment must call with includeExtras=true (default).
    */
   includeExtras?: boolean;
+  /**
+   * Checkout payment method. Payment fee applies only for razorpay.
+   * COD / unset with fee forced off when method is "cod".
+   */
+  paymentMethod?: "razorpay" | "cod" | null;
 };
 
 export type CalculateOrderPricingServiceResult = PricingEngineOutcome & {
@@ -55,6 +60,8 @@ export async function calculateOrderPricingService(
 ): Promise<CalculateOrderPricingServiceResult> {
   const includeExtras = params.includeExtras !== false;
   const context = await loadPricingContext(params.storeId);
+  const applyPaymentFee =
+    includeExtras && params.paymentMethod !== "cod";
 
   const lines: PricingLineInput[] = params.lines.map((line) => ({
     productId: line.productId,
@@ -109,7 +116,7 @@ export async function calculateOrderPricingService(
           defaultShippingFeeMinor: 0,
           percentageRate: null,
         },
-    paymentFee: includeExtras
+    paymentFee: applyPaymentFee
       ? context.paymentFee
       : {
           enabled: false,

@@ -39,6 +39,8 @@ export type CheckoutLine = CartLineView & {
   currentUnitPrice: number;
 };
 
+export type CheckoutPaymentMethod = "razorpay" | "cod";
+
 export type CheckoutSummary = {
   storeId: string | null;
   currency: string;
@@ -59,6 +61,10 @@ export type CheckoutSummary = {
   selectedAddressId: string | null;
   shippingSnapshot: ShippingAddressSnapshot | null;
   step: CheckoutStep;
+  /** Store-enabled checkout payment methods. */
+  enabledPaymentMethods: CheckoutPaymentMethod[];
+  /** Method used for the pricing totals in this summary. */
+  selectedPaymentMethod: CheckoutPaymentMethod | null;
 };
 
 export type CheckoutMutationResult =

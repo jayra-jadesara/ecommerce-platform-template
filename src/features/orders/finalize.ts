@@ -208,3 +208,197 @@ export async function finalizePaidOrder(input: {
     inventoryShortages,
   };
 }
+
+/**
+ * Idempotent post-placement finalization for Cash on Delivery orders.
+ * Payment stays PENDING (cash collected on delivery); order is confirmed and stock decremented.
+ */
+export async function finalizeCodOrder(input: {
+  paymentId: string;
+  orderId: string;
+  storeId: string;
+  userId: string;
+  clearCart?: boolean;
+}): Promise<FinalizePaidOrderResult> {
+  const supabase = createSupabaseServiceClient();
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("id, status, order_id, provider")
+    .eq("id", input.paymentId)
+    .maybeSingle();
+
+  if (!payment || payment.order_id !== input.orderId) {
+    return { ok: false, error: "Payment not found for order." };
+  }
+
+  if (payment.provider !== "cod") {
+    return { ok: false, error: "Not a Cash on Delivery payment." };
+  }
+
+  if (payment.status !== "PENDING" && payment.status !== "CREATED") {
+    return { ok: false, error: "COD payment is not open." };
+  }
+
+  const { data: order } = await supabase
+    .from("orders")
+    .select(
+      "id, order_number, status, inventory_finalized_at, store_id, coupon_code, discount_amount",
+    )
+    .eq("id", input.orderId)
+    .maybeSingle();
+
+  if (!order || order.store_id !== input.storeId) {
+    return { ok: false, error: "Order not found." };
+  }
+
+  const alreadyFinalized = Boolean(order.inventory_finalized_at);
+
+  if (order.status === "PENDING") {
+    await supabase
+      .from("orders")
+      .update({ status: "CONFIRMED" })
+      .eq("id", order.id)
+      .eq("status", "PENDING");
+
+    await writeOrderActivity({
+      orderId: order.id,
+      storeId: input.storeId,
+      actorUserId: input.userId,
+      eventType: "ORDER_CONFIRMED",
+      message: "Cash on Delivery order confirmed — pay when delivered",
+      metadata: { paymentId: input.paymentId, paymentStatus: payment.status },
+    });
+    await writeOrderAudit({
+      storeId: input.storeId,
+      userId: input.userId,
+      action: "ORDER_CREATED",
+      entityId: order.id,
+      metadata: { paymentId: input.paymentId, method: "cod" },
+    });
+  }
+
+  if (order.coupon_code && Number(order.discount_amount) > 0) {
+    const code = normalizeCouponCode(order.coupon_code);
+    const { data: coupon } = await supabase
+      .from("coupons")
+      .select("id")
+      .eq("store_id", input.storeId)
+      .ilike("code", code)
+      .limit(1)
+      .maybeSingle();
+
+    if (coupon) {
+      const redeemed = await redeemCoupon({
+        orderId: order.id,
+        couponId: coupon.id,
+        userId: input.userId,
+        discountAmountMajor: Number(order.discount_amount),
+        storeId: input.storeId,
+      });
+      if (!redeemed.ok) {
+        await writeOrderActivity({
+          orderId: order.id,
+          storeId: input.storeId,
+          eventType: "COUPON_REDEMPTION_FAILED",
+          message: "Coupon could not be redeemed for COD order",
+          metadata: { error: redeemed.error, code: order.coupon_code },
+        });
+        await logPaymentError({
+          message: redeemed.error || "Coupon redemption failed for COD order",
+          type: "ORDER",
+          source: "SERVER",
+          severity: "ERROR",
+          operation: "FINALIZE_ORDER",
+          feature: "PAYMENT",
+          storeId: input.storeId,
+          userId: input.userId,
+          orderId: order.id,
+          paymentId: input.paymentId,
+          errorCode: "COUPON_REDEMPTION_FAILED",
+          route: "/checkout",
+        });
+      } else if (!redeemed.alreadyRedeemed) {
+        await writeOrderActivity({
+          orderId: order.id,
+          storeId: input.storeId,
+          eventType: "COUPON_REDEEMED",
+          message: `Coupon ${order.coupon_code} redeemed`,
+          metadata: {
+            discountAmount: Number(order.discount_amount),
+            couponId: coupon.id,
+          },
+        });
+      }
+    }
+  }
+
+  let inventoryShortages = 0;
+  if (!alreadyFinalized) {
+    const inventory = await finalizeOrderInventory(order.id);
+    if (!inventory.ok) {
+      await writeOrderActivity({
+        orderId: order.id,
+        storeId: input.storeId,
+        eventType: "INVENTORY_FINALIZATION_FAILED",
+        message: inventory.error ?? "Inventory finalization failed",
+      });
+      await logPaymentError({
+        message: inventory.error ?? "Inventory finalization failed",
+        type: "INVENTORY",
+        source: "DATABASE",
+        severity: "CRITICAL",
+        operation: "FINALIZE_ORDER",
+        feature: "PAYMENT",
+        storeId: input.storeId,
+        userId: input.userId,
+        orderId: order.id,
+        paymentId: input.paymentId,
+        errorCode: "INVENTORY_FINALIZATION_FAILED",
+        route: "/checkout",
+      });
+      return {
+        ok: false,
+        error: inventory.error ?? "Inventory finalization failed",
+      };
+    }
+    inventoryShortages = inventory.shortages?.length ?? 0;
+    if (!inventory.alreadyFinalized) {
+      await recordInventoryAudit({
+        storeId: input.storeId,
+        userId: input.userId,
+        orderId: order.id,
+        action: "INVENTORY_DECREMENTED",
+        metadata: { shortages: inventory.shortages ?? [], method: "cod" },
+      });
+    }
+    if (inventoryShortages > 0) {
+      await writeOrderActivity({
+        orderId: order.id,
+        storeId: input.storeId,
+        eventType: "INVENTORY_SHORTAGE",
+        message: "Some items could not be decremented — review stock",
+        metadata: { shortages: inventory.shortages ?? [] },
+      });
+    }
+  }
+
+  if (input.clearCart !== false && input.userId) {
+    const { data: carts } = await supabase
+      .from("carts")
+      .select("id")
+      .eq("user_id", input.userId)
+      .eq("store_id", input.storeId);
+    for (const cart of carts ?? []) {
+      await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    }
+  }
+
+  return {
+    ok: true,
+    orderId: order.id,
+    orderNumber: order.order_number,
+    alreadyFinalized,
+    inventoryShortages,
+  };
+}

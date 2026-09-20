@@ -12,11 +12,16 @@ import {
   removeCheckoutCouponAction,
   removeCheckoutItemAction,
   selectCheckoutAddressAction,
+  setCheckoutPaymentMethodAction,
 } from "@/features/checkout/actions";
-import type { CheckoutSummary } from "@/features/checkout/types";
+import type {
+  CheckoutPaymentMethod,
+  CheckoutSummary,
+} from "@/features/checkout/types";
 import { formatMoney } from "@/features/catalog/money";
 import {
   cancelCheckoutPaymentAction,
+  placeCodOrderAction,
   startCheckoutPaymentAction,
   verifyCheckoutPaymentAction,
 } from "@/features/payments/actions";
@@ -69,6 +74,12 @@ export function CheckoutClient({
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod | null>(
+    () =>
+      initialSummary.selectedPaymentMethod ??
+      initialSummary.enabledPaymentMethods[0] ??
+      null,
+  );
 
   const selectedAddress = useMemo(
     () =>
@@ -76,6 +87,13 @@ export function CheckoutClient({
       null,
     [summary.addresses, summary.selectedAddressId],
   );
+
+  const enabledMethods = summary.enabledPaymentMethods;
+  const activeMethod =
+    paymentMethod && enabledMethods.includes(paymentMethod)
+      ? paymentMethod
+      : enabledMethods[0] ?? null;
+  const hasPaymentMethods = enabledMethods.length > 0;
 
   if (!summary.canProceed && summary.lines.length === 0) {
     return (
@@ -99,6 +117,7 @@ export function CheckoutClient({
 
   async function handlePayNow() {
     if (!ready || busy || !summary.selectedAddressId) return;
+    if (activeMethod !== "razorpay") return;
     setError(null);
     setPaying(true);
     try {
@@ -146,6 +165,56 @@ export function CheckoutClient({
       setPaying(false);
       setError("Unable to open payment. Please try again.");
     }
+  }
+
+  async function handlePlaceCodOrder() {
+    if (!ready || busy || !summary.selectedAddressId) return;
+    if (activeMethod !== "cod") return;
+    setError(null);
+    setPaying(true);
+    startTransition(async () => {
+      const placed = await placeCodOrderAction({
+        addressId: summary.selectedAddressId,
+        couponCode: summary.couponCode,
+      });
+      setPaying(false);
+      if (!placed.ok) {
+        setError(placed.error);
+        return;
+      }
+      router.push(
+        `/payment/success?paymentId=${encodeURIComponent(placed.paymentId)}&order=${encodeURIComponent(placed.orderNumber)}`,
+      );
+    });
+  }
+
+  function selectPaymentMethod(method: CheckoutPaymentMethod) {
+    if (method === activeMethod || busy) return;
+    setPaymentMethod(method);
+    startTransition(async () => {
+      setError(null);
+      const next = await setCheckoutPaymentMethodAction({
+        selectedAddressId: summary.selectedAddressId,
+        couponCode: summary.couponCode,
+        paymentMethod: method,
+      });
+      setSummary(next);
+    });
+  }
+
+  function paymentCtaLabel() {
+    if (paying) return "Processing…";
+    if (!hasPaymentMethods) return "Payments not set up";
+    if (activeMethod === "cod") return "Place COD order";
+    return "Pay now";
+  }
+
+  function runPaymentAction() {
+    if (activeMethod === "cod") {
+      void handlePlaceCodOrder();
+      return;
+    }
+    void handlePayNow();
   }
 
   return (
@@ -231,6 +300,7 @@ export function CheckoutClient({
                             const next = await removeCheckoutItemAction({
                               cartItemId: issue.cartItemId!,
                               couponCode: summary.couponCode,
+                              paymentMethod: activeMethod,
                             });
                             setSummary(next);
                           });
@@ -312,6 +382,7 @@ export function CheckoutClient({
                     const next = await selectCheckoutAddressAction({
                       addressId: result.address.id,
                       couponCode: summary.couponCode,
+                      paymentMethod: activeMethod,
                     });
                     setSummary(next);
                     setShowNewAddress(false);
@@ -356,6 +427,7 @@ export function CheckoutClient({
                               const next = await selectCheckoutAddressAction({
                                 addressId: address.id,
                                 couponCode: summary.couponCode,
+                                paymentMethod: activeMethod,
                               });
                               setSummary(next);
                             });
@@ -386,62 +458,58 @@ export function CheckoutClient({
               </ul>
             )}
 
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={!ready || busy}
-                className={sfBtn("primary")}
-                onClick={() => setUiStep("confirm")}
-              >
-                Continue to confirm
-              </button>
-              <Link href="/cart" className={sfBtn("outline")}>
-                Back to cart
-              </Link>
-            </div>
+            <Link
+              href="/cart"
+              className="mt-5 inline-block text-xs font-semibold text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
+            >
+              ← Back to cart
+            </Link>
           </section>
         ) : null}
 
         {uiStep === "confirm" ? (
-          <section className="space-y-5 rounded-[1.25rem] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_12px_40px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)] sm:p-6">
+          <section className="space-y-4 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 shadow-[0_8px_28px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)] sm:p-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
-                Review
-              </p>
-              <h2 className="mt-1 font-[family-name:var(--font-display)] text-xl font-semibold">
+              <h2 className="font-[family-name:var(--font-display)] text-lg font-semibold tracking-tight">
                 Confirm details
               </h2>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Check your items and delivery address before payment.
+              <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                Check items and delivery before payment.
               </p>
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold">Order items</h3>
-              <ul className="mt-3 space-y-3">
+              <h3 className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
+                Items · {summary.lines.length}
+              </h3>
+              <ul className="mt-2 divide-y divide-[var(--color-border)]">
                 {summary.lines.map((line) => (
-                  <li
-                    key={line.id}
-                    className="flex gap-3 border-b border-[var(--color-border)] pb-3 last:border-0"
-                  >
-                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)]">
+                  <li key={line.id} className="flex items-center gap-2.5 py-2.5 first:pt-1 last:pb-0">
+                    <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
                       {line.imageUrl ? (
                         <Image
                           src={line.imageUrl}
                           alt={line.imageAlt}
                           fill
+                          unoptimized
                           className="object-cover"
-                          sizes="64px"
+                          sizes="44px"
                         />
-                      ) : null}
+                      ) : (
+                        <span className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">
+                          —
+                        </span>
+                      )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="font-medium">{line.productName}</p>
-                      <p className="text-sm text-[var(--color-muted)]">
+                      <p className="truncate text-sm font-medium leading-snug">
+                        {line.productName}
+                      </p>
+                      <p className="truncate text-[11px] text-[var(--color-muted)]">
                         {line.variantName} · Qty {line.quantity}
                       </p>
                     </div>
-                    <div className="text-right text-sm font-semibold">
+                    <div className="shrink-0 text-sm font-semibold tabular-nums">
                       {formatMoney(line.lineTotal, summary.currency)}
                     </div>
                   </li>
@@ -450,40 +518,41 @@ export function CheckoutClient({
             </div>
 
             {selectedAddress ? (
-              <div className="rounded-2xl border-2 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] px-4 py-4 sm:px-5">
+              <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
                       Deliver to
                     </p>
-                    <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight sm:text-2xl">
+                    <p className="mt-1 text-sm font-semibold tracking-tight text-[var(--color-foreground)]">
                       {selectedAddress.fullName}
-                    </p>
-                    {selectedAddress.phone ? (
-                      <p className="mt-1 text-sm font-medium">
-                        {selectedAddress.phone}
-                      </p>
-                    ) : null}
-                    <div className="mt-3 space-y-0.5 text-sm leading-relaxed text-[var(--color-foreground)]">
-                      <p>{selectedAddress.addressLine1}</p>
-                      {selectedAddress.addressLine2 ? (
-                        <p>{selectedAddress.addressLine2}</p>
+                      {selectedAddress.phone ? (
+                        <span className="font-normal text-[var(--color-muted)]">
+                          {" "}
+                          · {selectedAddress.phone}
+                        </span>
                       ) : null}
-                      <p>
-                        {[
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+                      {[
+                        selectedAddress.addressLine1,
+                        selectedAddress.addressLine2,
+                        [
                           selectedAddress.city,
                           selectedAddress.state,
                           selectedAddress.postalCode,
                         ]
                           .filter(Boolean)
-                          .join(", ")}
-                      </p>
-                      <p>{selectedAddress.country}</p>
-                    </div>
+                          .join(", "),
+                        selectedAddress.country,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
                   </div>
                   <button
                     type="button"
-                    className="shrink-0 rounded-full border border-[var(--color-primary)] bg-[var(--color-card)] px-3 py-1.5 text-sm font-semibold text-[var(--color-primary)]"
+                    className="shrink-0 text-xs font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
                     onClick={() => setUiStep("address")}
                   >
                     Change
@@ -492,23 +561,13 @@ export function CheckoutClient({
               </div>
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={!ready || busy}
-                className={sfBtn("primary")}
-                onClick={() => setUiStep("payment")}
-              >
-                Continue to payment
-              </button>
-              <button
-                type="button"
-                className={sfBtn("outline")}
-                onClick={() => setUiStep("address")}
-              >
-                Back
-              </button>
-            </div>
+            <button
+              type="button"
+              className="text-xs font-semibold text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
+              onClick={() => setUiStep("address")}
+            >
+              ← Back to address
+            </button>
           </section>
         ) : null}
 
@@ -521,44 +580,94 @@ export function CheckoutClient({
               Payment
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-[var(--color-muted)]">
-              You will complete payment in a secure window. Your order is only
-              placed after payment succeeds.
+              {hasPaymentMethods
+                ? "Choose how you want to pay. Totals update when you switch."
+                : "This store has no payment methods enabled yet. Please contact the store."}
             </p>
+
+            {hasPaymentMethods ? (
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {enabledMethods.includes("razorpay") ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => selectPaymentMethod("razorpay")}
+                    className={cn(
+                      "rounded-2xl border px-4 py-4 text-left transition-colors",
+                      activeMethod === "razorpay"
+                        ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] shadow-[0_0_0_1px_var(--color-primary)]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)]",
+                    )}
+                  >
+                    <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                      Pay now (Razorpay)
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+                      Pay online with card or UPI. Order is placed after payment
+                      succeeds.
+                    </p>
+                  </button>
+                ) : null}
+                {enabledMethods.includes("cod") ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => selectPaymentMethod("cod")}
+                    className={cn(
+                      "rounded-2xl border px-4 py-4 text-left transition-colors",
+                      activeMethod === "cod"
+                        ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] shadow-[0_0_0_1px_var(--color-primary)]"
+                        : "border-[var(--color-border)] bg-[var(--color-card)]",
+                    )}
+                  >
+                    <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                      Cash on Delivery
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+                      Place the order now. Pay cash when it is delivered. No
+                      online payment fee.
+                    </p>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
             {selectedAddress ? (
-              <div className="mt-5 rounded-2xl border-2 border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] px-4 py-4 sm:px-5 sm:py-5">
+              <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3.5 py-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
                       Delivering to
                     </p>
-                    <p className="mt-2 font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight text-[var(--color-foreground)] sm:text-2xl">
+                    <p className="mt-1 text-sm font-semibold tracking-tight text-[var(--color-foreground)]">
                       {selectedAddress.fullName}
-                    </p>
-                    {selectedAddress.phone ? (
-                      <p className="mt-1 text-sm font-medium text-[var(--color-foreground)]">
-                        {selectedAddress.phone}
-                      </p>
-                    ) : null}
-                    <div className="mt-3 space-y-0.5 text-sm leading-relaxed text-[var(--color-foreground)]">
-                      <p>{selectedAddress.addressLine1}</p>
-                      {selectedAddress.addressLine2 ? (
-                        <p>{selectedAddress.addressLine2}</p>
+                      {selectedAddress.phone ? (
+                        <span className="font-normal text-[var(--color-muted)]">
+                          {" "}
+                          · {selectedAddress.phone}
+                        </span>
                       ) : null}
-                      <p>
-                        {[
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
+                      {[
+                        selectedAddress.addressLine1,
+                        selectedAddress.addressLine2,
+                        [
                           selectedAddress.city,
                           selectedAddress.state,
                           selectedAddress.postalCode,
                         ]
                           .filter(Boolean)
-                          .join(", ")}
-                      </p>
-                      <p>{selectedAddress.country}</p>
-                    </div>
+                          .join(", "),
+                        selectedAddress.country,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
                   </div>
                   <button
                     type="button"
-                    className="shrink-0 rounded-full border border-[var(--color-primary)] bg-[var(--color-card)] px-3 py-1.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))]"
+                    className="shrink-0 text-xs font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
                     onClick={() => setUiStep("address")}
                   >
                     Change
@@ -570,25 +679,13 @@ export function CheckoutClient({
                 No delivery address selected. Go back and choose one.
               </p>
             )}
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button
-                type="button"
-                disabled={!ready || busy || !selectedAddress}
-                className={sfBtn("primary")}
-                onClick={() => {
-                  void handlePayNow();
-                }}
-              >
-                {paying ? "Processing…" : "Pay now"}
-              </button>
-              <button
-                type="button"
-                className={sfBtn("outline")}
-                onClick={() => setUiStep("confirm")}
-              >
-                Back
-              </button>
-            </div>
+            <button
+              type="button"
+              className="mt-4 text-xs font-semibold text-[var(--color-muted)] underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
+              onClick={() => setUiStep("confirm")}
+            >
+              ← Back to confirm
+            </button>
           </section>
         ) : null}
       </div>
@@ -620,6 +717,7 @@ export function CheckoutClient({
                     const next = await applyCheckoutCouponAction({
                       code,
                       selectedAddressId: summary.selectedAddressId,
+                      paymentMethod: activeMethod,
                     });
                     setSummary(next);
                     if (next.couponCode) {
@@ -656,6 +754,7 @@ export function CheckoutClient({
                       setError(null);
                       const next = await removeCheckoutCouponAction({
                         selectedAddressId: summary.selectedAddressId,
+                        paymentMethod: activeMethod,
                       });
                       setSummary(next);
                       setCouponInput("");
@@ -688,6 +787,7 @@ export function CheckoutClient({
                       const next = await applyCheckoutCouponAction({
                         code: couponInput,
                         selectedAddressId: summary.selectedAddressId,
+                        paymentMethod: activeMethod,
                       });
                       setSummary(next);
                       if (next.couponCode) {
@@ -747,10 +847,14 @@ export function CheckoutClient({
               <dt className="text-[var(--color-muted)]">Payment fee</dt>
               <dd>
                 {summary.pricing
-                  ? formatMoney(
-                      summary.pricing.paymentFee.major,
-                      summary.currency,
-                    )
+                  ? summary.pricing.paymentFee.major > 0
+                    ? formatMoney(
+                        summary.pricing.paymentFee.major,
+                        summary.currency,
+                      )
+                    : activeMethod === "cod"
+                      ? "Off (COD)"
+                      : formatMoney(0, summary.currency)
                   : "—"}
               </dd>
             </div>
@@ -775,19 +879,61 @@ export function CheckoutClient({
             </div>
           </dl>
 
-          {uiStep === "payment" ? (
-            <button
-              type="button"
-              disabled={!ready || busy}
-              onClick={() => {
-                void handlePayNow();
-              }}
-              className={cn(sfBtn("primary"), "hidden w-full lg:inline-flex")}
-            >
-              {paying ? "Processing…" : "Pay now"}
-            </button>
+          {uiStep === "address" ? (
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
+              <button
+                type="button"
+                disabled={!ready || busy}
+                onClick={() => setUiStep("confirm")}
+                className={cn(
+                  sfBtn("primary"),
+                  "hidden w-full !min-h-10 !text-sm lg:inline-flex",
+                )}
+              >
+                Continue to confirm
+              </button>
+              <p className="text-center text-[11px] text-[var(--color-muted)]">
+                Step {stepIndex + 1} of 3 — {STEPS[stepIndex]?.label}
+              </p>
+            </div>
+          ) : uiStep === "confirm" ? (
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
+              <button
+                type="button"
+                disabled={!ready || busy}
+                onClick={() => setUiStep("payment")}
+                className={cn(
+                  sfBtn("primary"),
+                  "hidden w-full !min-h-10 !text-sm lg:inline-flex",
+                )}
+              >
+                Continue to payment
+              </button>
+              <p className="text-center text-[11px] text-[var(--color-muted)]">
+                Step {stepIndex + 1} of 3 — {STEPS[stepIndex]?.label}
+              </p>
+            </div>
+          ) : uiStep === "payment" ? (
+            <div className="space-y-2 border-t border-[var(--color-border)] pt-4">
+              <button
+                type="button"
+                disabled={
+                  !ready || busy || !selectedAddress || !hasPaymentMethods
+                }
+                onClick={runPaymentAction}
+                className={cn(
+                  sfBtn("primary"),
+                  "hidden w-full !min-h-10 !text-sm lg:inline-flex",
+                )}
+              >
+                {paymentCtaLabel()}
+              </button>
+              <p className="text-center text-[11px] text-[var(--color-muted)]">
+                Step {stepIndex + 1} of 3 — {STEPS[stepIndex]?.label}
+              </p>
+            </div>
           ) : (
-            <p className="text-center text-xs text-[var(--color-muted)]">
+            <p className="border-t border-[var(--color-border)] pt-4 text-center text-xs text-[var(--color-muted)]">
               Step {stepIndex + 1} of 3 — {STEPS[stepIndex]?.label}
             </p>
           )}
@@ -828,13 +974,11 @@ export function CheckoutClient({
           {uiStep === "payment" ? (
             <button
               type="button"
-              disabled={!ready || busy}
+              disabled={!ready || busy || !hasPaymentMethods}
               className={sfBtn("primary")}
-              onClick={() => {
-                void handlePayNow();
-              }}
+              onClick={runPaymentAction}
             >
-              {paying ? "Processing…" : "Pay now"}
+              {paymentCtaLabel()}
             </button>
           ) : null}
         </div>

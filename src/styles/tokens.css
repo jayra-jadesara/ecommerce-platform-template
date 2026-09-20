@@ -29,6 +29,8 @@
   --layout-header-height: 3.5rem;
   --layout-announcement-height: 2.25rem;
   --layout-container-padding: clamp(1.25rem, 3vw, 2.25rem);
+  /* Extra right inset when Developer tab is shown (overridden below). */
+  --sf-dev-edge-clearance: 0px;
   --radius-default: 14px;
 }
 

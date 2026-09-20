@@ -33,7 +33,7 @@ describe("admin required field markers", () => {
       /label="Store name in Google"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/NavigationSettingsForm.tsx")).toMatch(
-      /label="Button text"[\s\S]*?required/,
+      /label="Menu name"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/ShippingSettingsForm.tsx")).toMatch(
       /label=\{\`Delivery fee[\s\S]*?required/,

@@ -9,7 +9,7 @@ import TextField from "@mui/material/TextField";
 import { useEffect, useState, useTransition } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { IndianMobileField } from "@/features/auth/components/IndianMobileField";
-import { toNationalMobileDigits } from "@/features/auth/recovery-crypto";
+import { toNationalMobileDigits } from "@/features/auth/phone-normalize";
 import {
   addressFormSchema,
   type AddressFormInput,

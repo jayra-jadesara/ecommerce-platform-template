@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createCheckoutPaymentSession } from "@/features/payments/checkout-session";
+import { createCodCheckoutOrder } from "@/features/payments/cod-checkout";
 import { verifyCheckoutPayment } from "@/features/payments/verify";
 import type {
   PaymentActionResult,
@@ -54,6 +55,40 @@ export async function startCheckoutPaymentAction(
   return createCheckoutPaymentSession(parsed.data);
 }
 
+export async function placeCodOrderAction(
+  raw: unknown,
+): Promise<PaymentActionResult> {
+  const { enforceRateLimit, rateLimitErrorMessage } = await import(
+    "@/lib/security/server-rate-limit"
+  );
+  const limited = await enforceRateLimit("checkout");
+  if (!limited.allowed) {
+    return {
+      ok: false,
+      error: rateLimitErrorMessage(limited.retryAfterMs),
+      code: "RATE_LIMITED",
+    };
+  }
+
+  const parsed = startSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid request.",
+      code: "VALIDATION",
+    };
+  }
+
+  const result = await createCodCheckoutOrder(parsed.data);
+  if (result.ok) {
+    revalidatePath("/checkout");
+    revalidatePath("/cart");
+    revalidatePath("/account/payments");
+    revalidatePath("/account/orders");
+  }
+  return result;
+}
+
 export async function verifyCheckoutPaymentAction(
   raw: unknown,
 ): Promise<PaymentActionResult> {
@@ -90,12 +125,16 @@ export async function cancelCheckoutPaymentAction(
   const supabase = createSupabaseServiceClient();
   const { data: payment } = await supabase
     .from("payments")
-    .select("id, user_id, order_id, status, orders!inner(store_id)")
+    .select("id, user_id, order_id, status, provider, orders!inner(store_id)")
     .eq("id", parsed.data.paymentId)
     .maybeSingle();
 
   if (!payment || payment.user_id !== user.id) {
     return { ok: false, error: "Payment not found." };
+  }
+
+  if (payment.provider === "cod") {
+    return { ok: false, error: "Cash on Delivery orders cannot be cancelled here." };
   }
 
   if (payment.status === "CAPTURED" || payment.status === "AUTHORIZED") {

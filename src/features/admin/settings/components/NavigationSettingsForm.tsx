@@ -3,25 +3,18 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 import { saveNavigationSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
-import {
-  navigationSettingsSchema,
-  type NavigationItemFormValues,
-  type NavigationSettingsFormValues,
-} from "@/features/admin/settings/schemas";
+import type { NavigationItemFormValues } from "@/features/admin/settings/schemas";
 import type { AdminNavItemRow } from "@/features/admin/settings/update-navigation";
-import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
-  adminBtn,
   adminCard,
   adminCardPadding,
-  adminCardsGrid,
   adminFieldGroup,
-  adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
@@ -30,10 +23,26 @@ import {
   focusFirstFieldError,
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
-import {
-  pageOptionLabel,
-  StorePageLinkField,
-} from "@/features/admin/ui/StorePageLinkField";
+import { STORE_PAGE_OPTIONS } from "@/features/admin/ui/StorePageLinkField";
+import { cn } from "@/lib/cn";
+
+/** Page order clients expect (fixed list — no free-form “add link”). */
+const MENU_PAGE_ORDER = [
+  "/",
+  "/products",
+  "/about",
+  "/career",
+  "/blog",
+  "/contact",
+  "/privacy",
+  "/terms",
+  "/disclaimer",
+] as const;
+
+const MENU_PAGE_CATALOG = MENU_PAGE_ORDER.map((href) => {
+  const page = STORE_PAGE_OPTIONS.find((option) => option.value === href);
+  return page ?? { value: href, label: href };
+});
 
 function createClientKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -42,22 +51,177 @@ function createClientKey() {
   return `nav-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
 }
 
-function rowsToFormItems(
-  rows: AdminNavItemRow[],
+const pageRowSchema = z.object({
+  href: z.string().min(1),
+  pageName: z.string().min(1),
+  label: z.string().trim().min(1, "Menu name is required").max(80),
+  showHeader: z.boolean(),
+  showFooter: z.boolean(),
+  headerId: z.string().uuid().nullable(),
+  footerId: z.string().uuid().nullable(),
+  sortOrder: z.number().int().min(0).max(10_000),
+});
+
+const menuPagesFormSchema = z.object({
+  pages: z.array(pageRowSchema).min(1).max(40),
+});
+
+type MenuPagesFormValues = z.infer<typeof menuPagesFormSchema>;
+type PageRow = z.infer<typeof pageRowSchema>;
+
+function buildDefaults(rows: AdminNavItemRow[]): MenuPagesFormValues {
+  const headerByHref = new Map<string, AdminNavItemRow>();
+  const footerByHref = new Map<string, AdminNavItemRow>();
+
+  for (const row of rows) {
+    if (row.parent_id) continue;
+    if (row.location === "header") {
+      if (!headerByHref.has(row.href)) headerByHref.set(row.href, row);
+    } else if (row.location === "footer") {
+      if (!footerByHref.has(row.href)) footerByHref.set(row.href, row);
+    }
+  }
+
+  const pages: PageRow[] = MENU_PAGE_CATALOG.map((page, index) => {
+    const header = headerByHref.get(page.value);
+    const footer = footerByHref.get(page.value);
+    const label =
+      header?.label?.trim() ||
+      footer?.label?.trim() ||
+      page.label;
+
+    return {
+      href: page.value,
+      pageName: page.label,
+      label,
+      showHeader: Boolean(header?.is_active),
+      showFooter: Boolean(footer?.is_active),
+      headerId: header?.id ?? null,
+      footerId: footer?.id ?? null,
+      sortOrder: header?.sort_order ?? footer?.sort_order ?? index + 1,
+    };
+  });
+
+  // Empty store: match sensible defaults (header main pages, footer legal).
+  if (rows.length === 0) {
+    const headerDefaults = new Set([
+      "/",
+      "/products",
+      "/about",
+      "/career",
+      "/blog",
+      "/contact",
+    ]);
+    const footerDefaults = new Set([
+      "/privacy",
+      "/terms",
+      "/disclaimer",
+      "/career",
+      "/contact",
+    ]);
+    for (const page of pages) {
+      page.showHeader = headerDefaults.has(page.href);
+      page.showFooter = footerDefaults.has(page.href);
+    }
+  }
+
+  return { pages };
+}
+
+function pagesToNavItems(
+  pages: PageRow[],
+  existingRows: AdminNavItemRow[],
 ): NavigationItemFormValues[] {
-  return rows.map((row) => ({
-    id: row.id,
-    clientKey: row.id,
-    location: row.location,
-    parentId: row.parent_id,
-    parentClientKey: row.parent_id,
-    label: row.label,
-    href: row.href,
-    sortOrder: row.sort_order,
-    isActive: row.is_active,
-    openInNewTab: row.open_in_new_tab,
-    _delete: false,
-  }));
+  const catalogHrefs = new Set(MENU_PAGE_CATALOG.map((p) => p.value));
+  const items: NavigationItemFormValues[] = [];
+
+  // Remove nested / unknown catalog rows we no longer manage in this UI.
+  for (const row of existingRows) {
+    const inCatalog = catalogHrefs.has(row.href);
+    const isRoot = !row.parent_id;
+    if (!inCatalog || !isRoot) {
+      items.push({
+        id: row.id,
+        clientKey: row.id,
+        location: row.location,
+        parentId: row.parent_id,
+        parentClientKey: row.parent_id,
+        label: row.label,
+        href: row.href,
+        sortOrder: row.sort_order,
+        isActive: row.is_active,
+        openInNewTab: row.open_in_new_tab,
+        _delete: true,
+      });
+    }
+  }
+
+  let headerOrder = 1;
+  let footerOrder = 1;
+
+  for (const page of pages) {
+    if (page.showHeader) {
+      items.push({
+        id: page.headerId,
+        clientKey: page.headerId ?? createClientKey(),
+        location: "header",
+        parentId: null,
+        parentClientKey: null,
+        label: page.label.trim(),
+        href: page.href,
+        sortOrder: headerOrder++,
+        isActive: true,
+        openInNewTab: false,
+        _delete: false,
+      });
+    } else if (page.headerId) {
+      items.push({
+        id: page.headerId,
+        clientKey: page.headerId,
+        location: "header",
+        parentId: null,
+        parentClientKey: null,
+        label: page.label.trim(),
+        href: page.href,
+        sortOrder: page.sortOrder,
+        isActive: false,
+        openInNewTab: false,
+        _delete: true,
+      });
+    }
+
+    if (page.showFooter) {
+      items.push({
+        id: page.footerId,
+        clientKey: page.footerId ?? createClientKey(),
+        location: "footer",
+        parentId: null,
+        parentClientKey: null,
+        label: page.label.trim(),
+        href: page.href,
+        sortOrder: footerOrder++,
+        isActive: true,
+        openInNewTab: false,
+        _delete: false,
+      });
+    } else if (page.footerId) {
+      items.push({
+        id: page.footerId,
+        clientKey: page.footerId,
+        location: "footer",
+        parentId: null,
+        parentClientKey: null,
+        label: page.label.trim(),
+        href: page.href,
+        sortOrder: page.sortOrder,
+        isActive: false,
+        openInNewTab: false,
+        _delete: true,
+      });
+    }
+  }
+
+  return items;
 }
 
 interface NavigationSettingsFormProps {
@@ -75,7 +239,7 @@ export function NavigationSettingsForm({
   const [pending, startTransition] = useTransition();
 
   const defaults = useMemo(
-    () => ({ items: rowsToFormItems(initialItems) }),
+    () => buildDefaults(initialItems),
     [initialItems],
   );
 
@@ -83,28 +247,26 @@ export function NavigationSettingsForm({
     control,
     handleSubmit,
     reset,
-    setValue,
     setError: setFieldError,
     setFocus,
     formState: { isDirty },
-  } = useForm<NavigationSettingsFormValues>({
-    resolver: zodResolver(navigationSettingsSchema),
+  } = useForm<MenuPagesFormValues>({
+    resolver: zodResolver(menuPagesFormSchema),
     defaultValues: defaults,
   });
 
-  const { fields, append, update } = useFieldArray({
-    control,
-    name: "items",
-    keyName: "fieldId",
-  });
+  useEffect(() => {
+    reset(defaults);
+  }, [defaults, reset]);
 
-  const items = useWatch({ control, name: "items" }) ?? [];
+  const pages = useWatch({ control, name: "pages" }) ?? defaults.pages;
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
     setSuccess(null);
     startTransition(async () => {
-      const result = await saveNavigationSettingsAction(values);
+      const items = pagesToNavItems(values.pages, initialItems);
+      const result = await saveNavigationSettingsAction({ items });
       if (!result.ok) {
         const serverFieldErrors = resultFieldErrors(result);
         if (serverFieldErrors) {
@@ -123,42 +285,6 @@ export function NavigationSettingsForm({
     });
   });
 
-  function addItem(location: "header" | "footer") {
-    const nextOrder =
-      Math.max(
-        0,
-        ...items
-          .filter((item) => !item._delete && item.location === location)
-          .map((item) => item.sortOrder),
-      ) + 1;
-    append({
-      id: null,
-      clientKey: createClientKey(),
-      location,
-      parentId: null,
-      parentClientKey: null,
-      label: location === "header" ? "Shop" : "About us",
-      href: location === "header" ? "/products" : "/about",
-      sortOrder: nextOrder,
-      isActive: true,
-      openInNewTab: false,
-      _delete: false,
-    });
-  }
-
-  const visible = fields
-    .map((field, index) => ({ field, index, item: items[index] }))
-    .filter(({ item }) => item && !item._delete) as Array<{
-    field: (typeof fields)[number];
-    index: number;
-    item: NavigationItemFormValues;
-  }>;
-
-  const headerItems = visible.filter(({ item }) => item.location === "header");
-  const footerItems = visible.filter(({ item }) => item.location === "footer");
-
-  const parentOptions = items.filter((item) => !item._delete && !item.parentId);
-
   return (
     <form
       onSubmit={(event) => {
@@ -166,7 +292,7 @@ export function NavigationSettingsForm({
         onSubmit();
       }}
       className="w-full"
-      style={adminStackStyle}
+      style={{ ...adminStackStyle, gap: "0.85rem" }}
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -182,332 +308,103 @@ export function NavigationSettingsForm({
         }}
       />
 
-      <p className="text-sm text-[var(--color-muted)]">
-        These are the menu buttons shoppers click at the top and bottom of your
-        store. Choose a page from the list — you do not need to type a web
-        address.
-      </p>
-
-      <div className={adminCardsGrid()}>
-        <NavSection
-          title="Top menu (header)"
-        hint="Links shown in the bar at the top of every page."
-        emptyText="No top menu links yet."
-        addLabel="+ Add top menu link"
-        canUpdate={canUpdate}
-        onAdd={() => addItem("header")}
-        items={headerItems}
-        renderItem={({ field, index, item }) => (
-          <NavLinkCard
-            key={field.fieldId}
-            index={index}
-            item={item}
-            control={control}
-            canUpdate={canUpdate}
-            pending={pending}
-            parentOptions={parentOptions}
-            setValue={setValue}
-            items={items}
-            onDelete={() => update(index, { ...item, _delete: true })}
-          />
-        )}
-        />
-
-        <NavSection
-          title="Bottom menu (footer)"
-        hint="Links shown at the bottom of every page."
-        emptyText="No bottom menu links yet."
-        addLabel="+ Add bottom menu link"
-        canUpdate={canUpdate}
-        onAdd={() => addItem("footer")}
-        items={footerItems}
-        renderItem={({ field, index, item }) => (
-          <NavLinkCard
-            key={field.fieldId}
-            index={index}
-            item={item}
-            control={control}
-            canUpdate={canUpdate}
-            pending={pending}
-            parentOptions={parentOptions}
-            setValue={setValue}
-            items={items}
-            onDelete={() => update(index, { ...item, _delete: true })}
-          />
-        )}
-        />
-      </div>
-    </form>
-  );
-}
-
-function NavSection({
-  title,
-  hint,
-  emptyText,
-  addLabel,
-  canUpdate,
-  onAdd,
-  items,
-  renderItem,
-}: {
-  title: string;
-  hint: string;
-  emptyText: string;
-  addLabel: string;
-  canUpdate: boolean;
-  onAdd: () => void;
-  items: Array<{
-    field: { fieldId: string };
-    index: number;
-    item: NavigationItemFormValues;
-  }>;
-  renderItem: (entry: {
-    field: { fieldId: string };
-    index: number;
-    item: NavigationItemFormValues;
-  }) => ReactNode;
-}) {
-  return (
-    <section className={`${adminCard()} ${adminCardPadding()}`} style={adminStackStyle}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="admin-field-group__title">{title}</p>
-          <p className="admin-field-group__hint mt-1">{hint}</p>
-        </div>
-        <button
-          type="button"
-          className={adminBtn("outline")}
-          disabled={!canUpdate}
-          onClick={onAdd}
-        >
-          {addLabel}
-        </button>
-      </div>
-
-      {items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
-          {emptyText}
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-          {items.map(renderItem)}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function NavLinkCard({
-  index,
-  item,
-  control,
-  canUpdate,
-  pending,
-  parentOptions,
-  setValue,
-  items,
-  onDelete,
-}: {
-  index: number;
-  item: NavigationItemFormValues;
-  control: ReturnType<typeof useForm<NavigationSettingsFormValues>>["control"];
-  canUpdate: boolean;
-  pending: boolean;
-  parentOptions: NavigationItemFormValues[];
-  setValue: ReturnType<typeof useForm<NavigationSettingsFormValues>>["setValue"];
-  items: NavigationItemFormValues[];
-  onDelete: () => void;
-}) {
-  const label = item.label?.trim() || "Menu link";
-  const pageName = pageOptionLabel(item.href || "/");
-
-  return (
-    <div
-      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-      style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-[var(--color-foreground)]">
-            {label}
-          </p>
-          <p className="text-xs text-[var(--color-muted)]">
-            Opens {pageName}
-            {!item.isActive ? " · Hidden" : ""}
+      <section className={cn(adminCard(), adminCardPadding())}>
+        <div className={adminFieldGroup(true)}>
+          <p className="admin-field-group__title">Store pages</p>
+          <p className="admin-field-group__hint">
+            Every store page is listed below. Edit the{" "}
+            <strong>menu name</strong> shoppers see, then choose Top menu,
+            Bottom menu, or both.
           </p>
         </div>
-        <button
-          type="button"
-          className={adminBtn("danger")}
-          disabled={!canUpdate || pending}
-          onClick={onDelete}
-        >
-          Remove
-        </button>
-      </div>
 
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <div className={adminFieldsGrid(2)}>
-          <Controller
-            name={`items.${index}.label`}
-            control={control}
-            render={({ field: f, fieldState }) => (
-              <div>
-                <TextField
-                  {...f}
-                  label="Button text"
-                  fullWidth
-                  required
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  helperText={
-                    fieldState.error
-                      ? undefined
-                      : "Example: Products, About, Contact"
-                  }
-                />
-                <FieldError message={fieldState.error?.message} />
-              </div>
-            )}
-          />
-          <Controller
-            name={`items.${index}.href`}
-            control={control}
-            render={({ field: f, fieldState }) => (
-              <div>
-                <StorePageLinkField
-                  label="Goes to this page"
-                  value={f.value}
-                  fallback="/"
-                  disabled={!canUpdate || pending}
-                  error={Boolean(fieldState.error)}
-                  onChange={f.onChange}
-                  helperText={
-                    fieldState.error
-                      ? undefined
-                      : "Pick a store page from the list"
-                  }
-                />
-                <FieldError message={fieldState.error?.message} />
-              </div>
-            )}
-          />
-          <Controller
-            name={`items.${index}.location`}
-            control={control}
-            render={({ field: f }) => (
-              <AdminSelect
-                label="Menu location"
-                required
-                disabled={!canUpdate || pending}
-                helperText="Move between top and bottom menu"
-                value={
-                  f.value === "header" || f.value === "footer"
-                    ? f.value
-                    : "header"
-                }
-                onChange={f.onChange}
-                options={[
-                  {
-                    value: "header",
-                    label: "Top of the store (header)",
-                  },
-                  {
-                    value: "footer",
-                    label: "Bottom of the store (footer)",
-                  },
-                ]}
-              />
-            )}
-          />
-          <Controller
-            name={`items.${index}.sortOrder`}
-            control={control}
-            render={({ field: f }) => (
-              <TextField
-                {...f}
-                type="number"
-                label="Order in the menu"
-                fullWidth
-                disabled={!canUpdate || pending}
-                helperText="1 shows first, then 2, 3…"
-                onChange={(event) =>
-                  f.onChange(Number(event.target.value) || 0)
-                }
-              />
-            )}
-          />
-        </div>
-
-        <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-3">
-          <summary className="cursor-pointer text-sm font-medium text-[var(--color-foreground)]">
-            More options
-          </summary>
-          <div className="mt-3" style={adminStackStyle}>
-            <AdminSelect
-              label="Nest under another link (optional)"
-              disabled={!canUpdate || pending}
-              value={item.parentClientKey ?? ""}
-              allowEmpty
-              emptyLabel="None (main menu item)"
-              helperText="Leave as None for a normal top-level menu item"
-              onChange={(next) => {
-                const value = next || null;
-                const parent = items.find(
-                  (candidate) => candidate.clientKey === value,
-                );
-                setValue(`items.${index}.parentClientKey`, value, {
-                  shouldDirty: true,
-                });
-                setValue(`items.${index}.parentId`, parent?.id ?? null, {
-                  shouldDirty: true,
-                });
-              }}
-              options={parentOptions
-                .filter(
-                  (parent) =>
-                    parent.clientKey !== item.clientKey &&
-                    parent.location === item.location,
-                )
-                .map((parent) => ({
-                  value: parent.clientKey,
-                  label: parent.label,
-                }))}
-            />
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-stretch">
-              <Controller
-                name={`items.${index}.isActive`}
-                control={control}
-                render={({ field: f }) => (
-                  <AdminToggle
-                    checked={Boolean(f.value)}
-                    onChange={f.onChange}
-                    disabled={!canUpdate || pending}
-                    label="Show this link on the store"
-                    variant="row"
-                    className="sm:min-w-[14rem] sm:flex-1"
-                  />
-                )}
-              />
-              <Controller
-                name={`items.${index}.openInNewTab`}
-                control={control}
-                render={({ field: f }) => (
-                  <AdminToggle
-                    checked={Boolean(f.value)}
-                    onChange={f.onChange}
-                    disabled={!canUpdate || pending}
-                    label="Open in a new browser tab"
-                    variant="row"
-                    className="sm:min-w-[14rem] sm:flex-1"
-                  />
-                )}
-              />
-            </div>
+        <div className="mt-3 overflow-hidden rounded-xl border border-[var(--color-border)]">
+          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_5.5rem_5.5rem] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)] sm:grid">
+            <span>Page</span>
+            <span>Menu name</span>
+            <span className="text-center">Top</span>
+            <span className="text-center">Bottom</span>
           </div>
-        </details>
-      </div>
-    </div>
+
+          <ul className="divide-y divide-[var(--color-border)]">
+            {pages.map((page, index) => (
+              <li
+                key={page.href}
+                className="grid grid-cols-1 gap-2.5 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_5.5rem_5.5rem] sm:items-center sm:gap-2"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[var(--color-foreground)]">
+                    {page.pageName}
+                  </p>
+                  <p className="truncate text-[11px] text-[var(--color-muted)]">
+                    {page.href}
+                  </p>
+                </div>
+
+                <Controller
+                  name={`pages.${index}.label`}
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <div className="min-w-0">
+                      <TextField
+                        {...field}
+                        label="Menu name"
+                        fullWidth
+                        size="small"
+                        required
+                        disabled={!canUpdate || pending}
+                        error={Boolean(fieldState.error)}
+                        helperText={
+                          fieldState.error
+                            ? undefined
+                            : "Shown in the menu (e.g. Products)"
+                        }
+                      />
+                      <FieldError message={fieldState.error?.message} />
+                    </div>
+                  )}
+                />
+
+                <div className="flex items-center justify-between gap-2 sm:justify-center">
+                  <span className="text-xs text-[var(--color-muted)] sm:hidden">
+                    Top menu
+                  </span>
+                  <Controller
+                    name={`pages.${index}.showHeader`}
+                    control={control}
+                    render={({ field }) => (
+                      <AdminToggle
+                        checked={Boolean(field.value)}
+                        onChange={field.onChange}
+                        disabled={!canUpdate || pending}
+                        label="Top"
+                      />
+                    )}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-2 sm:justify-center">
+                  <span className="text-xs text-[var(--color-muted)] sm:hidden">
+                    Bottom menu
+                  </span>
+                  <Controller
+                    name={`pages.${index}.showFooter`}
+                    control={control}
+                    render={({ field }) => (
+                      <AdminToggle
+                        checked={Boolean(field.value)}
+                        onChange={field.onChange}
+                        disabled={!canUpdate || pending}
+                        label="Bottom"
+                      />
+                    )}
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </form>
   );
 }

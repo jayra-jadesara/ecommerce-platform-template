@@ -4,6 +4,7 @@ import { DeveloperCredit } from "@/components/layout/DeveloperCredit";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
+import creditJson from "@/data/developer-credit.json";
 import type { FooterFeaturedProduct, PlatformConfig } from "@/types";
 
 interface AppLayoutProps {
@@ -21,8 +22,15 @@ export function AppLayout({
   cartSlot,
   featuredProduct = null,
 }: AppLayoutProps) {
+  const showDevCredit = Boolean(
+    (creditJson as { enabled?: boolean }).enabled,
+  );
+
   return (
-    <div className="flex min-h-dvh flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]">
+    <div
+      className="flex min-h-dvh flex-1 flex-col bg-[var(--color-background)] text-[var(--color-foreground)]"
+      data-dev-credit={showDevCredit ? "on" : undefined}
+    >
       <AnnouncementBar announcement={config.header.announcement} />
       <Header
         brand={config.brand}

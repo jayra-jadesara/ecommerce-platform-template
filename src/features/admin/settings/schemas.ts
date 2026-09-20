@@ -85,7 +85,9 @@ export const footerSettingsSchema = z.object({
   showContact: z.boolean(),
   showSocial: z.boolean(),
   showNewsletter: z.boolean(),
+  showLogo: z.boolean(),
   navVisible: z.boolean(),
+  /** Always cleared on save — copyright is generated with the current year. */
   copyrightText: optionalText(240),
   showFeaturedProduct: z.boolean(),
   featuredProductId: z
@@ -199,6 +201,7 @@ export const DEFAULT_FOOTER_SETTINGS: FooterSettingsFormValues = {
   showContact: true,
   showSocial: true,
   showNewsletter: false,
+  showLogo: false,
   navVisible: true,
   copyrightText: "",
   showFeaturedProduct: false,

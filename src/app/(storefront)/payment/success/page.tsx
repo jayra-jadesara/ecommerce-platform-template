@@ -30,7 +30,7 @@ export default async function PaymentSuccessPage({
   const supabase = createSupabaseServiceClient();
   const { data: payment } = await supabase
     .from("payments")
-    .select("id, status, amount, currency, order_id, user_id")
+    .select("id, status, amount, currency, order_id, user_id, provider")
     .eq("id", paymentId)
     .maybeSingle();
 
@@ -38,8 +38,11 @@ export default async function PaymentSuccessPage({
     redirect("/payment/failed");
   }
 
+  const isCod = payment.provider === "cod";
   const confirmed =
-    payment.status === "CAPTURED" || payment.status === "AUTHORIZED";
+    payment.status === "CAPTURED" ||
+    payment.status === "AUTHORIZED" ||
+    (isCod && payment.status === "PENDING");
 
   if (!confirmed) {
     redirect(`/payment/failed?paymentId=${encodeURIComponent(paymentId)}`);
@@ -56,9 +59,8 @@ export default async function PaymentSuccessPage({
 
   return (
     <PageShell
-      showBack
-      backHref="/account/orders"
-      backLabel="Back to orders"
+      showBack={false}
+      className="!pb-8 !pt-6 md:!pb-10 md:!pt-8"
     >
       <PaymentSuccessView
         orderId={order.id}
@@ -68,6 +70,7 @@ export default async function PaymentSuccessPage({
         paymentStatus={payment.status}
         orderStatus={order.status}
         finalized={Boolean(order.inventoryFinalizedAt)}
+        paymentMethod={isCod ? "cod" : "razorpay"}
         items={order.items}
         shippingAddress={order.shippingAddress}
         totals={{

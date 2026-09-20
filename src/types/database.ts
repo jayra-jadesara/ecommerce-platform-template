@@ -163,6 +163,7 @@ export type Database = {
           footer_show_contact: boolean;
           footer_show_social: boolean;
           footer_show_newsletter: boolean;
+          footer_show_logo: boolean;
           footer_nav_visible: boolean;
           footer_show_featured_product: boolean;
           footer_featured_product_id: string | null;
@@ -212,6 +213,7 @@ export type Database = {
           footer_show_contact?: boolean;
           footer_show_social?: boolean;
           footer_show_newsletter?: boolean;
+          footer_show_logo?: boolean;
           footer_nav_visible?: boolean;
           footer_show_featured_product?: boolean;
           footer_featured_product_id?: string | null;
@@ -485,6 +487,8 @@ export type Database = {
         Row: {
           store_id: string;
           provider: "none" | "razorpay" | "other";
+          razorpay_enabled: boolean;
+          cod_enabled: boolean;
           fee_enabled: boolean;
           fee_type: "PERCENTAGE" | "FIXED";
           fee_value: number;
@@ -500,6 +504,8 @@ export type Database = {
         Insert: {
           store_id: string;
           provider?: "none" | "razorpay" | "other";
+          razorpay_enabled?: boolean;
+          cod_enabled?: boolean;
           fee_enabled?: boolean;
           fee_type?: "PERCENTAGE" | "FIXED";
           fee_value?: number;

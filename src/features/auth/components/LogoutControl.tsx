@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useTransition, type ReactNode } from "react";
 import { clearHeaderAuthSnapshot } from "@/components/common/header-auth-store";
 import { logoutAction } from "@/features/auth/actions";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -15,10 +15,14 @@ export function LogoutControl({
   redirectTo = "/",
   label = "Log out",
   variant = "text",
+  className,
+  icon,
 }: {
   redirectTo?: string;
   label?: string;
   variant?: "text" | "outlined" | "contained";
+  className?: string;
+  icon?: ReactNode;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -36,8 +40,9 @@ export function LogoutControl({
       data-admin-logout=""
       disabled={pending}
       className={cn(
-        "inline-flex min-h-9 items-center justify-center rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]",
+        "inline-flex min-h-9 items-center justify-center gap-2 rounded-xl px-3 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:cursor-not-allowed disabled:pointer-events-none disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]",
         variantClass,
+        className,
       )}
       onClick={() => {
         startTransition(async () => {
@@ -59,6 +64,7 @@ export function LogoutControl({
         });
       }}
     >
+      {icon}
       {pending ? "Signing out…" : label}
     </button>
   );
@@ -69,6 +75,8 @@ export function LogoutButton(props: {
   redirectTo?: string;
   label?: string;
   variant?: "text" | "outlined" | "contained";
+  className?: string;
+  icon?: ReactNode;
 }) {
   return <LogoutControl {...props} />;
 }

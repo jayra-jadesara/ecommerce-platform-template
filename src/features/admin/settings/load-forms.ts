@@ -177,12 +177,11 @@ export async function loadFooterSettingsForm(): Promise<FooterSettingsFormValues
     showSocial: row?.footer_show_social ?? DEFAULT_FOOTER_SETTINGS.showSocial,
     showNewsletter:
       row?.footer_show_newsletter ?? DEFAULT_FOOTER_SETTINGS.showNewsletter,
+    showLogo: row?.footer_show_logo ?? DEFAULT_FOOTER_SETTINGS.showLogo,
     navVisible: row?.footer_nav_visible ?? DEFAULT_FOOTER_SETTINGS.navVisible,
-    copyrightText: text(row?.copyright_text),
-    showFeaturedProduct:
-      row?.footer_show_featured_product ??
-      DEFAULT_FOOTER_SETTINGS.showFeaturedProduct,
-    featuredProductId: row?.footer_featured_product_id ?? null,
+    copyrightText: "",
+    showFeaturedProduct: false,
+    featuredProductId: null,
   };
 }
 

@@ -77,7 +77,7 @@ const GROUPS: SettingsGroup[] = [
       {
         href: "/settings/payments",
         title: "Payments",
-        description: "Checkout methods & fees",
+        description: "Pay method, fee & tax",
         permission: "payments.view",
         icon: PaymentsOutlinedIcon,
       },

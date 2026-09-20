@@ -325,7 +325,11 @@ export function AdminOrderDetailClient({
               Payment
             </p>
             <p className="mt-1 text-sm font-semibold capitalize">
-              {order.payment?.provider || "—"}
+              {order.payment?.provider === "cod"
+                ? "Cash on Delivery"
+                : order.payment?.provider === "razorpay"
+                  ? "Razorpay"
+                  : order.payment?.provider || "—"}
             </p>
           </div>
         </div>
@@ -517,7 +521,13 @@ export function AdminOrderDetailClient({
                       </div>
                       <div className="flex justify-between gap-2">
                         <dt className="text-[var(--color-muted)]">Provider</dt>
-                        <dd className="capitalize">{order.payment.provider}</dd>
+                        <dd>
+                          {order.payment.provider === "cod"
+                            ? "Cash on Delivery"
+                            : order.payment.provider === "razorpay"
+                              ? "Razorpay"
+                              : order.payment.provider}
+                        </dd>
                       </div>
                       {order.payment.providerPaymentId ? (
                         <div className="flex justify-between gap-2">

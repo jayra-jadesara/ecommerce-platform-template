@@ -26,8 +26,7 @@ export default async function CheckoutPage() {
     <PageShell
       title="Checkout"
       description="Add your address, confirm details, then complete payment."
-      backHref="/cart"
-      backLabel="Back to cart"
+      showBack={false}
     >
       <CheckoutClient
         initialSummary={summary}

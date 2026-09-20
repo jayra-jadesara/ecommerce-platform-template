@@ -26,7 +26,8 @@ export function Container({
       className={cn(
         "w-full",
         constrained && "mx-auto max-w-[var(--layout-content-max,1520px)]",
-        !flush && "px-[var(--layout-container-padding)]",
+        !flush &&
+          "pl-[var(--layout-container-padding)] pr-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]",
         className,
       )}
     >

@@ -161,6 +161,7 @@ export type SettingsRow = {
   footer_show_contact?: boolean | null;
   footer_show_social?: boolean | null;
   footer_show_newsletter?: boolean | null;
+  footer_show_logo?: boolean | null;
   footer_nav_visible?: boolean | null;
   footer_show_featured_product?: boolean | null;
   footer_featured_product_id?: string | null;
@@ -474,8 +475,9 @@ export function mapSettingsRowToFooter(
     showContact: row.footer_show_contact ?? fallback.showContact,
     showSocial: row.footer_show_social ?? fallback.showSocial,
     showNewsletter: row.footer_show_newsletter ?? fallback.showNewsletter,
+    showLogo: row.footer_show_logo ?? fallback.showLogo,
     navVisible: row.footer_nav_visible ?? fallback.navVisible,
-    copyrightText: row.copyright_text?.trim() || undefined,
+    copyrightText: undefined,
     showFeaturedProduct:
       row.footer_show_featured_product ?? fallback.showFeaturedProduct,
     featuredProductId: row.footer_featured_product_id ?? null,

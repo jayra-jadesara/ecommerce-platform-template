@@ -125,6 +125,7 @@ describe("britannia-style chrome", () => {
       showContact: true,
       showSocial: true,
       showNewsletter: false,
+      showLogo: true,
       navVisible: true,
       copyrightText: "",
       showFeaturedProduct: true,
@@ -135,6 +136,7 @@ describe("britannia-style chrome", () => {
       expect(ok.data.featuredProductId).toBe(
         "00000000-0000-4000-8000-000000000001",
       );
+      expect(ok.data.showLogo).toBe(true);
     }
   });
 
