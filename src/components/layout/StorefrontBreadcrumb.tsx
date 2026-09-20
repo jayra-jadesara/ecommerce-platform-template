@@ -13,7 +13,8 @@ type StorefrontBreadcrumbProps = {
 };
 
 /**
- * Premium storefront breadcrumb strip — single visual language for catalog, PDP, blog, etc.
+ * Compact storefront breadcrumb trail — shared across catalog, PDP, blog, account, etc.
+ * Inline path (no boxed strip) so it sits quietly under the header.
  */
 export function StorefrontBreadcrumb({
   items,
@@ -31,32 +32,35 @@ export function StorefrontBreadcrumb({
   return (
     <nav
       aria-label="Breadcrumb"
-      className={cn(
-        "sf-breadcrumb mb-5 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_65%,transparent)] py-2.5 md:rounded-md md:border md:px-4",
-        className,
-      )}
+      className={cn("sf-breadcrumb mb-3 md:mb-4", className)}
     >
-      <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-[var(--color-muted)]">
+      <ol className="sf-breadcrumb__list flex flex-wrap items-center gap-y-1">
         {trail.map((item, index) => {
           const isLast = index === trail.length - 1;
           return (
-            <li key={`${item.label}-${index}`} className="flex items-center gap-x-2">
+            <li
+              key={`${item.label}-${index}`}
+              className="sf-breadcrumb__item inline-flex max-w-full items-center"
+            >
               {index > 0 ? (
-                <span aria-hidden="true" className="select-none opacity-50">
+                <span
+                  aria-hidden="true"
+                  className="sf-breadcrumb__sep mx-1.5 select-none text-[10px] text-[var(--color-muted)] opacity-60 sm:mx-2"
+                >
                   /
                 </span>
               ) : null}
               {isLast || !item.href ? (
                 <span
                   aria-current={isLast ? "page" : undefined}
-                  className="line-clamp-1 font-medium text-[var(--color-foreground)]"
+                  className="sf-breadcrumb__current line-clamp-1 text-[11px] font-semibold tracking-wide text-[var(--color-foreground)] sm:text-xs"
                 >
                   {item.label}
                 </span>
               ) : (
                 <Link
                   href={item.href}
-                  className="underline-offset-2 hover:text-[var(--color-foreground)] hover:underline"
+                  className="sf-breadcrumb__link line-clamp-1 text-[11px] font-medium tracking-wide text-[var(--color-muted)] transition-colors hover:text-[var(--color-primary)] sm:text-xs"
                 >
                   {item.label}
                 </Link>

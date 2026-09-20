@@ -674,9 +674,15 @@ html[data-store-motion="on"][data-button-hover]:not([data-button-hover="none"])
   }
 }
 
-/* Premium storefront breadcrumb strip */
+/* Compact storefront breadcrumb — inline trail under the header */
 .sf-breadcrumb {
   letter-spacing: 0.01em;
+}
+
+.sf-breadcrumb__link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 /* Britannia-inspired cover cards — colors from store theme tokens */
