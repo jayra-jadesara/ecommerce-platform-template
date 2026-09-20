@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BackLink } from "@/components/layout/BackLink";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
-import { useThemeMode } from "@/features/theme";
+import { useThemeModeOptional } from "@/features/theme";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { usePlatformConfig } from "@/providers/PlatformConfigProvider";
 
@@ -18,7 +18,8 @@ export function AuthShell({
   children: ReactNode;
 }) {
   const { brand } = usePlatformConfig();
-  const { resolvedMode } = useThemeMode();
+  const theme = useThemeModeOptional();
+  const resolvedMode = theme?.resolvedMode ?? "light";
   const hydrated = useHasHydrated();
 
   const logoSrc =

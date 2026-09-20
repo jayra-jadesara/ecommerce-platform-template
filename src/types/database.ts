@@ -59,7 +59,8 @@ export type PaymentStatus =
   | "AUTHORIZED"
   | "CAPTURED"
   | "FAILED"
-  | "REFUNDED";
+  | "REFUNDED"
+  | "CANCELLED";
 export type DiscountType = "percentage" | "fixed";
 export type ShippingMethod = "flat_rate" | "free" | "percentage" | "zone";
 export type InquiryStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "SPAM";

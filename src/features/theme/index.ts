@@ -1,5 +1,9 @@
 /** Client-safe theme exports. Server loaders: `@/features/theme/service`. */
-export { PlatformThemeProvider, useThemeMode } from "./ThemeProvider";
+export {
+  PlatformThemeProvider,
+  useThemeMode,
+  useThemeModeOptional,
+} from "./ThemeProvider";
 export { createAppMuiTheme } from "./create-mui-theme";
 export {
   applyColorTokens,

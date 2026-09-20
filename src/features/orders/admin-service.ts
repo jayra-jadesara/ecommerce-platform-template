@@ -111,6 +111,29 @@ export async function updateOrderStatus(input: {
     }
   }
 
+  if (input.nextStatus === "CANCELLED") {
+    const { error: cancelPayError } = await supabase
+      .from("payments")
+      .update({
+        status: "CANCELLED",
+        failure_reason: "Order cancelled.",
+      })
+      .eq("order_id", order.id)
+      .in("status", ["CREATED", "PENDING"]);
+
+    // Fallback when DB check constraint does not yet allow CANCELLED.
+    if (cancelPayError) {
+      await supabase
+        .from("payments")
+        .update({
+          status: "FAILED",
+          failure_reason: "Order cancelled.",
+        })
+        .eq("order_id", order.id)
+        .in("status", ["CREATED", "PENDING"]);
+    }
+  }
+
   await writeOrderActivity({
     orderId: order.id,
     storeId: input.storeId,

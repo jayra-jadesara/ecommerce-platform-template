@@ -9,6 +9,7 @@ import {
 } from "@/features/payments/fulfillment";
 import { getPaymentProvider } from "@/features/payments/providers";
 import { hasRazorpayWebhookSecret } from "@/features/payments/env";
+import { parseRazorpayInstrument } from "@/features/payments/razorpay-instrument";
 import {
   canTransitionPaymentStatus,
   preferPaymentStatus,
@@ -378,6 +379,7 @@ export async function processRazorpayWebhook(input: {
       return { ok: false, status: 422, error: "Missing payment id." };
     }
 
+    const parsedInstrument = parseRazorpayInstrument(paymentEntity);
     await fulfillVerifiedPayment({
       paymentId: payment.id,
       orderId: payment.order_id,
@@ -386,7 +388,11 @@ export async function processRazorpayWebhook(input: {
       targetStatus: nextStatus,
       providerPaymentId,
       paymentMethod:
-        typeof paymentEntity?.method === "string" ? paymentEntity.method : null,
+        parsedInstrument.method ??
+        (typeof paymentEntity?.method === "string"
+          ? paymentEntity.method
+          : null),
+      instrument: parsedInstrument.instrument,
       clearCustomerCart: nextStatus === "CAPTURED",
     });
   }

@@ -5,9 +5,15 @@ import {
   assertPaymentTransition,
   canTransitionPaymentStatus,
 } from "@/features/payments/state-machine";
+import type { PaymentInstrument } from "@/features/payments/razorpay-instrument";
 import { finalizePaidOrder } from "@/features/orders/finalize";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { PaymentStatus } from "@/types/database";
+
+function asMetadataRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return { ...(value as Record<string, unknown>) };
+}
 
 export async function markPaymentFailed(input: {
   paymentId: string;
@@ -51,13 +57,14 @@ export async function fulfillVerifiedPayment(input: {
   targetStatus: "AUTHORIZED" | "CAPTURED";
   providerPaymentId: string;
   paymentMethod?: string | null;
+  instrument?: PaymentInstrument | null;
   clearCustomerCart?: boolean;
 }): Promise<{ ok: true; status: PaymentStatus } | { ok: false; error: string }> {
   const supabase = createSupabaseServiceClient();
 
   const { data: payment } = await supabase
     .from("payments")
-    .select("id, status, provider_payment_id")
+    .select("id, status, provider_payment_id, metadata")
     .eq("id", input.paymentId)
     .maybeSingle();
 
@@ -67,6 +74,19 @@ export async function fulfillVerifiedPayment(input: {
 
   // Idempotent path: still ensure order inventory finalization ran.
   if (payment.status === "CAPTURED") {
+    if (input.instrument) {
+      const existing = asMetadataRecord(payment.metadata);
+      await supabase
+        .from("payments")
+        .update({
+          payment_method: input.paymentMethod ?? null,
+          metadata: {
+            ...existing,
+            instrument: input.instrument,
+          },
+        })
+        .eq("id", input.paymentId);
+    }
     await finalizePaidOrder({
       paymentId: input.paymentId,
       orderId: input.orderId,
@@ -94,6 +114,10 @@ export async function fulfillVerifiedPayment(input: {
   }
 
   const paidAt = new Date().toISOString();
+  const existingMeta = asMetadataRecord(payment.metadata);
+  const nextMeta = input.instrument
+    ? { ...existingMeta, instrument: input.instrument }
+    : existingMeta;
 
   const { error: paymentError } = await supabase
     .from("payments")
@@ -103,6 +127,7 @@ export async function fulfillVerifiedPayment(input: {
       payment_method: input.paymentMethod ?? null,
       paid_at: paidAt,
       failure_reason: null,
+      metadata: nextMeta,
     })
     .eq("id", input.paymentId)
     .in("status", ["CREATED", "PENDING", "AUTHORIZED"]);
@@ -134,6 +159,8 @@ export async function fulfillVerifiedPayment(input: {
       status: input.targetStatus,
       orderId: input.orderId,
       inventoryShortages: finalized.inventoryShortages,
+      paymentMethod: input.paymentMethod ?? null,
+      instrumentMethod: input.instrument?.method ?? null,
     },
   });
 

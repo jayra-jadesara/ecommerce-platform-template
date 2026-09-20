@@ -50,13 +50,15 @@ export function AboutFactoryGallery({
   return (
     <div className={cn("sf-about-factory", className)}>
       {heading ? (
-        <SectionAccentHeading
-          title={heading}
-          highlightStyle={highlightStyle}
-          align="center"
-          as="h2"
-          className="sf-about-factory__heading"
-        />
+        <div className="mb-8 md:mb-10">
+          <SectionAccentHeading
+            title={heading}
+            highlightStyle={highlightStyle}
+            align="center"
+            as="h2"
+            className="sf-about-factory__heading"
+          />
+        </div>
       ) : null}
       <div
         className={cn(
@@ -129,13 +131,15 @@ export function AboutCertificatesStrip({
   return (
     <div className={cn("sf-about-certs", className)}>
       {heading ? (
-        <SectionAccentHeading
-          title={heading}
-          highlightStyle={highlightStyle}
-          align="center"
-          as="h2"
-          className="sf-about-certs__heading"
-        />
+        <div className="mb-8 md:mb-10">
+          <SectionAccentHeading
+            title={heading}
+            highlightStyle={highlightStyle}
+            align="center"
+            as="h2"
+            className="sf-about-certs__heading"
+          />
+        </div>
       ) : null}
       <ul className="sf-about-certs__row">
         {usable.map((slide, index) => {
@@ -144,12 +148,12 @@ export function AboutCertificatesStrip({
           return (
             <li key={`cert-${index}`} className="sf-about-certs__item">
               <div className="sf-about-certs__seal">
-                <Image
+                  <Image
                   src={url}
                   alt={heading ? `${heading} ${index + 1}` : `Certificate ${index + 1}`}
                   fill
-                  className="object-contain p-3"
-                  sizes="120px"
+                  className="object-cover"
+                  sizes="(max-width: 768px) 108px, 120px"
                 />
               </div>
             </li>

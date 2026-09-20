@@ -64,6 +64,8 @@ export type ProviderCreateOrderResult = {
   status: string;
 };
 
+import type { PaymentInstrument } from "@/features/payments/razorpay-instrument";
+
 export type ProviderPaymentDetails = {
   providerPaymentId: string;
   providerOrderId: string;
@@ -71,6 +73,7 @@ export type ProviderPaymentDetails = {
   currency: string;
   status: string;
   method: string | null;
+  instrument?: PaymentInstrument | null;
 };
 
 export type PaymentProvider = {

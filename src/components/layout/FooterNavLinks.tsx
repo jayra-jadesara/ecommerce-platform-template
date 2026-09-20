@@ -22,7 +22,7 @@ export function FooterNavLinks({
 
   return (
     <nav aria-label={ariaLabel}>
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1 md:gap-2">
         {items.map((item) => {
           const active =
             !item.external &&
@@ -37,7 +37,7 @@ export function FooterNavLinks({
                 rel={item.external ? "noopener noreferrer" : undefined}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "text-sm transition-colors",
+                  "text-xs transition-colors md:text-sm",
                   active
                     ? "font-semibold text-[var(--color-primary)]"
                     : "text-[var(--color-footer-foreground)] hover:text-[var(--color-primary)]",

@@ -113,10 +113,10 @@ export function WishlistPageClient({
                   <Image
                     src={item.imageUrl}
                     alt={item.imageAlt}
-                    fill
+                    width={48}
+                    height={48}
                     unoptimized
-                    className="object-cover"
-                    sizes="48px"
+                    className="h-full w-full object-cover"
                   />
                 ) : (
                   <span className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">

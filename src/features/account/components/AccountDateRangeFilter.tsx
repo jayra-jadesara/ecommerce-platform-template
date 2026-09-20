@@ -58,10 +58,22 @@ const menuItemSx = {
   },
 } as const;
 
+const labelSx = {
+  color: "var(--color-primary)",
+  fontSize: "0.8125rem",
+  fontFamily: "var(--font-sans), system-ui, sans-serif",
+  "&.Mui-focused": { color: "var(--color-primary)" },
+} as const;
+
 export function AccountDateRangeFilter({
   className,
+  statusOptions,
+  statusParam = "status",
 }: {
   className?: string;
+  /** When set, shows a Status select that writes `statusParam` to the URL. */
+  statusOptions?: ReadonlyArray<{ value: string; label: string }>;
+  statusParam?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -69,6 +81,7 @@ export function AccountDateRangeFilter({
   const current = parseAccountDateRange(searchParams.get("range"));
   const urlFrom = searchParams.get("from") ?? "";
   const urlTo = searchParams.get("to") ?? "";
+  const rawStatus = searchParams.get(statusParam) ?? "all";
 
   const [customFrom, setCustomFrom] = useState(urlFrom);
   const [customTo, setCustomTo] = useState(urlTo);
@@ -82,28 +95,41 @@ export function AccountDateRangeFilter({
   }
 
   function pushParams(next: {
-    range: AccountDateRange;
+    range?: AccountDateRange;
     from?: string;
     to?: string;
+    status?: string;
   }) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("page");
 
-    if (next.range === "all") {
+    const range = next.range ?? current;
+    if (range === "all") {
       params.delete("range");
       params.delete("from");
       params.delete("to");
     } else {
-      params.set("range", next.range);
-      if (next.range === "custom") {
-        if (next.from) params.set("from", next.from);
+      params.set("range", range);
+      if (range === "custom") {
+        const from = next.from !== undefined ? next.from : customFrom;
+        const to = next.to !== undefined ? next.to : customTo;
+        if (from) params.set("from", from);
         else params.delete("from");
-        if (next.to) params.set("to", next.to);
+        if (to) params.set("to", to);
         else params.delete("to");
       } else {
         params.delete("from");
         params.delete("to");
       }
+    }
+
+    if (statusOptions) {
+      const status =
+        next.status !== undefined
+          ? next.status
+          : (searchParams.get(statusParam) ?? "all");
+      if (!status || status === "all") params.delete(statusParam);
+      else params.set(statusParam, status);
     }
 
     const qs = params.toString();
@@ -131,6 +157,11 @@ export function AccountDateRangeFilter({
     });
   }
 
+  const resolvedStatus =
+    statusOptions?.find(
+      (o) => o.value.toUpperCase() === rawStatus.toUpperCase(),
+    )?.value ?? "all";
+
   return (
     <AdminDatePickersProvider>
       <div className={cn(sfCard(), "w-full p-3 sm:p-4", className)}>
@@ -144,21 +175,13 @@ export function AccountDateRangeFilter({
                 flexShrink: 0,
               }}
             >
-              <InputLabel
-                id="account-date-range-label"
-                sx={{
-                  color: "var(--color-primary)",
-                  fontSize: "0.8125rem",
-                  fontFamily: "var(--font-sans), system-ui, sans-serif",
-                  "&.Mui-focused": { color: "var(--color-primary)" },
-                }}
-              >
-                Filter
+              <InputLabel id="account-date-range-label" sx={labelSx}>
+                Date
               </InputLabel>
               <Select
                 labelId="account-date-range-label"
                 id="account-date-range"
-                label="Filter"
+                label="Date"
                 value={current}
                 onChange={(e) =>
                   onRangeChange(parseAccountDateRange(String(e.target.value)))
@@ -186,6 +209,51 @@ export function AccountDateRangeFilter({
                 ))}
               </Select>
             </FormControl>
+
+            {statusOptions ? (
+              <FormControl
+                size="small"
+                sx={{
+                  width: { xs: "100%", md: 200 },
+                  minWidth: { md: 180 },
+                  flexShrink: 0,
+                }}
+              >
+                <InputLabel id="account-status-filter-label" sx={labelSx}>
+                  Status
+                </InputLabel>
+                <Select
+                  labelId="account-status-filter-label"
+                  id="account-status-filter"
+                  label="Status"
+                  value={resolvedStatus}
+                  onChange={(e) =>
+                    pushParams({ status: String(e.target.value) })
+                  }
+                  sx={selectSx}
+                  MenuProps={{
+                    slotProps: {
+                      paper: {
+                        sx: {
+                          backgroundColor: "var(--color-card)",
+                          color: "var(--color-foreground)",
+                          border: "1px solid var(--color-border)",
+                          borderRadius: "var(--radius-default, 0.5rem)",
+                          boxShadow:
+                            "0 12px 28px color-mix(in srgb, var(--color-foreground) 10%, transparent)",
+                        },
+                      },
+                    },
+                  }}
+                >
+                  {statusOptions.map((opt) => (
+                    <MenuItem key={opt.value} value={opt.value} sx={menuItemSx}>
+                      {opt.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : null}
 
             {current === "custom" ? (
               <div className="flex w-full flex-col gap-3 min-[480px]:flex-row min-[480px]:flex-wrap min-[480px]:items-center">

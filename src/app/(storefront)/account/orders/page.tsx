@@ -8,6 +8,10 @@ import {
   getAccountDateRangeBounds,
   parseAccountDateRange,
 } from "@/features/account/date-range";
+import {
+  ACCOUNT_ORDER_STATUS_FILTERS,
+  parseAccountOrderStatusFilter,
+} from "@/features/account/status-filters";
 import { getCurrentUser } from "@/features/auth/session";
 import { AccountOrdersList } from "@/features/orders/components/AccountOrdersList";
 import { autoDeliverShippedOrders } from "@/features/orders/auto-deliver";
@@ -23,6 +27,7 @@ export default async function AccountOrdersPage({
     range?: string;
     from?: string;
     to?: string;
+    status?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -33,6 +38,7 @@ export default async function AccountOrdersPage({
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
   const range = parseAccountDateRange(params.range);
+  const status = parseAccountOrderStatusFilter(params.status);
   const bounds = getAccountDateRangeBounds(range, {
     customFrom: params.from,
     customTo: params.to,
@@ -44,9 +50,11 @@ export default async function AccountOrdersPage({
     pageSize: 10,
     createdFromIso: bounds.fromIso,
     createdToIso: bounds.toIso,
+    status: status === "all" ? null : status,
   });
 
   const totalPages = Math.max(1, Math.ceil(result.total / result.pageSize));
+  const filtered = range !== "all" || status !== "all";
 
   return (
     <div>
@@ -59,31 +67,36 @@ export default async function AccountOrdersPage({
 
       <div className="mt-4">
         <Suspense fallback={null}>
-          <AccountDateRangeFilter />
+          <AccountDateRangeFilter statusOptions={ACCOUNT_ORDER_STATUS_FILTERS} />
         </Suspense>
       </div>
 
       <div className="mt-5">
         {!result.items.length ? (
           <EmptyState
-            title={range === "all" ? "No orders yet" : "No orders found"}
+            title={filtered ? "No orders found" : "No orders yet"}
             description={
-              range === "all"
-                ? "When you complete a purchase, your orders will show up here."
-                : "Try a different date filter."
+              filtered
+                ? "Try a different date or status filter."
+                : "When you complete a purchase, your orders will show up here."
             }
           />
         ) : (
           <>
-            <AccountOrdersList orders={result.items} />
             <AccountListPagination
               page={page}
+              pageSize={result.pageSize}
+              total={result.total}
               totalPages={totalPages}
               basePath="/account/orders"
               range={range}
               from={params.from}
               to={params.to}
+              status={status === "all" ? undefined : status}
+              noun="orders"
+              className="mb-3"
             />
+            <AccountOrdersList orders={result.items} />
           </>
         )}
       </div>

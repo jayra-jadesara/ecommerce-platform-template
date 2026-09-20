@@ -1,9 +1,11 @@
 "use client";
 
+import CircularProgress from "@mui/material/CircularProgress";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { createAddressAction } from "@/features/addresses/actions";
 import { AddressForm } from "@/features/addresses/components/AddressForm";
 import type { CustomerAddress } from "@/features/addresses/types";
@@ -30,6 +32,7 @@ import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
 type CheckoutUiStep = "address" | "confirm" | "payment";
+type PayOverlayPhase = "idle" | "opening" | "confirming" | "placing";
 
 interface CheckoutClientProps {
   initialSummary: CheckoutSummary;
@@ -73,6 +76,7 @@ export function CheckoutClient({
   );
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [payPhase, setPayPhase] = useState<PayOverlayPhase>("idle");
   const [pending, startTransition] = useTransition();
   const [paymentMethod, setPaymentMethod] = useState<CheckoutPaymentMethod | null>(
     () =>
@@ -80,7 +84,30 @@ export function CheckoutClient({
       initialSummary.enabledPaymentMethods[0] ??
       null,
   );
+  const [overlayMounted, setOverlayMounted] = useState(false);
 
+  useEffect(() => {
+    setOverlayMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!(paying && (payPhase === "confirming" || payPhase === "placing"))) {
+      return;
+    }
+    const scrollbarGap =
+      window.innerWidth - document.documentElement.clientWidth;
+    const { body } = document;
+    const prevOverflow = body.style.overflow;
+    const prevPaddingRight = body.style.paddingRight;
+    body.style.overflow = "hidden";
+    if (scrollbarGap > 0) {
+      body.style.paddingRight = `${scrollbarGap}px`;
+    }
+    return () => {
+      body.style.overflow = prevOverflow;
+      body.style.paddingRight = prevPaddingRight;
+    };
+  }, [paying, payPhase]);
   const selectedAddress = useMemo(
     () =>
       summary.addresses.find((row) => row.id === summary.selectedAddressId) ??
@@ -115,11 +142,17 @@ export function CheckoutClient({
   const busy = pending || paying;
   const stepIndex = STEPS.findIndex((s) => s.id === uiStep);
 
+  function endPaying() {
+    setPaying(false);
+    setPayPhase("idle");
+  }
+
   async function handlePayNow() {
     if (!ready || busy || !summary.selectedAddressId) return;
     if (activeMethod !== "razorpay") return;
     setError(null);
     setPaying(true);
+    setPayPhase("opening");
     try {
       const started = await startCheckoutPaymentAction({
         addressId: summary.selectedAddressId,
@@ -127,7 +160,7 @@ export function CheckoutClient({
       });
       if (!started.ok) {
         setError(started.error);
-        setPaying(false);
+        endPaying();
         return;
       }
 
@@ -135,6 +168,7 @@ export function CheckoutClient({
       await openCheckout({
         session,
         onSuccess: (payload) => {
+          setPayPhase("confirming");
           startTransition(async () => {
             const verified = await verifyCheckoutPaymentAction({
               paymentId: session.paymentId,
@@ -142,14 +176,15 @@ export function CheckoutClient({
               razorpayOrderId: payload.razorpay_order_id,
               razorpaySignature: payload.razorpay_signature,
             });
-            setPaying(false);
             if (!verified.ok) {
+              endPaying();
               setError(verified.error);
               router.push(
                 `/payment/failed?paymentId=${encodeURIComponent(session.paymentId)}`,
               );
               return;
             }
+            // Keep overlay up until navigation unmounts this page.
             router.push(
               `/payment/success?paymentId=${encodeURIComponent(session.paymentId)}&order=${encodeURIComponent(verified.orderNumber)}`,
             );
@@ -157,12 +192,12 @@ export function CheckoutClient({
         },
         onDismiss: () => {
           void cancelCheckoutPaymentAction({ paymentId: session.paymentId });
-          setPaying(false);
+          endPaying();
           setError("Payment was cancelled. You can try again.");
         },
       });
     } catch {
-      setPaying(false);
+      endPaying();
       setError("Unable to open payment. Please try again.");
     }
   }
@@ -172,13 +207,14 @@ export function CheckoutClient({
     if (activeMethod !== "cod") return;
     setError(null);
     setPaying(true);
+    setPayPhase("placing");
     startTransition(async () => {
       const placed = await placeCodOrderAction({
         addressId: summary.selectedAddressId,
         couponCode: summary.couponCode,
       });
-      setPaying(false);
       if (!placed.ok) {
+        endPaying();
         setError(placed.error);
         return;
       }
@@ -203,6 +239,8 @@ export function CheckoutClient({
   }
 
   function paymentCtaLabel() {
+    if (payPhase === "confirming") return "Confirming…";
+    if (payPhase === "placing") return "Placing order…";
     if (paying) return "Processing…";
     if (!hasPaymentMethods) return "Payments not set up";
     if (activeMethod === "cod") return "Place COD order";
@@ -217,8 +255,60 @@ export function CheckoutClient({
     void handlePayNow();
   }
 
+  const showPayOverlay =
+    paying && (payPhase === "confirming" || payPhase === "placing");
+
+  const overlayCopy =
+    payPhase === "placing"
+      ? {
+          title: "Placing your order",
+          detail:
+            "Please wait — don’t close this page or click away.",
+        }
+      : {
+          title: "Confirming your payment",
+          detail:
+            "Verifying with Razorpay and preparing your order. Please wait — don’t close this page or click away.",
+        };
+
+  const payOverlay =
+    showPayOverlay && overlayMounted
+      ? createPortal(
+          <div
+            className="sf-checkout-pay-overlay fixed inset-0 z-[300] flex items-center justify-center bg-[color-mix(in_srgb,var(--color-foreground)_45%,transparent)] p-4 backdrop-blur-[2px]"
+            role="alertdialog"
+            aria-modal="true"
+            aria-busy="true"
+            aria-labelledby="checkout-pay-overlay-title"
+            aria-describedby="checkout-pay-overlay-detail"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") event.preventDefault();
+            }}
+          >
+            <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-6 py-8 text-center shadow-[0_24px_60px_color-mix(in_srgb,var(--color-foreground)_18%,transparent)]">
+              <CircularProgress size={36} thickness={4} color="primary" />
+              <p
+                id="checkout-pay-overlay-title"
+                className="mt-4 font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-foreground)]"
+              >
+                {overlayCopy.title}
+              </p>
+              <p
+                id="checkout-pay-overlay-detail"
+                className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]"
+              >
+                {overlayCopy.detail}
+              </p>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <div className="grid gap-8 pb-28 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-10 lg:pb-0">
+      {payOverlay}
       <div className="space-y-6">
         <nav aria-label="Checkout progress" className="px-1 sm:px-4">
           <ol className="relative mx-auto flex max-w-xl items-start justify-between">

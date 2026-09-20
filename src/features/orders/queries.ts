@@ -12,6 +12,7 @@ import type {
   OrderPaymentView,
 } from "@/features/orders/types";
 import { listReplaceRequestsForOrder, getReplaceStoreRules } from "@/features/orders/replace-service";
+import { coercePaymentInstrument } from "@/features/payments/razorpay-instrument";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { ReplaceRequestStatus } from "@/features/shipping/policies";
 import type { OrderStatus, PaymentStatus } from "@/types/database";
@@ -114,7 +115,7 @@ async function mapPayment(orderId: string): Promise<OrderPaymentView | null> {
   const { data } = await supabase
     .from("payments")
     .select(
-      "id, status, amount, currency, provider, provider_payment_id, provider_order_id, payment_method, paid_at, failure_reason",
+      "id, status, amount, currency, provider, provider_payment_id, provider_order_id, payment_method, paid_at, failure_reason, metadata",
     )
     .eq("order_id", orderId)
     .order("created_at", { ascending: false })
@@ -133,6 +134,7 @@ async function mapPayment(orderId: string): Promise<OrderPaymentView | null> {
     paymentMethod: data.payment_method,
     paidAt: data.paid_at,
     failureReason: data.failure_reason,
+    instrument: coercePaymentInstrument(data.metadata),
   };
 }
 
@@ -250,6 +252,7 @@ export async function listCustomerOrders(input: {
   pageSize?: number;
   createdFromIso?: string;
   createdToIso?: string;
+  status?: string | null;
 }): Promise<OrderListResult> {
   const { measureServerOperation } = await import("@/lib/perf/measure-server");
   return measureServerOperation("orders.listCustomer", async () => {
@@ -257,6 +260,7 @@ export async function listCustomerOrders(input: {
   const pageSize = Math.min(50, Math.max(1, input.pageSize ?? 10));
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
+  const statusFilter = (input.status ?? "all").trim().toUpperCase();
 
   const supabase = createSupabaseServiceClient();
   let query = supabase
@@ -273,6 +277,9 @@ export async function listCustomerOrders(input: {
   }
   if (input.createdToIso) {
     query = query.lte("created_at", input.createdToIso);
+  }
+  if (statusFilter && statusFilter !== "ALL") {
+    query = query.eq("status", statusFilter);
   }
 
   const { data, count, error } = await query.range(from, to);
@@ -302,7 +309,7 @@ export async function listCustomerOrders(input: {
         supabase
           .from("payments")
           .select(
-            "id, order_id, status, amount, currency, provider, provider_payment_id, provider_order_id, payment_method, paid_at, failure_reason, created_at",
+            "id, order_id, status, amount, currency, provider, provider_payment_id, provider_order_id, payment_method, paid_at, failure_reason, metadata, created_at",
           )
           .in("order_id", orderIds)
           .order("created_at", { ascending: false }),
@@ -330,11 +337,17 @@ export async function listCustomerOrders(input: {
         paymentMethod: row.payment_method,
         paidAt: row.paid_at,
         failureReason: row.failure_reason,
+        instrument: coercePaymentInstrument(row.metadata),
       });
     }
   }
 
+  const { effectivePaymentStatus } = await import(
+    "@/features/account/status-filters"
+  );
+
   for (const row of data ?? []) {
+    const payment = paymentByOrder.get(row.id) ?? null;
     items.push({
       id: row.id,
       orderNumber: row.order_number,
@@ -343,7 +356,15 @@ export async function listCustomerOrders(input: {
       currency: row.currency,
       createdAt: row.created_at,
       itemCount: itemCountByOrder.get(row.id) ?? 0,
-      paymentStatus: paymentByOrder.get(row.id)?.status ?? null,
+      paymentStatus: payment
+        ? effectivePaymentStatus({
+            paymentStatus: payment.status,
+            orderStatus: row.status,
+          })
+        : null,
+      paymentProvider: payment?.provider ?? null,
+      paymentMethod: payment?.paymentMethod ?? null,
+      paymentInstrument: payment?.instrument ?? null,
       hasOpenReplace: openReplaceOrderIds.has(row.id),
     });
   }
@@ -472,6 +493,9 @@ export async function listAdminOrders(
       createdAt: row.created_at,
       itemCount: itemCountRes.count ?? 0,
       paymentStatus: payment?.status ?? null,
+      paymentProvider: payment?.provider ?? null,
+      paymentMethod: payment?.paymentMethod ?? null,
+      paymentInstrument: payment?.instrument ?? null,
       customerName: name || null,
       hasOpenReplace: Boolean(openReplaceStatus),
       openReplaceStatus,

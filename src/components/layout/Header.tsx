@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import MenuIcon from "@mui/icons-material/Menu";
-import CloseIcon from "@mui/icons-material/Close";
 import SearchIcon from "@mui/icons-material/Search";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import IconButton from "@mui/material/IconButton";
@@ -12,7 +11,8 @@ import { Container } from "@/components/layout/Container";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { HeaderAccountMenu } from "@/components/common/HeaderAccountMenu";
 import { HeaderCartControl } from "@/features/cart/components/HeaderCartControl";
-import { useThemeMode } from "@/features/theme";
+import { MobileNavOverlay } from "@/components/layout/MobileNavOverlay";
+import { useThemeModeOptional } from "@/features/theme";
 import { cn } from "@/lib/cn";
 import { isActivePath } from "@/lib/is-active-path";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
@@ -132,7 +132,8 @@ export function Header({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchPath, setSearchPath] = useState(pathname);
   const [scrolled, setScrolled] = useState(false);
-  const { resolvedMode } = useThemeMode();
+  const theme = useThemeModeOptional();
+  const resolvedMode = theme?.resolvedMode ?? "light";
   const open = menuPath === pathname;
 
   // Close search when the route changes (React-recommended props→state adjust).
@@ -151,6 +152,8 @@ export function Header({
       window.removeEventListener("scroll", onScroll);
     };
   }, []);
+
+  const closeMenu = useCallback(() => setMenuPath(null), []);
 
   const logoSrc =
     hydrated && resolvedMode === "dark" && brand.logoDarkUrl
@@ -181,6 +184,7 @@ export function Header({
   const showTaglineUnderLogo = showTagline && !hangLogo;
 
   return (
+    <>
     <header
       className={cn(
         "sf-header relative z-50 border-b border-[var(--color-border)] bg-[var(--color-header-background)] text-[var(--color-header-foreground)] transition-[box-shadow,border-color] duration-300 ease-out motion-reduce:transition-none",
@@ -333,41 +337,30 @@ export function Header({
           {showMobileMenu && showNav ? (
             <IconButton
               className="lg:!hidden"
-              aria-label={open ? "Close menu" : "Open menu"}
+              aria-label="Open menu"
               aria-expanded={open}
               aria-controls="mobile-nav"
-              onClick={() =>
-                setMenuPath((current) => (current === pathname ? null : pathname))
-              }
+              onClick={() => setMenuPath(pathname)}
               size="small"
             >
-              {open ? <CloseIcon /> : <MenuIcon />}
+              <MenuIcon />
             </IconButton>
           ) : null}
         </div>
       </Container>
-
-      {open && showMobileMenu && showNav ? (
-        <nav
-          id="mobile-nav"
-          className="border-t border-[var(--color-border)] bg-[var(--color-header-background)] lg:hidden"
-          aria-label="Mobile"
-        >
-          <Container className="flex flex-col gap-1 py-3">
-            <NavLinks
-              items={navigation.primary}
-              pathname={pathname}
-              variant="mobile"
-              onNavigate={() => setMenuPath(null)}
-            />
-            {showAccount ? (
-              <div className="border-t border-[var(--color-border)] px-1 pt-2">
-                <HeaderAccountMenu />
-              </div>
-            ) : null}
-          </Container>
-        </nav>
-      ) : null}
     </header>
+
+    {showMobileMenu && showNav ? (
+      <MobileNavOverlay
+        open={open}
+        onClose={closeMenu}
+        brand={brand}
+        logoSrc={logoSrc}
+        navigation={navigation}
+        pathname={pathname}
+        showAccount={showAccount}
+      />
+    ) : null}
+    </>
   );
 }

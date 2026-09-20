@@ -274,6 +274,7 @@ export async function verifyCheckoutPayment(
     targetStatus,
     providerPaymentId: input.razorpayPaymentId,
     paymentMethod: providerPayment.method,
+    instrument: providerPayment.instrument ?? null,
     clearCustomerCart: targetStatus === "CAPTURED",
   });
 

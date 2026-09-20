@@ -92,12 +92,12 @@ export function Footer({
       : null);
 
   return (
-    <footer className="sf-footer-shell relative mt-16 md:mt-20">
+    <footer className="sf-footer-shell relative">
       {showFeatured && featuredProduct ? (
         <div className="sf-footer-feature pointer-events-none absolute left-1/2 top-0 z-[3] flex w-full -translate-x-1/2 -translate-y-[42%] justify-center px-4">
           <Link
             href={`/products/${featuredProduct.slug}`}
-            className="pointer-events-auto group flex max-w-[11rem] flex-col items-center sm:max-w-[13rem]"
+            className="pointer-events-auto group flex max-w-[8.5rem] flex-col items-center sm:max-w-[13rem]"
           >
             <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[var(--color-card)] shadow-[0_18px_40px_color-mix(in_srgb,var(--color-foreground)_18%,transparent)] ring-2 ring-[color-mix(in_srgb,#fff_70%,var(--color-accent))] transition-transform motion-safe:group-hover:-translate-y-1">
               {featuredProduct.imageUrl ? (
@@ -128,25 +128,25 @@ export function Footer({
         </svg>
       </div>
 
-      <div className="sf-footer-body pt-14 md:pt-16">
-        <Container className="pb-12 pt-4 lg:pb-14">
-          <div className="sf-footer-cluster mx-auto grid max-w-5xl gap-6 md:grid-cols-2 lg:grid-cols-4 lg:gap-5">
-            <div>
-              <p className="sf-footer-ink font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight">
+      <div className="sf-footer-body">
+        <Container className="pb-7 pt-2 md:pb-12 md:pt-4 lg:pb-14">
+          <div className="sf-footer-cluster mx-auto max-w-5xl">
+            <div className="sf-footer-brand">
+              <p className="sf-footer-ink font-[family-name:var(--font-display)] text-xl font-semibold tracking-tight md:text-2xl">
                 {brand.name}
               </p>
               {brandBlurb ? (
-                <p className="sf-footer-muted mt-2.5 max-w-[16rem] text-sm leading-relaxed">
+                <p className="sf-footer-muted mt-1.5 line-clamp-3 max-w-[20rem] text-xs leading-relaxed md:mt-2.5 md:line-clamp-none md:max-w-[16rem] md:text-sm">
                   {brandBlurb}
                 </p>
               ) : null}
               {showLogo ? (
-                <div className="mt-4">
+                <div className="mt-2.5 md:mt-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={brand.logoUrl!}
                     alt={brand.logoAlt ?? brand.name}
-                    className="h-12 w-auto max-w-[10rem] object-contain object-left md:h-14"
+                    className="h-9 w-auto max-w-[8rem] object-contain object-left md:h-14 md:max-w-[10rem]"
                   />
                 </div>
               ) : null}
@@ -154,10 +154,10 @@ export function Footer({
 
             {shopLinks.length > 0 ? (
               <div>
-                <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)] md:text-[0.7rem]">
                   Products
                 </p>
-                <div className="sf-footer-nav mt-2.5">
+                <div className="sf-footer-nav mt-1.5 md:mt-2.5">
                   <FooterNavLinks items={shopLinks} ariaLabel="Products" />
                 </div>
               </div>
@@ -165,21 +165,21 @@ export function Footer({
 
             {footer.navVisible && supportLinks.length > 0 ? (
               <div>
-                <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)] md:text-[0.7rem]">
                   Explore
                 </p>
-                <div className="sf-footer-nav mt-2.5">
+                <div className="sf-footer-nav mt-1.5 md:mt-2.5">
                   <FooterNavLinks items={supportLinks} ariaLabel="Explore" />
                 </div>
               </div>
             ) : null}
 
-            <div>
-              <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+            <div className="sf-footer-contact">
+              <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)] md:text-[0.7rem]">
                 Contact
               </p>
               {hasContact ? (
-                <ul className="sf-footer-muted mt-2.5 space-y-1.5 text-sm">
+                <ul className="sf-footer-muted mt-1.5 space-y-1 text-xs md:mt-2.5 md:space-y-1.5 md:text-sm">
                   {contact.phone ? (
                     <li>
                       <a
@@ -225,18 +225,18 @@ export function Footer({
                   ) : null}
                 </ul>
               ) : (
-                <p className="sf-footer-muted mt-2.5 text-sm">
+                <p className="sf-footer-muted mt-1.5 text-xs md:mt-2.5 md:text-sm">
                   Add contact details in Store settings.
                 </p>
               )}
 
               {footer.showSocial ? (
-                <div className="mt-5">
-                  <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+                <div className="mt-3 md:mt-5">
+                  <p className="text-[0.65rem] font-bold uppercase tracking-[0.16em] text-[var(--color-primary)] md:text-[0.7rem]">
                     Connect with us
                   </p>
                   {socialLinks.length > 0 ? (
-                    <ul className="mt-2.5 flex flex-wrap gap-2">
+                    <ul className="mt-1.5 flex flex-wrap gap-1.5 md:mt-2.5 md:gap-2">
                       {socialLinks.map(({ key, label, icon }) => (
                         <li key={key}>
                           <a
@@ -253,7 +253,7 @@ export function Footer({
                       ))}
                     </ul>
                   ) : (
-                    <p className="sf-footer-muted mt-2.5 text-sm">
+                    <p className="sf-footer-muted mt-1.5 text-xs md:mt-2.5 md:text-sm">
                       Add social links in Store settings.
                     </p>
                   )}
@@ -264,7 +264,7 @@ export function Footer({
         </Container>
 
         <div className="sf-footer-bar">
-          <Container className="py-3.5 text-xs">
+          <Container className="py-2.5 text-[0.7rem] md:py-3.5 md:text-xs">
             <p>{copyright}</p>
           </Container>
         </div>

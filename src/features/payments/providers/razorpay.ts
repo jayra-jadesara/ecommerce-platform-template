@@ -5,6 +5,7 @@ import {
   verifyRazorpayCheckoutSignaturePure,
   verifyRazorpayWebhookSignaturePure,
 } from "@/features/payments/providers/razorpay-crypto";
+import { parseRazorpayInstrument } from "@/features/payments/razorpay-instrument";
 import type {
   PaymentProvider,
   ProviderCreateOrderInput,
@@ -117,7 +118,13 @@ export const razorpayPaymentProvider: PaymentProvider = {
       currency: string;
       status: string;
       method?: string;
+      card?: Record<string, unknown>;
+      upi?: Record<string, unknown>;
+      bank?: string | Record<string, unknown>;
+      wallet?: string | Record<string, unknown>;
     }>(`/payments/${encodeURIComponent(providerPaymentId)}`);
+
+    const parsed = parseRazorpayInstrument(payment);
 
     return {
       providerPaymentId: payment.id,
@@ -125,7 +132,8 @@ export const razorpayPaymentProvider: PaymentProvider = {
       amountMinor: payment.amount,
       currency: payment.currency,
       status: payment.status,
-      method: payment.method ?? null,
+      method: parsed.method ?? payment.method ?? null,
+      instrument: parsed.instrument,
     };
   },
 

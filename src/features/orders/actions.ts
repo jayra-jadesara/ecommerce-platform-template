@@ -237,6 +237,90 @@ export async function requestOrderReplaceAction(
     : { ok: false, error: result.error };
 }
 
+const cancelOwnOrderSchema = z.object({
+  orderId: z.string().uuid(),
+});
+
+/**
+ * Customer self-serve cancel for Cash on Delivery orders while still
+ * CONFIRMED or PROCESSING (pre-ship). Reuses admin cancel path + inventory restore.
+ */
+export async function cancelOwnOrderAction(
+  raw: unknown,
+): Promise<OrderMutationResult> {
+  const { getCurrentUser } = await import("@/features/auth/session");
+  const { canCustomerCancelCodOrder } = await import(
+    "@/features/orders/customer-cancel"
+  );
+  const { createSupabaseServiceClient } = await import(
+    "@/lib/supabase/admin"
+  );
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Please sign in to continue." };
+
+  const parsed = cancelOwnOrderSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid order." };
+  }
+
+  const supabase = createSupabaseServiceClient();
+  const { data: order } = await supabase
+    .from("orders")
+    .select("id, store_id, user_id, status")
+    .eq("id", parsed.data.orderId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (!order) {
+    return { ok: false, error: "Order not found." };
+  }
+
+  const { data: payment } = await supabase
+    .from("payments")
+    .select("provider")
+    .eq("order_id", order.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    !canCustomerCancelCodOrder({
+      status: order.status,
+      paymentProvider: payment?.provider ?? null,
+    })
+  ) {
+    return {
+      ok: false,
+      error:
+        "This Cash on Delivery order can no longer be cancelled. Contact the store if you need help.",
+    };
+  }
+
+  const result = await runLoggedMutation(
+    {
+      type: "ORDER",
+      source: "SERVER",
+      operation: "CANCEL_OWN_ORDER",
+      feature: "ORDERS",
+      entityType: "order",
+      entityId: order.id,
+      storeId: order.store_id,
+      route: `/account/orders/${order.id}`,
+    },
+    () =>
+      updateOrderStatus({
+        orderId: order.id,
+        storeId: order.store_id,
+        actorUserId: user.id,
+        nextStatus: "CANCELLED",
+      }),
+  );
+
+  if (result.ok) revalidateOrderPaths(order.id);
+  return result;
+}
+
 export async function adminReviewReplaceRequestAction(raw: unknown): Promise<{
   ok: true;
   message: string;

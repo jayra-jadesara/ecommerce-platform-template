@@ -10,6 +10,7 @@ import type { ShippingAddressSnapshot } from "@/features/addresses/types";
 import { formatMoney } from "@/features/catalog/money";
 import type { OrderItemView } from "@/features/orders/types";
 import { OrderReceiptDialog } from "@/features/payments/components/OrderReceiptDialog";
+import { OrderSuccessCelebration } from "@/features/payments/components/OrderSuccessCelebration";
 import {
   orderStatusTone,
   paymentStatusTone,
@@ -57,6 +58,7 @@ export function PaymentSuccessView({
 
   return (
     <div className="relative mx-auto w-full max-w-3xl">
+      <OrderSuccessCelebration />
       <motion.div
         className="overflow-hidden rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_16px_40px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]"
         initial={reduceMotion ? false : { opacity: 0, y: 12 }}

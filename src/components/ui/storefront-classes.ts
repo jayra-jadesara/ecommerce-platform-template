@@ -36,3 +36,32 @@ export function sfEyebrow(): string {
 export function sfDisplay(): string {
   return "font-[family-name:var(--font-display)] font-semibold tracking-tight text-[var(--color-foreground)]";
 }
+
+/** Shared account Orders / Payments data grid shell */
+export function sfAccountGridWrap(): string {
+  return `${sfCard()} hidden overflow-x-auto md:block !rounded-[var(--radius-default,0.75rem)] !p-0`;
+}
+
+export function sfAccountGridTable(): string {
+  return "min-w-full border-collapse text-left text-sm";
+}
+
+export function sfAccountGridThead(): string {
+  return "bg-[var(--color-surface)] text-xs uppercase tracking-wide text-[var(--color-muted)]";
+}
+
+export function sfAccountGridTh(align: "left" | "right" = "left"): string {
+  return align === "right"
+    ? "border border-[var(--color-border)] px-4 py-3 text-right font-semibold"
+    : "border border-[var(--color-border)] px-4 py-3 font-semibold";
+}
+
+export function sfAccountGridTr(): string {
+  return "bg-[var(--color-card)] hover:bg-[color-mix(in_srgb,var(--color-primary)_4%,var(--color-card))]";
+}
+
+export function sfAccountGridTd(align: "left" | "right" = "left"): string {
+  return align === "right"
+    ? "border border-[var(--color-border)] px-4 py-3 align-middle text-right"
+    : "border border-[var(--color-border)] px-4 py-3 align-middle";
+}

@@ -344,7 +344,10 @@ export function AdminOrderDetailClient({
             Tap the next step when ready
           </p>
         </div>
-        <OrderStatusTimeline status={order.status} />
+        <OrderStatusTimeline
+          status={order.status}
+          paymentProvider={order.payment?.provider}
+        />
       </section>
 
       {hasRestrictedPolicy ? (
@@ -529,6 +532,66 @@ export function AdminOrderDetailClient({
                               : order.payment.provider}
                         </dd>
                       </div>
+                      <div className="flex items-start justify-between gap-2">
+                        <dt className="text-[var(--color-muted)]">Method</dt>
+                        <dd className="max-w-[12rem] text-right font-medium">
+                          {order.payment.provider === "cod"
+                            ? "Cash on Delivery"
+                            : order.payment.instrument ||
+                                order.payment.paymentMethod
+                              ? [
+                                  order.payment.instrument?.cardType
+                                    ? `${order.payment.instrument.cardType} card`
+                                    : order.payment.instrument?.method ||
+                                      order.payment.paymentMethod,
+                                  order.payment.instrument?.last4
+                                    ? `****${order.payment.instrument.last4}`
+                                    : null,
+                                  order.payment.instrument?.vpa,
+                                  order.payment.instrument?.bank,
+                                  order.payment.instrument?.wallet,
+                                  order.payment.instrument?.network,
+                                ]
+                                  .filter(Boolean)
+                                  .join(" · ")
+                              : "—"}
+                        </dd>
+                      </div>
+                      {order.payment.instrument?.vpa ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--color-muted)]">UPI ID</dt>
+                          <dd className="max-w-[12rem] truncate text-xs">
+                            {order.payment.instrument.vpa}
+                          </dd>
+                        </div>
+                      ) : null}
+                      {order.payment.instrument?.last4 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--color-muted)]">Card</dt>
+                          <dd className="text-xs font-medium tabular-nums">
+                            {order.payment.instrument.cardType
+                              ? `${order.payment.instrument.cardType} · `
+                              : ""}
+                            ****{order.payment.instrument.last4}
+                            {order.payment.instrument.issuer
+                              ? ` · ${order.payment.instrument.issuer}`
+                              : ""}
+                          </dd>
+                        </div>
+                      ) : null}
+                      {order.payment.instrument?.bank &&
+                      !order.payment.instrument.last4 ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--color-muted)]">Bank</dt>
+                          <dd>{order.payment.instrument.bank}</dd>
+                        </div>
+                      ) : null}
+                      {order.payment.instrument?.wallet ? (
+                        <div className="flex justify-between gap-2">
+                          <dt className="text-[var(--color-muted)]">Wallet</dt>
+                          <dd>{order.payment.instrument.wallet}</dd>
+                        </div>
+                      ) : null}
                       {order.payment.providerPaymentId ? (
                         <div className="flex justify-between gap-2">
                           <dt className="text-[var(--color-muted)]">Payment ID</dt>

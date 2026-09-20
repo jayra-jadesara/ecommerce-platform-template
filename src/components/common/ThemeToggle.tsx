@@ -3,7 +3,7 @@
 import DarkModeOutlinedIcon from "@mui/icons-material/DarkModeOutlined";
 import LightModeOutlinedIcon from "@mui/icons-material/LightModeOutlined";
 import SettingsBrightnessOutlinedIcon from "@mui/icons-material/SettingsBrightnessOutlined";
-import { useThemeMode } from "@/features/theme";
+import { useThemeModeOptional } from "@/features/theme";
 import { cn } from "@/lib/cn";
 
 const LABELS = {
@@ -17,7 +17,10 @@ const LABELS = {
  * Mode comes from useSyncExternalStore (SSR snapshot matches first client paint).
  */
 export function ThemeToggle() {
-  const { mode, allowUserToggle, availableModes, cycleMode } = useThemeMode();
+  const theme = useThemeModeOptional();
+  if (!theme) return null;
+
+  const { mode, allowUserToggle, availableModes, cycleMode } = theme;
 
   if (!allowUserToggle || availableModes.length <= 1) return null;
 

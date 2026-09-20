@@ -20,7 +20,7 @@ const RANK: Record<OrderStatus, number> = {
   REFUNDED: -1,
 };
 
-const SHORT: Record<(typeof STEPS)[number], string> = {
+const SHORT_ONLINE: Record<(typeof STEPS)[number], string> = {
   PENDING: "Placed",
   CONFIRMED: "Paid",
   PROCESSING: "Pack",
@@ -28,14 +28,24 @@ const SHORT: Record<(typeof STEPS)[number], string> = {
   DELIVERED: "Done",
 };
 
+const SHORT_COD: Record<(typeof STEPS)[number], string> = {
+  PENDING: "Placed",
+  CONFIRMED: "OK",
+  PROCESSING: "Pack",
+  SHIPPED: "Ship",
+  DELIVERED: "Paid",
+};
+
 /**
  * Compact O—O—O progress for admin order list rows.
  */
 export function OrderProgressDots({
   status,
+  paymentProvider,
   className,
 }: {
   status: OrderStatus;
+  paymentProvider?: string | null;
   className?: string;
 }) {
   if (status === "CANCELLED" || status === "REFUNDED") {
@@ -54,6 +64,10 @@ export function OrderProgressDots({
   const current = RANK[status] ?? 0;
   const complete = status === "DELIVERED";
   const accent = complete ? "var(--color-success)" : "var(--color-primary)";
+  const isCod =
+    (paymentProvider ?? "").trim().toLowerCase() === "cod" ||
+    (paymentProvider ?? "").trim().toLowerCase() === "cash_on_delivery";
+  const short = isCod ? SHORT_COD : SHORT_ONLINE;
 
   return (
     <div
@@ -103,7 +117,7 @@ export function OrderProgressDots({
             : "text-[var(--color-muted)]",
         )}
       >
-        {SHORT[STEPS[Math.min(current, STEPS.length - 1)]!] ??
+        {short[STEPS[Math.min(current, STEPS.length - 1)]!] ??
           orderStatusLabel(status)}
       </p>
     </div>

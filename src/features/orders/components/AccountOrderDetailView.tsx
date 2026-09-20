@@ -8,14 +8,29 @@ import { useId, useMemo, useState } from "react";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
 import { formatMoney } from "@/features/catalog/money";
 import { OrderStatusTimeline } from "@/features/orders/components/OrderStatusTimeline";
+import { CancelCodOrderControl } from "@/features/orders/components/CancelCodOrderControl";
 import { ReplacePhotoLightbox } from "@/features/orders/components/ReplacePhotoLightbox";
 import { ReplaceProgress } from "@/features/orders/components/ReplaceProgress";
 import { RequestReplaceDialog } from "@/features/orders/components/RequestReplaceDialog";
+import {
+  PaymentMethodBadge,
+  paymentInstrumentOrProviderLabel,
+  paymentMethodFullLabel,
+} from "@/features/orders/payment-method-ui";
 import { orderStatusLabel } from "@/features/orders/state-machine";
 import type { OrderDetail, OrderItemView } from "@/features/orders/types";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
-import { sfBtn, sfCard } from "@/components/ui/storefront-classes";
+import {
+  sfAccountGridTable,
+  sfAccountGridTd,
+  sfAccountGridTh,
+  sfAccountGridThead,
+  sfAccountGridTr,
+  sfBtn,
+  sfCard,
+} from "@/components/ui/storefront-classes";
 import { formatDateTime } from "@/lib/format-date";
+import { StatusPill, paymentStatusTone } from "@/features/payments/components/payment-status-ui";
 import {
   evaluateReplaceEligibility,
   formatReplaceWindowRemaining,
@@ -81,11 +96,23 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
     { id: "payment", label: "Payment" },
     { id: "replacements", label: "Replacements" },
   ];
+  const paymentProvider = order.payment?.provider ?? null;
+  const itemUnitCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemLineCount = order.items.length;
+  const paymentStatusDisplay =
+    order.payment &&
+    order.status === "CANCELLED" &&
+    (order.payment.status === "PENDING" ||
+      order.payment.status === "CREATED" ||
+      order.payment.status === "FAILED" ||
+      order.payment.status === "CANCELLED")
+      ? "CANCELLED"
+      : (order.payment?.status ?? null);
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <p className="text-sm text-[var(--color-muted)]">
+    <div className="space-y-3">
+      <header className="space-y-2">
+        <p className="text-xs text-[var(--color-muted)]">
           <Link
             href="/account/orders"
             className="underline-offset-2 hover:underline"
@@ -94,32 +121,62 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
           </Link>{" "}
           / {order.orderNumber}
         </p>
-        <StorefrontHeading
-          title={`Order ${order.orderNumber}`}
-          as="h2"
-          align="left"
-          className="!text-2xl md:!text-[1.75rem]"
-        />
-        <p className="text-sm text-[var(--color-muted)]">
-          {formatDateTime(order.createdAt)} · {orderStatusLabel(order.status)}
-        </p>
+
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <StorefrontHeading
+              title={`Order ${order.orderNumber}`}
+              as="h2"
+              align="left"
+              className="!mb-0 !text-xl md:!text-2xl"
+            />
+            <p className="text-xs text-[var(--color-muted)] sm:text-sm">
+              {formatDateTime(order.createdAt)} · {orderStatusLabel(order.status)}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
+            {paymentProvider ? (
+              <PaymentMethodBadge provider={paymentProvider} />
+            ) : null}
+            <span
+              aria-hidden
+              className="h-7 w-px bg-[var(--color-border)]"
+            />
+            <div className="text-right leading-tight">
+              <p className="text-base font-semibold tabular-nums tracking-tight sm:text-lg">
+                {formatMoney(order.grandTotal, order.currency)}
+              </p>
+              <p className="mt-0.5 text-[0.7rem] text-[var(--color-muted)]">
+                {itemUnitCount} item{itemUnitCount === 1 ? "" : "s"}
+                {itemLineCount !== itemUnitCount
+                  ? ` · ${itemLineCount} lines`
+                  : ""}
+              </p>
+            </div>
+          </div>
+        </div>
       </header>
 
-      <OrderStatusTimeline status={order.status} />
+      <OrderStatusTimeline
+        status={order.status}
+        paymentProvider={paymentProvider}
+      />
+
+      <CancelCodOrderControl
+        orderId={order.id}
+        status={order.status}
+        paymentProvider={paymentProvider}
+      />
 
       {hasRestrictedPolicy ? (
-        <p
-          className={cn(
-            sfCard(),
-            "border-amber-200/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-950",
-          )}
-        >
+        <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950">
           Return policy for items in this order may limit refunds or replacements.
           Check each line below.
         </p>
       ) : null}
 
-      <section className={cn(sfCard(), "overflow-hidden")}>
+      <section className={cn(sfCard(), "overflow-hidden !rounded-lg")}>
         <div
           className="flex flex-wrap border-b border-[var(--color-border)]"
           role="tablist"
@@ -129,6 +186,8 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             const selected = tab === item.id;
             const showBadge =
               item.id === "replacements" && replaceRequests.length > 0;
+            const showPayMethod =
+              item.id === "payment" && Boolean(paymentProvider);
             return (
               <button
                 key={item.id}
@@ -139,17 +198,23 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
                 aria-controls={`${titleId}-panel-${item.id}`}
                 onClick={() => setTab(item.id)}
                 className={cn(
-                  "flex items-center justify-center gap-2 px-3 py-3 text-sm font-semibold tracking-tight transition-colors sm:px-5",
+                  "flex items-center justify-center gap-1.5 px-2.5 py-2 text-xs font-semibold tracking-tight transition-colors sm:px-4 sm:text-sm",
                   selected
                     ? "border-b-2 border-[var(--color-primary)] text-[var(--color-foreground)]"
                     : "text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
                 )}
               >
                 {item.label}
+                {showPayMethod ? (
+                  <PaymentMethodBadge
+                    provider={paymentProvider}
+                    size="sm"
+                  />
+                ) : null}
                 {showBadge ? (
                   <span
                     className={cn(
-                      "inline-flex min-w-[1.25rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[11px] font-bold",
+                      "inline-flex min-w-[1.1rem] items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold",
                       hasOpenReplace
                         ? "bg-[color-mix(in_srgb,var(--color-primary)_16%,transparent)] text-[var(--color-primary)]"
                         : "bg-[var(--color-surface)] text-[var(--color-muted)]",
@@ -189,22 +254,22 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
               return (
                 <li
                   key={item.id}
-                  className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:gap-4 sm:px-5"
+                  className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:gap-3 sm:px-4"
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3.5 sm:gap-4">
-                    <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-[calc(var(--radius-default,0.75rem)-2px)] bg-[var(--color-surface)] sm:h-24 sm:w-24">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5 sm:gap-3">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] sm:h-14 sm:w-14">
                       {item.imageUrl ? (
                         <Image
                           src={item.imageUrl}
                           alt={item.productName}
-                          fill
+                          width={56}
+                          height={56}
                           unoptimized
-                          className="object-contain p-2"
-                          sizes="96px"
+                          className="h-full w-full object-contain p-1"
                         />
                       ) : (
                         <span
-                          className="flex h-full items-center justify-center text-lg font-semibold text-[var(--color-muted)]"
+                          className="flex h-full items-center justify-center text-sm font-semibold text-[var(--color-muted)]"
                           aria-hidden
                         >
                           {item.productName.slice(0, 1).toUpperCase()}
@@ -212,22 +277,23 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[var(--color-foreground)] sm:text-base">
+                      <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
                         {item.productName}
                       </p>
-                      <p className="mt-0.5 text-xs text-[var(--color-muted)] sm:text-sm">
+                      <p className="mt-0.5 truncate text-[0.7rem] text-[var(--color-muted)]">
                         {[item.variantName, `Qty ${item.quantity}`]
                           .filter(Boolean)
                           .join(" · ")}
-                      </p>
-                      <p className="mt-1 text-xs font-medium text-amber-900">
-                        {returnPolicyLabel(item.returnPolicy)}
+                        {" · "}
+                        <span className="font-medium text-amber-900">
+                          {returnPolicyLabel(item.returnPolicy)}
+                        </span>
                       </p>
                       {returnPolicyAllowsReplace(item.returnPolicy) ? (
-                        <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+                        <p className="mt-0.5 line-clamp-1 text-[0.65rem] text-[var(--color-muted)]">
                           {eligibility.ok
                             ? [
-                                "You can request a replacement if something is wrong.",
+                                "Replacement available if needed.",
                                 windowHint,
                               ]
                                 .filter(Boolean)
@@ -235,22 +301,21 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
                             : eligibility.reason}
                         </p>
                       ) : returnPolicyBlocksRefund(item.returnPolicy) ? (
-                        <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                          Final sale — cash refund is not available for this
-                          item.
+                        <p className="mt-0.5 text-[0.65rem] text-[var(--color-muted)]">
+                          Final sale — no cash refund
                         </p>
                       ) : null}
                       {openReq ? (
                         <button
                           type="button"
-                          className="mt-1 text-xs font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
+                          className="mt-0.5 text-[0.7rem] font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
                           onClick={() => setTab("replacements")}
                         >
                           View replacement progress
                         </button>
                       ) : null}
                     </div>
-                    <p className="shrink-0 text-sm font-semibold sm:text-base">
+                    <p className="shrink-0 text-sm font-semibold tabular-nums">
                       {formatMoney(item.lineTotal, order.currency)}
                     </p>
                   </div>
@@ -260,7 +325,7 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
                       onClick={() => setReplaceItem(item)}
                       className={cn(
                         sfBtn("secondary"),
-                        "w-full text-sm sm:w-auto",
+                        "!min-h-8 w-full !px-3 !py-1.5 !text-xs sm:w-auto",
                       )}
                     >
                       Request replace
@@ -277,7 +342,7 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             id={`${titleId}-panel-delivery`}
             role="tabpanel"
             aria-labelledby={`${titleId}-tab-delivery`}
-            className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 md:gap-8"
+            className="grid gap-4 p-3 sm:p-4 md:grid-cols-2 md:gap-6"
           >
             <div>
               <h3 className="flex items-center gap-1.5 text-sm font-semibold">
@@ -320,82 +385,246 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             id={`${titleId}-panel-payment`}
             role="tabpanel"
             aria-labelledby={`${titleId}-tab-payment`}
-            className="grid gap-6 p-4 sm:p-5 md:grid-cols-2 md:gap-8"
+            className="grid gap-4 p-3 sm:p-4 md:grid-cols-2 md:gap-5"
           >
-            <div>
-              <h3 className="flex items-center gap-1.5 text-sm font-semibold">
-                <CreditCardOutlinedIcon
-                  className="!text-base text-[var(--color-primary)]"
-                  aria-hidden
-                />
-                Payment
+            <div className="overflow-hidden rounded-lg">
+              <h3 className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold">
+                <span className="inline-flex items-center gap-1.5">
+                  <CreditCardOutlinedIcon
+                    className="!text-base text-[var(--color-primary)]"
+                    aria-hidden
+                  />
+                  Payment
+                </span>
+                {paymentProvider ? (
+                  <PaymentMethodBadge provider={paymentProvider} />
+                ) : null}
               </h3>
               {order.payment ? (
-                <dl className="mt-3 space-y-2 text-sm">
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--color-muted)]">Status</dt>
-                    <dd className="font-medium">{order.payment.status}</dd>
-                  </div>
-                  <div className="flex justify-between gap-2">
-                    <dt className="text-[var(--color-muted)]">Provider</dt>
-                    <dd className="font-medium capitalize">
-                      {order.payment.provider === "cod"
-                        ? "Cash on Delivery"
-                        : order.payment.provider === "razorpay"
-                          ? "Razorpay"
-                          : order.payment.provider}
-                    </dd>
-                  </div>
-                  {order.payment.paymentMethod ? (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--color-muted)]">Method</dt>
-                      <dd className="font-medium">
-                        {order.payment.paymentMethod}
-                      </dd>
-                    </div>
-                  ) : null}
-                  {order.payment.providerPaymentId ? (
-                    <div className="flex justify-between gap-2">
-                      <dt className="text-[var(--color-muted)]">Reference</dt>
-                      <dd className="max-w-[11rem] truncate text-xs font-medium">
-                        {order.payment.providerPaymentId}
-                      </dd>
-                    </div>
-                  ) : null}
-                </dl>
+                <table className={sfAccountGridTable()}>
+                  <thead className={sfAccountGridThead()}>
+                    <tr>
+                      <th className={sfAccountGridTh()}>Field</th>
+                      <th className={sfAccountGridTh()}>Value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className={sfAccountGridTr()}>
+                      <td
+                        className={cn(
+                          sfAccountGridTd(),
+                          "text-[var(--color-muted)]",
+                        )}
+                      >
+                        Status
+                      </td>
+                      <td className={sfAccountGridTd()}>
+                        <StatusPill
+                          status={paymentStatusDisplay ?? order.payment.status}
+                          tone={paymentStatusTone(
+                            paymentStatusDisplay ?? order.payment.status,
+                          )}
+                        />
+                      </td>
+                    </tr>
+                    <tr className={sfAccountGridTr()}>
+                      <td
+                        className={cn(
+                          sfAccountGridTd(),
+                          "text-[var(--color-muted)]",
+                        )}
+                      >
+                        Channel
+                      </td>
+                      <td className={cn(sfAccountGridTd(), "font-medium")}>
+                        {paymentMethodFullLabel(order.payment.provider)}
+                      </td>
+                    </tr>
+                    <tr className={sfAccountGridTr()}>
+                      <td
+                        className={cn(
+                          sfAccountGridTd(),
+                          "text-[var(--color-muted)]",
+                        )}
+                      >
+                        Method
+                      </td>
+                      <td className={cn(sfAccountGridTd(), "font-medium")}>
+                        {paymentInstrumentOrProviderLabel({
+                          provider: order.payment.provider,
+                          paymentMethod: order.payment.paymentMethod,
+                          instrument: order.payment.instrument,
+                        })}
+                      </td>
+                    </tr>
+                    {order.payment.instrument?.vpa ? (
+                      <tr className={sfAccountGridTr()}>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "text-[var(--color-muted)]",
+                          )}
+                        >
+                          UPI ID
+                        </td>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "truncate text-xs font-medium",
+                          )}
+                        >
+                          {order.payment.instrument.vpa}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {order.payment.instrument?.last4 ? (
+                      <tr className={sfAccountGridTr()}>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "text-[var(--color-muted)]",
+                          )}
+                        >
+                          Card
+                        </td>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "font-medium tabular-nums",
+                          )}
+                        >
+                          {order.payment.instrument.cardType
+                            ? `${order.payment.instrument.cardType} · `
+                            : ""}
+                          ****{order.payment.instrument.last4}
+                          {order.payment.instrument.network
+                            ? ` · ${order.payment.instrument.network}`
+                            : ""}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {order.payment.instrument?.bank &&
+                    !order.payment.instrument.last4 ? (
+                      <tr className={sfAccountGridTr()}>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "text-[var(--color-muted)]",
+                          )}
+                        >
+                          Bank
+                        </td>
+                        <td className={cn(sfAccountGridTd(), "font-medium")}>
+                          {order.payment.instrument.bank}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {order.payment.instrument?.wallet ? (
+                      <tr className={sfAccountGridTr()}>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "text-[var(--color-muted)]",
+                          )}
+                        >
+                          Wallet
+                        </td>
+                        <td className={cn(sfAccountGridTd(), "font-medium")}>
+                          {order.payment.instrument.wallet}
+                        </td>
+                      </tr>
+                    ) : null}
+                    {order.payment.providerPaymentId ? (
+                      <tr className={sfAccountGridTr()}>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "text-[var(--color-muted)]",
+                          )}
+                        >
+                          Reference
+                        </td>
+                        <td
+                          className={cn(
+                            sfAccountGridTd(),
+                            "truncate text-xs font-medium",
+                          )}
+                        >
+                          {order.payment.providerPaymentId}
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
               ) : (
                 <p className="mt-3 text-sm text-[var(--color-muted)]">
                   No payment on file.
                 </p>
               )}
             </div>
-            <div className="md:border-l md:border-[var(--color-border)] md:pl-8">
-              <h3 className="text-sm font-semibold">Totals</h3>
-              <dl className="mt-3 space-y-2 text-sm">
-                {[
-                  ["Subtotal", order.subtotal],
-                  [
-                    order.couponCode
-                      ? `Discount (${order.couponCode})`
-                      : "Discount",
-                    order.discountAmount,
-                  ],
-                  ["Shipping", order.shippingAmount],
-                  ["Payment fee", order.gatewayFee],
-                  ["Tax", order.taxAmount],
-                ].map(([label, value]) => (
-                  <div key={String(label)} className="flex justify-between gap-3">
-                    <dt className="text-[var(--color-muted)]">{label}</dt>
-                    <dd className="font-medium">
-                      {formatMoney(Number(value), order.currency)}
-                    </dd>
-                  </div>
-                ))}
-                <div className="flex justify-between gap-3 border-t border-[var(--color-border)] pt-3 text-base font-semibold">
-                  <dt>Grand total</dt>
-                  <dd>{formatMoney(order.grandTotal, order.currency)}</dd>
-                </div>
-              </dl>
+            <div className="overflow-hidden rounded-lg">
+              <h3 className="mb-2 text-sm font-semibold">Totals</h3>
+              <table className={sfAccountGridTable()}>
+                <thead className={sfAccountGridThead()}>
+                  <tr>
+                    <th className={sfAccountGridTh()}>Line</th>
+                    <th className={sfAccountGridTh("right")}>Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(
+                    [
+                      ["Subtotal", order.subtotal],
+                      [
+                        order.couponCode
+                          ? `Discount (${order.couponCode})`
+                          : "Discount",
+                        order.discountAmount,
+                      ],
+                      ["Shipping", order.shippingAmount],
+                      ["Payment fee", order.gatewayFee],
+                      ["Tax", order.taxAmount],
+                    ] as const
+                  ).map(([label, value]) => (
+                    <tr key={String(label)} className={sfAccountGridTr()}>
+                      <td
+                        className={cn(
+                          sfAccountGridTd(),
+                          "text-[var(--color-muted)]",
+                        )}
+                      >
+                        {label}
+                      </td>
+                      <td
+                        className={cn(
+                          sfAccountGridTd("right"),
+                          "font-medium tabular-nums",
+                        )}
+                      >
+                        {formatMoney(Number(value), order.currency)}
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className={sfAccountGridTr()}>
+                    <td
+                      className={cn(
+                        sfAccountGridTd(),
+                        "font-semibold text-[var(--color-foreground)]",
+                      )}
+                    >
+                      Grand total
+                    </td>
+                    <td
+                      className={cn(
+                        sfAccountGridTd("right"),
+                        "font-semibold tabular-nums",
+                      )}
+                    >
+                      {formatMoney(order.grandTotal, order.currency)}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         ) : null}
@@ -405,18 +634,18 @@ export function AccountOrderDetailView({ order }: { order: OrderDetail }) {
             id={`${titleId}-panel-replacements`}
             role="tabpanel"
             aria-labelledby={`${titleId}-tab-replacements`}
-            className="p-4 sm:p-5"
+            className="p-3 sm:p-4"
           >
             {replaceRequests.length === 0 ? (
               <p className="text-sm text-[var(--color-muted)]">
                 No replacement requests for this order yet.
               </p>
             ) : (
-              <ul className="space-y-3 text-sm">
+              <ul className="space-y-2 text-sm">
                 {replaceRequests.map((req) => (
                   <li
                     key={req.id}
-                    className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-3"
+                    className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">

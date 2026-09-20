@@ -1,5 +1,6 @@
 import type { OrderStatus, PaymentStatus } from "@/types/database";
 import type { ShippingAddressSnapshot } from "@/features/addresses/types";
+import type { PaymentInstrument } from "@/features/payments/razorpay-instrument";
 import type {
   ReplaceRequestStatus,
   ReplaceStoreRules,
@@ -14,6 +15,12 @@ export type OrderListItem = {
   createdAt: string;
   itemCount: number;
   paymentStatus: PaymentStatus | null;
+  /** razorpay | cod | … */
+  paymentProvider?: string | null;
+  /** Coarse method from provider (card, upi, cod, …). */
+  paymentMethod?: string | null;
+  /** Rich Razorpay instrument when captured. */
+  paymentInstrument?: PaymentInstrument | null;
   customerEmail?: string | null;
   customerName?: string | null;
   /** True when an open or granted replace request exists for the order. */
@@ -49,6 +56,7 @@ export type OrderPaymentView = {
   paymentMethod: string | null;
   paidAt: string | null;
   failureReason: string | null;
+  instrument: PaymentInstrument | null;
 };
 
 export type OrderActivityView = {

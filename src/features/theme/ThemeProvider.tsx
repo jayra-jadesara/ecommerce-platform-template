@@ -1,9 +1,7 @@
 "use client";
 
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -25,6 +23,10 @@ import {
   motionHtmlDataAttributes,
   resolveMotionConfig,
 } from "@/features/motion-3d";
+import {
+  ThemeContext,
+  type ThemeContextValue,
+} from "@/features/theme/theme-context";
 import { typographyCssVars } from "@/features/theme/typography-css";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { usePrefersReducedMotion } from "@/features/visual-effects/hooks";
@@ -35,17 +37,6 @@ import type {
 } from "@/types";
 
 const STORAGE_KEY = "platform-theme-mode";
-
-interface ThemeContextValue {
-  mode: ThemeMode;
-  resolvedMode: ResolvedThemeMode;
-  availableModes: ThemeMode[];
-  allowUserToggle: boolean;
-  setMode: (mode: ThemeMode) => void;
-  cycleMode: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 const modeListeners = new Set<() => void>();
 
@@ -249,10 +240,7 @@ export function PlatformThemeProvider({
   );
 }
 
-export function useThemeMode(): ThemeContextValue {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) {
-    throw new Error("useThemeMode must be used within PlatformThemeProvider");
-  }
-  return ctx;
-}
+export {
+  useThemeMode,
+  useThemeModeOptional,
+} from "@/features/theme/theme-context";
