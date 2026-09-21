@@ -43,6 +43,7 @@ export function AppLayout({
         header={config.header}
         cartSlot={cartSlot}
         categoryMenu={categoryMenu}
+        currency={config.store.currency}
       />
       {children}
       <Footer

@@ -177,6 +177,7 @@ export type Database = {
           copyright_text: string | null;
           reviews_enabled: boolean;
           reviews_auto_approve: boolean;
+          reviews_preview_limit: number;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -230,6 +231,7 @@ export type Database = {
           copyright_text?: string | null;
           reviews_enabled?: boolean;
           reviews_auto_approve?: boolean;
+          reviews_preview_limit?: number;
           extra?: Json;
           created_at?: string;
           updated_at?: string;

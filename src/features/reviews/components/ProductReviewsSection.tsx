@@ -22,8 +22,6 @@ const SORT_OPTIONS: Array<{ value: ReviewSort; label: string }> = [
   { value: "lowest", label: "Lowest rating" },
 ];
 
-const PREVIEW_LIMIT = 3;
-
 type ProductReviewsSectionProps = {
   productId: string;
   productSlug: string;
@@ -33,6 +31,8 @@ type ProductReviewsSectionProps = {
   summary: ProductReviewSummary;
   reviews: ProductReview[];
   myReview: ProductReview | null;
+  /** How many reviews to show on the product page (1–6). */
+  previewLimit?: number;
 };
 
 function sortReviews(
@@ -76,12 +76,14 @@ export function ProductReviewsSection({
   summary,
   reviews,
   myReview,
+  previewLimit = 3,
 }: ProductReviewsSectionProps) {
   const [sort, setSort] = useState<ReviewSort>("newest");
   const [writeOpen, setWriteOpen] = useState(false);
+  const limit = Math.min(6, Math.max(1, Math.round(previewLimit) || 3));
   const sorted = useMemo(() => sortReviews(reviews, sort), [reviews, sort]);
-  const preview = sorted.slice(0, PREVIEW_LIMIT);
-  const hasMore = summary.count > PREVIEW_LIMIT || sorted.length > PREVIEW_LIMIT;
+  const preview = sorted.slice(0, limit);
+  const hasMore = summary.count > limit;
   const reviewsHref = `/products/${productSlug}/reviews`;
   const loginHref = `/login?next=${encodeURIComponent(reviewsHref)}`;
   const avgDisplay = summary.count > 0 ? summary.average.toFixed(1) : "0";

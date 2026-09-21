@@ -24,7 +24,7 @@ import { ProductReviewsSection } from "@/features/reviews/components/ProductRevi
 import {
   getMyProductReview,
   getProductReviewSummary,
-  getReviewsEnabled,
+  getReviewsStoreSettings,
   listApprovedProductReviews,
 } from "@/features/reviews/service";
 
@@ -89,7 +89,9 @@ export default async function ProductDetailPage({
   if (!product) notFound();
 
   const isAuthenticated = Boolean(user);
-  const reviewsEnabled = await getReviewsEnabled();
+  const reviewsSettings = await getReviewsStoreSettings();
+  const reviewsEnabled = reviewsSettings.enabled;
+  const previewLimit = reviewsSettings.previewLimit;
   const [related, popularRaw, reviewSummary, approvedReviews, myReview] =
     await Promise.all([
       listSimilarStorefrontProducts({
@@ -110,7 +112,7 @@ export default async function ProductDetailPage({
             distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
           }),
       reviewsEnabled
-        ? listApprovedProductReviews(product.id, "newest", 4)
+        ? listApprovedProductReviews(product.id, "newest", previewLimit)
         : Promise.resolve([]),
       reviewsEnabled && isAuthenticated
         ? getMyProductReview(product.id)
@@ -231,6 +233,7 @@ export default async function ProductDetailPage({
           summary={reviewSummary}
           reviews={approvedReviews}
           myReview={myReview}
+          previewLimit={previewLimit}
         />
       ) : null}
     </Container>

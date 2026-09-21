@@ -72,18 +72,40 @@ export async function getReviewsAutoApprove(): Promise<boolean> {
 export type ReviewsStoreSettings = {
   enabled: boolean;
   autoApprove: boolean;
+  /** Product-page preview count (1–6). Default 3. */
+  previewLimit: number;
 };
+
+const DEFAULT_PREVIEW_LIMIT = 3;
+
+function clampPreviewLimit(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_PREVIEW_LIMIT;
+  return Math.min(6, Math.max(1, Math.round(n)));
+}
 
 export async function getReviewsStoreSettings(): Promise<ReviewsStoreSettings> {
   const storeId = await resolveStoreId();
-  if (!storeId) return { enabled: true, autoApprove: false };
+  if (!storeId) {
+    return {
+      enabled: true,
+      autoApprove: false,
+      previewLimit: DEFAULT_PREVIEW_LIMIT,
+    };
+  }
 
   const supabase = createSupabasePublicClient();
-  if (!supabase) return { enabled: true, autoApprove: false };
+  if (!supabase) {
+    return {
+      enabled: true,
+      autoApprove: false,
+      previewLimit: DEFAULT_PREVIEW_LIMIT,
+    };
+  }
 
   const { data } = await supabase
     .from("store_settings")
-    .select("reviews_enabled, reviews_auto_approve")
+    .select("reviews_enabled, reviews_auto_approve, reviews_preview_limit")
     .eq("store_id", storeId)
     .maybeSingle();
 
@@ -94,6 +116,7 @@ export async function getReviewsStoreSettings(): Promise<ReviewsStoreSettings> {
       typeof data?.reviews_auto_approve === "boolean"
         ? data.reviews_auto_approve
         : false,
+    previewLimit: clampPreviewLimit(data?.reviews_preview_limit),
   };
 }
 
@@ -109,10 +132,18 @@ export async function setReviewsAutoApprove(
   return patchReviewsStoreSetting({ reviews_auto_approve: autoApprove });
 }
 
+export async function setReviewsPreviewLimit(
+  previewLimit: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const limit = clampPreviewLimit(previewLimit);
+  return patchReviewsStoreSetting({ reviews_preview_limit: limit });
+}
+
 async function patchReviewsStoreSetting(
   patch: Partial<{
     reviews_enabled: boolean;
     reviews_auto_approve: boolean;
+    reviews_preview_limit: number;
   }>,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const storeId = await resolveStoreId();

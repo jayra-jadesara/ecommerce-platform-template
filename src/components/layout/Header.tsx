@@ -5,10 +5,10 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import MenuIcon from "@mui/icons-material/Menu";
-import SearchIcon from "@mui/icons-material/Search";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import IconButton from "@mui/material/IconButton";
 import { Container } from "@/components/layout/Container";
+import { HeaderSearch } from "@/components/layout/HeaderSearch";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { HeaderAccountMenu } from "@/components/common/HeaderAccountMenu";
 import { HeaderCartControl } from "@/features/cart/components/HeaderCartControl";
@@ -66,6 +66,7 @@ interface HeaderProps {
   /** @deprecated Prefer cartSlot — kept for simple fallbacks. */
   initialCartCount?: number;
   categoryMenu?: CategoryMenuSource[];
+  currency?: string;
 }
 
 function isMeaningfulTagline(tagline: string | undefined | null) {
@@ -193,11 +194,11 @@ export function Header({
   cartSlot,
   initialCartCount = 0,
   categoryMenu = [],
+  currency = "INR",
 }: HeaderProps) {
   const pathname = usePathname() || "/";
   const hydrated = useHasHydrated();
   const [menuPath, setMenuPath] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const theme = useThemeModeOptional();
   const resolvedMode = theme?.resolvedMode ?? "light";
@@ -211,7 +212,6 @@ export function Header({
   );
 
   useEffect(() => {
-    setSearchOpen(false);
     setMenuPath(null);
   }, [pathname]);
 
@@ -332,48 +332,8 @@ export function Header({
             </nav>
           ) : null}
 
-          <div className="relative z-10 ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
-            {showSearch ? (
-              <>
-                <IconButton
-                  aria-label={searchOpen ? "Close search" : "Search products"}
-                  aria-expanded={searchOpen}
-                  size="small"
-                  className="!text-[var(--color-header-foreground)]"
-                  onClick={() => setSearchOpen((v) => !v)}
-                >
-                  <SearchIcon fontSize="small" />
-                </IconButton>
-                {searchOpen ? (
-                  <form
-                    action="/products"
-                    method="get"
-                    role="search"
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-20 w-[min(20rem,calc(100vw-2rem))] rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-2 shadow-[0_16px_40px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)] md:w-80"
-                  >
-                    <label className="sr-only" htmlFor="header-product-search">
-                      Search products
-                    </label>
-                    <div className="flex gap-2">
-                      <input
-                        id="header-product-search"
-                        name="q"
-                        type="search"
-                        autoFocus
-                        placeholder="Search products"
-                        className="min-h-10 flex-1 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-                      />
-                      <button
-                        type="submit"
-                        className="inline-flex min-h-10 items-center rounded-md bg-[var(--color-primary)] px-3 text-sm font-semibold text-[var(--color-button-foreground)]"
-                      >
-                        Go
-                      </button>
-                    </div>
-                  </form>
-                ) : null}
-              </>
-            ) : null}
+          <div className="sf-header-actions relative z-10 ml-auto flex shrink-0 items-center gap-0.5 sm:gap-1">
+            {showSearch ? <HeaderSearch currency={currency} /> : null}
 
             {showAccount ? (
               <div className="hidden sm:block">

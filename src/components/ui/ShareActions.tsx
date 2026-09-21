@@ -134,11 +134,7 @@ export function ShareActions({
         <FacebookIcon sx={{ fontSize: 17 }} />
       </ShareChip>
       <ShareChip
-        label={
-          ytHref
-            ? "YouTube"
-            : "Copy link (add YouTube URL in Store settings)"
-        }
+        label="YouTube"
         href={ytHref}
         onClick={ytHref ? undefined : copyLink}
       >

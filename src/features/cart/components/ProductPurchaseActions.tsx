@@ -32,9 +32,10 @@ interface ProductPurchaseActionsProps {
   /** Content above the qty + CTA row (price, stock, options…). */
   leading?: ReactNode;
   /**
-   * `rail` — price/options, then qty + medium CTAs in one horizontal row (PDP).
-   * `stack` — quantity then wider button row (default / mobile chrome).
+   * `rail` — qty + CTAs in one horizontal row (desktop PDP).
+   * `stack` — quantity then equal-width CTA grid (mobile sticky bar).
    */
+  layout?: "rail" | "stack";
   /** When false, omit wishlist control (e.g. PDP places it elsewhere). */
   showWishlist?: boolean;
 }
@@ -238,22 +239,72 @@ export function ProductPurchaseActions({
   }
 
   return (
-    <div className="space-y-3.5">
+    <div className="space-y-2">
       {leading}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2">
         <QuantityStepper
           value={quantity}
           max={maxQty}
           disabled={outOfStock}
           onChange={setQuantity}
+          size="sm"
         />
       </div>
-
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-        {actionButtons}
+      <div className="grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          disabled={outOfStock || busy}
+          onClick={() => {
+            setError(null);
+            setMessage(null);
+            addMutation.mutate({ productId, variantId, quantity });
+          }}
+          className={cn(sfBtn("outline"), "min-h-10 w-full !px-2 !text-sm")}
+        >
+          {outOfStock ? "Out of stock" : "Add to cart"}
+        </button>
+        <button
+          type="button"
+          disabled={outOfStock || busy}
+          onClick={() => void buyNow()}
+          className={cn(sfBtn("primary"), "min-h-10 w-full !px-2 !text-sm")}
+        >
+          {buyPending ? "Starting…" : "Buy it now"}
+        </button>
       </div>
-
       {statusMessages}
+      {showWishlist ? (
+        <div className="flex justify-end">
+          {isAuthenticated ? (
+            <button
+              type="button"
+              disabled={wishlistMutation.isPending}
+              aria-pressed={inWishlist}
+              aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+              onClick={() => wishlistMutation.mutate()}
+              className="inline-flex h-9 w-9 items-center justify-center text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+            >
+              {inWishlist ? (
+                <FavoriteIcon
+                  fontSize="small"
+                  className="!text-[var(--color-primary)]"
+                  aria-hidden
+                />
+              ) : (
+                <FavoriteBorderIcon fontSize="small" aria-hidden />
+              )}
+            </button>
+          ) : (
+            <a
+              href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
+              aria-label="Sign in to add to wishlist"
+              className="inline-flex h-9 w-9 items-center justify-center text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+            >
+              <FavoriteBorderIcon fontSize="small" aria-hidden />
+            </a>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

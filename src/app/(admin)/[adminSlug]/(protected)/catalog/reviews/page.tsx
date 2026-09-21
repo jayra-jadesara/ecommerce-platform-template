@@ -47,16 +47,19 @@ export default async function AdminReviewsPage({
     <div className="w-full min-w-0 space-y-3">
       <AdminPageHeader
         title="Reviews"
-        description="Control review visibility and moderate customer feedback."
+        description="Moderate customer product reviews before they appear on the store."
         breadcrumbs={[
           { label: "Products", href: getAdminPath("/catalog/products") },
           { label: "Reviews" },
         ]}
-      />
-      <AdminReviewsSettingsToggles
-        enabled={settings.enabled}
-        autoApprove={settings.autoApprove}
-        canUpdate={hasPermission(admin, "reviews.moderate")}
+        actions={
+          <AdminReviewsSettingsToggles
+            enabled={settings.enabled}
+            autoApprove={settings.autoApprove}
+            previewLimit={settings.previewLimit}
+            canUpdate={hasPermission(admin, "reviews.moderate")}
+          />
+        }
       />
       <AdminReviewsManager
         initialItems={result.items}

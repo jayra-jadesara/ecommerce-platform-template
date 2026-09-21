@@ -112,7 +112,6 @@ export function ProductDetailClient({
       src={activeImage.url}
       alt={activeImage.altText || product.name}
       zoom={2.2}
-      lensSize={200}
     />
   ) : (
     <div
@@ -175,7 +174,7 @@ export function ProductDetailClient({
     ) : null;
 
   return (
-    <div className="sf-pdp-layout pb-28 lg:pb-0">
+    <div className="sf-pdp-layout">
       <div className="sf-pdp-gallery">
         {thumbs}
         {product3dEligible ? (
@@ -194,14 +193,14 @@ export function ProductDetailClient({
         )}
       </div>
 
-      <div className="sf-pdp-info space-y-4 md:space-y-5">
-        <div className="space-y-2.5">
+      <div className="sf-pdp-info space-y-3.5 md:space-y-5">
+        <div className="space-y-2 sm:space-y-2.5">
           {product.category ? (
             <p className={sfEyebrow()}>{product.category.name}</p>
           ) : null}
           <div className="flex items-start justify-between gap-3">
             <h1
-              className={`${sfDisplay()} min-w-0 flex-1 text-[1.65rem] leading-[1.15] tracking-tight md:text-[2rem]`}
+              className={`${sfDisplay()} min-w-0 flex-1 text-[1.4rem] leading-[1.15] tracking-tight sm:text-[1.65rem] md:text-[2rem]`}
             >
               {product.name}
             </h1>
@@ -256,120 +255,133 @@ export function ProductDetailClient({
           />
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_94%,transparent)] px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur lg:static lg:z-auto lg:border-0 lg:bg-transparent lg:p-0 lg:pb-0 lg:backdrop-blur-none">
-          <ProductPurchaseActions
-            key={selected.id}
-            productId={product.id}
-            productSlug={product.slug}
-            variantId={selected.id}
-            maxAvailable={
-              selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
-            }
-            outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
-            isAuthenticated={isAuthenticated}
-            layout="rail"
-            showWishlist={false}
-            leading={
-              <>
-                {product.variants.length > 1 ? (
-                  <fieldset className="space-y-2">
-                    <legend className="text-sm font-medium text-[var(--color-foreground)]">
-                      Size / option
-                    </legend>
-                    <div
-                      className="flex flex-wrap gap-2"
-                      role="listbox"
-                      aria-label="Choose product option"
-                    >
-                      {product.variants.map((variant) => {
-                        const active = variant.id === selected.id;
-                        const soldOut = variant.stockStatus === "OUT_OF_STOCK";
-                        return (
-                          <button
-                            key={variant.id}
-                            type="button"
-                            role="option"
-                            aria-selected={active}
-                            disabled={soldOut}
-                            className={cn(
-                              "min-h-10 rounded-[var(--radius-default,0.45rem)] border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
-                              active
-                                ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
-                                : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-primary)]",
-                              soldOut && "opacity-40",
-                            )}
-                            onClick={() => {
-                              setVariantId(variant.id);
-                              const nextImages = product.images.filter(
-                                (image) =>
-                                  image.variantId === variant.id ||
-                                  !image.variantId,
-                              );
-                              const preferred =
-                                nextImages.find(
-                                  (image) => image.variantId === variant.id,
-                                ) ??
-                                nextImages.find((image) => image.isPrimary) ??
-                                nextImages[0];
-                              if (preferred) setActiveImageId(preferred.id);
-                            }}
-                          >
-                            {variant.name}
-                          </button>
+        <div className="space-y-4">
+          {product.variants.length > 1 ? (
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-medium text-[var(--color-foreground)]">
+                Size / option
+              </legend>
+              <div
+                className="flex flex-wrap gap-2"
+                role="listbox"
+                aria-label="Choose product option"
+              >
+                {product.variants.map((variant) => {
+                  const active = variant.id === selected.id;
+                  const soldOut = variant.stockStatus === "OUT_OF_STOCK";
+                  return (
+                    <button
+                      key={variant.id}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      disabled={soldOut}
+                      className={cn(
+                        "min-h-9 rounded-[var(--radius-default,0.45rem)] border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
+                        active
+                          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                          : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:border-[var(--color-primary)]",
+                        soldOut && "opacity-40",
+                      )}
+                      onClick={() => {
+                        setVariantId(variant.id);
+                        const nextImages = product.images.filter(
+                          (image) =>
+                            image.variantId === variant.id || !image.variantId,
                         );
-                      })}
-                    </div>
-                  </fieldset>
-                ) : null}
+                        const preferred =
+                          nextImages.find(
+                            (image) => image.variantId === variant.id,
+                          ) ??
+                          nextImages.find((image) => image.isPrimary) ??
+                          nextImages[0];
+                        if (preferred) setActiveImageId(preferred.id);
+                      }}
+                    >
+                      {variant.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          ) : null}
 
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                    <span className="text-2xl font-semibold tabular-nums tracking-tight text-[var(--color-foreground)] md:text-[1.75rem]">
-                      {formatMoney(selected.price, currency)}
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-2xl font-semibold tabular-nums tracking-tight text-[var(--color-foreground)] md:text-[1.75rem]">
+                {formatMoney(selected.price, currency)}
+              </span>
+              {selected.compareAtPrice != null &&
+              selected.compareAtPrice > selected.price ? (
+                <>
+                  <span className="text-sm tabular-nums text-[var(--color-muted)] line-through">
+                    {formatMoney(selected.compareAtPrice, currency)}
+                  </span>
+                  {discountPct != null ? (
+                    <span className="text-xs font-semibold text-[var(--color-primary)]">
+                      -{discountPct}%
                     </span>
-                    {selected.compareAtPrice != null &&
-                    selected.compareAtPrice > selected.price ? (
-                      <>
-                        <span className="text-sm tabular-nums text-[var(--color-muted)] line-through">
-                          {formatMoney(selected.compareAtPrice, currency)}
-                        </span>
-                        {discountPct != null ? (
-                          <span className="text-xs font-semibold text-[var(--color-primary)]">
-                            -{discountPct}%
-                          </span>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                  <p className="text-xs text-[var(--color-muted)]">
-                    Inclusive of all taxes
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Chip
-                    size="small"
-                    label={
-                      selected.stockStatus === "OUT_OF_STOCK"
-                        ? "Out of stock"
-                        : selected.stockStatus === "LOW_STOCK"
-                          ? "Limited stock"
-                          : "In stock"
-                    }
-                    color={stockColor[selected.stockStatus]}
-                  />
-                  {product.featured ? (
-                    <Chip size="small" label="Featured" color="primary" />
                   ) : null}
-                  <Chip
-                    size="small"
-                    label={returnPolicyLabel(product.returnPolicy)}
-                    variant="outlined"
-                  />
-                </div>
-              </>
-            }
-          />
+                </>
+              ) : null}
+            </div>
+            <p className="text-xs text-[var(--color-muted)]">
+              Inclusive of all taxes
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Chip
+              size="small"
+              label={
+                selected.stockStatus === "OUT_OF_STOCK"
+                  ? "Out of stock"
+                  : selected.stockStatus === "LOW_STOCK"
+                    ? "Limited stock"
+                    : "In stock"
+              }
+              color={stockColor[selected.stockStatus]}
+            />
+            {product.featured ? (
+              <Chip size="small" label="Featured" color="primary" />
+            ) : null}
+            <Chip
+              size="small"
+              label={returnPolicyLabel(product.returnPolicy)}
+              variant="outlined"
+            />
+          </div>
+
+          <div className="lg:hidden">
+            <ProductPurchaseActions
+              key={`mob-${selected.id}`}
+              productId={product.id}
+              productSlug={product.slug}
+              variantId={selected.id}
+              maxAvailable={
+                selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
+              }
+              outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
+              isAuthenticated={isAuthenticated}
+              layout="stack"
+              showWishlist={false}
+            />
+          </div>
+          <div className="hidden lg:block">
+            <ProductPurchaseActions
+              key={`desk-${selected.id}`}
+              productId={product.id}
+              productSlug={product.slug}
+              variantId={selected.id}
+              maxAvailable={
+                selected.stockStatus === "OUT_OF_STOCK" ? 0 : selected.available
+              }
+              outOfStock={selected.stockStatus === "OUT_OF_STOCK"}
+              isAuthenticated={isAuthenticated}
+              layout="rail"
+              showWishlist={false}
+            />
+          </div>
         </div>
 
         <DeliveryInfoBlock currency={currency} />

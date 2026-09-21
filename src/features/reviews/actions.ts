@@ -12,6 +12,7 @@ import {
   listAdminProductReviews,
   setReviewsAutoApprove,
   setReviewsEnabled,
+  setReviewsPreviewLimit,
   submitProductReview,
   updateAdminProductReviewStatus,
 } from "@/features/reviews/service";
@@ -98,6 +99,25 @@ export async function updateReviewsAutoApproveAction(autoApprove: boolean) {
     },
     async () => {
       const result = await setReviewsAutoApprove(Boolean(autoApprove));
+      if (result.ok) revalidateReviewsStorefront();
+      return result;
+    },
+  );
+}
+
+export async function updateReviewsPreviewLimitAction(previewLimit: number) {
+  await requirePermission("reviews.moderate");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_REVIEWS_PREVIEW_LIMIT",
+      feature: "REVIEWS",
+      entityType: "store_settings",
+      route: "/catalog/reviews",
+    },
+    async () => {
+      const result = await setReviewsPreviewLimit(Number(previewLimit));
       if (result.ok) revalidateReviewsStorefront();
       return result;
     },

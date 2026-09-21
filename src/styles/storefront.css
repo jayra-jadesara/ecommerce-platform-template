@@ -1,10 +1,10 @@
 /* Storefront atmosphere — token-driven, white-label safe */
 
-/* Product detail — gallery sized to a viewport-fit square stage (blue-box target). */
+/* Product detail — gallery sized for desktop stage; compact on mobile. */
 .sf-pdp-layout {
   --sf-pdp-stage: min(36rem, calc(100dvh - 11.5rem));
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
   align-items: start;
 }
 
@@ -29,7 +29,6 @@
     flex-direction: row;
     align-items: stretch;
     gap: 0.75rem;
-    /* Square stage follows the column width so thumbs never spill off the page */
     aspect-ratio: 1 / 1;
     width: 100%;
     max-width: var(--sf-pdp-stage);
@@ -69,9 +68,11 @@
   position: relative;
   width: 100%;
   flex: 1 1 auto;
+  /* Mobile: smaller square so title + price fit above the fold */
   aspect-ratio: 1 / 1;
-  max-width: var(--sf-pdp-stage);
-  max-height: var(--sf-pdp-stage);
+  max-width: min(100%, 20rem);
+  max-height: min(20rem, 48dvh);
+  margin-inline: auto;
   height: auto;
   overflow: hidden;
 }
@@ -83,6 +84,7 @@
     height: 100%;
     max-width: none;
     max-height: none;
+    margin-inline: 0;
     flex: 1 1 0;
     min-width: 0;
   }
@@ -1583,21 +1585,47 @@ html.dark .sf-auth-doodle {
   }
 }
 
-/* Britannia-inspired back-to-top pennant — scales down on small screens */
+/* Britannia-inspired back-to-top pennant — position set inline from ScrollToTop */
 .sf-back-to-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 2.5rem;
+  min-height: 3.35rem;
+  max-height: 5.25rem;
+  padding: 0.35rem 0.35rem 0.45rem;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-button-foreground);
   background: var(--color-primary);
-  width: 2.35rem;
-  min-height: 3.25rem;
   clip-path: polygon(50% 0%, 100% 12%, 100% 100%, 0 100%, 0 12%);
   box-shadow: 0 10px 20px color-mix(in srgb, var(--color-primary) 36%, transparent);
   transition: filter 0.2s ease, transform 0.2s ease;
+  pointer-events: auto;
 }
 
 @media (min-width: 768px) {
   .sf-back-to-top {
-    width: 3.35rem;
-    min-height: 4.75rem;
+    width: 3.1rem;
+    min-height: 4.5rem;
+    padding: 0.45rem 0.5rem 0.65rem;
     box-shadow: 0 14px 28px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  }
+}
+
+.sf-back-to-top__icon {
+  font-size: 1rem !important;
+  width: 1rem !important;
+  height: 1rem !important;
+}
+
+@media (min-width: 768px) {
+  .sf-back-to-top__icon {
+    font-size: 1.15rem !important;
+    width: 1.15rem !important;
+    height: 1.15rem !important;
   }
 }
 
@@ -1611,14 +1639,141 @@ html.dark .sf-auth-doodle {
   }
 }
 
+.sf-back-to-top:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
 .sf-back-to-top__label {
   display: none;
+  margin-top: 0.15rem;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1.05;
+  letter-spacing: 0.04em;
+}
+
+.sf-back-to-top__label span:first-child {
+  font-size: 0.52rem;
+}
+
+.sf-back-to-top__label span:last-child {
+  font-size: 0.72rem;
 }
 
 @media (min-width: 768px) {
   .sf-back-to-top__label {
     display: flex;
   }
+}
+
+/* Compact premium header search — anchored under the search icon */
+.sf-header-search-panel {
+  position: absolute;
+  top: calc(100% + 0.7rem);
+  left: 50%;
+  z-index: 80;
+  width: min(16.5rem, calc(100vw - 1.5rem));
+  overflow: visible;
+  border-radius: 0.8rem;
+  border: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--color-primary) 10%);
+  background: var(--color-card);
+  box-shadow:
+    0 14px 36px color-mix(in srgb, var(--color-foreground) 12%, transparent),
+    0 2px 6px color-mix(in srgb, var(--color-foreground) 5%, transparent);
+  transform-origin: top center;
+  transition:
+    opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.sf-header-search-panel--closed {
+  opacity: 0;
+  transform: translate3d(-50%, -0.45rem, 0) scale(0.94);
+  pointer-events: none;
+}
+
+.sf-header-search-panel--open {
+  opacity: 1;
+  transform: translate3d(-50%, 0, 0) scale(1);
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-header-search-panel {
+    transition: opacity 90ms ease;
+  }
+
+  .sf-header-search-panel--closed {
+    transform: translate3d(-50%, 0, 0);
+  }
+
+  .sf-header-search-panel--open {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.sf-header-search-panel__caret {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 11px;
+  height: 11px;
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--color-primary) 10%);
+  border-left: 1px solid color-mix(in srgb, var(--color-border) 90%, var(--color-primary) 10%);
+  background: var(--color-card);
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+.sf-header-search-panel__form {
+  border-bottom: 1px solid color-mix(in srgb, var(--color-border) 85%, transparent);
+  padding: 0.55rem 0.55rem 0.6rem;
+  border-radius: 0.8rem 0.8rem 0 0;
+  background: var(--color-card);
+}
+
+.sf-header-search-panel__input {
+  min-height: 2.35rem;
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-background) 88%, var(--color-card) 12%);
+  padding: 0.4rem 0.75rem 0.4rem 2.15rem;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  color: var(--color-foreground);
+  outline: none;
+}
+
+.sf-header-search-panel__input::placeholder {
+  color: var(--color-muted);
+}
+
+.sf-header-search-panel__input:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 55%, var(--color-border));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 14%, transparent);
+}
+
+.sf-header-search-panel__body {
+  max-height: min(16rem, 50dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: 0 0 0.8rem 0.8rem;
+  background: var(--color-card);
+}
+
+.sf-header-search-panel__hint {
+  margin: 0;
+  padding: 0.7rem 0.85rem 0.85rem;
+  font-size: 0.7rem;
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  color: var(--color-muted);
 }
 
 .sf-share-chip svg {
