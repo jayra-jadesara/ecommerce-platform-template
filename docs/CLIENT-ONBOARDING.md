@@ -62,6 +62,9 @@ Open `/{ADMIN_ROUTE}/login` (default `/manage-store/login`).
 Change the password after first login.  
 Customers **cannot** self-promote to admin.
 
+**Staff (Team):** A Super Admin opens **Store → Team** and either **creates a new login** (email + temporary password, shown once to share) or **links an existing shopper** by email and assigns one role (`ADMIN` / `EDITOR` / `ORDER_MANAGER`, or another Super Admin).  
+**Deactivate** on Team revokes admin login only — they can still shop with the same account. Open **Activity** on a row for a full page of charts (by day, page area, top actions, time of day), page tabs, and date filters.
+
 ### 8–12. Configure in Admin
 Use the dashboard **Complete your store setup** checklist:
 
@@ -75,6 +78,7 @@ Use the dashboard **Complete your store setup** checklist:
 | Shipping | Store Settings → Shipping |
 | Payments | Store Settings → Payments |
 | SEO | Store Settings → Google & SEO |
+| Team (staff roles) | Store → Team (Super Admin) |
 
 ### 13–14. Razorpay
 1. Create Razorpay keys for this client.

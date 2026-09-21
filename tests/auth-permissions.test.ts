@@ -32,6 +32,32 @@ describe("permissionsForRoles", () => {
     expect(hasPermission(["ORDER_MANAGER"], "products.create")).toBe(false);
   });
 
+  it("grants READER view access without mutate permissions", () => {
+    expect(hasPermission(["READER"], "dashboard.view")).toBe(true);
+    expect(hasPermission(["READER"], "orders.view")).toBe(true);
+    expect(hasPermission(["READER"], "products.view")).toBe(true);
+    expect(hasPermission(["READER"], "products.create")).toBe(false);
+    expect(hasPermission(["READER"], "orders.update")).toBe(false);
+    expect(hasPermission(["READER"], "settings.update")).toBe(false);
+    expect(hasPermission(["READER"], "users.manage")).toBe(false);
+  });
+
+  it("grants MARKETING promo tools without order updates", () => {
+    expect(hasPermission(["MARKETING"], "coupons.create")).toBe(true);
+    expect(hasPermission(["MARKETING"], "blog.publish")).toBe(true);
+    expect(hasPermission(["MARKETING"], "content.update")).toBe(true);
+    expect(hasPermission(["MARKETING"], "orders.update")).toBe(false);
+    expect(hasPermission(["MARKETING"], "products.create")).toBe(false);
+  });
+
+  it("grants SUPPORT order help without catalog edits", () => {
+    expect(hasPermission(["SUPPORT"], "orders.update")).toBe(true);
+    expect(hasPermission(["SUPPORT"], "customers.view")).toBe(true);
+    expect(hasPermission(["SUPPORT"], "products.view")).toBe(true);
+    expect(hasPermission(["SUPPORT"], "products.update")).toBe(false);
+    expect(hasPermission(["SUPPORT"], "coupons.create")).toBe(false);
+  });
+
   it("unions permissions across multiple roles", () => {
     const set = permissionsForRoles(["EDITOR", "ORDER_MANAGER"]);
     expect(set.has("cms.view")).toBe(true);

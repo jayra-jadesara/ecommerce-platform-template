@@ -112,9 +112,25 @@ async function main() {
         description: "Content, catalog, and media editing",
       },
       {
+        code: "MARKETING",
+        name: "Marketing",
+        description: "Promotions, blog, coupons, and marketing content",
+      },
+      {
         code: "ORDER_MANAGER",
         name: "Order Manager",
         description: "Orders, payments, and fulfillment",
+      },
+      {
+        code: "SUPPORT",
+        name: "Support",
+        description: "Customer help — orders and account questions",
+      },
+      {
+        code: "READER",
+        name: "Read",
+        description:
+          "View-only access across the admin — cannot create, edit, or delete",
       },
     ],
     { onConflict: "code" },

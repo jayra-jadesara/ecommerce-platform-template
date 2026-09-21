@@ -1,0 +1,131 @@
+import type { AdminRoleCode } from "@/types/database";
+
+/** Highest privilege first — used for pickers and primary-role display. */
+export const ASSIGNABLE_ROLES: AdminRoleCode[] = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "EDITOR",
+  "MARKETING",
+  "ORDER_MANAGER",
+  "SUPPORT",
+  "READER",
+];
+
+export const STAFF_ROLE_OPTIONS: Array<{
+  value: AdminRoleCode;
+  label: string;
+  /** One-line plain summary for the radio card. */
+  description: string;
+  /** Short access-level chip (shown in picker). */
+  level: string;
+}> = [
+  {
+    value: "SUPER_ADMIN",
+    label: "Super Admin",
+    description: "Full control — including team and audit",
+    level: "Highest",
+  },
+  {
+    value: "ADMIN",
+    label: "Admin",
+    description: "Runs the whole store — except team rights",
+    level: "Full store",
+  },
+  {
+    value: "EDITOR",
+    label: "Editor",
+    description: "Products, categories, pages, and media",
+    level: "Catalog",
+  },
+  {
+    value: "MARKETING",
+    label: "Marketing",
+    description: "Promotions, blog, coupons, and homepage content",
+    level: "Growth",
+  },
+  {
+    value: "ORDER_MANAGER",
+    label: "Order Manager",
+    description: "Fulfill orders and check payments & stock",
+    level: "Sales",
+  },
+  {
+    value: "SUPPORT",
+    label: "Support",
+    description: "Help customers — orders and account questions",
+    level: "Help desk",
+  },
+  {
+    value: "READER",
+    label: "Read",
+    description: "Look around only — cannot change anything",
+    level: "View only",
+  },
+];
+
+export type TeamMember = {
+  userId: string;
+  email: string | null;
+  name: string | null;
+  isActive: boolean;
+  roles: AdminRoleCode[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Store shopper account that can be linked as staff (not already on the team). */
+export type LinkableStoreAccount = {
+  userId: string;
+  email: string;
+  name: string | null;
+};
+
+export type TeamListQuery = {
+  search?: string;
+  status?: "ALL" | "ACTIVE" | "INACTIVE";
+  role?: AdminRoleCode | "ALL";
+  page?: number;
+  pageSize?: number;
+};
+
+export type TeamListResult = {
+  items: TeamMember[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+export type TeamResult =
+  | {
+      ok: true;
+      message: string;
+      member?: TeamMember;
+      /** Shown once after creating a new login — never persisted again. */
+      temporaryPassword?: string;
+    }
+  | { ok: false; error: string; referenceId?: string };
+
+export type StaffActivityItem = {
+  id: string;
+  action: string;
+  actionLabel: string;
+  entityType: string;
+  entityLabel: string;
+  entityId: string | null;
+  createdAt: string;
+  /** Compact one-line detail for the table cell. */
+  summary: string | null;
+  /** Full detail text shown on hover / tooltip. */
+  detailFull: string | null;
+};
+
+export type StaffActivityQuery = {
+  limit?: number;
+  /** Inclusive YYYY-MM-DD */
+  from?: string | null;
+  /** Inclusive YYYY-MM-DD */
+  to?: string | null;
+  /** Page-level area tab */
+  area?: string | null;
+  search?: string | null;
+};

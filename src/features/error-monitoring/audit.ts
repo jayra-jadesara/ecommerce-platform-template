@@ -15,6 +15,9 @@ export async function writeErrorAudit(input: {
   action: ErrorAuditAction;
   entityId: string;
   referenceId: string;
+  message?: string | null;
+  type?: string | null;
+  route?: string | null;
 }): Promise<void> {
   try {
     const supabase = createSupabaseServiceClient();
@@ -26,6 +29,9 @@ export async function writeErrorAudit(input: {
       entity_id: input.entityId,
       metadata: {
         reference_id: input.referenceId,
+        ...(input.message ? { message: input.message.slice(0, 200) } : {}),
+        ...(input.type ? { type: input.type } : {}),
+        ...(input.route ? { route: input.route } : {}),
       } as Json,
     });
   } catch {

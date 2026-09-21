@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { recordProductView } from "@/features/catalog/record-product-view";
 import { ProductDetailClient } from "@/features/catalog/components/ProductDetailClient";
 import { PopularProducts } from "@/features/catalog/components/PopularProducts";
 import { RecentlyViewedProducts } from "@/features/catalog/components/RecentlyViewedProducts";
@@ -87,6 +88,9 @@ export default async function ProductDetailPage({
     getCurrentUser(),
   ]);
   if (!product) notFound();
+
+  // Non-blocking view counter for Dashboard analytics
+  void recordProductView(product.id);
 
   const isAuthenticated = Boolean(user);
   const reviewsSettings = await getReviewsStoreSettings();

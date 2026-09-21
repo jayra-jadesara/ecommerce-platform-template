@@ -8,6 +8,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
 import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
 import { getAdminDashboardStats } from "@/features/admin/dashboard-stats";
+import { getAdminDashboardAnalytics } from "@/features/admin/dashboard-analytics";
+import { AdminDashboardCharts } from "@/features/admin/components/AdminDashboardCharts";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { countStoreCustomers } from "@/features/customers/service";
 import { formatMoney } from "@/features/catalog/money";
@@ -28,12 +30,17 @@ function displayName(email: string | null | undefined) {
   return local.charAt(0).toUpperCase() + local.slice(1);
 }
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requirePermission("dashboard.view");
   const hour = new Date().getHours();
   const greeting = greetingForHour(hour);
   const setup = await getStoreSetupChecklist();
   const name = displayName(admin.user.email);
+  const sp = await searchParams;
 
   const canProducts = hasPermission(admin, "products.create");
   const canOrders = hasPermission(admin, "orders.view");
@@ -41,11 +48,28 @@ export default async function AdminDashboardPage() {
   const canTheme = hasPermission(admin, "theme.view");
   const storeId = await resolveActiveStoreId();
 
-  const [customerCount, overview] = await Promise.all([
+  const rangeRaw = typeof sp.range === "string" ? sp.range : "14d";
+  const range =
+    rangeRaw === "7d" ||
+    rangeRaw === "30d" ||
+    rangeRaw === "90d" ||
+    rangeRaw === "14d"
+      ? rangeRaw
+      : "14d";
+  const from = typeof sp.from === "string" ? sp.from : null;
+  const to = typeof sp.to === "string" ? sp.to : null;
+
+  const [customerCount, overview, analytics] = await Promise.all([
     hasPermission(admin, "customers.view")
       ? countStoreCustomers(storeId)
       : Promise.resolve(0),
     getAdminDashboardStats(storeId),
+    getAdminDashboardAnalytics(storeId, {
+      days:
+        range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 14,
+      from,
+      to,
+    }),
   ]);
 
   const stats = [
@@ -166,6 +190,8 @@ export default async function AdminDashboardPage() {
           })}
         </div>
       </section>
+
+      <AdminDashboardCharts analytics={analytics} range={range} />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <AdminCard>

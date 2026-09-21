@@ -16,11 +16,18 @@ export type AdminFormDialogProps = {
   maxWidth?: "xs" | "sm" | "md" | "lg";
   /** Tighter title, padding, and actions for simple forms. */
   dense?: boolean;
+  /**
+   * When false, content does not scroll — keep children short enough to fit.
+   * Default true (tall forms can scroll; footer stays pinned).
+   */
+  contentScroll?: boolean;
   pending?: boolean;
   error?: string | null;
   cancelLabel?: string;
   confirmLabel?: string;
   pendingLabel?: string;
+  /** Hide the secondary cancel button (e.g. view-only dialogs). */
+  hideCancel?: boolean;
   onClose: () => void;
   onConfirm: () => void;
   children: ReactNode;
@@ -28,7 +35,7 @@ export type AdminFormDialogProps = {
 };
 
 /**
- * Shared admin create/edit dialog — compact paper, no content scrollbar by default.
+ * Shared admin create/edit dialog — compact paper, footer always visible.
  */
 export function AdminFormDialog({
   open,
@@ -36,11 +43,13 @@ export function AdminFormDialog({
   description,
   maxWidth = "sm",
   dense = false,
+  contentScroll = true,
   pending = false,
   error = null,
   cancelLabel = "Cancel",
   confirmLabel = "Save",
   pendingLabel = "Saving…",
+  hideCancel = false,
   onClose,
   onConfirm,
   children,
@@ -76,14 +85,16 @@ export function AdminFormDialog({
         className={
           dense ? "!px-3.5 !pb-0.5 !pt-3 !text-base" : "!pb-1 !pt-4 !text-lg"
         }
+        sx={{ flexShrink: 0 }}
       >
         {title}
       </DialogTitle>
       <DialogContent
         className={dense ? "!px-3.5 !pt-1.5" : "!pt-2"}
         sx={{
-          overflow: "visible",
-          flex: "0 1 auto",
+          overflowY: contentScroll ? "auto" : "hidden",
+          flex: contentScroll ? "1 1 auto" : "0 1 auto",
+          minHeight: 0,
           pb: dense ? 0.5 : 1,
         }}
       >
@@ -109,18 +120,25 @@ export function AdminFormDialog({
         className={
           dense ? "gap-1.5 !px-3.5 !pb-2.5 !pt-0.5" : "gap-2 !px-4 !pb-3 !pt-1"
         }
+        sx={{
+          flexShrink: 0,
+          borderTop: "1px solid var(--color-border)",
+          mt: 0,
+        }}
       >
-        <button
-          type="button"
-          className={cn(
-            adminBtn("secondary"),
-            dense && "!min-h-8 !px-2.5 !text-xs",
-          )}
-          disabled={pending}
-          onClick={onClose}
-        >
-          {cancelLabel}
-        </button>
+        {!hideCancel ? (
+          <button
+            type="button"
+            className={cn(
+              adminBtn("secondary"),
+              dense && "!min-h-8 !px-2.5 !text-xs",
+            )}
+            disabled={pending}
+            onClick={onClose}
+          >
+            {cancelLabel}
+          </button>
+        ) : null}
         <button
           type="button"
           className={cn(

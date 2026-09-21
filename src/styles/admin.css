@@ -336,6 +336,80 @@
   margin-top: 0.2rem !important;
 }
 
+/**
+ * AdminFormDialog portals outside .admin-shell — mirror compact field styles
+ * so modal TextFields match the rest of admin (not default MUI 16px).
+ */
+.admin-form-dialog-paper .MuiOutlinedInput-root {
+  font-size: 0.8125rem !important;
+  border-radius: 10px !important;
+  background-color: var(--color-card) !important;
+}
+
+.admin-form-dialog-paper .MuiOutlinedInput-root:not(.MuiInputBase-multiline) {
+  min-height: 2.5rem !important;
+  height: 2.5rem !important;
+}
+
+.admin-form-dialog-paper .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-border) !important;
+  border-radius: 10px !important;
+}
+
+.admin-form-dialog-paper .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary) 45%,
+    var(--color-border)
+  ) !important;
+}
+
+.admin-form-dialog-paper .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--color-primary) !important;
+  border-width: 1.5px !important;
+}
+
+.admin-form-dialog-paper .MuiOutlinedInput-input,
+.admin-form-dialog-paper .MuiSelect-select {
+  min-height: 0 !important;
+  font-family: inherit !important;
+  font-size: 0.8125rem !important;
+  font-weight: 400 !important;
+  line-height: 1.35 !important;
+  box-sizing: border-box !important;
+}
+
+.admin-form-dialog-paper
+  .MuiOutlinedInput-root:not(.MuiInputBase-multiline)
+  .MuiOutlinedInput-input,
+.admin-form-dialog-paper
+  .MuiOutlinedInput-root:not(.MuiInputBase-multiline)
+  .MuiSelect-select {
+  height: 2.5rem !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  padding-left: 12px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.admin-form-dialog-paper .MuiInputLabel-root {
+  font-size: 0.8125rem !important;
+}
+
+.admin-form-dialog-paper .MuiInputLabel-sizeSmall:not(.MuiInputLabel-shrink) {
+  transform: translate(12px, 9px) scale(1) !important;
+}
+
+.admin-form-dialog-paper .MuiFormHelperText-root {
+  font-size: 0.75rem !important;
+  margin-top: 0.2rem !important;
+}
+
+.admin-form-dialog-paper .MuiInputAdornment-root .MuiSvgIcon-root {
+  font-size: 1.125rem !important;
+}
+
 .admin-shell select:not([multiple]) {
   min-height: 2.5rem;
   height: 2.5rem;

@@ -52,6 +52,9 @@ export async function logError(input: LogErrorInput): Promise<LogErrorResult> {
       action: "ERROR_LOG_CREATED",
       entityId: result.id,
       referenceId: result.referenceId,
+      message: input.message,
+      type: input.type,
+      route: input.route ?? input.requestPath ?? null,
     });
   }
 

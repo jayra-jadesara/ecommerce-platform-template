@@ -146,6 +146,9 @@ export async function POST(request: Request) {
         action: "ERROR_LOG_CREATED",
         entityId: result.id,
         referenceId: result.referenceId,
+        message: data.message,
+        type: safeType,
+        route: data.route ?? null,
       });
     }
 

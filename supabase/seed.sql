@@ -9,5 +9,8 @@ values
   ('SUPER_ADMIN', 'Super Admin', 'Full platform access including role assignment'),
   ('ADMIN', 'Admin', 'Store administration and catalog management'),
   ('EDITOR', 'Editor', 'Content, catalog, and media editing'),
-  ('ORDER_MANAGER', 'Order Manager', 'Orders, payments, and fulfillment')
+  ('MARKETING', 'Marketing', 'Promotions, blog, coupons, and marketing content'),
+  ('ORDER_MANAGER', 'Order Manager', 'Orders, payments, and fulfillment'),
+  ('SUPPORT', 'Support', 'Customer help — orders and account questions'),
+  ('READER', 'Read', 'View-only access across the admin — cannot create, edit, or delete')
 on conflict (code) do nothing;

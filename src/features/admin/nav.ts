@@ -19,7 +19,8 @@ export type AdminNavIcon =
   | "pages"
   | "banners"
   | "blog"
-  | "media";
+  | "media"
+  | "team";
 
 export type AdminNavSection =
   | "main"
@@ -332,6 +333,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         permissions: ["settings.view"],
         section: "store",
       },
+      {
+        kind: "link",
+        id: "team",
+        label: "Team",
+        href: p("/team"),
+        permissions: ["users.view"],
+        icon: "team",
+        section: "store",
+      },
     ],
   },
 ];
@@ -363,6 +373,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "content-blog",
   "content-media",
   "settings-hub",
+  "team",
 ]);
 
 function canSee(permissions: Set<Permission>, required: Permission[]): boolean {

@@ -3,6 +3,22 @@ import { getAdminRouteSegment } from "@/config/admin-route";
 import { updateSession } from "@/lib/supabase/middleware";
 import { safeInternalPath } from "@/features/auth/redirect";
 
+function withAdminPathname(
+  request: NextRequest,
+  response: NextResponse,
+  pathname: string,
+): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-admin-pathname", pathname);
+  const next = NextResponse.next({
+    request: { headers: requestHeaders },
+  });
+  response.cookies.getAll().forEach((cookie) => {
+    next.cookies.set(cookie);
+  });
+  return next;
+}
+
 /**
  * Next.js 16 proxy (formerly middleware): session refresh + coarse redirects.
  * Fine-grained RBAC remains in server layouts via requireAdmin / requirePermission.
@@ -10,12 +26,13 @@ import { safeInternalPath } from "@/features/auth/redirect";
 export async function proxy(request: NextRequest) {
   const { response, user } = await updateSession(request);
   const { pathname } = request.nextUrl;
+  const gated = withAdminPathname(request, response, pathname);
 
   let adminSegment: string;
   try {
     adminSegment = getAdminRouteSegment();
   } catch {
-    return response;
+    return gated;
   }
 
   const adminBase = `/${adminSegment}`;
@@ -50,7 +67,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  return response;
+  return gated;
 }
 
 export const config = {

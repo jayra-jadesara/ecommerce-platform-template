@@ -74,7 +74,10 @@ export type AdminRoleCode =
   | "SUPER_ADMIN"
   | "ADMIN"
   | "EDITOR"
-  | "ORDER_MANAGER";
+  | "MARKETING"
+  | "ORDER_MANAGER"
+  | "SUPPORT"
+  | "READER";
 export type NavigationLocation = "header" | "footer";
 export type PageSectionType =
   | "hero"
@@ -772,6 +775,7 @@ export type Database = {
           model_path: string | null;
           rating_avg: number;
           rating_count: number;
+          view_count: number;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -793,6 +797,7 @@ export type Database = {
           model_path?: string | null;
           rating_avg?: number;
           rating_count?: number;
+          view_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -2002,6 +2007,10 @@ export type Database = {
       lookup_auth_user_id_by_email: {
         Args: { p_email: string };
         Returns: string | null;
+      };
+      increment_product_view: {
+        Args: { p_product_id: string };
+        Returns: undefined;
       };
     };
     Enums: Record<string, never>;

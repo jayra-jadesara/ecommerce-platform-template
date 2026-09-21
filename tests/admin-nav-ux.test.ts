@@ -39,8 +39,10 @@ describe("admin navigation structure", () => {
     expect(products?.kind).toBe("group");
     if (products?.kind !== "group") return;
     expect(products.children.map((child) => child.label)).toEqual([
-      "All Products",
       "Categories",
+      "Size / pack",
+      "All Products",
+      "Reviews",
     ]);
   });
 
@@ -51,6 +53,8 @@ describe("admin navigation structure", () => {
     expect(content.children.map((child) => child.label)).toEqual([
       "Homepage",
       "About",
+      "Career",
+      "Legal pages",
       "Pages",
       "Banners",
       "Blog",
@@ -129,6 +133,37 @@ describe("permission-based admin nav visibility", () => {
     expect(links).toContain("Payments");
     expect(links).not.toContain("All Products");
     expect(links).not.toContain("Images & Files");
+  });
+
+  it("limits MARKETING to content and growth tools", () => {
+    const { top, links } = labelsFromTree(permissionsForRoles(["MARKETING"]));
+    expect(top).toContain("Dashboard");
+    expect(top).toContain("Content");
+    expect(top).toContain("Store Settings");
+    expect(top).not.toContain("Orders");
+    expect(top).not.toContain("Customers");
+    expect(links).toContain("Homepage");
+    expect(links).toContain("Blog");
+    expect(links).toContain("Coupons");
+    expect(links.some((label) => label === "Orders")).toBe(false);
+  });
+
+  it("limits SUPPORT to help-desk menus", () => {
+    const { top, links } = labelsFromTree(permissionsForRoles(["SUPPORT"]));
+    expect(top).toContain("Orders");
+    expect(top).toContain("Customers");
+    expect(top).toContain("Products");
+    expect(top).not.toContain("Content");
+    expect(links).toContain("Orders");
+    expect(links).toContain("Customers");
+    expect(links).not.toContain("Homepage");
+    expect(links).not.toContain("Team");
+  });
+
+  it("hides Team for READER", () => {
+    const { links } = labelsFromTree(permissionsForRoles(["READER"]));
+    expect(links).not.toContain("Team");
+    expect(links).toContain("Dashboard");
   });
 
   it("does not expose unauthorized settings children", () => {

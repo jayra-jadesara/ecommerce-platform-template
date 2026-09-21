@@ -32,6 +32,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
+import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import IconButton from "@mui/material/IconButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
@@ -81,6 +82,7 @@ const ICONS: Record<
   banners: ViewCarouselOutlinedIcon,
   blog: MenuBookOutlinedIcon,
   media: PhotoLibraryOutlinedIcon,
+  team: ManageAccountsOutlinedIcon,
   settings: SettingsOutlinedIcon,
 };
 
@@ -571,28 +573,28 @@ export function AdminShell({
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-[var(--color-border)] px-3 py-3.5">
-        <div className="mb-2.5 flex items-center gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
+      <div className="shrink-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,transparent)] px-3 py-3">
+        <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
           <span
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_16%,transparent)] text-xs font-semibold text-[var(--color-foreground)]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] text-[11px] font-semibold tracking-wide text-[var(--color-foreground)]"
             aria-hidden
           >
             {initials}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[13px] font-medium text-[var(--color-foreground)]">
+            <p className="truncate text-[12px] font-semibold leading-tight text-[var(--color-foreground)]">
               {email ?? "Admin"}
             </p>
-            <p className="truncate text-[11px] text-[var(--color-muted)]">
+            <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-[0.06em] text-[var(--color-muted)]">
               {roleLabel || "Signed in"}
             </p>
           </div>
+          <LogoutControl
+            redirectTo={loginRedirect}
+            iconOnly
+            label="Log out"
+          />
         </div>
-        <LogoutControl
-          redirectTo={loginRedirect}
-          variant="outlined"
-          className="w-full !min-h-10"
-        />
       </div>
     </>
   );
