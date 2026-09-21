@@ -11,6 +11,7 @@ import {
 } from "@/features/catalog/products-service";
 import { ProductImagesPanel } from "@/features/media/components/ProductImagesPanel";
 import { listProductImages } from "@/features/media/product-images-service";
+import { getImageUploadLimits } from "@/features/media/upload-limits.server";
 import { listAdminSizeOptions } from "@/features/catalog/size-options-service";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
@@ -117,13 +118,15 @@ export default async function AdminCatalogProductsPage({
 
   if (panel === "edit" || panel === "view") {
     if (!productId) notFound();
-    const [detail, categories, sizeOptions, images, shipping] = await Promise.all([
-      getAdminProduct(productId),
-      listAdminCategories(),
-      listAdminSizeOptions({ activeOnly: true }),
-      listProductImages(productId),
-      loadShippingSettingsForm(),
-    ]);
+    const [detail, categories, sizeOptions, images, shipping, limits] =
+      await Promise.all([
+        getAdminProduct(productId),
+        listAdminCategories(),
+        listAdminSizeOptions({ activeOnly: true }),
+        listProductImages(productId),
+        loadShippingSettingsForm(),
+        getImageUploadLimits(),
+      ]);
     if (!detail) notFound();
 
     const isView = panel === "view";
@@ -166,6 +169,7 @@ export default async function AdminCatalogProductsPage({
                 canDelete={
                   !isView && hasPermission(admin, "product_images.delete")
                 }
+                adminImageMaxMb={limits.adminImageMaxMb}
                 embedded
               />
             ) : null

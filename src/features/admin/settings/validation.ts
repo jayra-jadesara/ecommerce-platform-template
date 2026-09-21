@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_MEDIA_IMAGE_BYTES } from "@/features/media/upload-limits";
 
 const UNSAFE_URL_PROTOCOLS = /^(javascript|data|vbscript|file):/i;
 
@@ -166,23 +167,24 @@ export const BRANDING_IMAGE_MIME = [
 
 export const BRANDING_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"] as const;
 
-export const MAX_BRANDING_IMAGE_BYTES = 5 * 1024 * 1024;
-
-export function validateBrandingImageFile(file: {
-  type: string;
-  size: number;
-  name: string;
-}): { ok: true } | { ok: false; error: string } {
+export function validateBrandingImageFile(
+  file: {
+    type: string;
+    size: number;
+    name: string;
+  },
+  maxBytes: number = MAX_MEDIA_IMAGE_BYTES,
+): { ok: true } | { ok: false; error: string } {
   if (!BRANDING_IMAGE_MIME.includes(file.type as (typeof BRANDING_IMAGE_MIME)[number])) {
     return {
       ok: false,
       error: "Only JPEG, PNG, and WEBP images are allowed.",
     };
   }
-  if (file.size <= 0 || file.size > MAX_BRANDING_IMAGE_BYTES) {
+  if (file.size <= 0 || file.size > maxBytes) {
     return {
       ok: false,
-      error: "Image must be between 1 byte and 5 MB.",
+      error: `Image must be between 1 byte and ${Math.round(maxBytes / (1024 * 1024))} MB.`,
     };
   }
   const lower = file.name.toLowerCase();

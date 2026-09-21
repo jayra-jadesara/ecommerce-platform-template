@@ -17,11 +17,12 @@ import {
 import {
   validateImageUpload,
 } from "@/features/media/validation";
+import { getReplacePhotoMaxBytes } from "@/features/media/upload-limits.server";
+import { coerceReplacePhotoMaxMb } from "@/features/media/upload-limits";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
-const MAX_REPLACE_PHOTO_BYTES = 1 * 1024 * 1024;
 const OPEN_STATUSES: ReplaceRequestStatus[] = ["REQUESTED", "APPROVED"];
 
 export type ReplaceMutationResult =
@@ -115,13 +116,16 @@ export async function getReplaceStoreRules(
   const { data } = await supabase
     .from("shipping_settings")
     .select(
-      "replace_photo_required, replace_window_hours, replace_max_attempts, replace_reason_options",
+      "replace_photo_required, replace_photo_max_mb, replace_window_hours, replace_max_attempts, replace_reason_options",
     )
     .eq("store_id", storeId)
     .maybeSingle();
 
   return {
     photoRequired: Boolean(data?.replace_photo_required),
+    photoMaxMb: coerceReplacePhotoMaxMb(
+      (data as { replace_photo_max_mb?: number } | null)?.replace_photo_max_mb,
+    ),
     windowHours: coerceReplaceWindowHours(data?.replace_window_hours),
     maxAttempts: coerceReplaceMaxAttempts(data?.replace_max_attempts),
     reasonOptions: coerceReplaceReasonOptions(data?.replace_reason_options),
@@ -263,12 +267,13 @@ export async function createReplaceRequest(input: {
 
   if (input.photo && input.photo.size > 0) {
     const bytes = new Uint8Array(await input.photo.arrayBuffer());
+    const maxBytes = await getReplacePhotoMaxBytes(order.store_id);
     const validated = validateImageUpload({
       declaredMime: input.photo.type,
       size: input.photo.size,
       fileName: input.photo.name,
       bytes,
-      maxBytes: MAX_REPLACE_PHOTO_BYTES,
+      maxBytes,
     });
     if (!validated.ok) {
       return { ok: false, error: validated.error };

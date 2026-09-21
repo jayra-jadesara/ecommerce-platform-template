@@ -369,7 +369,7 @@ export function CategoryManager({
                         Image *
                       </p>
                       <p className="text-[11px] text-[var(--color-muted)]">
-                        JPEG, PNG, or WebP · max 5 MB
+                        JPEG, PNG, or WebP
                       </p>
                     </div>
                     <div className="flex shrink-0 gap-1">

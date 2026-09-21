@@ -18,6 +18,7 @@ import {
   extensionFromMime,
   validateBrandingImageFile,
 } from "@/features/admin/settings/validation";
+import { getAdminImageMaxBytes } from "@/features/media/upload-limits.server";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
@@ -133,16 +134,20 @@ export async function uploadBrandingImage(
     return { ok: false, error: "No image file provided." };
   }
 
-  const validation = validateBrandingImageFile({
-    type: file.type,
-    size: file.size,
-    name: file.name,
-  });
-  if (!validation.ok) return validation;
-
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) return { ok: false, error: "No active store found." };
+
+  const maxBytes = await getAdminImageMaxBytes(storeId);
+  const validation = validateBrandingImageFile(
+    {
+      type: file.type,
+      size: file.size,
+      name: file.name,
+    },
+    maxBytes,
+  );
+  if (!validation.ok) return validation;
 
   const ext = extensionFromMime(file.type);
   const path = brandingObjectPath(storeId, kind, ext);

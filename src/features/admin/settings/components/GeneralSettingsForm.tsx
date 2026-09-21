@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
+import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
@@ -36,6 +37,7 @@ import {
   adminFieldsGrid,
 } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
+import { adminImageMaxMbOptions } from "@/features/media/upload-limits";
 import {
   applyServerFieldErrors,
   focusFirstFieldError,
@@ -153,6 +155,7 @@ export function GeneralSettingsForm({
       socialWhatsapp: whatsappDisplayValue(
         initialValues.socialWhatsapp ?? "",
       ),
+      adminImageMaxMb: initialValues.adminImageMaxMb ?? 5,
     } satisfies GeneralSettingsFormValues;
   }, [initialValues]);
 
@@ -651,6 +654,29 @@ export function GeneralSettingsForm({
               )}
             />
           </div>
+        </AdminSection>
+
+        <AdminSection
+          title="Image uploads"
+          description="Max file size for admin product, media, and branding images."
+          icon={<ImageOutlinedIcon sx={{ fontSize: 20 }} />}
+        >
+          <Controller
+            name="adminImageMaxMb"
+            control={control}
+            render={({ field }) => (
+              <AdminSelect
+                label="Admin image max size"
+                required
+                disabled={!canUpdate || pending}
+                value={String(field.value)}
+                onChange={(next) => field.onChange(Number(next))}
+                name={field.name}
+                helperText="Applies to product images, media library, and branding (1–10 MB)."
+                options={adminImageMaxMbOptions()}
+              />
+            )}
+          />
         </AdminSection>
 
         <AdminSection

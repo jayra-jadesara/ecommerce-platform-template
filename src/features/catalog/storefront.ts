@@ -747,3 +747,33 @@ export async function listStorefrontProductsByIds(
     .map((id) => byId.get(id))
     .filter((c): c is StorefrontProductCard => Boolean(c));
 }
+
+export async function listStorefrontProductsBySlugs(
+  slugs: string[],
+): Promise<StorefrontProductCard[]> {
+  const unique = [
+    ...new Set(slugs.map((s) => s.trim()).filter(Boolean)),
+  ].slice(0, 24);
+  if (!unique.length) return [];
+
+  const supabase = createSupabasePublicClient();
+  const storeId = await resolveStoreId();
+  if (!supabase || !storeId) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(PRODUCT_CARD_SELECT)
+    .eq("store_id", storeId)
+    .eq("status", "active")
+    .in("slug", unique);
+
+  if (error || !data) return [];
+
+  const cards = (data as unknown as ProductListRow[]).map(
+    mapProductListRowToCard,
+  );
+  const bySlug = new Map(cards.map((c) => [c.slug, c]));
+  return unique
+    .map((slug) => bySlug.get(slug))
+    .filter((c): c is StorefrontProductCard => Boolean(c));
+}

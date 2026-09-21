@@ -1,13 +1,19 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Button from "@mui/material/Button";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import LinearProgress from "@mui/material/LinearProgress";
 import {
   ALLOWED_IMAGE_MIME,
-  MAX_MEDIA_IMAGE_BYTES,
   validateImageUpload,
 } from "@/features/media/validation";
+import {
+  ADMIN_IMAGE_MAX_MB_DEFAULT,
+  formatMaxMbHint,
+  mbToBytes,
+} from "@/features/media/upload-limits";
+import { adminBtn } from "@/features/admin/ui/admin-classes";
+import { cn } from "@/lib/cn";
 
 interface UploadDropzoneProps {
   disabled?: boolean;
@@ -15,7 +21,9 @@ interface UploadDropzoneProps {
   onFiles: (files: File[]) => void | Promise<void>;
   label?: string;
   hint?: string;
-  /** Tighter padding and single-row layout for forms. */
+  /** Admin-configured max size in MB (1–10). Default 5. */
+  maxMb?: number;
+  /** Tighter padding and single-row layout for forms / picker. */
   compact?: boolean;
 }
 
@@ -24,13 +32,17 @@ export function UploadDropzone({
   multiple = true,
   onFiles,
   label = "Upload images",
-  hint = "JPEG, PNG, or WebP · max 5 MB each",
+  hint,
+  maxMb = ADMIN_IMAGE_MAX_MB_DEFAULT,
   compact = false,
 }: UploadDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const effectiveMb = maxMb ?? ADMIN_IMAGE_MAX_MB_DEFAULT;
+  const maxBytes = mbToBytes(effectiveMb);
+  const resolvedHint = hint ?? `${formatMaxMbHint(effectiveMb)} each`;
 
   const handleFiles = useCallback(
     async (list: FileList | File[]) => {
@@ -42,7 +54,7 @@ export function UploadDropzone({
           declaredMime: file.type,
           size: file.size,
           fileName: file.name,
-          maxBytes: MAX_MEDIA_IMAGE_BYTES,
+          maxBytes,
         });
         if (!result.ok) {
           setError(result.error);
@@ -58,18 +70,18 @@ export function UploadDropzone({
         setBusy(false);
       }
     },
-    [onFiles],
+    [maxBytes, onFiles],
   );
 
   return (
     <div
-      className={`rounded-xl border border-dashed text-center transition-colors ${
-        compact ? "px-3 py-2.5" : "p-6"
-      } ${
+      className={cn(
+        "rounded-xl border border-dashed text-center transition-colors",
+        compact ? "px-2.5 py-2" : "p-5",
         dragging
-          ? "border-[var(--color-primary)] bg-[var(--color-surface)]"
-          : "border-[var(--color-border)] bg-[var(--color-card)]"
-      }`}
+          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-surface))]"
+          : "border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-card))]",
+      )}
       onDragEnter={(event) => {
         event.preventDefault();
         if (!disabled) setDragging(true);
@@ -87,36 +99,53 @@ export function UploadDropzone({
       }}
     >
       {compact ? (
-        <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5">
-          <div className="min-w-0 text-left sm:text-center">
-            <p className="text-sm font-medium leading-snug">{label}</p>
-            <p className="text-[11px] leading-snug text-[var(--color-muted)]">
-              {hint}
-            </p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+          <div className="flex min-w-0 items-center gap-2 text-left">
+            <span
+              className={cn(
+                "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+                "bg-[var(--color-card)] text-[var(--color-muted)]",
+                "ring-1 ring-[var(--color-border)]",
+              )}
+            >
+              <CloudUploadOutlinedIcon sx={{ fontSize: 16 }} />
+            </span>
+            <div className="min-w-0">
+              <p className="truncate text-[12px] font-semibold leading-tight">
+                {label}
+              </p>
+              <p className="truncate text-[10px] leading-snug text-[var(--color-muted)]">
+                {resolvedHint}
+              </p>
+            </div>
           </div>
-          <Button
+          <button
             type="button"
-            size="small"
-            variant="outlined"
             disabled={disabled || busy}
             onClick={() => inputRef.current?.click()}
+            className={cn(adminBtn("outline"), "!min-h-8 !px-2.5 !text-xs")}
           >
-            {busy ? "Uploading…" : "Choose files"}
-          </Button>
+            {busy ? "Uploading…" : "Choose"}
+          </button>
         </div>
       ) : (
         <>
-          <p className="font-medium">{label}</p>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">{hint}</p>
-          <div className="mt-4">
-            <Button
+          <div className="mx-auto mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--color-card)] text-[var(--color-muted)] ring-1 ring-[var(--color-border)]">
+            <CloudUploadOutlinedIcon sx={{ fontSize: 20 }} />
+          </div>
+          <p className="text-sm font-semibold tracking-tight">{label}</p>
+          <p className="mt-1 text-[12px] leading-snug text-[var(--color-muted)]">
+            {resolvedHint}
+          </p>
+          <div className="mt-3">
+            <button
               type="button"
-              variant="outlined"
               disabled={disabled || busy}
               onClick={() => inputRef.current?.click()}
+              className={cn(adminBtn("outline"), "!min-h-9 !px-3 !text-xs")}
             >
               {busy ? "Uploading…" : "Choose files"}
-            </Button>
+            </button>
           </div>
         </>
       )}
@@ -132,11 +161,16 @@ export function UploadDropzone({
         }}
       />
       {busy ? (
-        <LinearProgress className={compact ? "mt-2" : "mt-4"} />
+        <LinearProgress
+          className={compact ? "mt-2 !h-0.5 rounded-full" : "mt-3 !h-1 rounded-full"}
+        />
       ) : null}
       {error ? (
         <p
-          className={`text-sm text-[var(--color-error)] ${compact ? "mt-1.5" : "mt-3"}`}
+          className={cn(
+            "text-[11px] text-[var(--color-error)]",
+            compact ? "mt-1.5" : "mt-2.5",
+          )}
           role="alert"
         >
           {error}

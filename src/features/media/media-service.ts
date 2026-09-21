@@ -17,6 +17,7 @@ import {
   validateImageUpload,
   type MediaFolder,
 } from "@/features/media/validation";
+import { getAdminImageMaxBytes } from "@/features/media/upload-limits.server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { checkMediaDependencies } from "@/features/admin/validation/dependencies";
 import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
@@ -164,17 +165,19 @@ export async function uploadMedia(
   const altText = String(formData.get("altText") ?? "").trim() || null;
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const maxBytes = await getAdminImageMaxBytes(storeId);
   const validation = validateImageUpload({
     declaredMime: file.type,
     size: file.size,
     fileName: file.name,
     bytes: new Uint8Array(buffer),
+    maxBytes,
   });
   if (!validation.ok) return validation;
-
-  const supabase = await createSupabaseServerClient();
-  const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
 
   const fileId = randomUUID();
   const path = buildGeneralMediaPath({

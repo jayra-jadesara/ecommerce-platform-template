@@ -4,7 +4,7 @@ import { randomUUID } from "crypto";
 import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { resolvePublicStorageUrl, resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
@@ -18,6 +18,7 @@ import {
   buildProductImagePath,
   validateImageUpload,
 } from "@/features/media/validation";
+import { getAdminImageMaxBytes } from "@/features/media/upload-limits.server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 
 export type ProductImageResult =
@@ -113,16 +114,19 @@ export async function createProductImage(
   const makePrimary = String(formData.get("isPrimary") ?? "") === "true";
 
   const buffer = Buffer.from(await file.arrayBuffer());
+
+  const scope = await getProductScope(productId);
+  if (!scope) return { ok: false, error: "Product not found for this store." };
+
+  const maxBytes = await getAdminImageMaxBytes(scope.storeId);
   const validation = validateImageUpload({
     declaredMime: file.type,
     size: file.size,
     fileName: file.name,
     bytes: new Uint8Array(buffer),
+    maxBytes,
   });
   if (!validation.ok) return validation;
-
-  const scope = await getProductScope(productId);
-  if (!scope) return { ok: false, error: "Product not found for this store." };
 
   if (variantId) {
     const { data: variant } = await scope.supabase
@@ -256,6 +260,128 @@ export async function createProductImage(
   return {
     ok: true,
     message: "Product image uploaded.",
+    id: data.id,
+    image: data as ProductImageRow,
+  };
+}
+
+/** Link an existing media-library image to a product gallery. */
+export async function attachProductImageFromMedia(
+  productId: string,
+  input: { mediaId?: string; storagePath?: string; altText?: string | null },
+): Promise<ProductImageResult> {
+  const admin = await getCurrentAdmin();
+  if (!admin || !hasPermission(admin, "product_images.upload")) {
+    return {
+      ok: false,
+      error: "You do not have permission to upload product images.",
+    };
+  }
+
+  const scope = await getProductScope(productId);
+  if (!scope) return { ok: false, error: "Product not found for this store." };
+
+  let mediaQuery = scope.supabase
+    .from("media")
+    .select("id, storage_path, public_url, alt_text, file_name, folder")
+    .eq("store_id", scope.storeId);
+
+  if (input.mediaId?.trim()) {
+    mediaQuery = mediaQuery.eq("id", input.mediaId.trim());
+  } else if (input.storagePath?.trim()) {
+    mediaQuery = mediaQuery.eq("storage_path", input.storagePath.trim());
+  } else {
+    return { ok: false, error: "No media selected." };
+  }
+
+  const { data: media } = await mediaQuery.maybeSingle();
+  if (!media?.storage_path) {
+    return { ok: false, error: "Media item not found." };
+  }
+
+  if (!assertSafeStoragePath(media.storage_path)) {
+    return { ok: false, error: "Invalid storage path." };
+  }
+
+  const { count } = await scope.supabase
+    .from("product_images")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  const nextOrder = count ?? 0;
+  const shouldBePrimary = nextOrder === 0;
+  const publicUrl =
+    media.public_url ||
+    resolveStoragePathUrl(media.storage_path) ||
+    resolvePublicStorageUrl(STORAGE_BUCKETS.products, media.storage_path) ||
+    null;
+  const altText =
+    input.altText?.trim() ||
+    media.alt_text ||
+    `${scope.product.name} image`;
+
+  if (shouldBePrimary) {
+    await scope.supabase
+      .from("product_images")
+      .update({ is_primary: false })
+      .eq("product_id", productId)
+      .eq("is_primary", true);
+  }
+
+  const { data, error } = await scope.supabase
+    .from("product_images")
+    .insert({
+      product_id: productId,
+      variant_id: null,
+      storage_path: media.storage_path,
+      public_url: publicUrl,
+      alt_text: altText,
+      sort_order: nextOrder,
+      is_primary: shouldBePrimary,
+    })
+    .select("*")
+    .single();
+
+  if (error || !data) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "PRODUCT_IMAGE_ATTACH",
+      feature: "MEDIA",
+      message: "Unable to attach media to product",
+      error: error ?? undefined,
+      databaseCode: error?.code,
+      storeId: scope.storeId,
+      entityType: "product_images",
+      entityId: productId,
+      route: PRODUCTS_ROUTE,
+      metadata: {
+        product_id: productId,
+        media_id: media.id,
+        path: media.storage_path,
+      },
+    });
+  }
+
+  await scope.supabase.from("audit_logs").insert({
+    store_id: scope.storeId,
+    user_id: admin.user.id,
+    action: "PRODUCT_IMAGE_ADDED",
+    entity_type: "product_images",
+    entity_id: data.id,
+    metadata: {
+      product_id: productId,
+      path: media.storage_path,
+      media_id: media.id,
+      is_primary: shouldBePrimary,
+      source: "media_library",
+    },
+  });
+
+  revalidateProduct(productId, scope.product.slug);
+  return {
+    ok: true,
+    message: "Image added to product.",
     id: data.id,
     image: data as ProductImageRow,
   };

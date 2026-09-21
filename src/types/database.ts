@@ -178,6 +178,7 @@ export type Database = {
           reviews_enabled: boolean;
           reviews_auto_approve: boolean;
           reviews_preview_limit: number;
+          admin_image_max_mb: number;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -232,6 +233,7 @@ export type Database = {
           reviews_enabled?: boolean;
           reviews_auto_approve?: boolean;
           reviews_preview_limit?: number;
+          admin_image_max_mb?: number;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -468,6 +470,7 @@ export type Database = {
           fulfillment_mode: "auto_days" | "courier_api";
           return_policy: "no_return_refund" | "no_replace" | "replace_only";
           replace_photo_required: boolean;
+          replace_photo_max_mb: number;
           replace_window_hours: number;
           replace_max_attempts: number;
           replace_reason_options: Json;
@@ -497,6 +500,7 @@ export type Database = {
           fulfillment_mode?: "auto_days" | "courier_api";
           return_policy?: "no_return_refund" | "no_replace" | "replace_only";
           replace_photo_required?: boolean;
+          replace_photo_max_mb?: number;
           replace_window_hours?: number;
           replace_max_attempts?: number;
           replace_reason_options?: Json;

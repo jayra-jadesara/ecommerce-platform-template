@@ -10,6 +10,7 @@ import {
 } from "@/features/media/media-service";
 import {
   createProductImage,
+  attachProductImageFromMedia,
   deleteProductImage,
   listProductImages,
   reorderProductImages,
@@ -17,11 +18,18 @@ import {
   updateProductImageAlt,
 } from "@/features/media/product-images-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import { getImageUploadLimits } from "@/features/media/upload-limits.server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 
 const MEDIA_ROUTE = getAdminPath("/media");
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
+
+/** Current admin image upload max (MB) for client dropzones / pickers. */
+export async function getAdminImageMaxMbAction(): Promise<number> {
+  const limits = await getImageUploadLimits();
+  return limits.adminImageMaxMb;
+}
 
 export async function checkMediaDependenciesAction(id: string) {
   const supabase = await createSupabaseServerClient();
@@ -73,6 +81,61 @@ export async function deleteMediaAction(id: string) {
   );
 }
 
+/** Delete many media rows; continues on per-item failures. */
+export async function deleteMediaBulkAction(ids: string[]) {
+  const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))].slice(
+    0,
+    48,
+  );
+  if (!unique.length) {
+    return {
+      ok: false as const,
+      error: "No images selected.",
+      deleted: 0,
+      failed: [] as Array<{ id: string; error: string }>,
+    };
+  }
+
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "MEDIA_BULK_DELETE",
+      feature: "MEDIA",
+      entityType: "media",
+      route: MEDIA_ROUTE,
+    },
+    async () => {
+      let deleted = 0;
+      const failed: Array<{ id: string; error: string }> = [];
+      for (const id of unique) {
+        const result = await deleteMedia(id);
+        if (result.ok) deleted += 1;
+        else failed.push({ id, error: result.error });
+      }
+      if (deleted === 0 && failed.length) {
+        return {
+          ok: false as const,
+          error: failed[0]?.error ?? "Could not delete selected images.",
+          deleted,
+          failed,
+        };
+      }
+      return {
+        ok: true as const,
+        message:
+          failed.length === 0
+            ? deleted === 1
+              ? "Image deleted."
+              : `${deleted} images deleted.`
+            : `Deleted ${deleted}, skipped ${failed.length}.`,
+        deleted,
+        failed,
+      };
+    },
+  );
+}
+
 export async function updateMediaMetaAction(
   id: string,
   input: { altText?: string | null },
@@ -116,6 +179,24 @@ export async function uploadProductImageAction(
       route: PRODUCTS_ROUTE,
     },
     () => createProductImage(productId, formData),
+  );
+}
+
+export async function attachProductImageFromMediaAction(
+  productId: string,
+  input: { mediaId?: string; storagePath?: string; altText?: string | null },
+) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "PRODUCT_IMAGE_ATTACH",
+      feature: "MEDIA",
+      entityType: "products",
+      entityId: productId,
+      route: PRODUCTS_ROUTE,
+    },
+    () => attachProductImageFromMedia(productId, input),
   );
 }
 

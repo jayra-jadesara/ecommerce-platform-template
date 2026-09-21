@@ -197,6 +197,8 @@ export function coerceCancelReasonOptions(value: unknown): string[] {
 
 export type ReplaceStoreRules = {
   photoRequired: boolean;
+  /** Max upload size for replace photos (1–4 MB). */
+  photoMaxMb: number;
   windowHours: ReplaceWindowHours;
   maxAttempts: number;
   reasonOptions: string[];

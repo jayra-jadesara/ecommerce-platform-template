@@ -1,4 +1,10 @@
 import type { StorageBucket } from "@/lib/supabase/storage";
+import {
+  MAX_MEDIA_IMAGE_BYTES,
+  ADMIN_IMAGE_MAX_MB_DEFAULT,
+} from "@/features/media/upload-limits";
+
+export { MAX_MEDIA_IMAGE_BYTES, ADMIN_IMAGE_MAX_MB_DEFAULT };
 
 export const ALLOWED_IMAGE_MIME = [
   "image/jpeg",
@@ -9,9 +15,6 @@ export const ALLOWED_IMAGE_MIME = [
 export type AllowedImageMime = (typeof ALLOWED_IMAGE_MIME)[number];
 
 export const ALLOWED_IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp"] as const;
-
-/** Default max upload size for product/media images (5 MB). */
-export const MAX_MEDIA_IMAGE_BYTES = 5 * 1024 * 1024;
 
 export const MEDIA_FOLDERS = [
   "products",

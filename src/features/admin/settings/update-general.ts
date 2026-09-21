@@ -78,6 +78,7 @@ export async function updateGeneralStoreSettings(
     social_whatsapp: emptyToNull(
       normalizeWhatsappForStorage(values.socialWhatsapp ?? ""),
     ),
+    admin_image_max_mb: values.adminImageMaxMb,
   };
 
   const { data: existing } = await supabase

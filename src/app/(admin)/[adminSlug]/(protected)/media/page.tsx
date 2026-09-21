@@ -1,5 +1,6 @@
 import { MediaLibraryClient } from "@/features/media/components/MediaLibraryClient";
 import { listMedia } from "@/features/media/media-service";
+import { getImageUploadLimits } from "@/features/media/upload-limits.server";
 import { MEDIA_FOLDERS, type MediaFolder } from "@/features/media/validation";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
@@ -21,15 +22,24 @@ export default async function AdminMediaPage({
     (MEDIA_FOLDERS as readonly string[]).includes(folderRaw)
       ? (folderRaw as MediaFolder | "all")
       : "all";
-  const page = Number(typeof params.page === "string" ? params.page : "1") || 1;
+  const page = Math.max(
+    1,
+    Number(typeof params.page === "string" ? params.page : "1") || 1,
+  );
+  const rawPageSize =
+    Number(typeof params.pageSize === "string" ? params.pageSize : "") || 24;
+  const pageSize = rawPageSize === 48 ? 48 : 24;
 
-  const list = await listMedia({ page, pageSize: 24, q, folder });
+  const [list, limits] = await Promise.all([
+    listMedia({ page, pageSize, q, folder }),
+    getImageUploadLimits(),
+  ]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <AdminPageHeader
         title="Images & Files"
-        description="Upload images for products, banners, and pages. Prefer Homepage & pages for storefront visuals."
+        description="Library for products, banners, and pages."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Images & Files" },
@@ -44,6 +54,7 @@ export default async function AdminMediaPage({
         q={q}
         canUpload={hasPermission(admin, "media.upload")}
         canDelete={hasPermission(admin, "media.delete")}
+        adminImageMaxMb={limits.adminImageMaxMb}
       />
     </div>
   );

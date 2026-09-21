@@ -1,15 +1,20 @@
 "use client";
 
-import Button from "@mui/material/Button";
+import CloseIcon from "@mui/icons-material/Close";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import IconButton from "@mui/material/IconButton";
+import InputAdornment from "@mui/material/InputAdornment";
+import TextField from "@mui/material/TextField";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
+  getAdminImageMaxMbAction,
   listMediaAction,
   uploadMediaAction,
 } from "@/features/media/actions";
+import { MediaAssetTile } from "@/features/media/components/MediaAssetTile";
 import { MediaFolderNav } from "@/features/media/components/MediaFolderNav";
 import { UploadDropzone } from "@/features/media/components/UploadDropzone";
 import type { MediaRow } from "@/features/media/media-service";
@@ -18,7 +23,10 @@ import {
   resolveMediaUploadFolder,
   type MediaFolderFilter,
 } from "@/features/media/media-folder-labels";
+import { ADMIN_IMAGE_MAX_MB_DEFAULT } from "@/features/media/upload-limits";
 import type { MediaFolder } from "@/features/media/validation";
+import { adminBtn } from "@/features/admin/ui/admin-classes";
+import { cn } from "@/lib/cn";
 
 export type MediaPickerSelection = {
   id: string;
@@ -35,6 +43,8 @@ interface MediaPickerProps {
   folder?: MediaFolder | "all";
   /** Allow uploading from this dialog. Default true. */
   allowUpload?: boolean;
+  /** Optional override; otherwise loaded from store settings when opened. */
+  adminImageMaxMb?: number;
 }
 
 export function MediaPicker({
@@ -43,43 +53,74 @@ export function MediaPicker({
   onSelect,
   folder = "all",
   allowUpload = true,
+  adminImageMaxMb,
 }: MediaPickerProps) {
   const [browseFolder, setBrowseFolder] = useState<MediaFolderFilter>(folder);
   const [items, setItems] = useState<MediaRow[]>([]);
+  const [search, setSearch] = useState("");
   const [pending, startTransition] = useTransition();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resolvedMaxMb, setResolvedMaxMb] = useState(
+    adminImageMaxMb ?? ADMIN_IMAGE_MAX_MB_DEFAULT,
+  );
 
   const uploadFolder = resolveMediaUploadFolder(
     folder !== "all" ? folder : browseFolder,
   );
 
-  const refreshList = useCallback(async (target: MediaFolderFilter) => {
-    const result = await listMediaAction({
-      page: 1,
-      pageSize: 48,
-      folder: target,
-    });
-    setItems(result.items);
-    return result.items;
-  }, []);
+  const refreshList = useCallback(
+    async (target: MediaFolderFilter, q = "") => {
+      const result = await listMediaAction({
+        page: 1,
+        pageSize: 48,
+        folder: target,
+        q: q.trim() || undefined,
+      });
+      setItems(result.items);
+      return result.items;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!open) return;
     /* eslint-disable react-hooks/set-state-in-effect -- reset list when dialog opens */
     setBrowseFolder(folder);
+    setSearch("");
     startTransition(async () => {
       setError(null);
+      if (adminImageMaxMb != null) {
+        setResolvedMaxMb(adminImageMaxMb);
+      } else {
+        try {
+          setResolvedMaxMb(await getAdminImageMaxMbAction());
+        } catch {
+          setResolvedMaxMb(ADMIN_IMAGE_MAX_MB_DEFAULT);
+        }
+      }
       await refreshList(folder);
     });
     /* eslint-enable react-hooks/set-state-in-effect */
-  }, [open, folder, refreshList]);
+  }, [open, folder, refreshList, adminImageMaxMb]);
+
+  const filteredHint = useMemo(() => {
+    if (!search.trim()) return null;
+    return `${items.length} match${items.length === 1 ? "" : "es"}`;
+  }, [items.length, search]);
 
   function selectBrowseFolder(next: MediaFolderFilter) {
     setBrowseFolder(next);
     startTransition(async () => {
       setError(null);
-      await refreshList(next);
+      await refreshList(next, search);
+    });
+  }
+
+  function commitSearch() {
+    startTransition(async () => {
+      setError(null);
+      await refreshList(browseFolder, search);
     });
   }
 
@@ -132,7 +173,7 @@ export function MediaPicker({
       const listFolder: MediaFolderFilter =
         folder !== "all" ? folder : uploadFolder;
       setBrowseFolder(listFolder);
-      const nextItems = await refreshList(listFolder);
+      const nextItems = await refreshList(listFolder, "");
 
       if (lastOk) {
         const matched = nextItems.find((row) => row.id === lastOk!.id);
@@ -152,132 +193,208 @@ export function MediaPicker({
     }
   }
 
+  const busy = uploading || pending;
+
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={busy ? undefined : onClose}
       fullWidth
-      maxWidth="lg"
+      maxWidth="md"
       slotProps={{
         paper: {
-          elevation: 8,
+          elevation: 0,
+          className: "admin-form-dialog-paper",
           sx: {
-            border: "none",
+            margin: 1.5,
+            maxHeight: "calc(100vh - 1.5rem)",
+            border: "1px solid var(--color-border)",
             outline: "none",
             backgroundImage: "none",
             backgroundColor: "var(--color-card)",
             color: "var(--color-foreground)",
             boxShadow:
-              "0 24px 64px color-mix(in srgb, var(--color-foreground) 28%, transparent)",
+              "0 20px 48px color-mix(in srgb, var(--color-foreground) 18%, transparent)",
             overflow: "hidden",
+            borderRadius: "16px",
           },
         },
       }}
     >
       <DialogTitle
         sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 1,
           borderBottom: "1px solid var(--color-border)",
-          py: 1.75,
+          py: 1.25,
+          px: 1.75,
+          fontSize: "0.9375rem",
+          fontWeight: 600,
+          letterSpacing: "-0.01em",
         }}
       >
-        Choose an image
+        <span>Choose an image</span>
+        <IconButton
+          type="button"
+          size="small"
+          aria-label="Close"
+          disabled={busy}
+          onClick={onClose}
+          sx={{ color: "var(--color-muted)" }}
+        >
+          <CloseIcon sx={{ fontSize: 18 }} />
+        </IconButton>
       </DialogTitle>
+
       <DialogContent
         dividers={false}
         sx={{
           p: 0,
           display: "flex",
           flexDirection: "column",
-          maxHeight: "min(70vh, 640px)",
+          maxHeight: "min(68vh, 560px)",
           overflow: "hidden",
         }}
       >
-        <div className="grid min-h-0 flex-1 grid-cols-[4.5rem_minmax(0,1fr)] overflow-hidden">
-          <aside className="sticky top-0 flex h-full max-h-[min(70vh,640px)] flex-col items-center gap-2 overflow-y-auto border-r border-[var(--color-border)] bg-[var(--color-surface)] py-3">
+        <div className="grid min-h-0 flex-1 grid-cols-[8.5rem_minmax(0,1fr)] overflow-hidden">
+          <aside className="flex flex-col gap-1 overflow-y-auto border-r border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-1.5 py-2">
+            <p className="px-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+              Folders
+            </p>
             <MediaFolderNav
+              size="sm"
+              showLabels
               active={browseFolder}
               onSelect={selectBrowseFolder}
-              disabled={uploading || pending}
+              disabled={busy}
             />
           </aside>
 
-          <div className="min-h-0 min-w-0 space-y-3 overflow-y-auto p-4">
-            {allowUpload ? (
-              <UploadDropzone
-                multiple={false}
-                disabled={uploading || pending}
-                label="Upload a new image"
-                hint={`Saved to ${mediaFolderLabel(uploadFolder)} · JPEG, PNG, or WebP · max 5 MB`}
-                onFiles={handleUpload}
-              />
-            ) : null}
+          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+            <div className="shrink-0 space-y-2 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_35%,var(--color-card))] p-2.5 sm:p-3">
+              {allowUpload ? (
+                <UploadDropzone
+                  compact
+                  multiple={false}
+                  disabled={busy}
+                  label="Upload new"
+                  hint={`${mediaFolderLabel(uploadFolder)} · max ${resolvedMaxMb} MB`}
+                  maxMb={resolvedMaxMb}
+                  onFiles={handleUpload}
+                />
+              ) : null}
 
-            {pending && items.length === 0 ? (
-              <p className="text-sm text-[var(--color-muted)]">Loading images…</p>
-            ) : null}
-            {error ? (
-              <p className="text-sm text-[var(--color-error)]" role="alert">
-                {error}
-              </p>
-            ) : null}
-
-            {!pending && items.length === 0 ? (
-              <p className="py-6 text-center text-sm text-[var(--color-muted)]">
-                {allowUpload
-                  ? "No images in this folder yet. Upload one above."
-                  : "No images in this folder yet."}
-              </p>
-            ) : items.length > 0 ? (
-              <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-                {items.map((item) => {
-                  const url = item.preview_url || undefined;
-                  return (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        disabled={uploading}
-                        className="w-full overflow-hidden rounded-lg border border-[var(--color-border)] text-left transition hover:border-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
-                        onClick={() => selectItem(item)}
-                      >
-                        <div className="relative aspect-square bg-[var(--color-surface)] p-1">
-                          {url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={url}
-                              alt={item.alt_text || item.file_name}
-                              className="h-full w-full object-contain"
-                            />
-                          ) : (
-                            <div className="flex h-full items-center justify-center p-1 text-center text-[10px] text-[var(--color-muted)]">
-                              {item.file_name}
-                            </div>
-                          )}
-                        </div>
-                        <p
-                          className="truncate px-1.5 py-1 text-[10px] font-medium"
-                          title={item.file_name}
+              <TextField
+                size="small"
+                fullWidth
+                label="Search"
+                placeholder="File name"
+                value={search}
+                disabled={busy}
+                onChange={(event) => setSearch(event.target.value)}
+                onBlur={commitSearch}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    commitSearch();
+                  }
+                }}
+                slotProps={{
+                  input: {
+                    endAdornment: search ? (
+                      <InputAdornment position="end">
+                        <IconButton
+                          type="button"
+                          size="small"
+                          edge="end"
+                          aria-label="Clear search"
+                          disabled={busy}
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => {
+                            setSearch("");
+                            startTransition(async () => {
+                              await refreshList(browseFolder, "");
+                            });
+                          }}
+                          sx={{ color: "var(--color-muted)" }}
                         >
-                          {item.file_name}
-                        </p>
-                      </button>
+                          <CloseIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </InputAdornment>
+                    ) : undefined,
+                  },
+                }}
+              />
+
+              {filteredHint ? (
+                <p className="text-[10px] font-medium text-[var(--color-muted)]">
+                  {filteredHint}
+                </p>
+              ) : null}
+              {error ? (
+                <p className="text-[12px] text-[var(--color-error)]" role="alert">
+                  {error}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-2.5 sm:p-3">
+              {pending && items.length === 0 ? (
+                <p className="py-6 text-center text-[12px] text-[var(--color-muted)]">
+                  Loading…
+                </p>
+              ) : null}
+
+              {!pending && items.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[var(--color-border)] px-3 py-8 text-center">
+                  <p className="text-[12px] font-medium text-[var(--color-foreground)]">
+                    No images in this folder
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+                    {allowUpload
+                      ? "Upload above, or try another folder."
+                      : "Try another folder."}
+                  </p>
+                </div>
+              ) : items.length > 0 ? (
+                <ul className="grid grid-cols-3 gap-1.5 sm:grid-cols-4 md:grid-cols-5">
+                  {items.map((item) => (
+                    <li key={item.id}>
+                      <MediaAssetTile
+                        fileName={item.file_name}
+                        altText={item.alt_text}
+                        previewUrl={item.preview_url}
+                        meta={mediaFolderLabel(item.folder)}
+                        disabled={busy}
+                        onSelect={() => selectItem(item)}
+                      />
                     </li>
-                  );
-                })}
-              </ul>
-            ) : null}
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           </div>
         </div>
       </DialogContent>
+
       <DialogActions
         sx={{
           borderTop: "1px solid var(--color-border)",
-          px: 2,
-          py: 1.5,
+          px: 1.75,
+          py: 1.25,
+          gap: 1,
         }}
       >
-        <Button onClick={onClose} disabled={uploading}>
+        <button
+          type="button"
+          className={cn(adminBtn("secondary"), "!min-h-8 !px-2.5 !text-xs")}
+          disabled={busy}
+          onClick={onClose}
+        >
           Cancel
-        </Button>
+        </button>
       </DialogActions>
     </Dialog>
   );

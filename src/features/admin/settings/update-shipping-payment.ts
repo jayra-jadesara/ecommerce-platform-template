@@ -26,6 +26,7 @@ import {
   isFulfillmentMode,
   isReturnPolicy,
 } from "@/features/shipping/policies";
+import { coerceReplacePhotoMaxMb } from "@/features/media/upload-limits";
 import { syncInheritedOrderItemReturnPolicies } from "@/features/shipping/sync-order-policies";
 import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
 import { CATALOG_CACHE_TAG } from "@/features/catalog/cache";
@@ -116,6 +117,9 @@ export async function loadShippingSettingsForm(): Promise<{
             ? shipping.return_policy
             : DEFAULT_SHIPPING_SETTINGS.returnPolicy,
           replacePhotoRequired: Boolean(shipping.replace_photo_required),
+          replacePhotoMaxMb: coerceReplacePhotoMaxMb(
+            (shipping as { replace_photo_max_mb?: number }).replace_photo_max_mb,
+          ),
           replaceWindowHours: coerceReplaceWindowHours(
             shipping.replace_window_hours,
           ),
@@ -250,6 +254,7 @@ export async function updateShippingSettings(
     auto_deliver_after_days: values.autoDeliverAfterDays,
     return_policy: values.returnPolicy,
     replace_photo_required: values.replacePhotoRequired,
+    replace_photo_max_mb: values.replacePhotoMaxMb,
     replace_window_hours: values.replaceWindowHours,
     replace_max_attempts: values.replaceMaxAttempts,
     replace_reason_options: values.replaceReasonOptions,

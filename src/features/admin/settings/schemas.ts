@@ -47,6 +47,8 @@ export const generalSettingsSchema = z.object({
   socialLinkedin: optionalSafeHttpUrl,
   socialX: optionalSafeHttpUrl,
   socialWhatsapp: optionalWhatsapp,
+  /** Admin image uploads max size in MB (1–10). */
+  adminImageMaxMb: z.coerce.number().int().min(1).max(10),
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -170,6 +172,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   socialLinkedin: "",
   socialX: "",
   socialWhatsapp: "",
+  adminImageMaxMb: 5,
 };
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettingsFormValues = {

@@ -8,6 +8,7 @@ import {
   coerceCancelReasonOptions,
   coerceReplaceReasonOptions,
 } from "@/features/shipping/policies";
+import { coerceReplacePhotoMaxMb } from "@/features/media/upload-limits";
 
 const nonNeg = z.coerce
   .number({ invalid_type_error: "Enter a valid number." })
@@ -57,6 +58,8 @@ export const shippingSettingsSchema = z
     returnPolicy: z.enum(RETURN_POLICIES),
     /** When true, replace requests require a photo (uses storage). Default false. */
     replacePhotoRequired: z.coerce.boolean(),
+    /** Max size in MB for customer replace photos (1–4). Default 1. */
+    replacePhotoMaxMb: z.coerce.number().int().min(1).max(4),
     replaceWindowHours: z.coerce
       .number()
       .refine(
@@ -174,6 +177,9 @@ export const shippingSettingsSchema = z
       replacePhotoRequired: replaceOnly
         ? Boolean(value.replacePhotoRequired)
         : false,
+      replacePhotoMaxMb: replaceOnly
+        ? coerceReplacePhotoMaxMb(value.replacePhotoMaxMb)
+        : 1,
       replaceWindowHours: replaceOnly ? value.replaceWindowHours : 72,
       replaceMaxAttempts: replaceOnly ? value.replaceMaxAttempts : 1,
       replaceReasonOptions: replaceOnly
@@ -212,6 +218,7 @@ export const DEFAULT_SHIPPING_SETTINGS: ShippingSettingsFormValues = {
   autoDeliverAfterDays: 7,
   returnPolicy: "no_return_refund",
   replacePhotoRequired: false,
+  replacePhotoMaxMb: 1,
   replaceWindowHours: 72,
   replaceMaxAttempts: 1,
   replaceReasonOptions: [...DEFAULT_REPLACE_REASON_OPTIONS],

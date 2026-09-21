@@ -7,17 +7,13 @@ import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
-import {
-  saveBrandingSettingsAction,
-  uploadBrandingImageAction,
-} from "@/features/admin/settings/actions";
+import { saveBrandingSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
 import {
   DEFAULT_BRANDING_SETTINGS,
   brandingSettingsSchema,
   type BrandingSettingsFormValues,
 } from "@/features/admin/settings/schemas";
-import type { BrandingUploadKind } from "@/features/admin/settings/update-branding";
 import { AdminSection } from "@/features/admin/ui/AdminCard";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
@@ -26,12 +22,17 @@ import {
   focusFirstFieldError,
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
+import { LogoThemeSuggest } from "@/features/admin/theme/components/LogoThemeSuggest";
+import { MediaPicker } from "@/features/media/components/MediaPicker";
 import {
-  LogoThemeSuggest,
-  suggestThemeFromLogoFile,
-} from "@/features/admin/theme/components/LogoThemeSuggest";
+  ADMIN_IMAGE_MAX_MB_DEFAULT,
+  formatMaxMbHint,
+} from "@/features/media/upload-limits";
 import { cn } from "@/lib/cn";
-import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import {
+  resolvePublicStorageUrl,
+  resolveStoragePathUrl,
+} from "@/lib/supabase/storage-url";
 
 interface BrandingSettingsFormProps {
   initialValues: BrandingSettingsFormValues;
@@ -42,58 +43,72 @@ interface BrandingSettingsFormProps {
     socialImageUrl?: string;
   };
   canUpdate: boolean;
+  /** From store settings — admin image max MB (1–10). */
+  adminImageMaxMb?: number;
 }
 
+type BrandingImagePathKey = keyof Pick<
+  BrandingSettingsFormValues,
+  "logoPath" | "logoDarkPath" | "faviconPath" | "socialSharingImagePath"
+>;
+
 const IMAGE_FIELDS: Array<{
-  pathKey: keyof Pick<
-    BrandingSettingsFormValues,
-    "logoPath" | "logoDarkPath" | "faviconPath" | "socialSharingImagePath"
-  >;
-  kind: BrandingUploadKind;
+  pathKey: BrandingImagePathKey;
   label: string;
   hint: string;
   previewKey: "logoUrl" | "logoDarkUrl" | "faviconUrl" | "socialImageUrl";
 }> = [
   {
     pathKey: "logoPath",
-    kind: "logo",
     label: "Logo",
     hint: "Header logo",
     previewKey: "logoUrl",
   },
   {
     pathKey: "logoDarkPath",
-    kind: "dark-logo",
     label: "Dark logo",
     hint: "Optional dark mode",
     previewKey: "logoDarkUrl",
   },
   {
     pathKey: "faviconPath",
-    kind: "favicon",
     label: "Favicon",
     hint: "Browser tab icon",
     previewKey: "faviconUrl",
   },
   {
     pathKey: "socialSharingImagePath",
-    kind: "social-image",
     label: "Social image",
     hint: "Link previews",
     previewKey: "socialImageUrl",
   },
 ];
 
+function brandingPreviewUrl(
+  path: string | null | undefined,
+  fallback?: string,
+): string | undefined {
+  return (
+    resolveStoragePathUrl(path, ["branding", "media", "cms"]) ||
+    resolvePublicStorageUrl("branding", path) ||
+    fallback
+  );
+}
+
 export function BrandingSettingsForm({
   initialValues,
   initialPreviewUrls,
   canUpdate,
+  adminImageMaxMb = ADMIN_IMAGE_MAX_MB_DEFAULT,
 }: BrandingSettingsFormProps) {
   const router = useRouter();
+  const sizeHint = formatMaxMbHint(adminImageMaxMb);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [uploadPending, setUploadPending] = useState<string | null>(null);
+  const [pickerField, setPickerField] = useState<BrandingImagePathKey | null>(
+    null,
+  );
 
   const {
     control,
@@ -112,18 +127,19 @@ export function BrandingSettingsForm({
 
   const preview = useMemo(
     () => ({
-      logoUrl:
-        resolvePublicStorageUrl("branding", watched.logoPath) ||
-        initialPreviewUrls.logoUrl,
-      logoDarkUrl:
-        resolvePublicStorageUrl("branding", watched.logoDarkPath) ||
+      logoUrl: brandingPreviewUrl(watched.logoPath, initialPreviewUrls.logoUrl),
+      logoDarkUrl: brandingPreviewUrl(
+        watched.logoDarkPath,
         initialPreviewUrls.logoDarkUrl,
-      faviconUrl:
-        resolvePublicStorageUrl("branding", watched.faviconPath) ||
+      ),
+      faviconUrl: brandingPreviewUrl(
+        watched.faviconPath,
         initialPreviewUrls.faviconUrl,
-      socialImageUrl:
-        resolvePublicStorageUrl("branding", watched.socialSharingImagePath) ||
+      ),
+      socialImageUrl: brandingPreviewUrl(
+        watched.socialSharingImagePath,
         initialPreviewUrls.socialImageUrl,
+      ),
     }),
     [watched, initialPreviewUrls],
   );
@@ -150,37 +166,6 @@ export function BrandingSettingsForm({
       router.refresh();
     });
   });
-
-  async function handleUpload(
-    kind: BrandingUploadKind,
-    pathKey: (typeof IMAGE_FIELDS)[number]["pathKey"],
-    file: File | null,
-  ) {
-    if (!file || !canUpdate) return;
-    setUploadPending(kind);
-    setError(null);
-    const formData = new FormData();
-    formData.set("file", file);
-    const result = await uploadBrandingImageAction(kind, formData);
-    setUploadPending(null);
-    if (!result.ok) {
-      setError(result.error);
-      return;
-    }
-    if (result.path) {
-      setValue(pathKey, result.path, { shouldDirty: true });
-      setSuccess("Image uploaded. Save to publish.");
-      if (kind === "logo" && file) {
-        void suggestThemeFromLogoFile(file).then((theme) => {
-          if (theme) {
-            setSuccess(
-              "Logo uploaded and theme suggested. Save branding here, then apply colors in Appearance.",
-            );
-          }
-        });
-      }
-    }
-  }
 
   return (
     <form
@@ -285,11 +270,11 @@ export function BrandingSettingsForm({
 
       <AdminSection
         title="Brand images"
-        description="Upload assets. Save this page to publish image changes."
+        description="Choose from Images & Files or upload new. Save this page to publish."
         icon={<ImageOutlinedIcon sx={{ fontSize: 20 }} />}
       >
         <div className="grid gap-2 sm:grid-cols-2">
-          {IMAGE_FIELDS.map(({ pathKey, kind, label, hint, previewKey }) => {
+          {IMAGE_FIELDS.map(({ pathKey, label, hint, previewKey }) => {
             const url = preview[previewKey];
             return (
               <div
@@ -299,7 +284,8 @@ export function BrandingSettingsForm({
                 <div
                   className={cn(
                     "flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-md border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-background)_80%,var(--color-primary)_8%)]",
-                    previewKey === "logoDarkUrl" && "bg-[var(--color-foreground)]",
+                    previewKey === "logoDarkUrl" &&
+                      "bg-[var(--color-foreground)]",
                   )}
                 >
                   {url ? (
@@ -323,37 +309,26 @@ export function BrandingSettingsForm({
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold leading-tight">{label}</p>
                   <p className="mt-0.5 truncate text-[11px] text-[var(--color-muted)]">
-                    {hint}
+                    {hint} · {sizeHint}
                   </p>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    <label
-                      className={cn(
-                        adminBtn("primary"),
-                        "!px-2.5 !py-1 !text-xs cursor-pointer",
-                        (!canUpdate || uploadPending === kind) &&
-                          "pointer-events-none opacity-50",
-                      )}
-                    >
-                      {uploadPending === kind
-                        ? "…"
-                        : url
-                          ? "Replace"
-                          : "Upload"}
-                      <input
-                        hidden
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp"
-                        disabled={!canUpdate || uploadPending === kind}
-                        onChange={(event) => {
-                          const file = event.target.files?.[0] ?? null;
-                          void handleUpload(kind, pathKey, file);
-                          event.target.value = "";
-                        }}
-                      />
-                    </label>
                     <button
                       type="button"
-                      className={cn(adminBtn("outline"), "!px-2.5 !py-1 !text-xs")}
+                      className={cn(
+                        adminBtn("primary"),
+                        "!px-2.5 !py-1 !text-xs",
+                      )}
+                      disabled={!canUpdate || pending}
+                      onClick={() => setPickerField(pathKey)}
+                    >
+                      {url ? "Replace" : "Upload"}
+                    </button>
+                    <button
+                      type="button"
+                      className={cn(
+                        adminBtn("outline"),
+                        "!px-2.5 !py-1 !text-xs",
+                      )}
                       disabled={!canUpdate || !watched[pathKey]}
                       onClick={() =>
                         setValue(pathKey, null, { shouldDirty: true })
@@ -370,6 +345,21 @@ export function BrandingSettingsForm({
       </AdminSection>
 
       <LogoThemeSuggest logoUrl={preview.logoUrl} mode="branding" />
+
+      <MediaPicker
+        open={pickerField != null}
+        folder="branding"
+        allowUpload
+        adminImageMaxMb={adminImageMaxMb}
+        onClose={() => setPickerField(null)}
+        onSelect={(selection) => {
+          if (!pickerField) return;
+          setValue(pickerField, selection.storagePath, { shouldDirty: true });
+          setSuccess("Image selected. Save to publish.");
+          setError(null);
+          setPickerField(null);
+        }}
+      />
     </form>
   );
 }

@@ -42,6 +42,10 @@ import {
   type FulfillmentMode,
   type ReturnPolicy,
 } from "@/features/shipping/policies";
+import {
+  coerceReplacePhotoMaxMb,
+  replacePhotoMaxMbOptions,
+} from "@/features/media/upload-limits";
 import { cn } from "@/lib/cn";
 
 interface ShippingSettingsFormProps {
@@ -208,6 +212,9 @@ export function ShippingSettingsForm({
           ? initialValues.returnPolicy
           : "no_return_refund",
       replacePhotoRequired: Boolean(initialValues.replacePhotoRequired),
+      replacePhotoMaxMb: coerceReplacePhotoMaxMb(
+        initialValues.replacePhotoMaxMb,
+      ),
       replaceWindowHours: coerceReplaceWindowHours(
         initialValues.replaceWindowHours,
       ),
@@ -859,8 +866,22 @@ export function ShippingSettingsForm({
                     checked={Boolean(field.value)}
                     disabled={locked}
                     label="Require photo"
-                    description="Off by default (saves storage). Max 1 MB."
+                    description="Off by default (saves storage)."
                     onChange={field.onChange}
+                  />
+                )}
+              />
+              <Controller
+                name="replacePhotoMaxMb"
+                control={control}
+                render={({ field }) => (
+                  <AdminSelect
+                    label="Replace photo max size"
+                    disabled={locked}
+                    value={String(coerceReplacePhotoMaxMb(field.value))}
+                    onChange={(next) => field.onChange(Number(next))}
+                    helperText="Customer upload limit for replace requests (1–4 MB)."
+                    options={replacePhotoMaxMbOptions()}
                   />
                 )}
               />

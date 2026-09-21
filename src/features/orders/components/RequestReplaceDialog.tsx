@@ -19,6 +19,7 @@ import {
   isOtherReplaceReason,
   type ReplaceStoreRules,
 } from "@/features/shipping/policies";
+import { formatReplacePhotoHint, mbToBytes } from "@/features/media/upload-limits";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
 
@@ -41,6 +42,8 @@ export function RequestReplaceDialog({
 }) {
   const router = useRouter();
   const titleId = useId();
+  const photoMaxMb = rules.photoMaxMb ?? 1;
+  const photoMaxBytes = mbToBytes(photoMaxMb);
   const reasonOptions = useMemo(
     () => coerceReplaceReasonOptions(rules.reasonOptions),
     [rules.reasonOptions],
@@ -215,11 +218,23 @@ export function RequestReplaceDialog({
               type="file"
               accept="image/jpeg,image/png,image/webp"
               disabled={pending}
-              onChange={(event) => setPhoto(event.target.files?.[0] ?? null)}
+              onChange={(event) => {
+                const file = event.target.files?.[0] ?? null;
+                if (file && file.size > photoMaxBytes) {
+                  setError(
+                    `Photo must be ${photoMaxMb} MB or smaller.`,
+                  );
+                  setPhoto(null);
+                  event.target.value = "";
+                  return;
+                }
+                setError(null);
+                setPhoto(file);
+              }}
               className="block w-full text-sm text-[var(--color-muted)]"
             />
             <p className="mt-1 text-xs text-[var(--color-muted)]">
-              JPEG/PNG/WEBP, max 1 MB
+              {formatReplacePhotoHint(photoMaxMb)}
               {photoRequired
                 ? ". Required by the store."
                 : ". Optional — helps review faster."}
