@@ -87,22 +87,22 @@ export async function getStoreSetupChecklist(): Promise<{
   const items: SetupChecklistItem[] = [
     {
       id: "store",
-      label: "Add store information",
-      description: "Replace the default store name and contact details",
+      label: "Name your store",
+      description: "Customers see this name on the website",
       href: getAdminPath("/settings/general"),
       done: storeInfoDone,
     },
     {
       id: "logo",
-      label: "Add logo",
-      description: "Upload your brand logo for the storefront and PWA",
+      label: "Add your logo",
+      description: "Appears in the header and when people save your app",
       href: getAdminPath("/settings/branding"),
       done: logoDone,
     },
     {
       id: "appearance",
-      label: "Review appearance",
-      description: "Theme colors and fonts (optional but recommended)",
+      label: "Pick your look",
+      description: "Colors and fonts for the shop (optional)",
       href: getAdminPath("/settings/theme"),
       done:
         storeInfoDone &&
@@ -111,22 +111,22 @@ export async function getStoreSetupChecklist(): Promise<{
     },
     {
       id: "products",
-      label: "Add first product",
-      description: "Create at least one product customers can buy",
+      label: "Add something to sell",
+      description: "At least one product so shoppers can check out",
       href: getAdminPath("/catalog/products?panel=new"),
       done: productsDone,
     },
     {
       id: "shipping",
-      label: "Configure shipping",
-      description: "Set shipping method and fees",
+      label: "Set delivery fees",
+      description: "How orders get to the customer",
       href: getAdminPath("/settings/shipping"),
       done: shippingDone,
     },
     {
       id: "payments",
-      label: "Configure payments",
-      description: "Enable Razorpay (or keep disabled until ready)",
+      label: "Turn on payments",
+      description: "Online pay (Razorpay) and/or cash on delivery",
       href: getAdminPath("/settings/payments"),
       done: paymentsDone,
     },

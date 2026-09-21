@@ -37,21 +37,22 @@
 html.dark {
   color-scheme: dark;
   --color-primary: #fb923c;
-  --color-secondary: #a8a29e;
+  --color-secondary: #a1a1aa;
   --color-accent: #fbbf24;
-  --color-background: #140f0c;
-  --color-foreground: #faf6f1;
-  --color-surface: #1f1712;
-  --color-card: #2a1f18;
-  --color-border: #3f2e24;
-  --color-muted: #a8a29e;
+  /* Premium zinc charcoal: background < surface < card */
+  --color-background: #0c0c0e;
+  --color-foreground: #fafafa;
+  --color-surface: #141416;
+  --color-card: #1c1c1f;
+  --color-border: #2e2e33;
+  --color-muted: #a1a1aa;
   --color-success: #a3e635;
   --color-warning: #fbbf24;
   --color-error: #f87171;
-  --color-header-background: #1f1712;
-  --color-header-foreground: #faf6f1;
-  --color-footer-background: #0c0907;
-  --color-footer-foreground: #e7e0d6;
+  --color-header-background: #141416;
+  --color-header-foreground: #fafafa;
+  --color-footer-background: #101012;
+  --color-footer-foreground: #e4e4e7;
   --color-button-background: #fb923c;
-  --color-button-foreground: #140f0c;
+  --color-button-foreground: #0c0c0e;
 }

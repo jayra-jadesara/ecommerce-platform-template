@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import type { AdminDashboardAnalytics } from "@/features/admin/dashboard-analytics";
 import { formatMoney } from "@/features/catalog/money";
-import { AdminDateField } from "@/features/admin/ui/AdminDateField";
-import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import {
   ADMIN_CHART_COLORS,
   AdminChartCard,
@@ -33,6 +31,12 @@ function addDaysIso(iso: string, delta: number): string {
   return dayjs(iso).add(delta, "day").format("YYYY-MM-DD");
 }
 
+function friendlyRangeLabel(from: string, to: string): string {
+  const fmt = (iso: string) =>
+    dayjs(iso).format("D MMM YYYY");
+  return `${fmt(from)} – ${fmt(to)}`;
+}
+
 export function AdminDashboardCharts({
   analytics,
   range,
@@ -43,38 +47,21 @@ export function AdminDashboardCharts({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
-  function pushFilters(next: {
-    range?: string;
-    from?: string;
-    to?: string;
-  }) {
+  function setRange(nextRange: string) {
+    const days =
+      nextRange === "7d"
+        ? 7
+        : nextRange === "30d"
+          ? 30
+          : nextRange === "90d"
+            ? 90
+            : 14;
     const params = new URLSearchParams();
-    const nextRange = next.range ?? range;
-    const nextTo = next.to ?? analytics.to;
-    let nextFrom = next.from ?? analytics.from;
-
-    if (next.range && !next.from) {
-      const days =
-        next.range === "7d"
-          ? 7
-          : next.range === "30d"
-            ? 30
-            : next.range === "90d"
-              ? 90
-              : 14;
-      nextFrom = addDaysIso(todayIso(), -(days - 1));
-      params.set("range", next.range);
-      params.set("from", nextFrom);
-      params.set("to", todayIso());
-    } else {
-      if (nextRange !== "14d") params.set("range", nextRange);
-      params.set("from", nextFrom);
-      params.set("to", nextTo);
-    }
-
-    const qs = params.toString();
+    params.set("range", nextRange);
+    params.set("from", addDaysIso(todayIso(), -(days - 1)));
+    params.set("to", todayIso());
     startTransition(() => {
-      router.push(`${getAdminPath("/dashboard")}${qs ? `?${qs}` : ""}`);
+      router.push(`${getAdminPath("/dashboard")}?${params.toString()}`);
     });
   }
 
@@ -117,47 +104,40 @@ export function AdminDashboardCharts({
 
   return (
     <section aria-label="Store performance charts" className="space-y-2.5">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
           <h2 className="text-[15px] font-semibold tracking-tight text-[var(--color-foreground)]">
             Store performance
           </h2>
           <p className="mt-0.5 text-[12px] text-[var(--color-muted)]">
-            Orders, products & reviews · {analytics.from} → {analytics.to}
+            Same period for the totals and charts below ·{" "}
+            {friendlyRangeLabel(analytics.from, analytics.to)}
           </p>
         </div>
-      </div>
-
-      <div className={cn(adminCard(), "px-2.5 py-2")}>
-        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-[minmax(6.5rem,0.5fr)_minmax(9rem,0.75fr)_minmax(9rem,0.75fr)]">
-          <AdminSelect
-            label="Range"
-            value={range}
-            disabled={pending}
-            options={[...RANGE_OPTIONS]}
-            onChange={(value) => pushFilters({ range: value })}
-          />
-          <AdminDateField
-            label="From"
-            value={analytics.from}
-            disabled={pending}
-            maxDate={dayjs(analytics.to)}
-            onChange={(next) => {
-              if (!next) return;
-              pushFilters({ from: next, to: analytics.to, range });
-            }}
-          />
-          <AdminDateField
-            label="To"
-            value={analytics.to}
-            disabled={pending}
-            minDate={dayjs(analytics.from)}
-            maxDate={dayjs()}
-            onChange={(next) => {
-              if (!next) return;
-              pushFilters({ from: analytics.from, to: next, range });
-            }}
-          />
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Performance period"
+        >
+          {RANGE_OPTIONS.map((option) => {
+            const active = range === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                disabled={pending}
+                onClick={() => setRange(option.value)}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-[12px] font-semibold transition-colors disabled:opacity-60",
+                  active
+                    ? "bg-[var(--color-button-background)] text-[var(--color-button-foreground)] shadow-sm"
+                    : "border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-muted)] hover:border-[color-mix(in_srgb,var(--color-primary)_40%,var(--color-border))] hover:bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] hover:text-[var(--color-primary)]",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -200,8 +180,8 @@ export function AdminDashboardCharts({
               {
                 key: "placed",
                 label: "Placed",
-                color: ADMIN_CHART_COLORS.slate,
-                hoverColor: "#475569",
+                color: ADMIN_CHART_COLORS.muted,
+                hoverColor: ADMIN_CHART_COLORS.mutedHover,
               },
               {
                 key: "paid",
@@ -212,8 +192,8 @@ export function AdminDashboardCharts({
               {
                 key: "delivered",
                 label: "Done",
-                color: ADMIN_CHART_COLORS.teal,
-                hoverColor: ADMIN_CHART_COLORS.tealHover,
+                color: ADMIN_CHART_COLORS.success,
+                hoverColor: ADMIN_CHART_COLORS.successHover,
               },
             ]}
             formatValue={(n, key) => {
@@ -242,8 +222,8 @@ export function AdminDashboardCharts({
         >
           <AdminHorizontalBarChart
             data={soldSeries}
-            color={ADMIN_CHART_COLORS.teal}
-            hoverColor={ADMIN_CHART_COLORS.tealHover}
+            color={ADMIN_CHART_COLORS.success}
+            hoverColor={ADMIN_CHART_COLORS.successHover}
             valueLabel="Units"
             formatValue={(n) => `${n} sold`}
             labelMaxChars={16}
@@ -253,13 +233,13 @@ export function AdminDashboardCharts({
 
         <AdminChartCard
           title="Most wishlisted"
-          tip="Products customers saved most often"
+          tip="All-time saves (not limited by the period chips)"
           empty={wishlistSeries.length ? null : "No wishlist saves yet"}
         >
           <AdminHorizontalBarChart
             data={wishlistSeries}
-            color={ADMIN_CHART_COLORS.purple}
-            hoverColor={ADMIN_CHART_COLORS.purpleHover}
+            color={ADMIN_CHART_COLORS.primary}
+            hoverColor={ADMIN_CHART_COLORS.primaryHover}
             valueLabel="Wishlist"
             formatValue={(n) => `${n} saves`}
             labelMaxChars={16}
@@ -282,8 +262,8 @@ export function AdminDashboardCharts({
         >
           <AdminHorizontalBarChart
             data={reviewProductSeries}
-            color={ADMIN_CHART_COLORS.amber}
-            hoverColor={ADMIN_CHART_COLORS.amberHover}
+            color={ADMIN_CHART_COLORS.accent}
+            hoverColor={ADMIN_CHART_COLORS.accentHover}
             valueLabel="Reviews"
             formatValue={(n) => `${n} reviews`}
             labelMaxChars={16}
@@ -318,8 +298,8 @@ export function AdminDashboardCharts({
           <AdminVerticalBarChart
             data={reviewStarsSeries}
             height={200}
-            color={ADMIN_CHART_COLORS.amber}
-            hoverColor={ADMIN_CHART_COLORS.amberHover}
+            color={ADMIN_CHART_COLORS.accent}
+            hoverColor={ADMIN_CHART_COLORS.accentHover}
             valueLabel="Reviews"
             formatValue={(n) => `${n} reviews`}
             maxBarSize={36}
@@ -330,7 +310,7 @@ export function AdminDashboardCharts({
           title="Most viewed products"
           tip={
             analytics.viewsAvailable
-              ? "Product page opens (all-time counter)"
+              ? "All-time page opens (not limited by the period chips)"
               : "Needs product view tracking — run the view_count migration"
           }
           className="lg:col-span-2"
@@ -344,8 +324,8 @@ export function AdminDashboardCharts({
         >
           <AdminHorizontalBarChart
             data={viewedSeries}
-            color={ADMIN_CHART_COLORS.blue}
-            hoverColor={ADMIN_CHART_COLORS.blueHover}
+            color={ADMIN_CHART_COLORS.secondary}
+            hoverColor={ADMIN_CHART_COLORS.secondaryHover}
             valueLabel="Views"
             formatValue={(n) => `${n} views`}
             labelMaxChars={22}

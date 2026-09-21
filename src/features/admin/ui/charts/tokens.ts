@@ -1,55 +1,87 @@
 import type { CSSProperties } from "react";
 
-/** Shared Recharts tokens for Admin UI — theme CSS variables only. */
+/**
+ * Admin chart colors — theme CSS variables only.
+ * Hex accents (teal/blue/purple) were removed so charts follow store branding.
+ */
 export const ADMIN_CHART_COLORS = {
   primary: "var(--color-primary)",
   primarySoft:
     "color-mix(in srgb, var(--color-primary) 72%, var(--color-foreground) 8%)",
   primaryHover:
-    "color-mix(in srgb, var(--color-primary) 82%, black 12%)",
-  teal: "#0d9488",
-  tealHover: "#0f766e",
-  blue: "#2563eb",
-  blueHover: "#1d4ed8",
-  purple: "#9333ea",
-  purpleHover: "#7e22ce",
-  amber: "#d97706",
-  amberHover: "#b45309",
-  slate: "#64748b",
+    "color-mix(in srgb, var(--color-primary) 78%, var(--color-foreground) 22%)",
+
+  success: "var(--color-success)",
+  successHover:
+    "color-mix(in srgb, var(--color-success) 78%, var(--color-foreground) 22%)",
+
+  accent: "var(--color-accent)",
+  accentHover:
+    "color-mix(in srgb, var(--color-accent) 78%, var(--color-foreground) 22%)",
+
+  warning: "var(--color-warning)",
+  warningHover:
+    "color-mix(in srgb, var(--color-warning) 78%, var(--color-foreground) 22%)",
+
+  secondary: "var(--color-secondary)",
+  secondaryHover:
+    "color-mix(in srgb, var(--color-secondary) 78%, var(--color-foreground) 22%)",
+
   muted: "var(--color-muted)",
+  mutedHover:
+    "color-mix(in srgb, var(--color-muted) 70%, var(--color-foreground) 30%)",
+
   border: "var(--color-border)",
   card: "var(--color-card)",
   foreground: "var(--color-foreground)",
   grid: "var(--color-border)",
+
+  /** @deprecated Prefer success — kept so older call sites stay theme-aligned. */
+  teal: "var(--color-success)",
+  tealHover:
+    "color-mix(in srgb, var(--color-success) 78%, var(--color-foreground) 22%)",
+  /** @deprecated Prefer secondarySoft mixes. */
+  blue: "color-mix(in srgb, var(--color-primary) 35%, var(--color-secondary))",
+  blueHover:
+    "color-mix(in srgb, var(--color-primary) 50%, var(--color-secondary))",
+  purple: "color-mix(in srgb, var(--color-primary) 55%, var(--color-accent))",
+  purpleHover:
+    "color-mix(in srgb, var(--color-primary) 70%, var(--color-accent))",
+  amber: "var(--color-accent)",
+  amberHover:
+    "color-mix(in srgb, var(--color-accent) 78%, var(--color-foreground) 22%)",
+  slate: "var(--color-muted)",
 } as const;
 
 export const ADMIN_CHART_PALETTE = [
   ADMIN_CHART_COLORS.primary,
-  ADMIN_CHART_COLORS.teal,
-  ADMIN_CHART_COLORS.blue,
-  ADMIN_CHART_COLORS.purple,
-  ADMIN_CHART_COLORS.amber,
-  ADMIN_CHART_COLORS.slate,
+  ADMIN_CHART_COLORS.success,
+  ADMIN_CHART_COLORS.accent,
+  ADMIN_CHART_COLORS.secondary,
+  ADMIN_CHART_COLORS.warning,
+  ADMIN_CHART_COLORS.muted,
 ] as const;
 
 export const ADMIN_CHART_HOVER_PALETTE = [
   ADMIN_CHART_COLORS.primaryHover,
-  ADMIN_CHART_COLORS.tealHover,
-  ADMIN_CHART_COLORS.blueHover,
-  ADMIN_CHART_COLORS.purpleHover,
-  ADMIN_CHART_COLORS.amberHover,
-  "#475569",
+  ADMIN_CHART_COLORS.successHover,
+  ADMIN_CHART_COLORS.accentHover,
+  ADMIN_CHART_COLORS.secondaryHover,
+  ADMIN_CHART_COLORS.warningHover,
+  ADMIN_CHART_COLORS.mutedHover,
 ] as const;
 
 export const adminChartTooltipStyle: CSSProperties = {
-  borderRadius: 10,
-  border: "1px solid var(--color-border)",
-  background: "var(--color-card)",
+  borderRadius: 12,
+  border:
+    "1px solid color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%)",
+  background:
+    "color-mix(in srgb, var(--color-card) 82%, var(--color-foreground) 18%)",
   color: "var(--color-foreground)",
   fontSize: 12,
-  padding: "6px 10px",
+  padding: "8px 12px",
   boxShadow:
-    "0 8px 20px color-mix(in srgb, var(--color-foreground) 8%, transparent)",
+    "0 12px 32px color-mix(in srgb, #000 45%, transparent)",
 };
 
 export const adminChartAxisTick = {

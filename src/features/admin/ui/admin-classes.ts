@@ -15,7 +15,7 @@ export function adminSidebarBg(): string {
 
 export function adminCard(className = ""): string {
   return [
-    "rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]",
+    "admin-card rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]",
     className,
   ]
     .filter(Boolean)

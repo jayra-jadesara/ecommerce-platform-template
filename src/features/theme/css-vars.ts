@@ -59,7 +59,8 @@ export function contrastForeground(
 
 /**
  * Softens dark-mode CTAs that were configured as near-white (harsh / unreadable
- * against dark storefronts) and repairs weak button text contrast.
+ * against dark storefronts), repairs weak button text contrast, and lifts flat
+ * or overly brown chrome into a premium neutral charcoal hierarchy.
  */
 export function normalizeColorTokensForMode(
   tokens: ColorTokens,
@@ -67,26 +68,60 @@ export function normalizeColorTokensForMode(
 ): ColorTokens {
   if (mode !== "dark") return tokens;
 
-  const backgroundLum = relativeLuminance(tokens.background);
-  const buttonLum = relativeLuminance(tokens.buttonBackground);
+  let next: ColorTokens = { ...tokens };
+
+  const backgroundLum = relativeLuminance(next.background);
+  const surfaceLum = relativeLuminance(next.surface);
+  const cardLum = relativeLuminance(next.card);
+  const buttonLum = relativeLuminance(next.buttonBackground);
 
   if (backgroundLum < 0.3 && buttonLum > 0.82) {
-    return {
-      ...tokens,
-      buttonBackground: tokens.primary,
-      buttonForeground: contrastForeground(tokens.primary),
+    next = {
+      ...next,
+      buttonBackground: next.primary,
+      buttonForeground: contrastForeground(next.primary),
     };
   }
 
-  const foregroundLum = relativeLuminance(tokens.buttonForeground);
-  if (Math.abs(buttonLum - foregroundLum) < 0.35) {
-    return {
-      ...tokens,
-      buttonForeground: contrastForeground(tokens.buttonBackground),
+  const foregroundLum = relativeLuminance(next.buttonForeground);
+  const fixedButtonLum = relativeLuminance(next.buttonBackground);
+  if (Math.abs(fixedButtonLum - foregroundLum) < 0.35) {
+    next = {
+      ...next,
+      buttonForeground: contrastForeground(next.buttonBackground),
     };
   }
 
-  return tokens;
+  const layersTooFlat =
+    backgroundLum < 0.045 ||
+    (cardLum - backgroundLum < 0.018 && surfaceLum - backgroundLum < 0.012);
+
+  const bgRgb = hexToRgb(next.background);
+  const chromeIsBrown =
+    Boolean(bgRgb) &&
+    bgRgb![0] - bgRgb![2] >= 12 &&
+    bgRgb![0] > bgRgb![1];
+
+  if (layersTooFlat || chromeIsBrown) {
+    // Neutral zinc charcoal — brand color stays on CTAs only.
+    next = {
+      ...next,
+      background: "#0c0c0e",
+      surface: "#141416",
+      card: "#1c1c1f",
+      border: "#2e2e33",
+      headerBackground: "#141416",
+      footerBackground: "#101012",
+      muted:
+        relativeLuminance(next.muted) < 0.25 || chromeIsBrown
+          ? "#a1a1aa"
+          : next.muted,
+      foreground:
+        relativeLuminance(next.foreground) < 0.6 ? "#fafafa" : next.foreground,
+    };
+  }
+
+  return next;
 }
 
 /** Build a plain style map for SSR / ThemePreview (no DOM). */

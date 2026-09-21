@@ -13,8 +13,8 @@ import {
 import {
   ADMIN_CHART_COLORS,
   adminChartAxisTick,
-  adminChartTooltipStyle,
 } from "@/features/admin/ui/charts/tokens";
+import { AdminChartTooltip } from "@/features/admin/ui/charts/AdminChartTooltip";
 
 export type AdminMultiBarSeries = {
   key: string;
@@ -79,25 +79,32 @@ export function AdminMultiBarChart({
             cursor={{
               fill: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
             }}
-            contentStyle={adminChartTooltipStyle}
-            formatter={(value, name) => {
-              const key = String(name);
-              const seriesMeta = series.find((row) => row.key === key);
-              const n = Number(value) || 0;
-              const label = seriesMeta?.label ?? key;
-              return [
-                formatValue ? formatValue(n, key) : String(n),
-                label,
-              ];
-            }}
-            labelFormatter={(label, payload) => {
-              const point = payload?.[0]?.payload as
-                | Record<string, string | number>
-                | undefined;
-              if (formatLabel && point) return formatLabel(String(label), point);
-              return String(label ?? "");
-            }}
-            labelStyle={{ color: "var(--color-muted)", marginBottom: 2 }}
+            content={({ active, payload, label }) => (
+              <AdminChartTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                labelFormatter={(raw, rows) => {
+                  const point = rows?.[0]?.payload as
+                    | Record<string, string | number>
+                    | undefined;
+                  if (formatLabel && point) {
+                    return formatLabel(String(raw ?? ""), point);
+                  }
+                  return String(raw ?? "");
+                }}
+                formatter={(value, name) => {
+                  const key = String(name);
+                  const seriesMeta = series.find((row) => row.key === key);
+                  const n = Number(value) || 0;
+                  const seriesLabel = seriesMeta?.label ?? key;
+                  return [
+                    formatValue ? formatValue(n, key) : String(n),
+                    seriesLabel,
+                  ];
+                }}
+              />
+            )}
           />
           <Legend
             wrapperStyle={{ fontSize: 11, color: "var(--color-muted)" }}

@@ -1250,3 +1250,56 @@
     transform: none;
   }
 }
+
+/**
+ * Dark admin — layered charcoal depth (no heavy brand wash / brown tint).
+ * Light mode unchanged.
+ */
+html.dark .admin-shell {
+  background-image:
+    radial-gradient(
+      ellipse 80% 50% at 0% 0%,
+      color-mix(in srgb, var(--color-primary) 4%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 40%, var(--color-background)),
+      var(--color-background) 38%
+    );
+  background-color: var(--color-background);
+}
+
+html.dark .admin-shell aside,
+html.dark .admin-shell [data-admin-sidebar] {
+  background-color: color-mix(
+    in srgb,
+    var(--color-surface) 94%,
+    var(--color-card) 6%
+  ) !important;
+  border-color: var(--color-border) !important;
+  box-shadow:
+    1px 0 0 color-mix(in srgb, var(--color-foreground) 4%, transparent),
+    8px 0 28px color-mix(in srgb, #000 40%, transparent);
+}
+
+html.dark .admin-shell .admin-card {
+  border-color: var(--color-border);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--color-foreground) 5%, transparent),
+    0 10px 28px color-mix(in srgb, #000 48%, transparent);
+}
+
+html.dark .admin-chart-tooltip {
+  background: color-mix(
+    in srgb,
+    var(--color-card) 78%,
+    var(--color-foreground) 22%
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%) !important;
+  box-shadow:
+    0 12px 32px color-mix(in srgb, #000 55%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+}
+

@@ -1,13 +1,30 @@
+import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
+import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
+import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import AssignmentReturnOutlinedIcon from "@mui/icons-material/AssignmentReturnOutlined";
+import InventoryOutlinedIcon from "@mui/icons-material/InventoryOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
 import Link from "next/link";
 import { requirePermission, hasPermission } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { AdminCard } from "@/features/admin/ui/AdminCard";
+import { AdminSection } from "@/features/admin/ui/AdminCard";
+import { AdminMetricTile } from "@/features/admin/ui/AdminMetricTile";
+import {
+  AdminAttentionList,
+  type AdminAttentionItem,
+} from "@/features/admin/ui/AdminAttentionList";
+import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
 import { adminBtn, adminPageStack } from "@/features/admin/ui/admin-classes";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getStoreSetupChecklist } from "@/features/admin/setup/checklist";
 import { AdminSetupChecklist } from "@/features/admin/setup/AdminSetupChecklist";
 import { getAdminDashboardStats } from "@/features/admin/dashboard-stats";
+import { getAdminDashboardOps } from "@/features/admin/dashboard-ops";
 import { getAdminDashboardAnalytics } from "@/features/admin/dashboard-analytics";
 import { AdminDashboardCharts } from "@/features/admin/components/AdminDashboardCharts";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
@@ -30,6 +47,25 @@ function displayName(email: string | null | undefined) {
   return local.charAt(0).toUpperCase() + local.slice(1);
 }
 
+function statusTone(
+  status: string,
+): "success" | "warning" | "error" | "info" | "neutral" {
+  switch (status) {
+    case "DELIVERED":
+      return "success";
+    case "CANCELLED":
+    case "REFUNDED":
+      return "error";
+    case "CONFIRMED":
+    case "PROCESSING":
+      return "warning";
+    case "SHIPPED":
+      return "info";
+    default:
+      return "neutral";
+  }
+}
+
 export default async function AdminDashboardPage({
   searchParams,
 }: {
@@ -42,10 +78,12 @@ export default async function AdminDashboardPage({
   const name = displayName(admin.user.email);
   const sp = await searchParams;
 
-  const canProducts = hasPermission(admin, "products.create");
   const canOrders = hasPermission(admin, "orders.view");
-  const canCms = hasPermission(admin, "cms.view");
-  const canTheme = hasPermission(admin, "theme.view");
+  const canProducts = hasPermission(admin, "products.view");
+  const canReviews = hasPermission(admin, "reviews.view");
+  const canErrors = hasPermission(admin, "error_logs.view");
+  const canCustomers = hasPermission(admin, "customers.view");
+  const canSettings = hasPermission(admin, "settings.view");
   const storeId = await resolveActiveStoreId();
 
   const rangeRaw = typeof sp.range === "string" ? sp.range : "14d";
@@ -59,11 +97,10 @@ export default async function AdminDashboardPage({
   const from = typeof sp.from === "string" ? sp.from : null;
   const to = typeof sp.to === "string" ? sp.to : null;
 
-  const [customerCount, overview, analytics] = await Promise.all([
-    hasPermission(admin, "customers.view")
-      ? countStoreCustomers(storeId)
-      : Promise.resolve(0),
+  const [customerCount, overview, ops, analytics] = await Promise.all([
+    canCustomers ? countStoreCustomers(storeId) : Promise.resolve(0),
     getAdminDashboardStats(storeId),
+    getAdminDashboardOps(storeId),
     getAdminDashboardAnalytics(storeId, {
       days:
         range === "7d" ? 7 : range === "30d" ? 30 : range === "90d" ? 90 : 14,
@@ -72,197 +109,222 @@ export default async function AdminDashboardPage({
     }),
   ]);
 
-  const stats = [
-    {
-      label: "Revenue",
-      value: formatMoney(overview.revenueMajor, overview.currency),
-      hint: "Captured payments only",
-    },
-    {
-      label: "Orders",
-      value: String(overview.orderCount),
-      hint: "Captured payments only",
-      href: canOrders ? getAdminPath("/orders") : null,
-    },
-    {
-      label: "Products",
-      value: String(overview.productCount),
-      hint: "In your catalog",
-      href: hasPermission(admin, "products.view")
-        ? getAdminPath("/catalog/products")
-        : null,
-    },
-    {
-      label: "Customers",
-      value: hasPermission(admin, "customers.view")
-        ? String(customerCount)
-        : "—",
-      hint: "People who placed a paid order",
-      href: hasPermission(admin, "customers.view")
-        ? getAdminPath("/customers")
-        : null,
-    },
-  ];
-
-  const quickActions = [
-    canProducts
+  const attentionItems: AdminAttentionItem[] = [
+    canOrders
       ? {
-          title: "Add Product",
-          body: "Create a new item for your catalog.",
-          href: getAdminPath("/catalog/products?panel=new"),
+          id: "confirmed",
+          title: "Orders ready to pack",
+          description: "Confirmed and waiting for processing.",
+          count: ops.confirmedOrders,
+          href: getAdminPath("/orders?status=CONFIRMED"),
+          tone: "warning",
+          icon: <ShoppingBagOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
     canOrders
       ? {
-          title: "Manage Orders",
-          body: "Review and fulfill customer purchases.",
+          id: "processing",
+          title: "Orders ready to ship",
+          description: "In processing — mark shipped when packed.",
+          count: ops.processingOrders,
+          href: getAdminPath("/orders?status=PROCESSING"),
+          tone: "info",
+          icon: <LocalShippingOutlinedIcon sx={{ fontSize: 20 }} />,
+        }
+      : null,
+    canOrders
+      ? {
+          id: "replaces",
+          title: "Replace requests",
+          description: "Customers waiting on a decision.",
+          count: ops.openReplaceRequests,
           href: getAdminPath("/orders"),
+          tone: "warning",
+          icon: <AssignmentReturnOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
-    canCms
+    canReviews
       ? {
-          title: "Edit Homepage",
-          body: "Update the sections shoppers see first.",
-          href: getAdminPath("/content/homepage"),
+          id: "reviews",
+          title: "Reviews to moderate",
+          description: "Pending before they go live on the store.",
+          count: ops.pendingReviews,
+          href: getAdminPath("/catalog/reviews?status=pending"),
+          tone: "info",
+          icon: <RateReviewOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
-    canTheme
+    canProducts
       ? {
-          title: "Customize Store",
-          body: "Colors, typography, and visual style.",
-          href: getAdminPath("/settings/theme"),
+          id: "out-of-stock",
+          title: "Out of stock",
+          description: "Variants with zero available quantity.",
+          count: ops.outOfStockVariants,
+          href: getAdminPath("/catalog/products"),
+          tone: "error",
+          icon: <InventoryOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
-  ].filter(Boolean) as Array<{ title: string; body: string; href: string }>;
+    canProducts
+      ? {
+          id: "low-stock",
+          title: "Low stock",
+          description: "Below the threshold you set per variant.",
+          count: ops.lowStockVariants,
+          href: getAdminPath("/catalog/products"),
+          tone: "warning",
+          icon: <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />,
+        }
+      : null,
+    canErrors
+      ? {
+          id: "errors",
+          title: "Open error logs",
+          description:
+            ops.criticalErrors > 0
+              ? `${ops.criticalErrors} critical still unresolved.`
+              : "Checkout or store issues still open.",
+          count: ops.openErrors,
+          href: getAdminPath("/error-logs?status=OPEN"),
+          tone: ops.criticalErrors > 0 ? "error" : "warning",
+          icon: <ReportProblemOutlinedIcon sx={{ fontSize: 20 }} />,
+        }
+      : null,
+  ].filter(Boolean) as AdminAttentionItem[];
+
+  const setupIncomplete =
+    canSettings && setup.completedCount < setup.items.length;
 
   return (
     <div className={adminPageStack()}>
       <AdminPageHeader
         title={`${greeting}, ${name}`}
-        description="Here's what's happening in your store."
+        description="Your daily store brief — clear the queue, then skim performance."
         breadcrumbs={[{ label: "Dashboard" }]}
       />
 
-      {quickActions.length > 0 ? (
-        <section aria-label="Quick actions">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {quickActions.map((action) => (
-              <Link key={action.href} href={action.href} className="group block">
-                <AdminCard interactive className="h-full">
-                  <p className="text-sm font-semibold text-[var(--color-foreground)] group-hover:text-[var(--color-primary)]">
-                    {action.title}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">
-                    {action.body}
-                  </p>
-                </AdminCard>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       <section aria-label="Store overview">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {stats.map((stat) => {
-            const inner = (
-              <>
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]">
-                  {stat.label}
-                </p>
-                <p className="mt-2 text-2xl font-semibold tracking-tight">
-                  {stat.value}
-                </p>
-                <p className="mt-1 text-xs text-[var(--color-muted)]">
-                  {stat.hint}
-                </p>
-              </>
-            );
-            return stat.href ? (
-              <Link key={stat.label} href={stat.href} className="block">
-                <AdminCard interactive className="h-full">
-                  {inner}
-                </AdminCard>
-              </Link>
-            ) : (
-              <AdminCard key={stat.label}>{inner}</AdminCard>
-            );
-          })}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+          <AdminMetricTile
+            compact
+            label="Revenue"
+            value={formatMoney(overview.revenueMajor, overview.currency)}
+            hint="Paid orders"
+            tone="success"
+            icon={<PaymentsOutlinedIcon sx={{ fontSize: 16 }} />}
+          />
+          <AdminMetricTile
+            compact
+            label="Profit"
+            value={
+              overview.profitHasCostData
+                ? formatMoney(overview.profitMajor, overview.currency)
+                : "—"
+            }
+            hint={
+              overview.profitHasCostData
+                ? "Revenue − product cost"
+                : "Set cost price on products"
+            }
+            tone="primary"
+            icon={<TrendingUpOutlinedIcon sx={{ fontSize: 16 }} />}
+          />
+          <AdminMetricTile
+            compact
+            label="Orders"
+            value={String(overview.orderCount)}
+            hint="Paid orders"
+            tone="primary"
+            icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 16 }} />}
+          />
+          <AdminMetricTile
+            compact
+            label="Products"
+            value={String(overview.productCount)}
+            hint="In catalog"
+            tone="neutral"
+            icon={<Inventory2OutlinedIcon sx={{ fontSize: 16 }} />}
+          />
+          <AdminMetricTile
+            compact
+            label="Customers"
+            value={canCustomers ? String(customerCount) : "—"}
+            hint="Paid buyers"
+            tone="neutral"
+            icon={<PeopleOutlinedIcon sx={{ fontSize: 16 }} />}
+          />
         </div>
       </section>
 
-      <AdminDashboardCharts analytics={analytics} range={range} />
+      <div
+        className={cn(
+          "grid gap-6",
+          setupIncomplete ? "lg:grid-cols-[1.15fr_0.85fr]" : "",
+        )}
+      >
+        <AdminAttentionList items={attentionItems} />
 
-      <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <AdminCard>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <h2 className="text-[15px] font-semibold tracking-tight">
-                Recent Orders
-              </h2>
-              <p className="mt-1 text-sm text-[var(--color-muted)]">
-                Latest purchases from your storefront.
-              </p>
-            </div>
-            {canOrders ? (
-              <Link
-                href={getAdminPath("/orders")}
-                className={cn(adminBtn("ghost"), "!min-h-8 !px-2 !text-xs")}
-              >
-                View all
-              </Link>
-            ) : null}
-          </div>
-          {overview.recentOrders.length === 0 ? (
-            <EmptyState
-              title="No orders yet"
-              description="When customers place orders, they will show up here."
-            />
-          ) : (
-            <ul className="divide-y divide-[var(--color-border)]">
-              {overview.recentOrders.map((order) => (
-                <li key={order.id}>
-                  <Link
-                    href={getAdminPath(`/orders/${order.id}`)}
-                    className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm transition-colors hover:text-[var(--color-primary)]"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-semibold">{order.orderNumber}</p>
-                      <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-                        {formatDateTime(order.createdAt)} ·{" "}
-                        {orderStatusLabel(order.status)}
-                        {order.customerName || order.customerEmail
-                          ? ` · ${order.customerName || order.customerEmail}`
-                          : ""}
-                      </p>
-                    </div>
-                    <p className="shrink-0 font-semibold tabular-nums">
-                      {formatMoney(order.grandTotal, order.currency)}
-                    </p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </AdminCard>
-
-        {hasPermission(admin, "settings.view") ? (
+        {setupIncomplete ? (
           <AdminSetupChecklist
             items={setup.items}
             completedCount={setup.completedCount}
             alwaysShow
           />
-        ) : (
-          <AdminCard>
-            <h2 className="text-[15px] font-semibold tracking-tight">
-              Store Setup
-            </h2>
-            <p className="mt-2 text-sm text-[var(--color-muted)]">
-              Setup progress is available when you can manage store settings.
-            </p>
-          </AdminCard>
-        )}
+        ) : null}
       </div>
+
+      <AdminSection
+        title="Recent orders"
+        description="Latest purchases — open one to fulfill or reply."
+        actions={
+          canOrders ? (
+            <Link
+              href={getAdminPath("/orders")}
+              className={cn(adminBtn("ghost"), "!min-h-8 !px-2 !text-xs")}
+            >
+              View all
+            </Link>
+          ) : null
+        }
+      >
+        {overview.recentOrders.length === 0 ? (
+          <EmptyState
+            title="No orders yet"
+            description="When customers place orders, they will show up here."
+          />
+        ) : (
+          <ul className="divide-y divide-[var(--color-border)]">
+            {overview.recentOrders.map((order) => (
+              <li key={order.id}>
+                <Link
+                  href={getAdminPath(`/orders/${order.id}`)}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3.5 text-sm transition-colors hover:text-[var(--color-primary)]"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold">{order.orderNumber}</p>
+                      <AdminStatusBadge tone={statusTone(order.status)}>
+                        {orderStatusLabel(order.status)}
+                      </AdminStatusBadge>
+                    </div>
+                    <p className="mt-1 text-xs text-[var(--color-muted)]">
+                      {formatDateTime(order.createdAt)}
+                      {order.customerName || order.customerEmail
+                        ? ` · ${order.customerName || order.customerEmail}`
+                        : ""}
+                    </p>
+                  </div>
+                  <p className="shrink-0 font-semibold tabular-nums">
+                    {formatMoney(order.grandTotal, order.currency)}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminSection>
+
+      <AdminDashboardCharts analytics={analytics} range={range} />
 
       <p className="text-xs text-[var(--color-muted)]">
         Platform template v{APP_VERSION}

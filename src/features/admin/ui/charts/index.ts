@@ -7,6 +7,7 @@ export {
   truncateChartLabel,
 } from "@/features/admin/ui/charts/tokens";
 export { AdminChartCard } from "@/features/admin/ui/charts/AdminChartCard";
+export { AdminChartTooltip } from "@/features/admin/ui/charts/AdminChartTooltip";
 export {
   AdminVerticalBarChart,
   type AdminVerticalBarPoint,

@@ -16,8 +16,8 @@ import {
   ADMIN_CHART_HOVER_PALETTE,
   ADMIN_CHART_PALETTE,
   adminChartAxisTick,
-  adminChartTooltipStyle,
 } from "@/features/admin/ui/charts/tokens";
+import { AdminChartTooltip } from "@/features/admin/ui/charts/AdminChartTooltip";
 
 export type AdminVerticalBarPoint = {
   label: string;
@@ -78,12 +78,20 @@ export function AdminVerticalBarChart({
             cursor={{
               fill: "color-mix(in srgb, var(--color-primary) 8%, transparent)",
             }}
-            contentStyle={adminChartTooltipStyle}
-            formatter={(value) => {
-              const n = Number(value) || 0;
-              return [formatValue ? formatValue(n) : String(n), valueLabel];
-            }}
-            labelStyle={{ color: "var(--color-muted)", marginBottom: 2 }}
+            content={({ active, payload, label }) => (
+              <AdminChartTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                formatter={(value) => {
+                  const n = Number(value) || 0;
+                  return [
+                    formatValue ? formatValue(n) : String(n),
+                    valueLabel,
+                  ];
+                }}
+              />
+            )}
           />
           <Bar
             dataKey="value"

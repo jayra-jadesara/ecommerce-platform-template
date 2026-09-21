@@ -16,9 +16,9 @@ import {
   ADMIN_CHART_HOVER_PALETTE,
   ADMIN_CHART_PALETTE,
   adminChartAxisTick,
-  adminChartTooltipStyle,
   truncateChartLabel,
 } from "@/features/admin/ui/charts/tokens";
+import { AdminChartTooltip } from "@/features/admin/ui/charts/AdminChartTooltip";
 
 export type AdminHorizontalBarPoint = {
   /** Full name (shown in tooltip). */
@@ -133,20 +133,24 @@ export function AdminHorizontalBarChart({
             cursor={{
               fill: "color-mix(in srgb, var(--color-primary) 10%, transparent)",
             }}
-            contentStyle={adminChartTooltipStyle}
-            labelFormatter={(_label, payload) => {
-              const full = payload?.[0]?.payload?.name;
-              return typeof full === "string" ? full : String(_label ?? "");
-            }}
-            formatter={(value) => {
-              const n = Number(value) || 0;
-              return [formatValue ? formatValue(n) : String(n), valueLabel];
-            }}
-            labelStyle={{
-              color: "var(--color-foreground)",
-              fontWeight: 600,
-              marginBottom: 2,
-            }}
+            content={({ active, payload, label }) => (
+              <AdminChartTooltip
+                active={active}
+                payload={payload}
+                label={label}
+                labelFormatter={(_label, rows) => {
+                  const full = rows?.[0]?.payload?.name;
+                  return typeof full === "string" ? full : String(_label ?? "");
+                }}
+                formatter={(value) => {
+                  const n = Number(value) || 0;
+                  return [
+                    formatValue ? formatValue(n) : String(n),
+                    valueLabel,
+                  ];
+                }}
+              />
+            )}
           />
           <Bar
             dataKey="value"

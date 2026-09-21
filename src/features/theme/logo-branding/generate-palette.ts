@@ -278,24 +278,27 @@ function buildLight(primary: Rgb, secondary: Rgb, accent: Rgb): ColorTokens | nu
   );
 }
 
+/** Premium zinc charcoal steps — brand stays on CTAs, not on chrome. */
+const DARK_CHROME = {
+  background: { r: 12, g: 12, b: 14 },
+  surface: { r: 20, g: 20, b: 22 },
+  card: { r: 28, g: 28, b: 31 },
+  border: { r: 46, g: 46, b: 51 },
+  foreground: { r: 250, g: 250, b: 250 },
+  muted: { r: 161, g: 161, b: 170 },
+  footerBg: { r: 16, g: 16, b: 18 },
+  footerFg: { r: 228, g: 228, b: 231 },
+} as const;
+
 function buildDark(primary: Rgb, secondary: Rgb, accent: Rgb): ColorTokens | null {
-  // Soft charcoal chrome — not pure black voids.
+  // Neutral elevated charcoal — no primary mix into page/sidebar/cards.
   const darkPrimary = lighten(primary, 0.22);
-  const background = { r: 18, g: 18, b: 18 };
-  const surface = { r: 28, g: 28, b: 28 };
-  const card = { r: 36, g: 36, b: 36 };
-  const border = mix(darkPrimary, { r: 58, g: 58, b: 58 }, 0.72);
-  const foreground = { r: 250, g: 250, b: 250 };
-  const muted = { r: 168, g: 168, b: 168 };
   const accentHsl = rgbToHsl(accent);
   const accentMuted = hslToRgb({
     h: accentHsl.h,
-    s: Math.min(0.5, accentHsl.s * 0.7),
-    l: Math.min(0.5, Math.max(0.4, accentHsl.l * 0.85)),
+    s: Math.min(0.55, accentHsl.s * 0.75),
+    l: Math.min(0.55, Math.max(0.42, accentHsl.l * 0.88)),
   });
-  // Elevated charcoal footer (readable band, not #000)
-  const footerBg = { r: 32, g: 30, b: 28 };
-  const footerFg = { r: 245, g: 240, b: 232 };
   const secondaryLite = lighten(
     isMuddyBrown(secondary) ? CHARCOAL : secondary,
     0.35,
@@ -306,19 +309,19 @@ function buildDark(primary: Rgb, secondary: Rgb, accent: Rgb): ColorTokens | nul
       primary: rgbToHex(darkPrimary),
       secondary: rgbToHex(secondaryLite),
       accent: rgbToHex(accentMuted),
-      background: rgbToHex(background),
-      foreground: rgbToHex(foreground),
-      surface: rgbToHex(surface),
-      card: rgbToHex(card),
-      border: rgbToHex(border),
-      muted: rgbToHex(muted),
+      background: rgbToHex(DARK_CHROME.background),
+      foreground: rgbToHex(DARK_CHROME.foreground),
+      surface: rgbToHex(DARK_CHROME.surface),
+      card: rgbToHex(DARK_CHROME.card),
+      border: rgbToHex(DARK_CHROME.border),
+      muted: rgbToHex(DARK_CHROME.muted),
       success: "#a3e635",
       warning: "#fbbf24",
       error: "#f87171",
-      headerBackground: rgbToHex(surface),
-      headerForeground: rgbToHex(foreground),
-      footerBackground: rgbToHex(footerBg),
-      footerForeground: rgbToHex(footerFg),
+      headerBackground: rgbToHex(DARK_CHROME.surface),
+      headerForeground: rgbToHex(DARK_CHROME.foreground),
+      footerBackground: rgbToHex(DARK_CHROME.footerBg),
+      footerForeground: rgbToHex(DARK_CHROME.footerFg),
       buttonBackground: rgbToHex(darkPrimary),
       buttonForeground: contrastText(darkPrimary),
     },
