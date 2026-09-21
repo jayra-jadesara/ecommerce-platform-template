@@ -23,6 +23,11 @@ export type AnimationPresetDb =
   | "none";
 export type AnimationIntensityDb = "subtle" | "medium" | "strong";
 export type ProductStatus = "draft" | "active" | "archived";
+export type ProductReviewStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "hidden";
 export type PageStatus = "draft" | "published" | "archived";
 export type BlogPostStatus = "draft" | "published" | "archived";
 export type BlogLayoutPreset = "GRID" | "LIST" | "FEATURED_GRID";
@@ -170,6 +175,8 @@ export type Database = {
           footer_show_featured_product: boolean;
           footer_featured_product_id: string | null;
           copyright_text: string | null;
+          reviews_enabled: boolean;
+          reviews_auto_approve: boolean;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -221,6 +228,8 @@ export type Database = {
           footer_show_featured_product?: boolean;
           footer_featured_product_id?: string | null;
           copyright_text?: string | null;
+          reviews_enabled?: boolean;
+          reviews_auto_approve?: boolean;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -755,6 +764,8 @@ export type Database = {
           seo_title: string | null;
           seo_description: string | null;
           model_path: string | null;
+          rating_avg: number;
+          rating_count: number;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -774,6 +785,8 @@ export type Database = {
           seo_title?: string | null;
           seo_description?: string | null;
           model_path?: string | null;
+          rating_avg?: number;
+          rating_count?: number;
           created_at?: string;
           updated_at?: string;
         };
@@ -1700,6 +1713,44 @@ export type Database = {
           Database["public"]["Tables"]["career_applications"]["Insert"]
         >;
         Relationships: [];
+      };
+      product_reviews: {
+        Row: {
+          id: string;
+          store_id: string;
+          product_id: string;
+          user_id: string;
+          rating: number;
+          title: string | null;
+          body: string;
+          author_name: string | null;
+          status: ProductReviewStatus;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          product_id: string;
+          user_id: string;
+          rating: number;
+          title?: string | null;
+          body?: string;
+          author_name?: string | null;
+          status?: ProductReviewStatus;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["product_reviews"]["Insert"]
+        >;
+        Relationships: [
+          {
+            foreignKeyName: "product_reviews_product_id_fkey";
+            columns: ["product_id"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       certifications: {
         Row: {

@@ -529,7 +529,7 @@ async function getProductBySlugUncached(
       `
       id, name, slug, short_description, description, brand, ingredients,
       usage_instructions, featured, returns_allowed, return_policy, seo_title, seo_description,
-      model_path,
+      model_path, rating_avg, rating_count,
       categories ( id, name, slug ),
       product_variants (
         id, name, sku, price, compare_at_price, weight, unit,
@@ -635,6 +635,12 @@ async function getProductBySlugUncached(
       const raw = (data as { model_path?: string | null }).model_path ?? null;
       return isSafeModelStoragePath(raw) ? raw!.trim() : null;
     })(),
+    ratingAvg: Number(
+      (data as { rating_avg?: number | null }).rating_avg ?? 0,
+    ),
+    ratingCount: Number(
+      (data as { rating_count?: number | null }).rating_count ?? 0,
+    ),
     category: category
       ? { id: category.id, name: category.name, slug: category.slug }
       : null,

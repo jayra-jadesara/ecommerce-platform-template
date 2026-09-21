@@ -21,11 +21,11 @@ export function DeliveryInfoBlock({ currency }: Props) {
   const threshold = hint.data.thresholdMajor;
 
   return (
-    <div className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <h2 className="text-sm font-semibold text-[var(--color-foreground)]">
+    <div className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5">
+      <h2 className="text-xs font-semibold text-[var(--color-foreground)]">
         Delivery
       </h2>
-      <ul className="mt-2 space-y-1.5 text-sm text-[var(--color-muted)]">
+      <ul className="mt-1 space-y-0.5 text-xs leading-snug text-[var(--color-muted)]">
         {threshold != null && threshold > 0 ? (
           <li>
             Free delivery above {formatMoney(threshold, currency || hint.data.currency)}

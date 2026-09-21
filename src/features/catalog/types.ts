@@ -24,6 +24,8 @@ export type StorefrontProductDetail = {
   seoDescription: string | null;
   /** Trusted store-scoped GLB/GLTF path, or null. */
   modelPath: string | null;
+  ratingAvg: number;
+  ratingCount: number;
   category: { id: string; name: string; slug: string } | null;
   images: StorefrontProductImage[];
   variants: Array<{

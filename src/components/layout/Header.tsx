@@ -198,7 +198,6 @@ export function Header({
   const hydrated = useHasHydrated();
   const [menuPath, setMenuPath] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchPath, setSearchPath] = useState(pathname);
   const [scrolled, setScrolled] = useState(false);
   const theme = useThemeModeOptional();
   const resolvedMode = theme?.resolvedMode ?? "light";
@@ -211,11 +210,10 @@ export function Header({
     [categoryMenu, categoryMenuEnabled],
   );
 
-  // Close search when the route changes (React-recommended props→state adjust).
-  if (searchPath !== pathname) {
-    setSearchPath(pathname);
-    if (searchOpen) setSearchOpen(false);
-  }
+  useEffect(() => {
+    setSearchOpen(false);
+    setMenuPath(null);
+  }, [pathname]);
 
   useEffect(() => {
     const onScroll = () =>

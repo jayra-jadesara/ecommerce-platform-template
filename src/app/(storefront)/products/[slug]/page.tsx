@@ -20,6 +20,13 @@ import {
 } from "@/features/seo";
 import { Container, StorefrontBreadcrumb } from "@/components/layout";
 import { absoluteUrl } from "@/lib/site-url";
+import { ProductReviewsSection } from "@/features/reviews/components/ProductReviewsSection";
+import {
+  getMyProductReview,
+  getProductReviewSummary,
+  getReviewsEnabled,
+  listApprovedProductReviews,
+} from "@/features/reviews/service";
 
 export const dynamic = "force-dynamic";
 
@@ -82,21 +89,47 @@ export default async function ProductDetailPage({
   if (!product) notFound();
 
   const isAuthenticated = Boolean(user);
-  const [related, popularRaw] = await Promise.all([
-    listSimilarStorefrontProducts({
-      productId: product.id,
-      categoryId: product.category?.id ?? null,
-      limit: 5,
-    }),
-    listPopularStorefrontProducts({
-      excludeProductId: product.id,
-      limit: 8,
-    }),
-  ]);
+  const reviewsEnabled = await getReviewsEnabled();
+  const [related, popularRaw, reviewSummary, approvedReviews, myReview] =
+    await Promise.all([
+      listSimilarStorefrontProducts({
+        productId: product.id,
+        categoryId: product.category?.id ?? null,
+        limit: 5,
+      }),
+      listPopularStorefrontProducts({
+        excludeProductId: product.id,
+        limit: 8,
+      }),
+      reviewsEnabled
+        ? getProductReviewSummary(product.id)
+        : Promise.resolve({
+            productId: product.id,
+            average: 0,
+            count: 0,
+            distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+          }),
+      reviewsEnabled
+        ? listApprovedProductReviews(product.id, "newest", 4)
+        : Promise.resolve([]),
+      reviewsEnabled && isAuthenticated
+        ? getMyProductReview(product.id)
+        : Promise.resolve(null),
+    ]);
   const relatedIds = new Set(related.map((p) => p.id));
   const popular = popularRaw
     .filter((p) => !relatedIds.has(p.id))
     .slice(0, 5);
+
+  const ratingCount = reviewsEnabled
+    ? Math.max(product.ratingCount, reviewSummary.count)
+    : 0;
+  const ratingAvg =
+    ratingCount > 0
+      ? product.ratingCount > 0
+        ? product.ratingAvg
+        : reviewSummary.average
+      : 0;
 
   const productLd = buildProductJsonLd({
     name: product.name,
@@ -116,6 +149,10 @@ export default async function ProductDetailPage({
       stockStatus: variant.stockStatus,
     })),
     category: product.category,
+    aggregateRating:
+      ratingCount > 0
+        ? { ratingValue: ratingAvg, reviewCount: ratingCount }
+        : null,
   });
 
   const crumbs = [
@@ -133,7 +170,11 @@ export default async function ProductDetailPage({
   ];
 
   return (
-    <Container className="relative z-0 py-8 md:py-12">
+    <Container
+      flush
+      constrained={false}
+      className="relative z-0 mx-auto w-full max-w-[var(--layout-content-max,1520px)] py-8 pl-4 pr-[max(1rem,var(--sf-dev-edge-clearance,0px))] sm:pl-5 sm:pr-[max(1.25rem,var(--sf-dev-edge-clearance,0px))] md:py-10 md:pl-6 md:pr-[max(1.5rem,var(--sf-dev-edge-clearance,0px))]"
+    >
       <JsonLdScript data={[productLd, buildBreadcrumbJsonLd(crumbs)]} />
       <StorefrontBreadcrumb
         items={[
@@ -158,6 +199,7 @@ export default async function ProductDetailPage({
         animation={config.animation}
         shareUrl={absoluteUrl(`/products/${product.slug}`)}
         social={config.social}
+        reviewsEnabled={reviewsEnabled}
       />
       <RelatedProducts
         products={related}
@@ -174,6 +216,23 @@ export default async function ProductDetailPage({
         currency={config.store.currency}
         isAuthenticated={isAuthenticated}
       />
+      {reviewsEnabled ? (
+        <ProductReviewsSection
+          productId={product.id}
+          productSlug={product.slug}
+          productName={product.name}
+          productImageUrl={
+            (
+              product.images.find((image) => image.isPrimary) ??
+              product.images[0]
+            )?.url ?? null
+          }
+          isAuthenticated={isAuthenticated}
+          summary={reviewSummary}
+          reviews={approvedReviews}
+          myReview={myReview}
+        />
+      ) : null}
     </Container>
   );
 }

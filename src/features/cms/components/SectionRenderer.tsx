@@ -30,6 +30,7 @@ import {
   sfSectionInner,
 } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
+import { StarRating } from "@/features/reviews/components/StarRating";
 import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
 import {
   resolveMotionConfig,
@@ -577,10 +578,12 @@ export function SectionRenderer({
                     </p>
                   ) : null}
                   {item.rating ? (
-                    <p className="mt-1 text-xs text-[var(--color-muted)]" aria-label={`Rating ${item.rating} of 5`}>
-                      {"★".repeat(item.rating)}
-                      {"☆".repeat(5 - item.rating)}
-                    </p>
+                    <StarRating
+                      value={item.rating}
+                      size="sm"
+                      className="mt-1"
+                      aria-label={`Rating ${item.rating} of 5`}
+                    />
                   ) : null}
                 </li>
               ))}
@@ -599,7 +602,7 @@ export function SectionRenderer({
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
           <div className={sfSectionInner()}>
-            <div className="mx-auto max-w-3xl">
+            <div className="mx-auto w-full max-w-5xl">
               {c.title ? (
                 <div className="text-center">
                   <SectionAccentHeading title={c.title} {...accentFromConfig()} />
@@ -658,12 +661,14 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["newsletter"];
       return (
         <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-xl px-4 text-center">
+          <div className="mx-auto w-full max-w-5xl px-4 text-center">
             {c.heading ? (
               <SectionAccentHeading title={c.heading} {...accentFromConfig()} />
             ) : null}
             {c.description ? (
-              <p className="mt-2 text-[var(--color-muted)]">{c.description}</p>
+              <p className="mx-auto mt-2 max-w-2xl text-sm text-[var(--color-muted)] sm:text-[15px]">
+                {c.description}
+              </p>
             ) : null}
             <NewsletterSignup
               buttonText={c.buttonText || "Subscribe"}

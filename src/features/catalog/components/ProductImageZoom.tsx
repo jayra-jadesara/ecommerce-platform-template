@@ -30,7 +30,7 @@ export function ProductImageZoom({
   alt,
   className,
   zoom = 2,
-  lensSize = 140,
+  lensSize = 180,
 }: ProductImageZoomProps) {
   const frameRef = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(false);
@@ -111,13 +111,13 @@ export function ProductImageZoom({
         alt={alt}
         fill
         priority
-        className="object-contain p-4"
-        sizes="(max-width: 1024px) 90vw, 416px"
+        className="object-contain p-1.5 sm:p-2.5"
+        sizes="(max-width: 900px) 92vw, min(576px, 70vh)"
         draggable={false}
       />
 
       {canHover && !active ? (
-        <p className="pointer-events-none absolute bottom-3 left-1/2 z-[1] -translate-x-1/2 rounded-full bg-[color-mix(in_srgb,var(--color-card)_90%,transparent)] px-2.5 py-1 text-[10px] font-medium tracking-wide text-[var(--color-muted)] shadow-sm backdrop-blur-sm">
+        <p className="pointer-events-none absolute bottom-2 left-1/2 z-[1] -translate-x-1/2 text-[10px] font-medium tracking-wide text-[var(--color-muted)]">
           Hover to zoom
         </p>
       ) : null}
@@ -125,7 +125,7 @@ export function ProductImageZoom({
       {canHover && active ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-10 rounded-full border-2 border-[var(--color-card)] shadow-[0_8px_24px_rgba(0,0,0,0.25)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_30%,transparent)]"
+          className="pointer-events-none absolute z-10 rounded-full border-[2.5px] border-[var(--color-primary)] shadow-[0_10px_28px_color-mix(in_srgb,var(--color-foreground)_22%,transparent)] ring-2 ring-[color-mix(in_srgb,var(--color-primary)_22%,transparent)]"
           style={{
             width: lensSize,
             height: lensSize,

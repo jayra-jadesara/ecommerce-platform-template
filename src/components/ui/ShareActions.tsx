@@ -38,8 +38,8 @@ function XGlyph({ className }: { className?: string }) {
     <svg
       className={className}
       viewBox="0 0 24 24"
-      width="18"
-      height="18"
+      width="15"
+      height="15"
       aria-hidden="true"
       fill="currentColor"
     >
@@ -48,7 +48,7 @@ function XGlyph({ className }: { className?: string }) {
   );
 }
 
-/** Britannia-style: white glyph on solid primary square. */
+/** Quiet icon control — no solid brand tiles. */
 function ShareChip({
   href,
   onClick,
@@ -61,7 +61,7 @@ function ShareChip({
   children: ReactNode;
 }) {
   const className =
-    "sf-share-chip inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.45rem] bg-[var(--color-primary)] text-[var(--color-button-foreground)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-primary)_28%,transparent)] transition-[transform,filter] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-accent)] motion-safe:hover:-translate-y-0.5";
+    "sf-share-chip inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
 
   if (href) {
     return (
@@ -126,12 +126,12 @@ export function ShareActions({
     ytProfile && isSafeAbsoluteUrl(ytProfile) ? ytProfile : undefined;
 
   return (
-    <div className={cn("flex flex-wrap items-center gap-2.5", className)}>
-      <p className="mr-0.5 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+    <div className={cn("flex flex-wrap items-center gap-0.5", className)}>
+      <p className="mr-1.5 text-[0.65rem] font-medium uppercase tracking-[0.14em] text-[var(--color-muted)]">
         {label}
       </p>
       <ShareChip label="Facebook" href={fbShare}>
-        <FacebookIcon sx={{ fontSize: 20 }} />
+        <FacebookIcon sx={{ fontSize: 17 }} />
       </ShareChip>
       <ShareChip
         label={
@@ -142,7 +142,7 @@ export function ShareActions({
         href={ytHref}
         onClick={ytHref ? undefined : copyLink}
       >
-        <YouTubeIcon sx={{ fontSize: 20 }} />
+        <YouTubeIcon sx={{ fontSize: 17 }} />
       </ShareChip>
       <ShareChip
         label={
@@ -153,16 +153,16 @@ export function ShareActions({
         href={igHref}
         onClick={igHref ? undefined : copyLink}
       >
-        <InstagramIcon sx={{ fontSize: 20 }} />
+        <InstagramIcon sx={{ fontSize: 17 }} />
       </ShareChip>
       <ShareChip label="X" href={xShare}>
         <XGlyph />
       </ShareChip>
       <ShareChip label={copied ? "Copied" : "Copy link"} onClick={copyLink}>
         {copied ? (
-          <CheckIcon sx={{ fontSize: 20 }} />
+          <CheckIcon sx={{ fontSize: 17 }} />
         ) : (
-          <ContentCopyIcon sx={{ fontSize: 18 }} />
+          <ContentCopyIcon sx={{ fontSize: 15 }} />
         )}
       </ShareChip>
     </div>

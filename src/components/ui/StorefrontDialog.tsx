@@ -1,5 +1,6 @@
 "use client";
 
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import Dialog from "@mui/material/Dialog";
 import type { ReactNode } from "react";
 import { useId } from "react";
@@ -16,6 +17,8 @@ export type StorefrontDialogProps = {
   maxWidth?: "xs" | "sm" | "md";
   /** Tighter padding, smaller type — cancel / quick confirm flows */
   compact?: boolean;
+  /** Show an X close control in the header (default false). */
+  showClose?: boolean;
   className?: string;
 };
 
@@ -33,6 +36,7 @@ export function StorefrontDialog({
   pending = false,
   maxWidth = "sm",
   compact = false,
+  showClose = false,
   className,
 }: StorefrontDialogProps) {
   const titleId = useId();
@@ -79,9 +83,22 @@ export function StorefrontDialog({
     >
       <div
         className={cn(
+          "relative",
           compact ? "px-4 pb-1 pt-3.5" : "px-5 pb-2 pt-5 md:px-6 md:pt-6",
+          showClose && (compact ? "pr-11" : "pr-12"),
         )}
       >
+        {showClose ? (
+          <button
+            type="button"
+            aria-label="Close"
+            disabled={pending}
+            onClick={onClose}
+            className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] hover:text-[var(--color-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+          >
+            <CloseRoundedIcon sx={{ fontSize: 20 }} aria-hidden />
+          </button>
+        ) : null}
         <h2
           id={titleId}
           className={cn(

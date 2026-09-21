@@ -484,26 +484,28 @@ export function ProductsCatalog({
             />
           ) : view === "grid" ? (
             <ul className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4">
-              {products.map((product) => (
+              {products.map((product, index) => (
                 <li key={product.id} className="flex h-full min-w-0">
                   <ProductCard
                     product={product}
                     currency={currency}
                     isAuthenticated={isAuthenticated}
                     layout="grid"
+                    priority={index < 4}
                   />
                 </li>
               ))}
             </ul>
           ) : (
-            <ul className="mx-auto flex max-w-5xl flex-col gap-5">
-              {products.map((product) => (
+            <ul className="flex w-full flex-col gap-3 sm:gap-3.5">
+              {products.map((product, index) => (
                 <li key={product.id} className="min-w-0">
                   <ProductCard
                     product={product}
                     currency={currency}
                     isAuthenticated={isAuthenticated}
                     layout="list"
+                    priority={index < 2}
                   />
                 </li>
               ))}

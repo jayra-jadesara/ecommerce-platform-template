@@ -1,23 +1,97 @@
 /* Storefront atmosphere — token-driven, white-label safe */
 
-/* Product detail layout helpers (columns set via inline styles in component). */
+/* Product detail — gallery sized to a viewport-fit square stage (blue-box target). */
+.sf-pdp-layout {
+  --sf-pdp-stage: min(36rem, calc(100dvh - 11.5rem));
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .sf-pdp-layout {
+    grid-template-columns: minmax(0, var(--sf-pdp-stage)) minmax(0, 1fr);
+    gap: 1.75rem 2.25rem;
+  }
+}
+
 .sf-pdp-gallery {
   width: 100%;
-  max-width: 28rem;
+  max-width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .sf-pdp-gallery {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 0.75rem;
+    /* Square stage follows the column width so thumbs never spill off the page */
+    aspect-ratio: 1 / 1;
+    width: 100%;
+    max-width: var(--sf-pdp-stage);
+    max-height: var(--sf-pdp-stage);
+    height: auto;
+  }
+}
+
+.sf-pdp-thumbs {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  order: 2;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .sf-pdp-thumbs {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    order: 0;
+    width: 4.75rem;
+    flex-shrink: 0;
+    height: auto;
+    max-height: 100%;
+    min-height: 0;
+    align-self: stretch;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 2px;
+    scrollbar-width: thin;
+  }
 }
 
 .sf-pdp-media {
   position: relative;
   width: 100%;
-  max-width: 28rem;
+  flex: 1 1 auto;
   aspect-ratio: 1 / 1;
+  max-width: var(--sf-pdp-stage);
+  max-height: var(--sf-pdp-stage);
   height: auto;
   overflow: hidden;
+}
+
+@media (min-width: 640px) {
+  .sf-pdp-media {
+    aspect-ratio: auto;
+    width: auto;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    flex: 1 1 0;
+    min-width: 0;
+  }
 }
 
 .sf-pdp-info {
   min-width: 0;
 }
+
 
 .sf-hero {
   position: relative;

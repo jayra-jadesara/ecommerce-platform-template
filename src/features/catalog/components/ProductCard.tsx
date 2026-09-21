@@ -38,6 +38,8 @@ interface ProductCardProps {
   layout?: "grid" | "list";
   /** Tighter catalog tiles (smaller type, icons, CTA). */
   density?: "default" | "compact";
+  /** Prefer this image for LCP (above-the-fold catalog tiles). */
+  priority?: boolean;
 }
 
 export function ProductCard({
@@ -46,6 +48,7 @@ export function ProductCard({
   isAuthenticated = false,
   layout = "grid",
   density = "default",
+  priority = false,
 }: ProductCardProps) {
   const isList = layout === "list";
   const compact = density === "compact";
@@ -59,22 +62,19 @@ export function ProductCard({
   const defaultVariantId =
     product.defaultVariantId ?? variantOptions[0]?.id ?? null;
 
-  const [productScope, setProductScope] = useState(product.id);
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(
     defaultVariantId,
   );
   const [activeImage, setActiveImage] = useState(0);
   const [failedUrls, setFailedUrls] = useState<Set<string>>(() => new Set());
 
-  if (productScope !== product.id) {
-    setProductScope(product.id);
+  useEffect(() => {
     setSelectedVariantId(
-      product.defaultVariantId ??
-        (product.variantOptions?.[0]?.id ?? null),
+      product.defaultVariantId ?? product.variantOptions?.[0]?.id ?? null,
     );
     setActiveImage(0);
     setFailedUrls(new Set());
-  }
+  }, [product.id]); // eslint-disable-line react-hooks/exhaustive-deps -- reset tile when product identity changes
 
   const selectedOption = useMemo(
     () =>
@@ -201,7 +201,9 @@ export function ProductCard({
 
   const iconBtn =
     "inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] shadow-sm transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]";
-  const iconSize = "!text-[0.95rem]";
+  const wishlistIconBtn =
+    "inline-flex h-8 w-8 shrink-0 items-center justify-center text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50";
+  const iconSize = "!text-[1.05rem]";
   const ctaClass = cn(
     sfBtn("primary"),
     "w-full !min-h-8 !rounded-[var(--radius-default,0.5rem)] !px-2 !py-1.5 !text-[11px] !shadow-none",
@@ -239,7 +241,7 @@ export function ProductCard({
         aria-pressed={inWishlist}
         disabled={wishlistMutation.isPending}
         onClick={() => wishlistMutation.mutate()}
-        className={iconBtn}
+        className={wishlistIconBtn}
       >
         {inWishlist ? (
           <FavoriteIcon
@@ -254,7 +256,7 @@ export function ProductCard({
       <Link
         href={`/login?next=${encodeURIComponent(`/products/${product.slug}`)}`}
         aria-label="Sign in to add to wishlist"
-        className={iconBtn}
+        className={wishlistIconBtn}
       >
         <FavoriteBorderIcon fontSize="inherit" className={iconSize} />
       </Link>
@@ -282,7 +284,8 @@ export function ProductCard({
               width={112}
               height={112}
               className="h-full w-full object-contain p-1.5"
-              loading="lazy"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
               sizes="112px"
               quality={70}
               onError={() => markFailed(listThumbUrl)}
@@ -312,7 +315,8 @@ export function ProductCard({
               "sf-product-tile-image object-contain",
               compact ? "p-1.5" : "p-2 sm:p-2.5",
             )}
-            loading="lazy"
+            priority={priority}
+            loading={priority ? undefined : "lazy"}
             quality={70}
             onError={() => markFailed(activeUrl)}
           />

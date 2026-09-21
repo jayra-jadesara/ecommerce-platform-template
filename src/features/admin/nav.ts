@@ -10,6 +10,7 @@ export type AdminNavIcon =
   | "settings"
   | "categories"
   | "sizes"
+  | "reviews"
   | "errors"
   | "homepage"
   | "about"
@@ -105,6 +106,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         href: p("/catalog/products"),
         permissions: ["products.view"],
         icon: "products",
+        section: "catalog",
+      },
+      {
+        kind: "link",
+        id: "products-reviews",
+        label: "Reviews",
+        href: p("/catalog/reviews"),
+        permissions: ["reviews.view"],
+        icon: "reviews",
         section: "catalog",
       },
     ],
@@ -340,6 +350,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "products-categories",
   "products-sizes",
   "products-all",
+  "products-reviews",
   "orders",
   "error-logs",
   "customers",

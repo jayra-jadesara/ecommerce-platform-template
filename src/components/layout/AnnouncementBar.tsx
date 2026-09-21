@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Container } from "@/components/layout/Container";
 import type { AnnouncementConfig } from "@/types";
@@ -8,6 +6,7 @@ interface AnnouncementBarProps {
   announcement: AnnouncementConfig;
 }
 
+/** Server-friendly announcement strip above the storefront header. */
 export function AnnouncementBar({ announcement }: AnnouncementBarProps) {
   if (!announcement.enabled || !announcement.text?.trim()) return null;
 

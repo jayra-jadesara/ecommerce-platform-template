@@ -38,6 +38,8 @@ export type ProductJsonLdInput = {
     stockStatus: StockStatus;
   }>;
   category?: { name: string; slug: string } | null;
+  /** Approved review aggregates when count > 0. */
+  aggregateRating?: { ratingValue: number; reviewCount: number } | null;
 };
 
 function buildOffers(
@@ -109,6 +111,19 @@ export function buildProductJsonLd(input: ProductJsonLdInput): JsonLd {
   if (images.length > 1) json.image = images;
   if (brand) json.brand = { "@type": "Brand", name: brand };
   if (offers) json.offers = offers;
+  if (
+    input.aggregateRating &&
+    input.aggregateRating.reviewCount > 0 &&
+    Number.isFinite(input.aggregateRating.ratingValue)
+  ) {
+    json.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: Number(input.aggregateRating.ratingValue.toFixed(2)),
+      reviewCount: input.aggregateRating.reviewCount,
+      bestRating: 5,
+      worstRating: 1,
+    };
+  }
   return json;
 }
 

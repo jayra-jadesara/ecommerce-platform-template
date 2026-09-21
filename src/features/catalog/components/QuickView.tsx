@@ -9,7 +9,7 @@ import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addToCartAction } from "@/features/cart/actions";
 import { QuantityStepper } from "@/features/cart/components/QuantityStepper";
 import { syncCartQueryCaches } from "@/features/cart/sync-cart-query";
@@ -230,12 +230,10 @@ function QuickViewBody({
   }, [gallery, selected?.id]);
 
   const [pickedImageId, setPickedImageId] = useState<string | null>(null);
-  const [imageScope, setImageScope] = useState(selected?.id ?? null);
 
-  if (imageScope !== (selected?.id ?? null)) {
-    setImageScope(selected?.id ?? null);
+  useEffect(() => {
     setPickedImageId(null);
-  }
+  }, [selected?.id]);
 
   const activeImageId = pickedImageId ?? preferredImageId;
 

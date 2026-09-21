@@ -35,7 +35,8 @@ interface ProductPurchaseActionsProps {
    * `rail` — price/options, then qty + medium CTAs in one horizontal row (PDP).
    * `stack` — quantity then wider button row (default / mobile chrome).
    */
-  layout?: "rail" | "stack";
+  /** When false, omit wishlist control (e.g. PDP places it elsewhere). */
+  showWishlist?: boolean;
 }
 
 export function ProductPurchaseActions({
@@ -47,6 +48,7 @@ export function ProductPurchaseActions({
   isAuthenticated,
   leading,
   layout = "stack",
+  showWishlist = true,
 }: ProductPurchaseActionsProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -162,45 +164,36 @@ export function ProductPurchaseActions({
         {buyPending ? "Starting…" : "Buy it now"}
       </button>
 
-      {isAuthenticated ? (
-        <button
-          type="button"
-          disabled={wishlistMutation.isPending}
-          aria-pressed={inWishlist}
-          aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
-          onClick={() => wishlistMutation.mutate()}
-          className={cn(
-            layout === "rail" ? sfBtn("outline") : sfBtn("ghost"),
-            btnClass,
-            "gap-1.5",
-          )}
-          style={railBtnStyle}
-        >
-          {inWishlist ? (
-            <FavoriteIcon
-              fontSize="small"
-              className="!text-[var(--color-primary)]"
-              aria-hidden
-            />
-          ) : (
+      {showWishlist ? (
+        isAuthenticated ? (
+          <button
+            type="button"
+            disabled={wishlistMutation.isPending}
+            aria-pressed={inWishlist}
+            aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+            onClick={() => wishlistMutation.mutate()}
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)] disabled:opacity-50"
+          >
+            {inWishlist ? (
+              <FavoriteIcon
+                fontSize="small"
+                className="!text-[var(--color-primary)]"
+                aria-hidden
+              />
+            ) : (
+              <FavoriteBorderIcon fontSize="small" aria-hidden />
+            )}
+          </button>
+        ) : (
+          <a
+            href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
+            aria-label="Sign in to add to wishlist"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center text-[var(--color-foreground)] transition-colors hover:text-[var(--color-primary)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
+          >
             <FavoriteBorderIcon fontSize="small" aria-hidden />
-          )}
-          <span>{inWishlist ? "Saved" : "Wishlist"}</span>
-        </button>
-      ) : (
-        <a
-          href={`/login?next=${encodeURIComponent(`/products/${productSlug}`)}`}
-          className={cn(
-            layout === "rail" ? sfBtn("outline") : sfBtn("ghost"),
-            btnClass,
-            "gap-1.5",
-          )}
-          style={railBtnStyle}
-        >
-          <FavoriteBorderIcon fontSize="small" aria-hidden />
-          <span>{layout === "rail" ? "Wishlist" : "Sign in to save"}</span>
-        </a>
-      )}
+          </a>
+        )
+      ) : null}
     </>
   );
 
