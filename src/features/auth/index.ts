@@ -16,6 +16,7 @@ export {
   registerSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
   profileUpdateSchema,
 } from "./validations";
 export { RECOVERY_QUESTIONS } from "./recovery-questions";

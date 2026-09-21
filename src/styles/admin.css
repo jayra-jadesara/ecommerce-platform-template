@@ -498,8 +498,14 @@
 
 /* Dialogs + admin shell — enforce field rhythm everywhere */
 .MuiDialogContent-root .admin-form-stack,
+.admin-form-dialog-paper .admin-form-stack,
 .admin-shell .admin-form-stack {
   gap: 1.25rem !important;
+}
+
+/* Portaled password dialog — room for outlined floating labels */
+.admin-form-dialog-paper .admin-form-stack {
+  gap: 1.5rem !important;
 }
 
 .MuiDialogContent-root .admin-form-stack--compact,

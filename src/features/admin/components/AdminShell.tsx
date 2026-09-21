@@ -36,6 +36,7 @@ import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlin
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import IconButton from "@mui/material/IconButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { AdminUserMenu } from "@/features/admin/components/AdminUserMenu";
 import { LogoutControl } from "@/features/auth/components/LogoutControl";
 import { getAdminPath } from "@/config/admin-route";
 import {
@@ -673,12 +674,12 @@ export function AdminShell({
                 <OpenInNewIcon fontSize="small" />
               </a>
               <ThemeToggle />
-              <span
-                className="hidden h-8 w-8 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_16%,transparent)] text-[11px] font-semibold sm:inline-flex"
-                aria-hidden
-              >
-                {initials}
-              </span>
+              <AdminUserMenu
+                email={email}
+                roleLabel={roleLabel}
+                initials={initials}
+                loginRedirect={loginRedirect}
+              />
             </div>
           </header>
 

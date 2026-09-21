@@ -14,6 +14,7 @@ import {
   REGISTER_COUNTRY_CODE,
   registerSchema,
   resetPasswordSchema,
+  changePasswordSchema,
 } from "@/features/auth/validations";
 import { requireUser } from "@/features/auth/session";
 import { getAdminPath } from "@/config/admin-route";
@@ -655,6 +656,61 @@ export async function resetPasswordAction(
   if (error) return { ok: false, error: mapAuthError(error) };
 
   return { ok: true, message: "Password updated. You can continue to your account." };
+}
+
+/**
+ * Signed-in user changes their password after verifying the current one.
+ * Available to any authenticated user (admin UI entry point uses this).
+ */
+export async function changePasswordAction(
+  raw: unknown,
+): Promise<AuthActionResult> {
+  const blocked = await guardAuthRate();
+  if (blocked) return blocked;
+
+  const parsed = changePasswordSchema.safeParse(raw);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Invalid input.",
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user?.email) {
+    return { ok: false, error: "You must be signed in to change your password." };
+  }
+
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: parsed.data.currentPassword,
+  });
+
+  if (verifyError) {
+    return { ok: false, error: "Current password is incorrect." };
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: parsed.data.password,
+  });
+
+  if (error) {
+    await logAuthFailure({
+      operation: "password.change",
+      message: error.message,
+      error,
+      route: getAdminPath("/dashboard"),
+      severity: "ERROR",
+    });
+    return { ok: false, error: mapAuthError(error) };
+  }
+
+  return { ok: true, message: "Password updated." };
 }
 
 export async function updateProfileAction(
