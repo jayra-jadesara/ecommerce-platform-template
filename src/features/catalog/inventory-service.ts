@@ -70,7 +70,15 @@ export const adjustInventorySchema = z.object({
 export type AdjustInventoryValues = z.infer<typeof adjustInventorySchema>;
 
 export const importInventoryCsvSchema = z.object({
-  csv: z.string().min(1).max(2_000_000),
+  csv: z.string().min(1).max(2_000_000).optional(),
+  xlsxBase64: z.string().min(1).max(8_000_000).optional(),
+}).refine((v) => Boolean(v.csv || v.xlsxBase64), {
+  message: "Provide a CSV or Excel file.",
+});
+
+export const exportInventorySchema = z.object({
+  stock: z.enum(["ALL", "LOW", "OUT", "OK", "UNTRACKED"]).optional(),
+  search: z.string().trim().max(200).optional(),
 });
 
 type CatalogResult =
@@ -655,8 +663,10 @@ export async function listInventoryMovements(input: {
   }));
 }
 
-export async function exportInventoryCsv(): Promise<
-  | { ok: true; csv: string; filename: string }
+export async function exportInventoryExcel(
+  input: unknown = {},
+): Promise<
+  | { ok: true; base64: string; filename: string; mime: string }
   | { ok: false; error: string }
 > {
   const admin = await getCurrentAdmin();
@@ -664,12 +674,19 @@ export async function exportInventoryCsv(): Promise<
     return { ok: false, error: "You do not have permission to export inventory." };
   }
 
-  const storeId = await resolveActiveStoreId(await createSupabaseServerClient());
+  const parsed = exportInventorySchema.safeParse(input ?? {});
+  if (!parsed.success) {
+    return { ok: false, error: "Invalid export filters." };
+  }
+
+  const stockFilter = parsed.data.stock ?? "ALL";
+  const search = (parsed.data.search ?? "").trim().toLowerCase();
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) {
     return { ok: false, error: "Store not ready." };
   }
-
-  const supabase = await createSupabaseServerClient();
 
   const { data: settings } = await supabase
     .from("store_settings")
@@ -698,7 +715,7 @@ export async function exportInventoryCsv(): Promise<
     return { ok: false, error: "Unable to load inventory for export." };
   }
 
-  const rows = (variantRows ?? []).map((row) => {
+  let rows = (variantRows ?? []).map((row) => {
     const product = Array.isArray(row.products) ? row.products[0] : row.products;
     const invRaw = row.inventory;
     const inv = Array.isArray(invRaw) ? invRaw[0] : invRaw;
@@ -716,36 +733,87 @@ export async function exportInventoryCsv(): Promise<
     });
   });
 
+  if (search) {
+    rows = rows.filter((row) => {
+      const hay = `${row.productName} ${row.variantName} ${row.sku}`.toLowerCase();
+      return hay.includes(search);
+    });
+  }
+
+  if (stockFilter !== "ALL") {
+    rows = rows.filter((row) => {
+      if (stockFilter === "UNTRACKED") return row.status === "UNTRACKED";
+      if (stockFilter === "OUT") return row.status === "OUT_OF_STOCK";
+      if (stockFilter === "LOW") return row.status === "LOW_STOCK";
+      if (stockFilter === "OK") return row.status === "IN_STOCK";
+      return true;
+    });
+  }
+
   rows.sort((a, b) => {
     const byProduct = a.productName.localeCompare(b.productName);
     if (byProduct !== 0) return byProduct;
     return a.variantName.localeCompare(b.variantName);
   });
 
-  const escape = (value: string | number) => {
-    const s = String(value);
-    if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
-    return s;
-  };
+  const [{ getStoreBranding, getStoreTheme }, { buildInventoryWorkbook }] =
+    await Promise.all([
+      import("@/features/theme/service"),
+      import("@/features/catalog/inventory-excel"),
+    ]);
 
-  const lines = [
-    ["sku", "product", "size", "how_many", "left_to_sell", "status"].join(","),
-    ...rows.map((row) =>
-      [
-        escape(row.sku),
-        escape(row.productName),
-        escape(row.variantName),
-        escape(row.quantity),
-        escape(row.available),
-        escape(row.status),
-      ].join(","),
-    ),
-  ];
+  const [brand, theme] = await Promise.all([
+    getStoreBranding(),
+    getStoreTheme(),
+  ]);
+  const colors = theme.light;
+
+  const stockLabel =
+    stockFilter === "ALL"
+      ? "All"
+      : stockFilter === "OUT"
+        ? "Sold out"
+        : stockFilter === "LOW"
+          ? "Running low"
+          : stockFilter === "OK"
+            ? "OK"
+            : "Not counting";
+  const filterLabel = search
+    ? `Status ${stockLabel}; Search “${parsed.data.search?.trim()}”`
+    : `Status ${stockLabel}`;
+
+  const buffer = await buildInventoryWorkbook({
+    rows,
+    theme: {
+      brandName: brand.name || "Store",
+      primary: colors.primary,
+      foreground: colors.foreground,
+      muted: colors.muted,
+      surface: colors.surface,
+      card: colors.card,
+      border: colors.border,
+      success: colors.success,
+      warning: colors.warning,
+      error: colors.error,
+    },
+    filterLabel,
+    alertStockLimit: storeLowStockThreshold,
+    exportedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
+  });
+
+  const base64 = Buffer.from(buffer).toString("base64");
+  const slug = (brand.name || "inventory")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const day = new Date().toISOString().slice(0, 10);
 
   return {
     ok: true,
-    csv: `${lines.join("\n")}\n`,
-    filename: `inventory-${new Date().toISOString().slice(0, 10)}.csv`,
+    base64,
+    filename: `${slug || "inventory"}-stock-${day}.xlsx`,
+    mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   };
 }
 
@@ -759,70 +827,95 @@ export async function importInventoryCsv(
 
   const parsed = importInventoryCsvSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: "Invalid CSV." };
+    return { ok: false, error: "Invalid file. Upload the Excel Export or a CSV with sku + how_many." };
   }
 
-  const lines = parsed.data.csv
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+  let updates: Array<{ sku: string; quantity: number }> = [];
 
-  if (lines.length < 2) {
-    return { ok: false, error: "CSV needs a header row and at least one data row." };
-  }
+  if (parsed.data.xlsxBase64) {
+    const { extractInventoryUpdatesFromXlsx } = await import(
+      "@/features/catalog/inventory-excel"
+    );
+    const binary = Buffer.from(parsed.data.xlsxBase64, "base64");
+    const extracted = await extractInventoryUpdatesFromXlsx(
+      binary.buffer.slice(
+        binary.byteOffset,
+        binary.byteOffset + binary.byteLength,
+      ),
+    );
+    if ("error" in extracted) {
+      return { ok: false, error: extracted.error };
+    }
+    updates = extracted;
+  } else {
+    const lines = (parsed.data.csv ?? "")
+      .replace(/^\uFEFF/, "")
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter(Boolean);
 
-  const header = lines[0]!.toLowerCase().split(",").map((h) => h.trim().replace(/^"|"$/g, ""));
-  const skuIdx = header.findIndex((h) => h === "sku");
-  const qtyIdx = header.findIndex(
-    (h) => h === "how_many" || h === "quantity" || h === "qty",
-  );
-  if (skuIdx < 0 || qtyIdx < 0) {
-    return {
-      ok: false,
-      error: "CSV must include sku and how_many (or quantity) columns.",
-    };
-  }
+    if (lines.length < 2) {
+      return { ok: false, error: "CSV needs a header row and at least one data row." };
+    }
 
-  function parseCsvLine(line: string): string[] {
-    const out: string[] = [];
-    let cur = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i += 1) {
-      const ch = line[i]!;
-      if (inQuotes) {
-        if (ch === '"' && line[i + 1] === '"') {
-          cur += '"';
-          i += 1;
+    const header = lines[0]!
+      .toLowerCase()
+      .split(",")
+      .map((h) => h.trim().replace(/^"|"$/g, ""));
+    const skuIdx = header.findIndex((h) => h === "sku");
+    const qtyIdx = header.findIndex(
+      (h) => h === "how_many" || h === "quantity" || h === "qty",
+    );
+    if (skuIdx < 0 || qtyIdx < 0) {
+      return {
+        ok: false,
+        error: "CSV must include sku and how_many (or quantity) columns.",
+      };
+    }
+
+    function parseCsvLine(line: string): string[] {
+      const out: string[] = [];
+      let cur = "";
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const ch = line[i]!;
+        if (inQuotes) {
+          if (ch === '"' && line[i + 1] === '"') {
+            cur += '"';
+            i += 1;
+          } else if (ch === '"') {
+            inQuotes = false;
+          } else {
+            cur += ch;
+          }
         } else if (ch === '"') {
-          inQuotes = false;
+          inQuotes = true;
+        } else if (ch === ",") {
+          out.push(cur);
+          cur = "";
         } else {
           cur += ch;
         }
-      } else if (ch === '"') {
-        inQuotes = true;
-      } else if (ch === ",") {
-        out.push(cur);
-        cur = "";
-      } else {
-        cur += ch;
       }
+      out.push(cur);
+      return out;
     }
-    out.push(cur);
-    return out;
-  }
 
-  const updates: Array<{ sku: string; quantity: number }> = [];
-  for (const line of lines.slice(1)) {
-    const cols = parseCsvLine(line);
-    const sku = (cols[skuIdx] ?? "").trim();
-    const qtyRaw = (cols[qtyIdx] ?? "").trim();
-    if (!sku) continue;
-    const quantity = Number(qtyRaw);
-    if (!Number.isFinite(quantity) || quantity < 0 || !Number.isInteger(quantity)) {
-      return { ok: false, error: `Invalid quantity for SKU ${sku}.` };
+    for (const line of lines.slice(1)) {
+      const cols = parseCsvLine(line);
+      const sku = (cols[skuIdx] ?? "").trim();
+      const qtyRaw = (cols[qtyIdx] ?? "").trim();
+      if (!sku) continue;
+      const quantity = Number(qtyRaw);
+      if (
+        !Number.isFinite(quantity) ||
+        quantity < 0 ||
+        !Number.isInteger(quantity)
+      ) {
+        return { ok: false, error: `Invalid quantity for SKU ${sku}.` };
+      }
+      updates.push({ sku, quantity });
     }
-    updates.push({ sku, quantity });
   }
 
   if (!updates.length) {

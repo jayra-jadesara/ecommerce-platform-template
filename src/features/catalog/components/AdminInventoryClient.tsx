@@ -201,7 +201,7 @@ export function AdminInventoryClient({
   const [adjustRow, setAdjustRow] = useState<AdminInventoryRow | null>(null);
   const [adjustMode, setAdjustMode] = useState<"add" | "remove">("add");
   const [adjustDelta, setAdjustDelta] = useState("10");
-  const [adjustReason, setAdjustReason] = useState(DEFAULT_ADJUST_REASON);
+  const [adjustReason, setAdjustReason] = useState<string>(DEFAULT_ADJUST_REASON);
   const [adjustPending, setAdjustPending] = useState(false);
 
   const [historyRow, setHistoryRow] = useState<AdminInventoryRow | null>(null);
@@ -432,27 +432,63 @@ export function AdminInventoryClient({
 
   async function downloadCsv() {
     setError(null);
-    const result = await exportInventoryCsvAction();
+    const result = await exportInventoryCsvAction({
+      stock,
+      search: search.trim() || undefined,
+    });
     if (!result.ok) {
       setError(result.error);
       return;
     }
-    const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8" });
+    if (!("base64" in result) || !result.base64) {
+      setError("Export failed.");
+      return;
+    }
+    const binary = atob(result.base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], {
+      type:
+        result.mime ||
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = result.filename;
     a.click();
     URL.revokeObjectURL(url);
-    setSuccess("CSV downloaded.");
+    setSuccess("Excel downloaded (current filters applied).");
   }
 
   async function onImportFile(file: File | null) {
     if (!file || !canUpdate) return;
     setError(null);
     setSuccess(null);
-    const text = await file.text();
-    const result = await importInventoryCsvAction({ csv: text });
+    const name = file.name.toLowerCase();
+    const isExcel =
+      name.endsWith(".xlsx") ||
+      name.endsWith(".xls") ||
+      file.type.includes("spreadsheet") ||
+      file.type.includes("excel");
+
+    let result;
+    if (isExcel) {
+      const buffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+      }
+      const xlsxBase64 = btoa(binary);
+      result = await importInventoryCsvAction({ xlsxBase64 });
+    } else {
+      const text = await file.text();
+      result = await importInventoryCsvAction({ csv: text });
+    }
     if (!result.ok) {
       setError(result.error);
       return;
@@ -528,14 +564,14 @@ export function AdminInventoryClient({
               )}
             >
               <DownloadIcon sx={{ fontSize: 16 }} />
-              Export
+              Export Excel
             </button>
             {canUpdate ? (
               <>
                 <input
                   ref={fileRef}
                   type="file"
-                  accept=".csv,text/csv"
+                  accept=".xlsx,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
                   className="hidden"
                   onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;

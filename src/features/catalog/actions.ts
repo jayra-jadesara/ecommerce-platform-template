@@ -25,7 +25,7 @@ import {
 import {
   adjustInventory,
   bulkUpdateInventory,
-  exportInventoryCsv,
+  exportInventoryExcel,
   importInventoryCsv,
   listInventoryMovements,
   updateStoreInventoryAlert,
@@ -316,8 +316,8 @@ export async function listInventoryMovementsAction(variantId: string) {
   return listInventoryMovements({ variantId });
 }
 
-export async function exportInventoryCsvAction() {
-  return exportInventoryCsv();
+export async function exportInventoryCsvAction(input?: unknown) {
+  return exportInventoryExcel(input ?? {});
 }
 
 export async function importInventoryCsvAction(input: unknown) {
