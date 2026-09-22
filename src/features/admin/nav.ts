@@ -29,6 +29,7 @@ export type AdminNavSection =
   | "catalog"
   | "sales"
   | "content"
+  | "system"
   | "store";
 
 export type AdminNavLink = {
@@ -151,21 +152,21 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
   },
   {
     kind: "link",
-    id: "error-logs",
-    label: "Error Logs",
-    href: p("/error-logs"),
-    permissions: ["error_logs.view"],
-    icon: "errors",
-    section: "sales",
-  },
-  {
-    kind: "link",
     id: "customers",
     label: "Customers",
     href: p("/customers"),
     permissions: ["customers.view"],
     icon: "customers",
     section: "sales",
+  },
+  {
+    kind: "link",
+    id: "error-logs",
+    label: "Error Logs",
+    href: p("/error-logs"),
+    permissions: ["error_logs.view"],
+    icon: "errors",
+    section: "system",
   },
   {
     kind: "group",
@@ -371,6 +372,7 @@ export const ADMIN_NAV_SECTION_LABELS: Record<AdminNavSection, string> = {
   catalog: "Catalog",
   sales: "Sales",
   content: "Content",
+  system: "System",
   store: "Store",
 };
 

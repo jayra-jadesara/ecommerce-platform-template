@@ -96,6 +96,7 @@ const SECTION_ORDER: AdminNavSection[] = [
   "catalog",
   "sales",
   "content",
+  "system",
   "store",
 ];
 
