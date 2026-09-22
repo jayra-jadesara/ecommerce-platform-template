@@ -52,9 +52,9 @@ export function AdminChartTooltip({
     <div
       className={cn(
         "admin-chart-tooltip min-w-[8.5rem] max-w-[16rem] rounded-xl px-3 py-2",
-        "bg-[color-mix(in_srgb,var(--color-card)_82%,var(--color-foreground)_18%)]",
-        "border border-[color-mix(in_srgb,var(--color-border)_75%,var(--color-primary)_25%)]",
-        "text-[var(--color-foreground)] shadow-[0_12px_32px_color-mix(in_srgb,#000_45%,transparent)]",
+        "border border-[var(--color-border)] bg-[var(--color-card)]",
+        "text-[var(--color-foreground)]",
+        "shadow-[0_10px_28px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)]",
       )}
     >
       {title != null && title !== "" ? (

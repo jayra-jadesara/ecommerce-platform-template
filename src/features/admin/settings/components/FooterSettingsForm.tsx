@@ -457,7 +457,7 @@ export function FooterSettingsForm({
                             {["IG", "FB", "YT"].map((chip) => (
                               <span
                                 key={chip}
-                                className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_88%,#000)] px-1.5 text-[9px] font-bold text-[var(--color-button-foreground,#fff)]"
+                                className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_88%,var(--color-foreground)_12%)] px-1.5 text-[9px] font-bold text-[var(--color-button-foreground)]"
                               >
                                 {chip}
                               </span>
@@ -476,7 +476,9 @@ export function FooterSettingsForm({
                 </div>
 
                 <div className="border-t border-[color-mix(in_srgb,#000_35%,transparent)] bg-[color-mix(in_srgb,#0a0a0a_82%,var(--color-footer-background))] px-3.5 py-2 sm:px-4">
-                  <p className="text-[10px] text-white/85">{autoCopyright}</p>
+                  <p className="text-[10px] text-[color-mix(in_srgb,var(--color-footer-foreground)_85%,transparent)]">
+                    {autoCopyright}
+                  </p>
                 </div>
               </div>
             </div>

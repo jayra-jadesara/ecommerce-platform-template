@@ -1195,7 +1195,7 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--color-button-foreground, #fff);
+  color: var(--color-button-foreground);
   background: var(--color-primary);
 }
 
@@ -1270,8 +1270,7 @@ html.dark .admin-shell {
   background-color: var(--color-background);
 }
 
-html.dark .admin-shell aside,
-html.dark .admin-shell [data-admin-sidebar] {
+html.dark .admin-shell aside:not(.admin-sidebar):not([data-admin-sidebar]) {
   background-color: color-mix(
     in srgb,
     var(--color-surface) 94%,
@@ -1291,15 +1290,131 @@ html.dark .admin-shell .admin-card {
 }
 
 html.dark .admin-chart-tooltip {
+  /* Elevate above dark cards — light mode keeps pure --color-card */
   background: color-mix(
     in srgb,
-    var(--color-card) 78%,
-    var(--color-foreground) 22%
+    var(--color-card) 72%,
+    var(--color-foreground) 28%
   ) !important;
   border: 1px solid
-    color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%) !important;
+    color-mix(in srgb, var(--color-border) 80%, var(--color-primary) 20%) !important;
   box-shadow:
     0 12px 32px color-mix(in srgb, #000 55%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent) !important;
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent) !important;
+}
+
+/**
+ * Premium ecommerce admin sidebar — same card surface as metric tiles,
+ * thin brand rail, charcoal geometric “A” watermark (no primary wash).
+ */
+.admin-sidebar {
+  background-color: var(--color-card);
+  background-image:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-surface) 35%, var(--color-card)) 0%,
+      var(--color-card) 42%,
+      var(--color-card) 100%
+    );
+  border-right-color: var(--color-border) !important;
+  box-shadow:
+    inset -2px 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent),
+    1px 0 0 color-mix(in srgb, var(--color-foreground) 3%, transparent),
+    8px 0 28px color-mix(in srgb, var(--color-foreground) 3.5%, transparent);
+}
+
+.admin-sidebar-motif {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Soft depth under the letter */
+.admin-sidebar-motif__shade {
+  position: absolute;
+  left: -36%;
+  bottom: -22%;
+  width: 128%;
+  height: 58%;
+  background: color-mix(in srgb, var(--color-foreground) 2.8%, transparent);
+  clip-path: polygon(42% 12%, 100% 100%, 0% 100%);
+  transform: skewX(-5deg);
+}
+
+/* Peak of the A — charcoal only */
+.admin-sidebar-motif__triangle {
+  position: absolute;
+  left: -12%;
+  right: -12%;
+  bottom: -4%;
+  height: 54%;
+  background: linear-gradient(
+    185deg,
+    color-mix(in srgb, var(--color-foreground) 8.5%, transparent) 0%,
+    color-mix(in srgb, var(--color-foreground) 4%, transparent) 55%,
+    color-mix(in srgb, var(--color-foreground) 2%, transparent) 100%
+  );
+  clip-path: polygon(50% 0%, 4% 100%, 96% 100%);
+}
+
+/* Crossbar — quiet brand tint, not a pink wash */
+.admin-sidebar-motif__bar {
+  position: absolute;
+  left: 28%;
+  right: 28%;
+  bottom: 23%;
+  height: 2px;
+  border-radius: 999px;
+  background: color-mix(
+    in srgb,
+    var(--color-foreground) 22%,
+    var(--color-primary) 18%
+  );
+  opacity: 0.42;
+}
+
+.admin-sidebar-brand {
+  border-bottom-color: color-mix(
+    in srgb,
+    var(--color-border) 85%,
+    transparent
+  );
+  background: color-mix(in srgb, var(--color-card) 82%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+html.dark .admin-sidebar {
+  background-color: var(--color-card);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--color-surface) 70%, var(--color-card)) 0%,
+    var(--color-card) 100%
+  );
+  box-shadow:
+    inset -2px 0 0 color-mix(in srgb, var(--color-primary) 65%, transparent),
+    8px 0 32px color-mix(in srgb, #000 42%, transparent);
+}
+
+html.dark .admin-sidebar-motif__shade {
+  background: color-mix(in srgb, var(--color-foreground) 4.5%, transparent);
+}
+
+html.dark .admin-sidebar-motif__triangle {
+  background: linear-gradient(
+    185deg,
+    color-mix(in srgb, var(--color-foreground) 11%, transparent) 0%,
+    color-mix(in srgb, var(--color-foreground) 4%, transparent) 100%
+  );
+}
+
+html.dark .admin-sidebar-motif__bar {
+  background: color-mix(
+    in srgb,
+    var(--color-foreground) 35%,
+    var(--color-primary) 30%
+  );
+  opacity: 0.55;
 }
 

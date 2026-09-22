@@ -73,14 +73,14 @@ function previewButtonStyle(
   } else if (style === "floating") {
     Object.assign(base, {
       background: "var(--color-button-background, var(--color-primary))",
-      color: "var(--color-button-foreground, #fff)",
+      color: "var(--color-button-foreground)",
       boxShadow:
         "0 8px 18px color-mix(in srgb, var(--color-primary) 32%, transparent)",
     });
   } else {
     Object.assign(base, {
       background: "var(--color-button-background, var(--color-primary))",
-      color: "var(--color-button-foreground, #fff)",
+      color: "var(--color-button-foreground)",
     });
   }
 

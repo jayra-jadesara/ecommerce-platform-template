@@ -514,15 +514,15 @@ export function AdminShell({
 
   const navLinkClass = (active: boolean) =>
     cn(
-      "relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium transition-colors",
+      "relative flex items-center gap-2.5 rounded-xl px-2.5 py-[7px] text-[13px] font-medium transition-colors",
       active
-        ? "bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] font-semibold text-[var(--color-foreground)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_18%,transparent)] before:absolute before:inset-y-1.5 before:left-0 before:w-[3px] before:rounded-full before:bg-[var(--color-primary)]"
-        : "text-[var(--color-foreground)]/80 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)] hover:text-[var(--color-foreground)]",
+        ? "bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] font-semibold text-[var(--color-foreground)] shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--color-primary)_14%,transparent)] before:absolute before:inset-y-1.5 before:left-0 before:w-[2.5px] before:rounded-full before:bg-[var(--color-primary)]"
+        : "text-[var(--color-foreground)]/78 hover:bg-[color-mix(in_srgb,var(--color-foreground)_3.5%,transparent)] hover:text-[var(--color-foreground)]",
     );
 
   const sidebar = (
     <>
-      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-4">
+      <div className="admin-sidebar-brand flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-4">
         <Link
           href={getAdminPath("/dashboard")}
           className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight text-[var(--color-foreground)]"
@@ -574,8 +574,8 @@ export function AdminShell({
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,transparent)] px-3 py-3">
-        <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]">
+      <div className="relative z-[1] shrink-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_88%,transparent)] px-3 py-3 backdrop-blur-[6px]">
+        <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]">
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] text-[11px] font-semibold tracking-wide text-[var(--color-foreground)]"
             aria-hidden
@@ -609,15 +609,24 @@ export function AdminShell({
         )}
       >
         <aside
+          data-admin-sidebar
           className={cn(
-            "fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh w-[min(17.25rem,90vw)] flex-col border-r border-[var(--color-border)] transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-[var(--admin-sidebar-width)] lg:translate-x-0",
+            "admin-sidebar relative fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh w-[min(17.25rem,90vw)] flex-col overflow-hidden border-r border-[var(--color-border)] transition-transform duration-200 ease-out lg:static lg:z-auto lg:w-[var(--admin-sidebar-width)] lg:translate-x-0",
             adminSidebarBg(),
             open
               ? "translate-x-0 shadow-xl"
               : "-translate-x-full lg:translate-x-0 lg:shadow-none",
           )}
         >
-          {sidebar}
+          {/* Decorative “A” — charcoal watermark, matches card chrome */}
+          <div className="admin-sidebar-motif" aria-hidden>
+            <div className="admin-sidebar-motif__shade" />
+            <div className="admin-sidebar-motif__triangle" />
+            <div className="admin-sidebar-motif__bar" />
+          </div>
+          <div className="relative z-[1] flex h-full min-h-0 flex-col">
+            {sidebar}
+          </div>
         </aside>
 
         {open ? (

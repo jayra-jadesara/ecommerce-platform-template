@@ -93,7 +93,7 @@ export function staffEntityLabel(entityType: string): string {
   );
 }
 
-/** Soft accent for timeline / chips by entity area. */
+/** Soft accent for timeline / chips by entity area — theme tokens only. */
 export function staffEntityTone(entityType: string): {
   chip: string;
   dot: string;
@@ -101,20 +101,20 @@ export function staffEntityTone(entityType: string): {
   const key = entityType.toLowerCase();
   if (key.includes("product") || key.includes("categor")) {
     return {
-      chip: "bg-[color-mix(in_srgb,#0d9488_12%,var(--color-card))] text-[#0f766e] border-[color-mix(in_srgb,#0d9488_28%,var(--color-border))]",
-      dot: "bg-[#0d9488]",
+      chip: "bg-[color-mix(in_srgb,var(--color-success)_12%,var(--color-card))] text-[var(--color-success)] border-[color-mix(in_srgb,var(--color-success)_28%,var(--color-border))]",
+      dot: "bg-[var(--color-success)]",
     };
   }
   if (key.includes("order") || key.includes("payment") || key.includes("coupon")) {
     return {
-      chip: "bg-[color-mix(in_srgb,#2563eb_12%,var(--color-card))] text-[#1d4ed8] border-[color-mix(in_srgb,#2563eb_28%,var(--color-border))]",
-      dot: "bg-[#2563eb]",
+      chip: "bg-[color-mix(in_srgb,var(--color-accent)_12%,var(--color-card))] text-[var(--color-accent)] border-[color-mix(in_srgb,var(--color-accent)_28%,var(--color-border))]",
+      dot: "bg-[var(--color-accent)]",
     };
   }
   if (key.includes("media") || key.includes("brand") || key.includes("theme")) {
     return {
-      chip: "bg-[color-mix(in_srgb,#9333ea_12%,var(--color-card))] text-[#7e22ce] border-[color-mix(in_srgb,#9333ea_28%,var(--color-border))]",
-      dot: "bg-[#9333ea]",
+      chip: "bg-[color-mix(in_srgb,var(--color-secondary)_14%,var(--color-card))] text-[var(--color-secondary)] border-[color-mix(in_srgb,var(--color-secondary)_30%,var(--color-border))]",
+      dot: "bg-[var(--color-secondary)]",
     };
   }
   if (key.includes("admin") || key.includes("user") || key.includes("team")) {
@@ -125,8 +125,8 @@ export function staffEntityTone(entityType: string): {
   }
   if (key.includes("error")) {
     return {
-      chip: "bg-[color-mix(in_srgb,#dc2626_10%,var(--color-card))] text-[#b91c1c] border-[color-mix(in_srgb,#dc2626_25%,var(--color-border))]",
-      dot: "bg-[#dc2626]",
+      chip: "bg-[color-mix(in_srgb,var(--color-error)_10%,var(--color-card))] text-[var(--color-error)] border-[color-mix(in_srgb,var(--color-error)_25%,var(--color-border))]",
+      dot: "bg-[var(--color-error)]",
     };
   }
   return {

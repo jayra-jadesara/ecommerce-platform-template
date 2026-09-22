@@ -46,6 +46,10 @@ export type AdminDashboardAnalytics = {
     paid: number;
     delivered: number;
     revenue: number;
+    /** Gross profit in range: revenue − product cost. */
+    profit: number;
+    /** True when at least one sold line in range had cost_price set. */
+    profitHasCostData: boolean;
   };
   topSold: DashboardProductRank[];
   topWishlisted: DashboardProductRank[];
@@ -137,7 +141,14 @@ export async function getAdminDashboardAnalytics(
     to,
     currency: "INR",
     ordersByDay: emptySeries(from, to),
-    totals: { placed: 0, paid: 0, delivered: 0, revenue: 0 },
+    totals: {
+      placed: 0,
+      paid: 0,
+      delivered: 0,
+      revenue: 0,
+      profit: 0,
+      profitHasCostData: false,
+    },
     topSold: [],
     topWishlisted: [],
     topViewed: [],
@@ -241,13 +252,15 @@ export async function getAdminDashboardAnalytics(
   const ordersByDay = [...seriesMap.values()];
 
   let topSold: DashboardProductRank[] = [];
+  let totalsProfit = 0;
+  let profitHasCostData = false;
   const paidOrderIds = orders
     .filter((row) => paidIds.has(row.id))
     .map((row) => row.id);
   if (paidOrderIds.length) {
     const { data: items } = await supabase
       .from("order_items")
-      .select("product_id, product_name_snapshot, quantity")
+      .select("product_id, product_name_snapshot, quantity, variant_id")
       .in("order_id", paidOrderIds);
 
     const counts = new Map<
@@ -270,6 +283,35 @@ export async function getAdminDashboardAnalytics(
     topSold = [...counts.values()]
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
+
+    const variantIds = [
+      ...new Set(
+        (items ?? [])
+          .map((row) => row.variant_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ];
+    const costByVariant = new Map<string, number>();
+    if (variantIds.length) {
+      const { data: variants } = await supabase
+        .from("product_variants")
+        .select("id, cost_price")
+        .in("id", variantIds);
+      for (const variant of variants ?? []) {
+        if (variant.cost_price != null) {
+          costByVariant.set(variant.id, Number(variant.cost_price) || 0);
+          profitHasCostData = true;
+        }
+      }
+    }
+    let cogs = 0;
+    for (const item of items ?? []) {
+      if (!item.variant_id) continue;
+      const unitCost = costByVariant.get(item.variant_id);
+      if (unitCost == null) continue;
+      cogs += unitCost * (Number(item.quantity) || 0);
+    }
+    totalsProfit = totalsRevenue - cogs;
   }
 
   let topWishlisted: DashboardProductRank[] = [];
@@ -384,6 +426,8 @@ export async function getAdminDashboardAnalytics(
       paid: totalsPaid,
       delivered: totalsDelivered,
       revenue: totalsRevenue,
+      profit: totalsProfit,
+      profitHasCostData,
     },
     topSold,
     topWishlisted,

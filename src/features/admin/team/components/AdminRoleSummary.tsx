@@ -330,7 +330,7 @@ export function AdminRoleSummary({
                                 "flex shrink-0 items-center justify-center rounded-full font-bold",
                                 compact ? "h-3.5 w-3.5 text-[8px]" : "h-4 w-4 text-[9px]",
                                 on
-                                  ? "bg-[var(--color-primary)] text-[var(--color-card)]"
+                                  ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
                                   : "bg-[var(--color-border)] text-[var(--color-muted)]",
                               )}
                               aria-hidden

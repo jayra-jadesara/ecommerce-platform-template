@@ -9,8 +9,9 @@ export function adminAppBg(): string {
   return "bg-[color-mix(in_srgb,var(--color-background)_92%,var(--color-surface)_8%)]";
 }
 
+/** Fallback fill; premium gradient + motif live on `.admin-sidebar` in admin.css */
 export function adminSidebarBg(): string {
-  return "bg-[color-mix(in_srgb,var(--color-surface)_88%,var(--color-card)_12%)]";
+  return "bg-[var(--color-card)]";
 }
 
 export function adminCard(className = ""): string {
@@ -92,7 +93,7 @@ export function adminBtn(
     case "ghost":
       return `${base} bg-transparent text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] hover:text-[var(--color-foreground)] disabled:text-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-muted))]`;
     case "danger":
-      return `${base} bg-[var(--color-error)] text-white hover:opacity-90 disabled:bg-[color-mix(in_srgb,var(--color-error)_55%,var(--color-border))] disabled:text-white/90`;
+      return `${base} bg-[var(--color-error)] text-[var(--color-button-foreground)] hover:opacity-90 disabled:bg-[color-mix(in_srgb,var(--color-error)_55%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-button-foreground)_88%,transparent)]`;
     default:
       return `${base} bg-[var(--color-button-background)] text-[var(--color-button-foreground)] shadow-sm disabled:bg-[color-mix(in_srgb,var(--color-button-background)_55%,var(--color-border))] disabled:text-[color-mix(in_srgb,var(--color-button-foreground)_88%,transparent)] disabled:shadow-none`;
   }

@@ -73,15 +73,13 @@ export const ADMIN_CHART_HOVER_PALETTE = [
 
 export const adminChartTooltipStyle: CSSProperties = {
   borderRadius: 12,
-  border:
-    "1px solid color-mix(in srgb, var(--color-border) 70%, var(--color-primary) 30%)",
-  background:
-    "color-mix(in srgb, var(--color-card) 82%, var(--color-foreground) 18%)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-card)",
   color: "var(--color-foreground)",
   fontSize: 12,
   padding: "8px 12px",
   boxShadow:
-    "0 12px 32px color-mix(in srgb, #000 45%, transparent)",
+    "0 10px 28px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
 };
 
 export const adminChartAxisTick = {

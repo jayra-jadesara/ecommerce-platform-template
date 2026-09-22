@@ -1,7 +1,6 @@
 import "server-only";
 
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-import { getErrorLogCounts } from "@/features/error-monitoring/queries";
 
 export type AdminDashboardOps = {
   confirmedOrders: number;
@@ -10,8 +9,6 @@ export type AdminDashboardOps = {
   pendingReviews: number;
   lowStockVariants: number;
   outOfStockVariants: number;
-  openErrors: number;
-  criticalErrors: number;
 };
 
 const EMPTY: AdminDashboardOps = {
@@ -21,13 +18,11 @@ const EMPTY: AdminDashboardOps = {
   pendingReviews: 0,
   lowStockVariants: 0,
   outOfStockVariants: 0,
-  openErrors: 0,
-  criticalErrors: 0,
 };
 
 /**
- * Actionable counts for the admin dashboard work queue.
- * Store-scoped; safe to call with null store (returns zeros).
+ * Actionable store-ops counts for the dashboard work queue.
+ * Error logs stay on their own page — not surfaced here.
  */
 export async function getAdminDashboardOps(
   storeId: string | null,
@@ -42,7 +37,6 @@ export async function getAdminDashboardOps(
     replaceRes,
     reviewsRes,
     inventoryRes,
-    errorCounts,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -72,12 +66,6 @@ export async function getAdminDashboardOps(
       .eq("product_variants.products.store_id", storeId)
       .eq("product_variants.is_active", true)
       .eq("product_variants.track_inventory", true),
-    getErrorLogCounts(storeId).catch(() => ({
-      open: 0,
-      critical: 0,
-      today: 0,
-      payment: 0,
-    })),
   ]);
 
   let lowStockVariants = 0;
@@ -101,7 +89,5 @@ export async function getAdminDashboardOps(
     pendingReviews: reviewsRes.count ?? 0,
     lowStockVariants,
     outOfStockVariants,
-    openErrors: errorCounts.open,
-    criticalErrors: errorCounts.critical,
   };
 }

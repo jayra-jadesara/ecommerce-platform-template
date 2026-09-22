@@ -4,7 +4,6 @@ import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
-import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
 import AssignmentReturnOutlinedIcon from "@mui/icons-material/AssignmentReturnOutlined";
 import InventoryOutlinedIcon from "@mui/icons-material/InventoryOutlined";
 import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
@@ -81,7 +80,6 @@ export default async function AdminDashboardPage({
   const canOrders = hasPermission(admin, "orders.view");
   const canProducts = hasPermission(admin, "products.view");
   const canReviews = hasPermission(admin, "reviews.view");
-  const canErrors = hasPermission(admin, "error_logs.view");
   const canCustomers = hasPermission(admin, "customers.view");
   const canSettings = hasPermission(admin, "settings.view");
   const storeId = await resolveActiveStoreId();
@@ -174,20 +172,6 @@ export default async function AdminDashboardPage({
           href: getAdminPath("/catalog/products"),
           tone: "warning",
           icon: <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />,
-        }
-      : null,
-    canErrors
-      ? {
-          id: "errors",
-          title: "Open error logs",
-          description:
-            ops.criticalErrors > 0
-              ? `${ops.criticalErrors} critical still unresolved.`
-              : "Checkout or store issues still open.",
-          count: ops.openErrors,
-          href: getAdminPath("/error-logs?status=OPEN"),
-          tone: ops.criticalErrors > 0 ? "error" : "warning",
-          icon: <ReportProblemOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
   ].filter(Boolean) as AdminAttentionItem[];

@@ -141,7 +141,7 @@ export function AdminDashboardCharts({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
         {[
           { label: "Placed", value: String(analytics.totals.placed) },
           { label: "Paid", value: String(analytics.totals.paid) },
@@ -149,6 +149,12 @@ export function AdminDashboardCharts({
           {
             label: "Revenue",
             value: formatMoney(analytics.totals.revenue, analytics.currency),
+          },
+          {
+            label: "Profit",
+            value: analytics.totals.profitHasCostData
+              ? formatMoney(analytics.totals.profit, analytics.currency)
+              : "—",
           },
         ].map((stat) => (
           <div

@@ -95,7 +95,7 @@ function MethodChip({
         className={cn(
           "inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border",
           selected
-            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+            ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
             : "border-[var(--color-border)]",
         )}
         aria-hidden
