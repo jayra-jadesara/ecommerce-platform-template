@@ -28,6 +28,8 @@ export type AdminFormDialogProps = {
   pendingLabel?: string;
   /** Hide the secondary cancel button (e.g. view-only dialogs). */
   hideCancel?: boolean;
+  /** Hide the whole footer (custom actions live in children). */
+  hideActions?: boolean;
   onClose: () => void;
   onConfirm: () => void;
   children: ReactNode;
@@ -50,6 +52,7 @@ export function AdminFormDialog({
   confirmLabel = "Save",
   pendingLabel = "Saving…",
   hideCancel = false,
+  hideActions = false,
   onClose,
   onConfirm,
   children,
@@ -95,7 +98,7 @@ export function AdminFormDialog({
           overflowY: contentScroll ? "auto" : "hidden",
           flex: contentScroll ? "1 1 auto" : "0 1 auto",
           minHeight: 0,
-          pb: dense ? 0.5 : 1,
+          pb: hideActions ? (dense ? 2 : 3) : dense ? 0.5 : 1,
         }}
       >
         {description ? (
@@ -116,41 +119,45 @@ export function AdminFormDialog({
         ) : null}
         {children}
       </DialogContent>
-      <DialogActions
-        className={
-          dense ? "gap-1.5 !px-3.5 !pb-2.5 !pt-0.5" : "gap-2 !px-4 !pb-3 !pt-1"
-        }
-        sx={{
-          flexShrink: 0,
-          borderTop: "1px solid var(--color-border)",
-          mt: 0,
-        }}
-      >
-        {!hideCancel ? (
+      {!hideActions ? (
+        <DialogActions
+          className={
+            dense
+              ? "gap-1.5 !px-3.5 !pb-2.5 !pt-0.5"
+              : "gap-2 !px-4 !pb-3 !pt-1"
+          }
+          sx={{
+            flexShrink: 0,
+            borderTop: "1px solid var(--color-border)",
+            mt: 0,
+          }}
+        >
+          {!hideCancel ? (
+            <button
+              type="button"
+              className={cn(
+                adminBtn("secondary"),
+                dense && "!min-h-8 !px-2.5 !text-xs",
+              )}
+              disabled={pending}
+              onClick={onClose}
+            >
+              {cancelLabel}
+            </button>
+          ) : null}
           <button
             type="button"
             className={cn(
-              adminBtn("secondary"),
+              adminBtn("primary"),
               dense && "!min-h-8 !px-2.5 !text-xs",
             )}
             disabled={pending}
-            onClick={onClose}
+            onClick={onConfirm}
           >
-            {cancelLabel}
+            {pending ? pendingLabel : confirmLabel}
           </button>
-        ) : null}
-        <button
-          type="button"
-          className={cn(
-            adminBtn("primary"),
-            dense && "!min-h-8 !px-2.5 !text-xs",
-          )}
-          disabled={pending}
-          onClick={onConfirm}
-        >
-          {pending ? pendingLabel : confirmLabel}
-        </button>
-      </DialogActions>
+        </DialogActions>
+      ) : null}
     </Dialog>
   );
 }

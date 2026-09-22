@@ -2,13 +2,15 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { AdminCard } from "@/features/admin/ui/AdminCard";
 
-type Tone = "neutral" | "primary" | "success" | "warning" | "error";
+type Tone = "neutral" | "primary" | "secondary" | "success" | "warning" | "error";
 
 const TONE_ICON: Record<Tone, string> = {
   neutral:
     "bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] text-[var(--color-muted)]",
   primary:
     "bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]",
+  secondary:
+    "bg-[color-mix(in_srgb,var(--color-secondary)_14%,transparent)] text-[var(--color-secondary)]",
   success:
     "bg-[color-mix(in_srgb,var(--color-success)_14%,transparent)] text-[var(--color-success)]",
   warning:
@@ -36,20 +38,27 @@ export function AdminMetricTile({
   hint?: string;
   icon?: ReactNode;
   tone?: Tone;
-  /** Tighter padding + type for dense overview rows. */
+  /** Dense KPI chip — slightly smaller than default, still readable. */
   compact?: boolean;
   className?: string;
 }) {
   return (
     <AdminCard
       padded={!compact}
-      className={cn("h-full", compact && "p-3.5 md:p-4", className)}
+      className={cn(
+        "h-full",
+        compact &&
+          "!rounded-xl border-[color-mix(in_srgb,var(--color-border)_90%,transparent)] p-2.5 sm:p-3 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_3%,transparent)]",
+        className,
+      )}
     >
       <div className="flex items-start justify-between gap-2">
         <p
           className={cn(
-            "font-semibold uppercase tracking-[0.12em] text-[var(--color-muted)]",
-            compact ? "text-[10px]" : "text-[11px] tracking-[0.14em]",
+            "font-semibold uppercase text-[var(--color-muted)]",
+            compact
+              ? "text-[10px] leading-tight tracking-[0.1em]"
+              : "text-[11px] tracking-[0.14em]",
           )}
         >
           {label}
@@ -57,8 +66,10 @@ export function AdminMetricTile({
         {icon ? (
           <span
             className={cn(
-              "flex shrink-0 items-center justify-center rounded-lg",
-              compact ? "h-7 w-7" : "h-9 w-9 rounded-xl",
+              "flex shrink-0 items-center justify-center [&_svg]:!text-[inherit]",
+              compact
+                ? "h-7 w-7 rounded-lg [&_svg]:!text-[15px]"
+                : "h-9 w-9 rounded-xl",
               TONE_ICON[tone],
             )}
             aria-hidden
@@ -71,7 +82,7 @@ export function AdminMetricTile({
         className={cn(
           "font-semibold tracking-tight tabular-nums text-[var(--color-foreground)]",
           compact
-            ? "mt-2 text-[1.25rem] sm:text-[1.35rem]"
+            ? "mt-1.5 text-[1.125rem] leading-none sm:text-[1.25rem]"
             : "mt-3 text-[1.65rem] sm:text-[1.75rem]",
         )}
       >
@@ -81,7 +92,9 @@ export function AdminMetricTile({
         <p
           className={cn(
             "leading-snug text-[var(--color-muted)]",
-            compact ? "mt-1 text-[11px]" : "mt-1.5 text-[12px]",
+            compact
+              ? "mt-1 line-clamp-2 text-[11px] leading-snug"
+              : "mt-1.5 text-[12px]",
           )}
         >
           {hint}

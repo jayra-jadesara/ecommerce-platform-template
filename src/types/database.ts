@@ -182,6 +182,8 @@ export type Database = {
           reviews_auto_approve: boolean;
           reviews_preview_limit: number;
           admin_image_max_mb: number;
+          inventory_low_stock_threshold: number;
+          inventory_count_stock: boolean;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -237,6 +239,8 @@ export type Database = {
           reviews_auto_approve?: boolean;
           reviews_preview_limit?: number;
           admin_image_max_mb?: number;
+          inventory_low_stock_threshold?: number;
+          inventory_count_stock?: boolean;
           extra?: Json;
           created_at?: string;
           updated_at?: string;

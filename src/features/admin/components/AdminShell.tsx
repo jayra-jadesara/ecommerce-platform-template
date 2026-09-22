@@ -17,11 +17,13 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SearchIcon from "@mui/icons-material/Search";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
+import WarehouseOutlinedIcon from "@mui/icons-material/WarehouseOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import StraightenOutlinedIcon from "@mui/icons-material/StraightenOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
@@ -71,8 +73,10 @@ const ICONS: Record<
   sizes: StraightenOutlinedIcon,
   reviews: StarBorderOutlinedIcon,
   products: Inventory2OutlinedIcon,
+  inventory: WarehouseOutlinedIcon,
   orders: ShoppingBagOutlinedIcon,
   errors: ReportProblemOutlinedIcon,
+  reports: AssessmentOutlinedIcon,
   customers: PeopleOutlinedIcon,
   content: ArticleOutlinedIcon,
   homepage: HomeOutlinedIcon,
@@ -98,6 +102,7 @@ const SECTION_ORDER: AdminNavSection[] = [
 /** Sidebar display labels (friendlier than nested tree labels). */
 const SIDEBAR_LABEL: Record<string, string> = {
   "products-all": "Products",
+  "products-inventory": "Inventory",
   "settings-hub": "Store Settings",
 };
 

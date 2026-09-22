@@ -37,6 +37,7 @@ export async function getAdminDashboardOps(
     replaceRes,
     reviewsRes,
     inventoryRes,
+    settingsRes,
   ] = await Promise.all([
     supabase
       .from("orders")
@@ -61,12 +62,22 @@ export async function getAdminDashboardOps(
     supabase
       .from("inventory")
       .select(
-        "quantity, reserved_quantity, low_stock_threshold, product_variants!inner(track_inventory, is_active, products!inner(store_id))",
+        "quantity, reserved_quantity, product_variants!inner(track_inventory, is_active, products!inner(store_id))",
       )
       .eq("product_variants.products.store_id", storeId)
       .eq("product_variants.is_active", true)
       .eq("product_variants.track_inventory", true),
+    supabase
+      .from("store_settings")
+      .select("inventory_low_stock_threshold")
+      .eq("store_id", storeId)
+      .maybeSingle(),
   ]);
+
+  const storeThreshold =
+    typeof settingsRes.data?.inventory_low_stock_threshold === "number"
+      ? settingsRes.data.inventory_low_stock_threshold
+      : 5;
 
   let lowStockVariants = 0;
   let outOfStockVariants = 0;
@@ -76,9 +87,8 @@ export async function getAdminDashboardOps(
         0,
         (Number(row.quantity) || 0) - (Number(row.reserved_quantity) || 0),
       );
-      const threshold = Number(row.low_stock_threshold) || 0;
       if (available <= 0) outOfStockVariants += 1;
-      else if (available <= threshold) lowStockVariants += 1;
+      else if (available <= storeThreshold) lowStockVariants += 1;
     }
   }
 

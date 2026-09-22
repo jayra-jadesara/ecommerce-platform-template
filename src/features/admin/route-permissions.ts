@@ -14,9 +14,11 @@ type RouteRule = {
  */
 const ADMIN_ROUTE_RULES: RouteRule[] = [
   { prefix: "/dashboard", anyOf: ["dashboard.view"] },
+  { prefix: "/reports", anyOf: ["dashboard.view"] },
   { prefix: "/catalog/categories", anyOf: ["categories.view"] },
   { prefix: "/catalog/sizes", anyOf: ["products.view"] },
   { prefix: "/catalog/products", anyOf: ["products.view"] },
+  { prefix: "/catalog/inventory", anyOf: ["inventory.view"] },
   { prefix: "/catalog/reviews", anyOf: ["reviews.view"] },
   { prefix: "/products", anyOf: ["products.view"] },
   { prefix: "/orders", anyOf: ["orders.view"] },

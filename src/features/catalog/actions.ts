@@ -22,6 +22,14 @@ import {
   updateInventory,
   updateProduct,
 } from "@/features/catalog/products-service";
+import {
+  adjustInventory,
+  bulkUpdateInventory,
+  exportInventoryCsv,
+  importInventoryCsv,
+  listInventoryMovements,
+  updateStoreInventoryAlert,
+} from "@/features/catalog/inventory-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 import {
   checkCategoryDependencies,
@@ -262,5 +270,65 @@ export async function updateInventoryAction(input: unknown) {
       route: PRODUCTS_ROUTE,
     },
     () => updateInventory(input),
+  );
+}
+
+export async function bulkUpdateInventoryAction(input: unknown) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "BULK_UPDATE_INVENTORY",
+      feature: "PRODUCTS",
+      route: getAdminPath("/catalog/inventory"),
+    },
+    () => bulkUpdateInventory(input),
+  );
+}
+
+export async function updateStoreInventoryAlertAction(input: unknown) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "STORE_INVENTORY_ALERT",
+      feature: "PRODUCTS",
+      route: getAdminPath("/catalog/inventory"),
+    },
+    () => updateStoreInventoryAlert(input),
+  );
+}
+
+export async function adjustInventoryAction(input: unknown) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "ADJUST_INVENTORY",
+      feature: "PRODUCTS",
+      route: getAdminPath("/catalog/inventory"),
+    },
+    () => adjustInventory(input),
+  );
+}
+
+export async function listInventoryMovementsAction(variantId: string) {
+  return listInventoryMovements({ variantId });
+}
+
+export async function exportInventoryCsvAction() {
+  return exportInventoryCsv();
+}
+
+export async function importInventoryCsvAction(input: unknown) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "IMPORT_INVENTORY_CSV",
+      feature: "PRODUCTS",
+      route: getAdminPath("/catalog/inventory"),
+    },
+    () => importInventoryCsv(input),
   );
 }

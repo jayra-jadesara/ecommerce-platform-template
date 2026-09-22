@@ -155,6 +155,7 @@ export default async function AdminCatalogProductsPage({
           canUpdate={canUpdate}
           canDelete={canDelete}
           storeReturnPolicy={storeReturnPolicy}
+          showStockHint={flat.stockHint === "1"}
           imagesSlot={
             !isView || images.length > 0 ? (
               <ProductImagesPanel
@@ -188,7 +189,7 @@ export default async function AdminCatalogProductsPage({
     <div className="flex flex-1 flex-col space-y-4">
       <AdminPageHeader
         title="Products"
-        description="Everything you sell — search, filter, and keep stock up to date."
+        description="Everything you sell — search, filter, and edit products."
         breadcrumbs={[
           { label: "Products", href: listHref },
           { label: "All Products" },

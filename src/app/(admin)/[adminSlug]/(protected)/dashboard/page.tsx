@@ -13,6 +13,7 @@ import { getAdminPath } from "@/config/admin-route";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminSection } from "@/features/admin/ui/AdminCard";
 import { AdminMetricTile } from "@/features/admin/ui/AdminMetricTile";
+import { AdminMetricGrid } from "@/features/admin/ui/AdminMetricGrid";
 import {
   AdminAttentionList,
   type AdminAttentionItem,
@@ -78,7 +79,7 @@ export default async function AdminDashboardPage({
   const sp = await searchParams;
 
   const canOrders = hasPermission(admin, "orders.view");
-  const canProducts = hasPermission(admin, "products.view");
+  const canInventory = hasPermission(admin, "inventory.view");
   const canReviews = hasPermission(admin, "reviews.view");
   const canCustomers = hasPermission(admin, "customers.view");
   const canSettings = hasPermission(admin, "settings.view");
@@ -152,24 +153,24 @@ export default async function AdminDashboardPage({
           icon: <RateReviewOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
-    canProducts
+    canInventory
       ? {
           id: "out-of-stock",
           title: "Out of stock",
           description: "Variants with zero available quantity.",
           count: ops.outOfStockVariants,
-          href: getAdminPath("/catalog/products"),
+          href: getAdminPath("/catalog/inventory?stock=OUT"),
           tone: "error",
           icon: <InventoryOutlinedIcon sx={{ fontSize: 20 }} />,
         }
       : null,
-    canProducts
+    canInventory
       ? {
           id: "low-stock",
           title: "Low stock",
-          description: "Below the threshold you set per variant.",
+          description: "At or below the store warn level.",
           count: ops.lowStockVariants,
-          href: getAdminPath("/catalog/products"),
+          href: getAdminPath("/catalog/inventory?stock=LOW"),
           tone: "warning",
           icon: <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />,
         }
@@ -187,15 +188,14 @@ export default async function AdminDashboardPage({
         breadcrumbs={[{ label: "Dashboard" }]}
       />
 
-      <section aria-label="Store overview">
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
+      <AdminMetricGrid columns={5} aria-label="Store overview">
           <AdminMetricTile
             compact
             label="Revenue"
             value={formatMoney(overview.revenueMajor, overview.currency)}
             hint="Paid orders"
             tone="success"
-            icon={<PaymentsOutlinedIcon sx={{ fontSize: 16 }} />}
+            icon={<PaymentsOutlinedIcon sx={{ fontSize: 18 }} />}
           />
           <AdminMetricTile
             compact
@@ -211,7 +211,7 @@ export default async function AdminDashboardPage({
                 : "Set cost price on products"
             }
             tone="primary"
-            icon={<TrendingUpOutlinedIcon sx={{ fontSize: 16 }} />}
+            icon={<TrendingUpOutlinedIcon sx={{ fontSize: 18 }} />}
           />
           <AdminMetricTile
             compact
@@ -219,7 +219,7 @@ export default async function AdminDashboardPage({
             value={String(overview.orderCount)}
             hint="Paid orders"
             tone="primary"
-            icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 16 }} />}
+            icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 18 }} />}
           />
           <AdminMetricTile
             compact
@@ -227,7 +227,7 @@ export default async function AdminDashboardPage({
             value={String(overview.productCount)}
             hint="In catalog"
             tone="neutral"
-            icon={<Inventory2OutlinedIcon sx={{ fontSize: 16 }} />}
+            icon={<Inventory2OutlinedIcon sx={{ fontSize: 18 }} />}
           />
           <AdminMetricTile
             compact
@@ -235,10 +235,9 @@ export default async function AdminDashboardPage({
             value={canCustomers ? String(customerCount) : "—"}
             hint="Paid buyers"
             tone="neutral"
-            icon={<PeopleOutlinedIcon sx={{ fontSize: 16 }} />}
+            icon={<PeopleOutlinedIcon sx={{ fontSize: 18 }} />}
           />
-        </div>
-      </section>
+        </AdminMetricGrid>
 
       <div
         className={cn(

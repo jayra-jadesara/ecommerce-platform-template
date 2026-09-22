@@ -1,6 +1,10 @@
 "use client";
 
-import type { ErrorSource, ErrorType } from "@/features/error-monitoring/types";
+import {
+  LIMITS,
+  type ErrorSource,
+  type ErrorType,
+} from "@/features/error-monitoring/types";
 
 export type ClientErrorReportPayload = {
   message: string;
@@ -25,6 +29,13 @@ export type ClientErrorReportPayload = {
 
 const recent = new Map<string, number>();
 const DEDUPE_MS = 15_000;
+
+function clip(value: string | null | undefined, max: number): string | null {
+  if (value == null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  return trimmed.length > max ? trimmed.slice(0, max) : trimmed;
+}
 
 function dedupeKey(payload: ClientErrorReportPayload): string {
   return [
@@ -67,13 +78,37 @@ export async function reportClientErrorAsync(
 ): Promise<string | null> {
   try {
     if (typeof window === "undefined") return null;
-    if (!payload.message?.trim()) return null;
+    const message = clip(payload.message, LIMITS.message);
+    if (!message) return null;
     if (shouldSkip(payload)) return null;
 
     const body = JSON.stringify({
-      ...payload,
-      route: payload.route ?? window.location.pathname,
-      userAgent: navigator.userAgent?.slice(0, 500),
+      message,
+      stack: clip(payload.stack, LIMITS.stack),
+      route: clip(payload.route ?? window.location.pathname, LIMITS.route),
+      pageName: clip(payload.pageName, LIMITS.pageName),
+      source: payload.source ?? "CLIENT",
+      type: payload.type ?? "BROWSER",
+      fileName: clip(payload.fileName, LIMITS.fileName),
+      lineNumber:
+        typeof payload.lineNumber === "number" &&
+        Number.isFinite(payload.lineNumber)
+          ? Math.max(0, Math.min(1_000_000, Math.trunc(payload.lineNumber)))
+          : null,
+      columnNumber:
+        typeof payload.columnNumber === "number" &&
+        Number.isFinite(payload.columnNumber)
+          ? Math.max(0, Math.min(1_000_000, Math.trunc(payload.columnNumber)))
+          : null,
+      operation: clip(payload.operation, LIMITS.operation),
+      feature: clip(payload.feature, LIMITS.feature),
+      errorCode: clip(payload.errorCode, LIMITS.errorCode),
+      browserName: clip(payload.browserName, 80),
+      browserVersion: clip(payload.browserVersion, 40),
+      os: clip(payload.os, 80),
+      deviceType: clip(payload.deviceType, 40),
+      userAgent: clip(navigator.userAgent, LIMITS.userAgent),
+      clientFingerprint: clip(payload.clientFingerprint, 200),
     });
 
     const res = await fetch("/api/errors", {

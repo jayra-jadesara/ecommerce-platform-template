@@ -483,6 +483,7 @@ async function upsertVariantsForProduct(
   }
 
   for (const variant of toPersist) {
+    const existingVariantId = variant.id ?? null;
     const payload = {
       product_id: productId,
       name: variant.name.trim(),
@@ -492,11 +493,10 @@ async function upsertVariantsForProduct(
       cost_price: variant.costPrice,
       weight: variant.weight,
       unit: emptyToNull(variant.unit),
-      track_inventory: variant.trackInventory,
       is_active: variant.isActive,
     };
 
-    let variantId = variant.id ?? null;
+    let variantId = existingVariantId;
     if (variantId) {
       const { error } = await supabase
         .from("product_variants")
@@ -520,9 +520,28 @@ async function upsertVariantsForProduct(
         });
       }
     } else {
+      const { data: settings } = await supabase
+        .from("store_settings")
+        .select("inventory_low_stock_threshold, inventory_count_stock")
+        .eq("store_id", storeId)
+        .maybeSingle();
+      const threshold =
+        typeof settings?.inventory_low_stock_threshold === "number"
+          ? settings.inventory_low_stock_threshold
+          : 5;
+      const countStock =
+        typeof settings?.inventory_count_stock === "boolean"
+          ? settings.inventory_count_stock
+          : true;
+
+      const insertPayload = {
+        ...payload,
+        track_inventory: countStock,
+      };
+
       const { data, error } = await supabase
         .from("product_variants")
-        .insert(payload)
+        .insert(insertPayload)
         .select("id")
         .single();
       if (error || !data) {
@@ -542,29 +561,30 @@ async function upsertVariantsForProduct(
         });
       }
       variantId = data.id;
-    }
 
-    const { error: inventoryError } = await supabase.from("inventory").upsert({
-      variant_id: variantId,
-      quantity: variant.quantity,
-      reserved_quantity: variant.reservedQuantity,
-      low_stock_threshold: variant.lowStockThreshold,
-    });
-    if (inventoryError) {
-      return unexpectedFailure({
-        type: "DATABASE",
-        source: "DATABASE",
-        operation: "UPDATE_INVENTORY",
-        feature: "PRODUCTS",
-        message: `Unable to update inventory for ${variant.name}`,
-        error: inventoryError,
-        databaseCode: inventoryError.code,
-        storeId,
-        entityType: "inventory",
-        entityId: variantId,
-        route: PRODUCTS_ROUTE,
-        metadata: { product_id: productId, variant_id: variantId },
+      // New variants only — stock is managed on Inventory.
+      const { error: inventoryError } = await supabase.from("inventory").upsert({
+        variant_id: variantId,
+        quantity: 0,
+        reserved_quantity: 0,
+        low_stock_threshold: threshold,
       });
+      if (inventoryError) {
+        return unexpectedFailure({
+          type: "DATABASE",
+          source: "DATABASE",
+          operation: "UPDATE_INVENTORY",
+          feature: "PRODUCTS",
+          message: `Unable to create inventory for ${variant.name}`,
+          error: inventoryError,
+          databaseCode: inventoryError.code,
+          storeId,
+          entityType: "inventory",
+          entityId: variantId,
+          route: PRODUCTS_ROUTE,
+          metadata: { product_id: productId, variant_id: variantId },
+        });
+      }
     }
   }
 

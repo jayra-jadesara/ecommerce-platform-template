@@ -3,6 +3,8 @@ export { AdminShell } from "./components/AdminShell";
 export { AdminPageHeader } from "./components/AdminPageHeader";
 export { AdminBreadcrumbs } from "./components/AdminBreadcrumbs";
 export { AdminCard, AdminSection } from "./ui/AdminCard";
+export { AdminMetricTile } from "./ui/AdminMetricTile";
+export { AdminMetricGrid } from "./ui/AdminMetricGrid";
 export { AdminStatusBadge } from "./ui/AdminStatusBadge";
 export { AdminEmptyState, AdminErrorState } from "./ui/AdminEmptyState";
 export { AdminSaveBar } from "./ui/AdminSaveBar";

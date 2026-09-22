@@ -4,6 +4,7 @@ import type { Permission } from "@/features/auth/permissions";
 export type AdminNavIcon =
   | "dashboard"
   | "products"
+  | "inventory"
   | "orders"
   | "customers"
   | "content"
@@ -12,6 +13,7 @@ export type AdminNavIcon =
   | "sizes"
   | "reviews"
   | "errors"
+  | "reports"
   | "homepage"
   | "about"
   | "career"
@@ -111,6 +113,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
       },
       {
         kind: "link",
+        id: "products-inventory",
+        label: "Inventory alerts",
+        href: p("/catalog/inventory"),
+        permissions: ["inventory.view"],
+        icon: "inventory",
+        section: "catalog",
+      },
+      {
+        kind: "link",
         id: "products-reviews",
         label: "Reviews",
         href: p("/catalog/reviews"),
@@ -127,6 +138,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     href: p("/orders"),
     permissions: ["orders.view"],
     icon: "orders",
+    section: "sales",
+  },
+  {
+    kind: "link",
+    id: "reports",
+    label: "Reports",
+    href: p("/reports"),
+    permissions: ["dashboard.view"],
+    icon: "reports",
     section: "sales",
   },
   {
@@ -354,14 +374,16 @@ export const ADMIN_NAV_SECTION_LABELS: Record<AdminNavSection, string> = {
   store: "Store",
 };
 
-/** Sidebar order follows setup flow: Categories → Size / pack → Products. */
+/** Sidebar order follows setup flow: Categories → Size / pack → Products → Inventory. */
 export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "dashboard",
   "products-categories",
   "products-sizes",
   "products-all",
+  "products-inventory",
   "products-reviews",
   "orders",
+  "reports",
   "error-logs",
   "customers",
   "content-homepage",
@@ -495,6 +517,7 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   categories: "Categories",
   orders: "Orders",
   customers: "Customers",
+  reports: "Reports",
   "error-logs": "Error Logs",
   content: "Content",
   homepage: "Homepage",

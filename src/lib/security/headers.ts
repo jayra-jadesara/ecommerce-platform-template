@@ -16,7 +16,9 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
     value: [
       "default-src 'self'",
       "base-uri 'self'",
-      "object-src 'none'",
+      // Chrome's PDF viewer inside iframe/embed is governed by object-src;
+      // 'none' shows "This content is blocked" for blob: PDF previews.
+      "object-src 'self' blob:",
       "frame-ancestors 'self'",
       "form-action 'self'",
       // Next.js + theme boot + Razorpay checkout script
@@ -24,8 +26,10 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com",
-      "frame-src 'self' https://api.razorpay.com https://checkout.razorpay.com",
+      // blob: for object URLs; 127.0.0.1:7429 for local debug ingest only
+      "connect-src 'self' blob: http://127.0.0.1:7429 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com",
+      // blob: for in-page PDF preview iframes (admin reports)
+      "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com",
       "worker-src 'self' blob:",
       "media-src 'self' blob:",
     ].join("; "),

@@ -62,6 +62,8 @@ interface ProductFormProps {
   storeReturnPolicy?: ReturnPolicy;
   /** Photos panel rendered as step 4 on edit/view (needs a saved product id). */
   imagesSlot?: ReactNode;
+  /** After create — show CTA to set stock on Inventory. */
+  showStockHint?: boolean;
 }
 
 function sizeSelectOptions(
@@ -139,6 +141,7 @@ export function ProductForm({
   canDelete,
   storeReturnPolicy = "no_return_refund",
   imagesSlot,
+  showStockHint = false,
 }: ProductFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -239,8 +242,10 @@ export function ProductForm({
         return;
       }
       if (mode === "create" && result.id) {
-        // Stay on edit so photos can be added, then return to list after next save.
-        router.push(`${listHref}?panel=edit&id=${result.id}`);
+        // Stay on edit for photos; offer inventory deep-link via Set stock CTA.
+        router.push(
+          `${listHref}?panel=edit&id=${result.id}&stockHint=1`,
+        );
         router.refresh();
         return;
       }
@@ -359,6 +364,24 @@ export function ProductForm({
         </div>
       </div>
 
+      {showStockHint && productId ? (
+        <Alert
+          severity="info"
+          className="!rounded-xl"
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              href={getAdminPath(`/catalog/inventory?product=${productId}`)}
+            >
+              Set stock
+            </Button>
+          }
+        >
+          Product saved. Add photos here, or set how many you have in Inventory
+          (stock starts at 0).
+        </Alert>
+      ) : null}
       {error ? <Alert severity="error">{error}</Alert> : null}
       {success ? <Alert severity="success">{success}</Alert> : null}
 
@@ -505,11 +528,11 @@ export function ProductForm({
 
       <StepCard
         step={2}
-        title="Price & stock"
+        title="Price & sizes"
         description={
           productName
-            ? `Packs for “${productName}” — price, cost, stock`
-            : "Size, sell price, your cost, and stock"
+            ? `Packs for “${productName}” — size, sell price, and cost`
+            : "Size, sell price, and your cost"
         }
         action={
           <button
@@ -531,6 +554,30 @@ export function ProductForm({
           </button>
         }
       >
+        <p className="mb-2 text-xs text-[var(--color-muted)]">
+          Stock is managed under{" "}
+          <a
+            href={getAdminPath("/catalog/inventory")}
+            className="font-medium text-[var(--color-primary)] hover:underline"
+          >
+            Products → Inventory
+          </a>
+          .
+          {mode !== "create" && productId ? (
+            <>
+              {" "}
+              <a
+                href={getAdminPath(
+                  `/catalog/inventory?product=${productId}`,
+                )}
+                className="font-medium text-[var(--color-primary)] hover:underline"
+              >
+                Set stock for this product
+              </a>
+              .
+            </>
+          ) : null}
+        </p>
         <div className="space-y-2">
           {visibleVariants.map(({ field, index }) => {
             const variant = variants[index];
@@ -624,28 +671,6 @@ export function ProductForm({
                             )}
                           />
                         </div>
-                        <div className="w-[6.75rem] shrink-0">
-                          <Controller
-                            name={`variants.${index}.quantity`}
-                            control={control}
-                            render={({ field: f, fieldState }) => (
-                              <TextField
-                                {...f}
-                                size="small"
-                                type="number"
-                                label="In stock"
-                                fullWidth
-                                required
-                                disabled={!fieldsEditable}
-                                error={Boolean(fieldState.error)}
-                                helperText={fieldState.error?.message}
-                                onChange={(event) =>
-                                  f.onChange(Number(event.target.value) || 0)
-                                }
-                              />
-                            )}
-                          />
-                        </div>
                         <div className="flex h-10 shrink-0 items-center gap-1">
                           <Controller
                             name={`variants.${index}.isActive`}
@@ -676,7 +701,7 @@ export function ProductForm({
                           </button>
                         </div>
                       </div>
-                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+                      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] leading-snug text-[var(--color-muted)]">
                         {sizeOptions.length === 0 ? (
                           <span>
                             Add options under Products → Size / pack
