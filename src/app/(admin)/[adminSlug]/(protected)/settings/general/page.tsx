@@ -17,20 +17,19 @@ export default async function AdminGeneralSettingsPage() {
   const canUpdate = hasPermission(admin, "settings.update");
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 pb-10">
       <AdminPageHeader
         title="Store Information"
-        description="Your store name, address, currency, and how customers contact you."
+        description="Identity, locale, media upload limits, address, and contact links."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Store Information" },
         ]}
       />
       {!storeId && canUpdate ? (
-        <Alert severity="info">
-          No store is set up yet. Fill in the form and click{" "}
-          <strong>Save changes</strong> — we&apos;ll create your store
-          automatically.
+        <Alert severity="info" className="!rounded-xl !py-2 !text-sm">
+          No store yet. Fill the form and click <strong>Save changes</strong> —
+          we&apos;ll create it automatically.
         </Alert>
       ) : null}
       <GeneralSettingsForm initialValues={values} canUpdate={canUpdate} />

@@ -72,6 +72,7 @@ export default async function HomePage() {
           animation={config.animation}
           visualEffects={config.visualEffects}
           currency={config.store.currency}
+          storeName={config.brand.name}
           isAuthenticated={isAuthenticated}
           headingHighlightStyle={config.typography.headingHighlightStyle}
         />

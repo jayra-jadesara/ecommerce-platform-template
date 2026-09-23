@@ -31,11 +31,16 @@ const nextConfig: NextConfig = {
   env: {
     ADMIN_ROUTE: adminRoute,
   },
-  // Product / media uploads (UI allows up to 10 MB per file).
+  // Admin uploads: images up to 10 MB; reel videos up to 50 MB (+ multipart overhead).
+  // proxyClientMaxBodySize is required because `src/proxy.ts` buffers the request —
+  // the default 10 MB truncates large FormData and causes "Unexpected end of form".
+  // Security headers (CSP media-src) come from buildSecurityHeaders() — restart
+  // `next dev` after changing src/lib/security/headers.ts so reel MP4s can play.
   experimental: {
     serverActions: {
-      bodySizeLimit: "12mb",
+      bodySizeLimit: "52mb",
     },
+    proxyClientMaxBodySize: "52mb",
     optimizePackageImports: ["@mui/icons-material", "@mui/material"],
   },
   // Serve Supabase/CDN URLs directly — never proxy through /_next/image.
@@ -110,9 +115,16 @@ const nextConfig: NextConfig = {
   },
   // PackFileCacheStrategy rename (*.pack.gz_ → *.pack.gz) often ENOENTs on
   // Windows HDD / Defender locks. Memory cache avoids that pack write.
+  // Also cap parallelism so huge vendor-chunks/next.js (~15MB) is not
+  // half-written when another request evaluates it (SyntaxError: unexpected token).
   webpack: (config, { dev }) => {
     if (dev) {
       config.cache = { type: "memory" };
+      if (typeof config.parallelism === "number" && config.parallelism > 4) {
+        config.parallelism = 4;
+      } else if (config.parallelism == null) {
+        config.parallelism = 4;
+      }
     }
     return config;
   },

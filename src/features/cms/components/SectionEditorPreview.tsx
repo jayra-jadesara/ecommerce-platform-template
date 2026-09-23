@@ -1018,6 +1018,29 @@ export function SectionEditorPreview({
     );
   }
 
+  if (sectionType === "reels") {
+    return (
+      <PreviewShell>
+        <div className="space-y-3 p-4">
+          <p className="text-center text-sm font-semibold">
+            {text(config.title, "Shop the look")}
+          </p>
+          <div className="flex justify-center gap-2 overflow-hidden">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="aspect-[9/16] w-16 shrink-0 rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))]"
+              />
+            ))}
+          </div>
+          <p className="text-center text-[10px] text-[var(--color-muted)]">
+            Content from Content → Reels · slides from Settings
+          </p>
+        </div>
+      </PreviewShell>
+    );
+  }
+
   return (
     <PreviewShell>
       <div className="p-4">

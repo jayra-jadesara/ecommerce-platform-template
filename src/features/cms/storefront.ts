@@ -7,6 +7,7 @@ import {
   STOREFRONT_BANNERS_CACHE_TAG,
   STOREFRONT_HOMEPAGE_CACHE_TAG,
   STOREFRONT_PAGES_CACHE_TAG,
+  STOREFRONT_REELS_CACHE_TAG,
 } from "@/features/cms/cache";
 import {
   ABOUT_PAGE_SLUG,
@@ -22,6 +23,8 @@ import {
 } from "@/features/cms/schemas";
 import type { BannerRow, ContentPage, ParsedContentSection } from "@/features/cms/types";
 import { listStorefrontCategories, listStorefrontProducts, listStorefrontProductsByIds } from "@/features/catalog/storefront";
+import { listStorefrontHomeReels, getReelsShowcaseSettings } from "@/features/reels/reels-service";
+import type { StorefrontReel } from "@/features/reels/types";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import type { Tables } from "@/types/database";
 import type { NavItem } from "@/types";
@@ -67,6 +70,9 @@ export type StorefrontSection = ParsedContentSection & {
   resolved?: {
     products?: Awaited<ReturnType<typeof listStorefrontProducts>>["items"];
     categories?: Awaited<ReturnType<typeof listStorefrontCategories>>;
+    reels?: StorefrontReel[];
+    autoplayMuted?: boolean;
+    visibleSlides?: number;
   };
 };
 
@@ -159,6 +165,17 @@ async function loadPublishedPageUncached(
       }
       section.resolved = { products: items };
     }
+    if (section.sectionType === "reels") {
+      const [reels, showcase] = await Promise.all([
+        listStorefrontHomeReels(storeId),
+        getReelsShowcaseSettings(storeId),
+      ]);
+      section.resolved = {
+        reels,
+        autoplayMuted: showcase.autoplayMuted,
+        visibleSlides: showcase.visibleSlides,
+      };
+    }
   }
 
   return { page: mapPage(pageRow), sections };
@@ -187,7 +204,9 @@ export async function getPublishedStorefrontPage(
       tags: [
         STOREFRONT_PAGES_CACHE_TAG,
         pageCacheTag(slug),
-        ...(slug === HOMEPAGE_SLUG ? [STOREFRONT_HOMEPAGE_CACHE_TAG] : []),
+        ...(slug === HOMEPAGE_SLUG
+          ? [STOREFRONT_HOMEPAGE_CACHE_TAG, STOREFRONT_REELS_CACHE_TAG]
+          : []),
       ],
     },
   );

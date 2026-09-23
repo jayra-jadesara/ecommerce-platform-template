@@ -27,8 +27,8 @@ type AdminAutocompleteProps = {
 
 const fieldSx: SxProps<Theme> = {
   "& .MuiInputBase-root": {
-    fontSize: "0.8125rem",
-    minHeight: 40,
+    fontSize: "0.75rem",
+    minHeight: 36,
     backgroundColor: "var(--color-card)",
     borderRadius: "var(--radius-default, 0.5rem)",
   },
@@ -43,8 +43,11 @@ const fieldSx: SxProps<Theme> = {
     borderColor: "var(--color-primary)",
     borderWidth: 1.5,
   },
+  "& .MuiInputBase-input": {
+    fontSize: "0.75rem",
+  },
   "& .MuiInputLabel-root": {
-    fontSize: "0.8125rem",
+    fontSize: "0.75rem",
   },
   "& .MuiInputLabel-root.Mui-focused": {
     color: "var(--color-primary)",
@@ -68,12 +71,12 @@ const paperSx: SxProps<Theme> = {
 };
 
 const listboxSx: SxProps<Theme> = {
-  fontSize: "0.8125rem",
+  fontSize: "0.75rem",
   padding: "4px 0",
   maxHeight: 280,
   "& .MuiAutocomplete-option": {
-    minHeight: 36,
-    fontSize: "0.8125rem",
+    minHeight: 32,
+    fontSize: "0.75rem",
     lineHeight: 1.35,
     py: 0.75,
   },

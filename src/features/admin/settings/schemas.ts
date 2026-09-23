@@ -49,6 +49,8 @@ export const generalSettingsSchema = z.object({
   socialWhatsapp: optionalWhatsapp,
   /** Admin image uploads max size in MB (1–10). */
   adminImageMaxMb: z.coerce.number().int().min(1).max(10),
+  /** Admin reel video uploads max size in MB (2–50). */
+  adminReelVideoMaxMb: z.coerce.number().int().min(2).max(50),
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -173,6 +175,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   socialX: "",
   socialWhatsapp: "",
   adminImageMaxMb: 5,
+  adminReelVideoMaxMb: 25,
 };
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettingsFormValues = {

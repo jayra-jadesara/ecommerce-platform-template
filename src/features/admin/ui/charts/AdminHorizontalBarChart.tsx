@@ -117,6 +117,10 @@ export function AdminHorizontalBarChart({
             tick={adminChartAxisTick}
             tickLine={false}
             axisLine={false}
+            tickFormatter={(value) => {
+              const n = Number(value) || 0;
+              return formatValue ? formatValue(n) : String(n);
+            }}
           />
           <YAxis
             type="category"

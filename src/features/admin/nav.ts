@@ -13,6 +13,7 @@ export type AdminNavIcon =
   | "sizes"
   | "reviews"
   | "errors"
+  | "platform"
   | "reports"
   | "homepage"
   | "about"
@@ -20,6 +21,7 @@ export type AdminNavIcon =
   | "legal"
   | "pages"
   | "banners"
+  | "reels"
   | "blog"
   | "media"
   | "team";
@@ -169,6 +171,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     section: "system",
   },
   {
+    kind: "link",
+    id: "platform-usage",
+    label: "Hosting & storage",
+    href: p("/platform-usage"),
+    permissions: ["settings.view"],
+    icon: "platform",
+    section: "system",
+  },
+  {
     kind: "group",
     id: "content",
     label: "Content",
@@ -227,6 +238,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         href: p("/content/banners"),
         permissions: ["content.view", "cms.view"],
         icon: "banners",
+        section: "content",
+      },
+      {
+        kind: "link",
+        id: "content-reels",
+        label: "Reels",
+        href: p("/content/reels"),
+        permissions: ["content.view", "cms.view"],
+        icon: "reels",
         section: "content",
       },
       {
@@ -387,6 +407,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "orders",
   "reports",
   "error-logs",
+  "platform-usage",
   "customers",
   "content-homepage",
   "content-about",
@@ -394,6 +415,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "content-legal",
   "content-pages",
   "content-banners",
+  "content-reels",
   "content-blog",
   "content-media",
   "settings-hub",
@@ -521,12 +543,14 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   customers: "Customers",
   reports: "Reports",
   "error-logs": "Error Logs",
+  "platform-usage": "Hosting & storage",
   content: "Content",
   homepage: "Homepage",
   about: "About",
   career: "Career",
   pages: "Pages",
   banners: "Banners",
+  reels: "Reels",
   blog: "Blog",
   media: "Images & Files",
   settings: "Store Settings",

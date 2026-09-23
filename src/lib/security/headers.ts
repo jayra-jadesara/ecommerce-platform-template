@@ -21,17 +21,18 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
       "object-src 'self' blob:",
       "frame-ancestors 'self'",
       "form-action 'self'",
-      // Next.js + theme boot + Razorpay checkout script
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com",
+      // Next.js + theme boot + Razorpay + Instagram embed.js
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.instagram.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data: https://fonts.gstatic.com",
       // blob: for object URLs; 127.0.0.1:7429 for local debug ingest only
-      "connect-src 'self' blob: http://127.0.0.1:7429 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com",
-      // blob: for in-page PDF preview iframes (admin reports)
-      "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com",
+      "connect-src 'self' blob: http://127.0.0.1:7429 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.instagram.com",
+      // blob: PDF previews; Razorpay checkout; Instagram reel embeds
+      "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com https://www.instagram.com https://instagram.com",
       "worker-src 'self' blob:",
-      "media-src 'self' blob:",
+      // Hosted reel MP4s (Supabase Storage) + Instagram CDN fallbacks
+      "media-src 'self' blob: https: https://*.supabase.co https://www.instagram.com https://*.cdninstagram.com",
     ].join("; "),
   },
 ];

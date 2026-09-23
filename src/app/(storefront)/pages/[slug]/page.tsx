@@ -77,6 +77,7 @@ export default async function CmsContentPage({ params }: Props) {
           animation={config.animation}
           visualEffects={config.visualEffects}
           currency={config.store.currency}
+          storeName={config.brand.name}
           isAuthenticated={Boolean(user)}
           headingHighlightStyle={config.typography.headingHighlightStyle}
         />

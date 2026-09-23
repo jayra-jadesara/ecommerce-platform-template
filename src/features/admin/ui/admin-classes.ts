@@ -9,9 +9,9 @@ export function adminAppBg(): string {
   return "bg-[color-mix(in_srgb,var(--color-background)_92%,var(--color-surface)_8%)]";
 }
 
-/** Fallback fill; premium gradient + motif live on `.admin-sidebar` in admin.css */
+/** Fallback only — gradient + motif come from `.admin-sidebar` in admin.css */
 export function adminSidebarBg(): string {
-  return "bg-[var(--color-card)]";
+  return "bg-transparent";
 }
 
 export function adminCard(className = ""): string {

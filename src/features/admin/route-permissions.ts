@@ -24,6 +24,7 @@ const ADMIN_ROUTE_RULES: RouteRule[] = [
   { prefix: "/orders", anyOf: ["orders.view"] },
   { prefix: "/customers", anyOf: ["customers.view"] },
   { prefix: "/error-logs", anyOf: ["error_logs.view"] },
+  { prefix: "/platform-usage", anyOf: ["settings.view"] },
   { prefix: "/media", anyOf: ["media.view"] },
   { prefix: "/content", anyOf: ["content.view", "cms.view", "blog.view"] },
   { prefix: "/cms", anyOf: ["cms.view", "content.view"] },

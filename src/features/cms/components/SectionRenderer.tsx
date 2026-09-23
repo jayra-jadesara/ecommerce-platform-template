@@ -17,6 +17,8 @@ import {
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
 import { HeroCarousel } from "@/features/cms/components/HeroCarousel";
 import { FaqAccordion } from "@/features/cms/components/FaqAccordion";
+import { ReelsShowcase } from "@/features/reels/components/ReelsShowcase";
+import type { StorefrontReel } from "@/features/reels/types";
 import {
   AboutBlocks,
   aboutBlocksForFullPage,
@@ -42,6 +44,7 @@ type Props = {
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
   currency?: string;
+  storeName?: string;
   isAuthenticated?: boolean;
   headingHighlightStyle?: HeadingHighlightStyle;
 };
@@ -116,6 +119,7 @@ export function SectionRenderer({
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
+  storeName,
   isAuthenticated = false,
   headingHighlightStyle: highlightStyleProp,
 }: Props) {
@@ -700,6 +704,35 @@ export function SectionRenderer({
       );
     }
 
+    case "reels": {
+      const c = cfg as SectionConfigMap["reels"];
+      const reels = (section.resolved?.reels ?? []) as StorefrontReel[];
+      if (!reels.length) return null;
+      const autoplayMuted =
+        typeof section.resolved?.autoplayMuted === "boolean"
+          ? section.resolved.autoplayMuted
+          : c.autoplayMuted;
+      const visibleSlides =
+        typeof section.resolved?.visibleSlides === "number"
+          ? section.resolved.visibleSlides
+          : 3;
+      return (
+        <SectionMotion section={section} animation={animation} className={shell}>
+          <div className={sfSectionInner()}>
+            <ReelsShowcase
+              reels={reels}
+              currency={currency}
+              storeName={storeName}
+              heading={c.title || undefined}
+              visibleSlides={visibleSlides}
+              autoplayMuted={autoplayMuted}
+              headingHighlightStyle={highlightStyle}
+            />
+          </div>
+        </SectionMotion>
+      );
+    }
+
     default:
       return null;
   }
@@ -710,6 +743,7 @@ export function HomepageSections({
   animation,
   visualEffects = defaultPlatformConfig.visualEffects,
   currency = defaultPlatformConfig.store.currency,
+  storeName,
   isAuthenticated = false,
   headingHighlightStyle,
 }: {
@@ -717,6 +751,7 @@ export function HomepageSections({
   animation: AnimationConfig;
   visualEffects?: VisualEffectsConfig;
   currency?: string;
+  storeName?: string;
   isAuthenticated?: boolean;
   headingHighlightStyle?: HeadingHighlightStyle;
 }) {
@@ -729,6 +764,7 @@ export function HomepageSections({
           animation={animation}
           visualEffects={visualEffects}
           currency={currency}
+          storeName={storeName}
           isAuthenticated={isAuthenticated}
           headingHighlightStyle={headingHighlightStyle}
         />

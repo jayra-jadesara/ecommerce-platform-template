@@ -96,6 +96,7 @@ export type PageSectionType =
   | "statistics"
   | "text_image"
   | "newsletter"
+  | "reels"
   | "custom";
 
 type Timestamps = {
@@ -182,6 +183,12 @@ export type Database = {
           reviews_auto_approve: boolean;
           reviews_preview_limit: number;
           admin_image_max_mb: number;
+          admin_reel_video_max_mb: number;
+          reels_product_cta_label: string;
+          reels_showcase_limit: number;
+          reels_autoplay_muted: boolean;
+          reels_product_page_heading: string;
+          reels_visible_slides: number;
           inventory_low_stock_threshold: number;
           inventory_count_stock: boolean;
           extra: Json;
@@ -239,6 +246,12 @@ export type Database = {
           reviews_auto_approve?: boolean;
           reviews_preview_limit?: number;
           admin_image_max_mb?: number;
+          admin_reel_video_max_mb?: number;
+          reels_product_cta_label?: string;
+          reels_showcase_limit?: number;
+          reels_autoplay_muted?: boolean;
+          reels_product_page_heading?: string;
+          reels_visible_slides?: number;
           inventory_low_stock_threshold?: number;
           inventory_count_stock?: boolean;
           extra?: Json;
@@ -1266,6 +1279,50 @@ export type Database = {
           updated_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["banners"]["Insert"]>;
+        Relationships: [];
+      };
+      store_reels: {
+        Row: {
+          id: string;
+          store_id: string;
+          title: string;
+          instagram_url: string | null;
+          video_path: string | null;
+          product_cta_label: string;
+          sort_order: number;
+          is_active: boolean;
+          show_on_home: boolean;
+          show_on_product_page: boolean;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          title?: string;
+          instagram_url?: string | null;
+          video_path?: string | null;
+          product_cta_label?: string;
+          sort_order?: number;
+          is_active?: boolean;
+          show_on_home?: boolean;
+          show_on_product_page?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["store_reels"]["Insert"]>;
+        Relationships: [];
+      };
+      store_reel_products: {
+        Row: {
+          reel_id: string;
+          product_id: string;
+          sort_order: number;
+        };
+        Insert: {
+          reel_id: string;
+          product_id: string;
+          sort_order?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["store_reel_products"]["Insert"]>;
         Relationships: [];
       };
       blog_categories: {

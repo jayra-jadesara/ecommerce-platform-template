@@ -2,14 +2,9 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
-import LanguageOutlinedIcon from "@mui/icons-material/LanguageOutlined";
-import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
-import ShareOutlinedIcon from "@mui/icons-material/ShareOutlined";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import BadgeOutlinedIcon from "@mui/icons-material/BadgeOutlined";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { saveGeneralSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
@@ -18,7 +13,6 @@ import {
   generalSettingsSchema,
   type GeneralSettingsFormValues,
 } from "@/features/admin/settings/schemas";
-import { AdminSection } from "@/features/admin/ui/AdminCard";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
@@ -32,6 +26,7 @@ import {
   normalizeSelectValue,
 } from "@/features/admin/settings/location-options";
 import {
+  adminCard,
   adminCardsGrid,
   adminCardSpanFull,
   adminFieldsGrid,
@@ -44,10 +39,56 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
+import { cn } from "@/lib/cn";
 
 interface GeneralSettingsFormProps {
   initialValues: GeneralSettingsFormValues;
   canUpdate: boolean;
+}
+
+function Section({
+  title,
+  hint,
+  children,
+  className,
+  badge,
+}: {
+  title: string;
+  hint?: string;
+  children: ReactNode;
+  className?: string;
+  badge?: string;
+}) {
+  return (
+    <section
+      className={cn(adminCard(), "p-3.5 md:p-4", className)}
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.75rem",
+        width: "100%",
+      }}
+    >
+      <header className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+            {title}
+          </h2>
+          {hint ? (
+            <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+              {hint}
+            </p>
+          ) : null}
+        </div>
+        {badge ? (
+          <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+            {badge}
+          </span>
+        ) : null}
+      </header>
+      {children}
+    </section>
+  );
 }
 
 function SelectField({
@@ -87,13 +128,9 @@ function SelectField({
         : (values[0] ?? "");
 
   const composed = [
-    ...(!hasValue && value
-      ? [{ value, label: `${value} (saved)` }]
-      : []),
+    ...(!hasValue && value ? [{ value, label: `${value} (saved)` }] : []),
     ...normalized,
-    ...(allowCustom
-      ? [{ value: "__custom__", label: customLabel }]
-      : []),
+    ...(allowCustom ? [{ value: "__custom__", label: customLabel }] : []),
   ];
 
   return (
@@ -156,6 +193,7 @@ export function GeneralSettingsForm({
         initialValues.socialWhatsapp ?? "",
       ),
       adminImageMaxMb: initialValues.adminImageMaxMb ?? 5,
+      adminReelVideoMaxMb: initialValues.adminReelVideoMaxMb ?? 25,
     } satisfies GeneralSettingsFormValues;
   }, [initialValues]);
 
@@ -175,6 +213,7 @@ export function GeneralSettingsForm({
   const country = useWatch({ control, name: "country" }) ?? "India";
   const state = useWatch({ control, name: "state" }) ?? "";
   const city = useWatch({ control, name: "city" }) ?? "";
+  const adminImageMaxMb = useWatch({ control, name: "adminImageMaxMb" }) ?? 5;
   const isIndia = country === "India";
   const cityOptions = isIndia ? citiesForState(state) : [];
   const cityInList = cityOptions.includes(city);
@@ -207,13 +246,15 @@ export function GeneralSettingsForm({
     });
   });
 
+  const locked = !canUpdate || pending;
+
   return (
     <form
       onSubmit={(event) => {
         event.preventDefault();
         onSubmit();
       }}
-      className="space-y-4"
+      className="space-y-3"
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -241,11 +282,10 @@ export function GeneralSettingsForm({
         }}
       />
 
-      <div className={adminCardsGrid()}>
-        <AdminSection
+      <div className={cn(adminCardsGrid(), "!gap-3")}>
+        <Section
           title="Store identity"
-          description="Name and how customers reach you."
-          icon={<StorefrontOutlinedIcon sx={{ fontSize: 20 }} />}
+          hint="Name and how customers reach you."
         >
           <div className={adminFieldsGrid(2)}>
             <Controller
@@ -259,7 +299,7 @@ export function GeneralSettingsForm({
                     fullWidth
                     size="small"
                     required
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
                     helperText={
                       fieldState.error ? undefined : "Example: Sonet Spices"
@@ -278,8 +318,8 @@ export function GeneralSettingsForm({
                   label="Legal business name"
                   fullWidth
                   size="small"
-                  disabled={!canUpdate || pending}
-                  helperText="Optional — invoices and paperwork"
+                  disabled={locked}
+                  helperText="Optional — invoices & paperwork"
                 />
               )}
             />
@@ -293,8 +333,31 @@ export function GeneralSettingsForm({
                     label="Contact email"
                     fullWidth
                     size="small"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+            <Controller
+              name="socialWhatsapp"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="WhatsApp"
+                    fullWidth
+                    size="small"
+                    disabled={locked}
+                    error={Boolean(fieldState.error)}
+                    placeholder="+91 98765 43210"
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : "Country code included · storefront chat link"
+                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -310,7 +373,7 @@ export function GeneralSettingsForm({
                     label="Main phone"
                     fullWidth
                     size="small"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
                   />
                   <FieldError message={fieldState.error?.message} />
@@ -327,45 +390,21 @@ export function GeneralSettingsForm({
                     label="Second phone"
                     fullWidth
                     size="small"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="socialWhatsapp"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="WhatsApp number"
-                    fullWidth
-                    size="small"
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    placeholder="+91 98765 43210"
-                    helperText={
-                      fieldState.error
-                        ? undefined
-                        : "Include country code. Saved as a chat link for the storefront."
-                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
               )}
             />
           </div>
-        </AdminSection>
+        </Section>
 
-        <AdminSection
+        <Section
           title="Locale"
-          description="Currency, language, and timezone for the storefront."
-          icon={<LanguageOutlinedIcon sx={{ fontSize: 20 }} />}
+          hint="Currency, language, and timezone."
         >
-          <div className={adminFieldsGrid(2)}>
+          <div className={adminFieldsGrid(1)}>
             <Controller
               name="currency"
               control={control}
@@ -374,12 +413,12 @@ export function GeneralSettingsForm({
                   <SelectField
                     label="Currency"
                     required
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
                     helperText={
                       fieldState.error
                         ? undefined
-                        : "Used on product prices and checkout"
+                        : "Prices & checkout"
                     }
                     value={field.value}
                     options={[...STORE_CURRENCIES]}
@@ -396,8 +435,8 @@ export function GeneralSettingsForm({
                 <SelectField
                   label="Language / region"
                   required
-                  disabled={!canUpdate || pending}
-                  helperText="How dates and language are shown"
+                  disabled={locked}
+                  helperText="Dates & language"
                   value={field.value}
                   options={[...STORE_LOCALES]}
                   onChange={field.onChange}
@@ -412,8 +451,8 @@ export function GeneralSettingsForm({
                 <SelectField
                   label="Timezone"
                   required
-                  disabled={!canUpdate || pending}
-                  helperText="Order times and schedules"
+                  disabled={locked}
+                  helperText="Order times"
                   value={field.value}
                   options={[...STORE_TIMEZONES]}
                   onChange={field.onChange}
@@ -422,22 +461,64 @@ export function GeneralSettingsForm({
               )}
             />
           </div>
-        </AdminSection>
+        </Section>
 
-        <AdminSection
+        <Section
+          className={adminCardSpanFull()}
+          title="Media upload limits"
+          hint="Caps for admin image uploads (catalog, media library, branding). Reel video size is under Content → Reels → Settings."
+        >
+          <div className="rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] p-3 sm:max-w-md">
+            <div className="mb-2.5 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                  <ImageOutlinedIcon sx={{ fontSize: 16 }} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[12px] font-semibold text-[var(--color-foreground)]">
+                    Images
+                  </p>
+                  <p className="text-[10px] leading-snug text-[var(--color-muted)]">
+                    Products · media · branding
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--color-primary)]">
+                {adminImageMaxMb} MB
+              </span>
+            </div>
+            <Controller
+              name="adminImageMaxMb"
+              control={control}
+              render={({ field }) => (
+                <AdminSelect
+                  label="Max size"
+                  required
+                  disabled={locked}
+                  value={String(field.value)}
+                  onChange={(next) => field.onChange(Number(next))}
+                  name={field.name}
+                  helperText="1–10 MB"
+                  options={adminImageMaxMbOptions()}
+                />
+              )}
+            />
+          </div>
+        </Section>
+
+        <Section
           className={adminCardSpanFull()}
           title="Address & location"
-          description="Business address shown to customers where configured."
-          icon={<PlaceOutlinedIcon sx={{ fontSize: 20 }} />}
+          hint="Business address shown to customers where configured."
         >
-          <div className={adminFieldsGrid(2)}>
+          <div className={adminFieldsGrid(3)}>
             <Controller
               name="country"
               control={control}
               render={({ field }) => (
                 <SelectField
                   label="Country"
-                  disabled={!canUpdate || pending}
+                  disabled={locked}
                   value={field.value || "India"}
                   options={[...STORE_COUNTRIES]}
                   onChange={(next) => {
@@ -452,7 +533,7 @@ export function GeneralSettingsForm({
                       setCustomCity(true);
                     }
                   }}
-                  helperText="Changing country updates currency, language, and timezone"
+                  helperText="Updates currency, language & timezone"
                 />
               )}
             />
@@ -466,41 +547,11 @@ export function GeneralSettingsForm({
                     label="PIN / postal code"
                     fullWidth
                     size="small"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     error={Boolean(fieldState.error)}
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
-              )}
-            />
-            <Controller
-              name="addressLine1"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div className="md:col-span-2">
-                  <TextField
-                    {...field}
-                    label="Street address"
-                    fullWidth
-                    size="small"
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="addressLine2"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Landmark / area"
-                  fullWidth
-                  size="small"
-                  disabled={!canUpdate || pending}
-                />
               )}
             />
             {isIndia ? (
@@ -510,7 +561,7 @@ export function GeneralSettingsForm({
                 render={({ field }) => (
                   <SelectField
                     label="State"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     value={field.value}
                     options={[...INDIA_STATES]}
                     allowCustom
@@ -534,18 +585,49 @@ export function GeneralSettingsForm({
               <Controller
                 name="state"
                 control={control}
-                render={({ field, fieldState }) => (
+                render={({ field }) => (
                   <TextField
                     {...field}
                     label="State / region"
                     fullWidth
                     size="small"
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
+                    disabled={locked}
                   />
                 )}
               />
             )}
+            <div className="md:col-span-2 xl:col-span-2">
+              <Controller
+                name="addressLine1"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <div>
+                    <TextField
+                      {...field}
+                      label="Street address"
+                      fullWidth
+                      size="small"
+                      disabled={locked}
+                      error={Boolean(fieldState.error)}
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
+                )}
+              />
+            </div>
+            <Controller
+              name="addressLine2"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Landmark / area"
+                  fullWidth
+                  size="small"
+                  disabled={locked}
+                />
+              )}
+            />
             {isIndia && !showCityText ? (
               <Controller
                 name="city"
@@ -553,7 +635,7 @@ export function GeneralSettingsForm({
                 render={({ field }) => (
                   <SelectField
                     label="City"
-                    disabled={!canUpdate || pending}
+                    disabled={locked}
                     value={field.value}
                     options={[...cityOptions]}
                     allowCustom
@@ -575,29 +657,32 @@ export function GeneralSettingsForm({
                 name="city"
                 control={control}
                 render={({ field, fieldState }) => (
-                  <TextField
-                    {...field}
-                    label="City"
-                    fullWidth
-                    size="small"
-                    disabled={!canUpdate || pending}
-                    error={Boolean(fieldState.error)}
-                    helperText={
-                      isIndia
-                        ? "Type your city, or pick a state first for suggestions"
-                        : undefined
-                    }
-                  />
+                  <div>
+                    <TextField
+                      {...field}
+                      label="City"
+                      fullWidth
+                      size="small"
+                      disabled={locked}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        isIndia
+                          ? "Type city, or pick a state for suggestions"
+                          : undefined
+                      }
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
                 )}
               />
             )}
           </div>
-        </AdminSection>
+        </Section>
 
-        <AdminSection
+        <Section
+          className={adminCardSpanFull()}
           title="Business & accounts"
-          description="Tax IDs and how customers sign in or check out."
-          icon={<BadgeOutlinedIcon sx={{ fontSize: 20 }} />}
+          hint="Tax IDs and checkout sign-in rules."
         >
           <div className={adminFieldsGrid(2)}>
             <Controller
@@ -606,11 +691,11 @@ export function GeneralSettingsForm({
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Business registration number"
+                  label="Registration number"
                   fullWidth
                   size="small"
-                  disabled={!canUpdate || pending}
-                  helperText="Example: company or FSSAI number"
+                  disabled={locked}
+                  helperText="Company / FSSAI number"
                 />
               )}
             />
@@ -623,7 +708,7 @@ export function GeneralSettingsForm({
                   label="Tax ID / GSTIN"
                   fullWidth
                   size="small"
-                  disabled={!canUpdate || pending}
+                  disabled={locked}
                 />
               )}
             />
@@ -634,8 +719,9 @@ export function GeneralSettingsForm({
                 <AdminToggle
                   checked={Boolean(field.value)}
                   onChange={field.onChange}
-                  disabled={!canUpdate || pending}
-                  label="Allow customers to create accounts"
+                  disabled={locked}
+                  label="Customer accounts"
+                  description="Allow shoppers to register"
                   variant="row"
                 />
               )}
@@ -647,45 +733,22 @@ export function GeneralSettingsForm({
                 <AdminToggle
                   checked={Boolean(field.value)}
                   onChange={field.onChange}
-                  disabled={!canUpdate || pending}
-                  label="Allow checkout without an account"
+                  disabled={locked}
+                  label="Guest checkout"
+                  description="Buy without an account"
                   variant="row"
                 />
               )}
             />
           </div>
-        </AdminSection>
+        </Section>
 
-        <AdminSection
-          title="Image uploads"
-          description="Max file size for admin product, media, and branding images."
-          icon={<ImageOutlinedIcon sx={{ fontSize: 20 }} />}
-        >
-          <Controller
-            name="adminImageMaxMb"
-            control={control}
-            render={({ field }) => (
-              <AdminSelect
-                label="Admin image max size"
-                required
-                disabled={!canUpdate || pending}
-                value={String(field.value)}
-                onChange={(next) => field.onChange(Number(next))}
-                name={field.name}
-                helperText="Applies to product images, media library, and branding (1–10 MB)."
-                options={adminImageMaxMbOptions()}
-              />
-            )}
-          />
-        </AdminSection>
-
-        <AdminSection
+        <Section
           className={adminCardSpanFull()}
-          title="Social profile links"
-          description="Full profile URLs only. WhatsApp number is under Store identity."
-          icon={<ShareOutlinedIcon sx={{ fontSize: 20 }} />}
+          title="Social profiles"
+          hint="Full profile URLs. WhatsApp is under Store identity."
         >
-          <div className={adminFieldsGrid(2)}>
+          <div className={adminFieldsGrid(3)}>
             {(
               [
                 ["socialInstagram", "Instagram"],
@@ -706,7 +769,7 @@ export function GeneralSettingsForm({
                       label={label}
                       fullWidth
                       size="small"
-                      disabled={!canUpdate || pending}
+                      disabled={locked}
                       error={Boolean(fieldState.error)}
                       placeholder="https://"
                     />
@@ -716,7 +779,7 @@ export function GeneralSettingsForm({
               />
             ))}
           </div>
-        </AdminSection>
+        </Section>
       </div>
     </form>
   );

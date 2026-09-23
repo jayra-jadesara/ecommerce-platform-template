@@ -19,82 +19,54 @@ type AdminMultiSelectProps = {
   placeholder?: string;
   helperText?: string;
   disabled?: boolean;
-  /** Max chips before "+N". Default 3. */
+  /**
+   * Max chips shown when the field is not focused.
+   * `-1` = show every selected item (default).
+   */
   limitTags?: number;
 };
 
+/** Short label for dense chips — prefer name before category suffix. */
+function chipLabel(label: string) {
+  const cut = label.indexOf(" - ");
+  if (cut > 0 && cut < 42) return label.slice(0, cut);
+  return label;
+}
+
 const fieldSx: SxProps<Theme> = {
   "& .MuiInputBase-root": {
-    fontSize: "0.75rem",
-    minHeight: 36,
-    paddingTop: "4px !important",
-    paddingBottom: "4px !important",
-    backgroundColor: "var(--color-card)",
-    borderRadius: "var(--radius-default, 0.5rem)",
-  },
-  "& .MuiOutlinedInput-notchedOutline": {
-    borderColor: "var(--color-border)",
-  },
-  "& .MuiInputBase-root:hover .MuiOutlinedInput-notchedOutline": {
-    borderColor: "color-mix(in srgb, var(--color-primary) 45%, var(--color-border))",
-  },
-  "& .MuiInputBase-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
-    borderColor: "var(--color-primary)",
-    borderWidth: 1.5,
+    fontSize: "0.8125rem",
   },
   "& .MuiInputLabel-root": {
-    fontSize: "0.75rem",
+    fontSize: "0.8125rem",
   },
   "& .MuiInputLabel-root.Mui-focused": {
     color: "var(--color-primary)",
   },
   "& .MuiFormHelperText-root": {
-    fontSize: "0.6875rem",
+    fontSize: "0.75rem",
     marginLeft: 0,
-    marginTop: 4,
-  },
-  "& .MuiChip-root": {
-    height: 22,
-    fontSize: "0.6875rem",
-    backgroundColor:
-      "color-mix(in srgb, var(--color-primary) 10%, var(--color-surface))",
-    border: "1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border))",
-  },
-  "& .MuiChip-label": {
-    paddingLeft: 6,
-    paddingRight: 6,
-  },
-  "& .MuiChip-deleteIcon": {
-    fontSize: "0.875rem",
-    marginRight: 2,
-  },
-  "& .MuiAutocomplete-endAdornment": {
-    right: 6,
-  },
-  "& .MuiAutocomplete-popupIndicator, & .MuiAutocomplete-clearIndicator": {
-    padding: 2,
-  },
-  "& .MuiSvgIcon-root": {
-    fontSize: "1.1rem",
   },
 };
 
 const paperSx: SxProps<Theme> = {
-  borderRadius: "var(--radius-default, 0.5rem)",
+  borderRadius: "10px",
   border: "1px solid var(--color-border)",
   boxShadow:
     "0 10px 28px color-mix(in srgb, var(--color-foreground) 12%, transparent)",
   marginTop: "4px",
   overflow: "hidden",
+  backgroundColor: "var(--color-card)",
+  backgroundImage: "none",
 };
 
 const listboxSx: SxProps<Theme> = {
-  fontSize: "0.75rem",
+  fontSize: "0.8125rem",
   padding: "2px 0",
   maxHeight: 220,
   "& .MuiAutocomplete-option": {
     minHeight: 30,
-    fontSize: "0.75rem",
+    fontSize: "0.8125rem",
     lineHeight: 1.3,
     paddingTop: "3px !important",
     paddingBottom: "3px !important",
@@ -112,8 +84,8 @@ const listboxSx: SxProps<Theme> = {
 };
 
 /**
- * Compact admin multi-select (chips + searchable checklist).
- * Prefer this over one-off MUI Autocomplete multiples in admin forms.
+ * Compact admin multi-select (inline chips + searchable checklist).
+ * Selected items all wrap as small pills by default (`limitTags={-1}`).
  */
 export function AdminMultiSelect({
   options,
@@ -123,7 +95,7 @@ export function AdminMultiSelect({
   placeholder,
   helperText,
   disabled,
-  limitTags = 3,
+  limitTags = -1,
 }: AdminMultiSelectProps) {
   const selected = options.filter((option) => value.includes(option.id));
   const emptyHint =
@@ -135,6 +107,7 @@ export function AdminMultiSelect({
       multiple
       disableCloseOnSelect
       size="small"
+      fullWidth
       limitTags={limitTags}
       options={options}
       value={selected}
@@ -153,7 +126,8 @@ export function AdminMultiSelect({
           return (
             <Chip
               key={key}
-              label={option.label}
+              label={chipLabel(option.label)}
+              title={option.label}
               size="small"
               {...tagProps}
             />
@@ -176,7 +150,7 @@ export function AdminMultiSelect({
                 "& .MuiSvgIcon-root": { fontSize: "1rem" },
               }}
             />
-            <span className="truncate text-[0.75rem] leading-snug text-[var(--color-foreground)]">
+            <span className="truncate text-[0.8125rem] leading-snug text-[var(--color-foreground)]">
               {option.label}
             </span>
           </li>
@@ -186,7 +160,7 @@ export function AdminMultiSelect({
         <TextField
           {...params}
           label={label}
-          placeholder={emptyHint}
+          placeholder={selected.length ? undefined : emptyHint}
           helperText={helperText}
           size="small"
         />

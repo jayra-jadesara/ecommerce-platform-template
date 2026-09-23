@@ -55,6 +55,7 @@ export default async function AboutPage() {
             animation={config.animation}
             visualEffects={config.visualEffects}
             currency={config.store.currency}
+            storeName={config.brand.name}
             isAuthenticated={Boolean(user)}
             headingHighlightStyle={config.typography.headingHighlightStyle}
           />

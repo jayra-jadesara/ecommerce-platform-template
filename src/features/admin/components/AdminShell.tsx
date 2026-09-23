@@ -23,6 +23,7 @@ import StraightenOutlinedIcon from "@mui/icons-material/StraightenOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
+import CloudOutlinedIcon from "@mui/icons-material/CloudOutlined";
 import AssessmentOutlinedIcon from "@mui/icons-material/AssessmentOutlined";
 import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
@@ -32,6 +33,7 @@ import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
+import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
 import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
@@ -76,6 +78,7 @@ const ICONS: Record<
   inventory: WarehouseOutlinedIcon,
   orders: ShoppingBagOutlinedIcon,
   errors: ReportProblemOutlinedIcon,
+  platform: CloudOutlinedIcon,
   reports: AssessmentOutlinedIcon,
   customers: PeopleOutlinedIcon,
   content: ArticleOutlinedIcon,
@@ -85,6 +88,7 @@ const ICONS: Record<
   legal: GavelOutlinedIcon,
   pages: DescriptionOutlinedIcon,
   banners: ViewCarouselOutlinedIcon,
+  reels: MovieOutlinedIcon,
   blog: MenuBookOutlinedIcon,
   media: PhotoLibraryOutlinedIcon,
   team: ManageAccountsOutlinedIcon,

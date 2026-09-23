@@ -3,8 +3,10 @@ import "server-only";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import {
   ADMIN_IMAGE_MAX_MB_DEFAULT,
+  ADMIN_REEL_VIDEO_MAX_MB_DEFAULT,
   REPLACE_PHOTO_MAX_MB_DEFAULT,
   coerceAdminImageMaxMb,
+  coerceAdminReelVideoMaxMb,
   coerceReplacePhotoMaxMb,
   mbToBytes,
 } from "@/features/media/upload-limits";
@@ -15,6 +17,8 @@ export type ImageUploadLimits = {
   adminImageMaxBytes: number;
   replacePhotoMaxMb: number;
   replacePhotoMaxBytes: number;
+  adminReelVideoMaxMb: number;
+  adminReelVideoMaxBytes: number;
 };
 
 const FALLBACK: ImageUploadLimits = {
@@ -22,6 +26,8 @@ const FALLBACK: ImageUploadLimits = {
   adminImageMaxBytes: mbToBytes(ADMIN_IMAGE_MAX_MB_DEFAULT),
   replacePhotoMaxMb: REPLACE_PHOTO_MAX_MB_DEFAULT,
   replacePhotoMaxBytes: mbToBytes(REPLACE_PHOTO_MAX_MB_DEFAULT),
+  adminReelVideoMaxMb: ADMIN_REEL_VIDEO_MAX_MB_DEFAULT,
+  adminReelVideoMaxBytes: mbToBytes(ADMIN_REEL_VIDEO_MAX_MB_DEFAULT),
 };
 
 /** Read configured upload limits for the active store (service role). */
@@ -36,7 +42,7 @@ export async function getImageUploadLimits(
     const [{ data: storeRow }, { data: shippingRow }] = await Promise.all([
       supabase
         .from("store_settings")
-        .select("admin_image_max_mb")
+        .select("admin_image_max_mb, admin_reel_video_max_mb")
         .eq("store_id", id)
         .maybeSingle(),
       supabase
@@ -49,6 +55,10 @@ export async function getImageUploadLimits(
     const adminMb = coerceAdminImageMaxMb(
       (storeRow as { admin_image_max_mb?: number } | null)?.admin_image_max_mb,
     );
+    const reelMb = coerceAdminReelVideoMaxMb(
+      (storeRow as { admin_reel_video_max_mb?: number } | null)
+        ?.admin_reel_video_max_mb,
+    );
     const replaceMb = coerceReplacePhotoMaxMb(
       (shippingRow as { replace_photo_max_mb?: number } | null)
         ?.replace_photo_max_mb,
@@ -59,6 +69,8 @@ export async function getImageUploadLimits(
       adminImageMaxBytes: mbToBytes(adminMb),
       replacePhotoMaxMb: replaceMb,
       replacePhotoMaxBytes: mbToBytes(replaceMb),
+      adminReelVideoMaxMb: reelMb,
+      adminReelVideoMaxBytes: mbToBytes(reelMb),
     };
   } catch {
     return FALLBACK;
@@ -75,4 +87,10 @@ export async function getReplacePhotoMaxBytes(
   storeId?: string | null,
 ): Promise<number> {
   return (await getImageUploadLimits(storeId)).replacePhotoMaxBytes;
+}
+
+export async function getAdminReelVideoMaxBytes(
+  storeId?: string | null,
+): Promise<number> {
+  return (await getImageUploadLimits(storeId)).adminReelVideoMaxBytes;
 }

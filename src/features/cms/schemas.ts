@@ -55,6 +55,7 @@ export const SUPPORTED_SECTION_TYPES = [
   "faq",
   "cta",
   "newsletter",
+  "reels",
   "text",
   "image",
 ] as const;
@@ -76,6 +77,7 @@ export const SECTION_TYPE_LABELS: Record<SupportedSectionType, string> = {
   faq: "FAQ",
   cta: "Call to Action",
   newsletter: "Newsletter",
+  reels: "Reels",
   text: "Text Block",
   image: "Image",
 };
@@ -96,6 +98,7 @@ export const SECTION_TYPE_DESCRIPTIONS: Record<SupportedSectionType, string> = {
   faq: "Common questions and answers",
   cta: "Encourage a next step",
   newsletter: "Email signup form (stores addresses only)",
+  reels: "Hosted vertical video carousel with product footers",
   text: "Simple text block",
   image: "Single image block",
 };
@@ -514,6 +517,11 @@ export const imageSectionConfigSchema = sectionCommonSettingsSchema.extend({
   caption: z.string().max(300).optional().default(""),
 });
 
+export const reelsSectionConfigSchema = sectionCommonSettingsSchema.extend({
+  title: shortTextSchema.default("Shop the look"),
+  autoplayMuted: z.boolean().default(true),
+});
+
 const sectionConfigByType = {
   hero: heroSectionConfigSchema,
   categories: categoriesSectionConfigSchema,
@@ -529,6 +537,7 @@ const sectionConfigByType = {
   faq: faqSectionConfigSchema,
   cta: ctaSectionConfigSchema,
   newsletter: newsletterSectionConfigSchema,
+  reels: reelsSectionConfigSchema,
   text: textSectionConfigSchema,
   image: imageSectionConfigSchema,
 } as const;

@@ -130,6 +130,7 @@ export function createAppMuiTheme(
         },
         styleOverrides: {
           root: {
+            fontSize: "0.75rem",
             backgroundColor: "var(--color-card)",
             borderRadius: 10,
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -144,13 +145,25 @@ export function createAppMuiTheme(
           },
           // Prefer selector over removed `inputSizeSmall` key (MUI v9 typings).
           input: {
+            fontSize: "0.75rem",
             "&.MuiInputBase-inputSizeSmall": {
-              paddingTop: 8,
-              paddingBottom: 8,
+              paddingTop: 7,
+              paddingBottom: 7,
+              fontSize: "0.75rem",
             },
           },
           notchedOutline: {
             borderRadius: 10,
+          },
+        },
+      },
+      MuiInputBase: {
+        styleOverrides: {
+          root: {
+            fontSize: "0.75rem",
+          },
+          input: {
+            fontSize: "0.75rem",
           },
         },
       },
@@ -160,12 +173,26 @@ export function createAppMuiTheme(
         },
         styleOverrides: {
           root: {
+            fontSize: "0.75rem",
             "&.Mui-focused": {
               color: tokens.primary,
             },
           },
           sizeSmall: {
-            fontSize: "0.8125rem",
+            fontSize: "0.75rem",
+          },
+          shrink: {
+            fontSize: "0.75rem",
+          },
+        },
+      },
+      MuiFormHelperText: {
+        styleOverrides: {
+          root: {
+            fontSize: "0.6875rem",
+            marginLeft: 0,
+            marginTop: 4,
+            lineHeight: 1.35,
           },
         },
       },
@@ -302,6 +329,37 @@ export function createAppMuiTheme(
             border: "none",
             outline: "none",
             backgroundImage: "none",
+          },
+        },
+      },
+      MuiTooltip: {
+        defaultProps: {
+          arrow: true,
+          enterDelay: 280,
+          leaveDelay: 0,
+        },
+        styleOverrides: {
+          tooltip: {
+            backgroundColor: "var(--color-card)",
+            color: "var(--color-foreground)",
+            border: "1px solid var(--color-border)",
+            fontSize: "0.6875rem",
+            fontWeight: 600,
+            letterSpacing: "0.01em",
+            lineHeight: 1.35,
+            padding: "6px 10px",
+            borderRadius: 10,
+            maxWidth: 240,
+            boxShadow:
+              "0 10px 28px color-mix(in srgb, var(--color-foreground) 14%, transparent)",
+          },
+          arrow: {
+            color: "var(--color-card)",
+            "&::before": {
+              border: "1px solid var(--color-border)",
+              boxSizing: "border-box",
+              backgroundColor: "var(--color-card)",
+            },
           },
         },
       },

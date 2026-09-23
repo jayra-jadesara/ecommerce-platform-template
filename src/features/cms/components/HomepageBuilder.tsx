@@ -2,19 +2,18 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type DragEvent, type ReactNode } from "react";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
-import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
-import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import FormatQuoteOutlinedIcon from "@mui/icons-material/FormatQuoteOutlined";
@@ -28,14 +27,15 @@ import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import PowerSettingsNewOutlinedIcon from "@mui/icons-material/PowerSettingsNewOutlined";
 import StarOutlineOutlinedIcon from "@mui/icons-material/StarOutlineOutlined";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
+import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import ViewAgendaOutlinedIcon from "@mui/icons-material/ViewAgendaOutlined";
 import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
 import {
   createSectionAction,
   deleteSectionAction,
   duplicateSectionAction,
-  moveSectionAction,
   publishPageAction,
+  reorderSectionsAction,
   unpublishPageAction,
   updateSectionAction,
 } from "@/features/cms/actions";
@@ -107,6 +107,7 @@ const SECTION_TYPE_ICONS: Record<SupportedSectionType, ReactNode> = {
   faq: <HelpOutlineOutlinedIcon fontSize="small" />,
   cta: <CampaignOutlinedIcon fontSize="small" />,
   newsletter: <EmailOutlinedIcon fontSize="small" />,
+  reels: <MovieOutlinedIcon fontSize="small" />,
   text: <NotesOutlinedIcon fontSize="small" />,
   image: <ImageOutlinedIcon fontSize="small" />,
 };
@@ -178,6 +179,13 @@ export function HomepageBuilder({
   const [previewOpen, setPreviewOpen] = useState(false);
   const [mediaField, setMediaField] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ContentSection | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+  const [reorderBusy, setReorderBusy] = useState(false);
+  /** Disable card actions while saving order / refreshing. */
+  const reorderLocked = pending || reorderBusy;
+  /** Also lock while a drag is in progress. */
+  const actionsLocked = reorderLocked || Boolean(dragId);
 
   const isHomepage =
     page.slug === HOMEPAGE_SLUG || pageLabel.toLowerCase() === "homepage";
@@ -287,12 +295,67 @@ export function HomepageBuilder({
     );
   }
 
+  function commitSectionOrder(nextList: ContentSection[]) {
+    const previous = sections;
+    setSections(nextList);
+    setError(null);
+    setReorderBusy(true);
+    startTransition(async () => {
+      try {
+        const result = await reorderSectionsAction({
+          pageId: page.id,
+          orderedIds: nextList.map((s) => s.id),
+        });
+        if (!result.ok) {
+          setSections(previous);
+          setError(result.error);
+          return;
+        }
+        await router.refresh();
+      } finally {
+        setReorderBusy(false);
+        setDragId(null);
+        setOverId(null);
+      }
+    });
+  }
+
+  function onSectionDragStart(e: DragEvent, id: string) {
+    if (!canUpdate || reorderLocked) return;
+    setDragId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+  }
+
+  function onSectionDragOver(e: DragEvent, id: string) {
+    if (!canUpdate || !dragId || dragId === id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setOverId(id);
+  }
+
+  function onSectionDrop(e: DragEvent, targetId: string) {
+    e.preventDefault();
+    const sourceId = dragId || e.dataTransfer.getData("text/plain");
+    setDragId(null);
+    setOverId(null);
+    if (!sourceId || sourceId === targetId || !canUpdate) return;
+    const from = sections.findIndex((s) => s.id === sourceId);
+    const to = sections.findIndex((s) => s.id === targetId);
+    if (from < 0 || to < 0) return;
+    const next = [...sections];
+    const [item] = next.splice(from, 1);
+    next.splice(to, 0, item!);
+    commitSectionOrder(next);
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
         <div>
           <p className="text-sm text-[var(--color-muted)]">
-            Your {pageLabel.toLowerCase()} is made of sections. Changes stay in draft until you publish.
+            Your {pageLabel.toLowerCase()} is made of sections. Drag cards to
+            reorder. Changes stay in draft until you publish.
           </p>
           <p className="mt-1 text-sm">
             Status:{" "}
@@ -390,7 +453,7 @@ export function HomepageBuilder({
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {sections.map((section, index) => {
+          {sections.map((section) => {
             const typeKey = displaySectionType(section, isHomepage);
             const label =
               SECTION_TYPE_LABELS[typeKey as SupportedSectionType] ??
@@ -402,9 +465,40 @@ export function HomepageBuilder({
             return (
               <li
                 key={section.id}
-                className="flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
+                draggable={canUpdate && !reorderLocked}
+                onDragStart={(e) => onSectionDragStart(e, section.id)}
+                onDragOver={(e) => onSectionDragOver(e, section.id)}
+                onDrop={(e) => onSectionDrop(e, section.id)}
+                onDragEnd={() => {
+                  if (!reorderBusy) {
+                    setDragId(null);
+                    setOverId(null);
+                  }
+                }}
+                className={[
+                  "flex flex-col rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-3 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_4%,transparent)] transition",
+                  dragId === section.id ? "opacity-45" : "",
+                  overId === section.id && dragId !== section.id
+                    ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_7%,var(--color-card))] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_35%,transparent)]"
+                    : "",
+                  canUpdate && !reorderLocked
+                    ? "cursor-grab active:cursor-grabbing"
+                    : "",
+                  reorderLocked ? "opacity-70" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
-                <div className="flex gap-3">
+                <div className="flex gap-2.5">
+                  {canUpdate ? (
+                    <span
+                      className="mt-1 inline-flex h-8 w-5 shrink-0 items-center justify-center text-[var(--color-muted)]"
+                      aria-hidden
+                      title="Drag to reorder"
+                    >
+                      <DragIndicatorIcon sx={{ fontSize: 18 }} />
+                    </span>
+                  ) : null}
                   <div
                     className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
                     aria-hidden
@@ -434,84 +528,33 @@ export function HomepageBuilder({
                       <>
                         <button
                           type="button"
-                          disabled={pending || index === 0}
-                          aria-label="Move section up"
-                          title="Move up"
-                          className={iconBtn}
-                          onClick={() => {
-                            startTransition(async () => {
-                              const result = await moveSectionAction({
-                                sectionId: section.id,
-                                direction: "up",
-                              });
-                              if (!result.ok) {
-                                setError(result.error);
-                                return;
-                              }
-                              refresh();
-                              setSections((prev) => {
-                                const next = [...prev];
-                                const i = next.findIndex((s) => s.id === section.id);
-                                if (i <= 0) return prev;
-                                const tmp = next[i - 1]!;
-                                next[i - 1] = next[i]!;
-                                next[i] = tmp;
-                                return next;
-                              });
-                            });
-                          }}
-                        >
-                          <ArrowUpwardOutlinedIcon sx={{ fontSize: 16 }} />
-                        </button>
-                        <button
-                          type="button"
-                          disabled={pending || index === sections.length - 1}
-                          aria-label="Move section down"
-                          title="Move down"
-                          className={iconBtn}
-                          onClick={() => {
-                            startTransition(async () => {
-                              const result = await moveSectionAction({
-                                sectionId: section.id,
-                                direction: "down",
-                              });
-                              if (!result.ok) {
-                                setError(result.error);
-                                return;
-                              }
-                              refresh();
-                              setSections((prev) => {
-                                const next = [...prev];
-                                const i = next.findIndex((s) => s.id === section.id);
-                                if (i < 0 || i >= next.length - 1) return prev;
-                                const tmp = next[i + 1]!;
-                                next[i + 1] = next[i]!;
-                                next[i] = tmp;
-                                return next;
-                              });
-                            });
-                          }}
-                        >
-                          <ArrowDownwardOutlinedIcon sx={{ fontSize: 16 }} />
-                        </button>
-                        <button
-                          type="button"
+                          disabled={actionsLocked}
                           aria-label="Edit section"
-                          title="Edit"
+                          title={
+                            actionsLocked
+                              ? "Wait until reorder finishes"
+                              : "Edit"
+                          }
                           className={iconBtn}
-                          onClick={() => openEditor(section)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (actionsLocked) return;
+                            openEditor(section);
+                          }}
                         >
                           <EditOutlinedIcon sx={{ fontSize: 16 }} />
                         </button>
                         <button
                           type="button"
-                          disabled={pending}
+                          disabled={actionsLocked}
                           aria-label={
                             section.isActive ? "Disable section" : "Enable section"
                           }
                           title={section.isActive ? "Disable" : "Enable"}
                           className={iconBtn}
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (actionsLocked) return;
                             startTransition(async () => {
                               const result = await updateSectionAction({
                                 sectionId: section.id,
@@ -539,11 +582,13 @@ export function HomepageBuilder({
                     {canCreate ? (
                       <button
                         type="button"
-                        disabled={pending}
+                        disabled={actionsLocked}
                         aria-label="Duplicate section"
                         title="Duplicate"
                         className={iconBtn}
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (actionsLocked) return;
                           startTransition(async () => {
                             const result = await duplicateSectionAction(section.id);
                             if (!result.ok) {
@@ -563,11 +608,15 @@ export function HomepageBuilder({
                     {canDelete ? (
                       <button
                         type="button"
-                        disabled={pending}
+                        disabled={actionsLocked}
                         aria-label="Delete section"
                         title="Delete"
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-700 disabled:opacity-40 hover:bg-red-50"
-                        onClick={() => setDeleteTarget(section)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (actionsLocked) return;
+                          setDeleteTarget(section);
+                        }}
                       >
                         <DeleteOutlineOutlinedIcon sx={{ fontSize: 16 }} />
                       </button>
@@ -1370,6 +1419,29 @@ function SectionConfigFields({
           value={String(config.buttonText ?? "Subscribe")}
           onChange={(e) => setField("buttonText", e.target.value)}
         />
+      ) : null}
+
+      {sectionType === "reels" ? (
+        <div className={adminFieldGroup()} style={adminStackStyle}>
+          <p className="admin-field-group__title">Reels showcase</p>
+          <p className="admin-field-group__hint">
+            Shows active hosted reels marked “Show on homepage” from Content →
+            Reels.
+          </p>
+          <TextField
+            label="Heading"
+            fullWidth
+            value={String(config.title ?? "")}
+            onChange={(e) => setField("title", e.target.value)}
+          />
+          <p className="rounded-lg border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_60%,var(--color-card))] px-3 py-2 text-[12px] leading-snug text-[var(--color-muted)]">
+            Showcase count, visible slides, and muted autoplay are managed in{" "}
+            <span className="font-medium text-[var(--color-foreground)]">
+              Content → Reels → Settings
+            </span>
+            .
+          </p>
+        </div>
       ) : null}
 
       <details className="admin-field-group">

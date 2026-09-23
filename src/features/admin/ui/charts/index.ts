@@ -21,3 +21,4 @@ export {
   type AdminMultiBarPoint,
   type AdminMultiBarSeries,
 } from "@/features/admin/ui/charts/AdminMultiBarChart";
+export { AdminQuotaChart } from "@/features/admin/ui/charts/AdminQuotaChart";

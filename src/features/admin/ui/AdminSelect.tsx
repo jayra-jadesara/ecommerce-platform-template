@@ -40,9 +40,9 @@ const menuProps = {
         color: "var(--color-foreground)",
         backgroundImage: "none",
         "& .MuiMenuItem-root": {
-          fontSize: "0.8125rem",
+          fontSize: "0.75rem",
           fontFamily: "inherit",
-          minHeight: 36,
+          minHeight: 32,
           py: 0.75,
         },
         "& .MuiMenuItem-root.Mui-selected": {

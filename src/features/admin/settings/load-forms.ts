@@ -17,7 +17,10 @@ import {
 } from "@/features/admin/settings/schemas";
 import type { Tables } from "@/types/database";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
-import { coerceAdminImageMaxMb } from "@/features/media/upload-limits";
+import {
+  coerceAdminImageMaxMb,
+  coerceAdminReelVideoMaxMb,
+} from "@/features/media/upload-limits";
 
 type SettingsRow = Tables<"store_settings">;
 type BrandingRow = Tables<"store_branding">;
@@ -76,6 +79,9 @@ export async function loadGeneralSettingsForm(): Promise<{
       socialX: text(row?.social_x),
       socialWhatsapp: whatsappDisplayValue(text(row?.social_whatsapp)),
       adminImageMaxMb: coerceAdminImageMaxMb(row?.admin_image_max_mb),
+      adminReelVideoMaxMb: coerceAdminReelVideoMaxMb(
+        row?.admin_reel_video_max_mb,
+      ),
     },
   };
 }

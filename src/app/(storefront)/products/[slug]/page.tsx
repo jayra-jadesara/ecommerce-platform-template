@@ -28,6 +28,12 @@ import {
   getReviewsStoreSettings,
   listApprovedProductReviews,
 } from "@/features/reviews/service";
+import { ReelsShowcase } from "@/features/reels/components/ReelsShowcase";
+import {
+  getReelsShowcaseSettings,
+  listStorefrontReelsForProduct,
+} from "@/features/reels/reels-service";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 
 export const dynamic = "force-dynamic";
 
@@ -96,7 +102,14 @@ export default async function ProductDetailPage({
   const reviewsSettings = await getReviewsStoreSettings();
   const reviewsEnabled = reviewsSettings.enabled;
   const previewLimit = reviewsSettings.previewLimit;
-  const [related, popularRaw, reviewSummary, approvedReviews, myReview] =
+  const [
+    related,
+    popularRaw,
+    reviewSummary,
+    approvedReviews,
+    myReview,
+    productReelsPayload,
+  ] =
     await Promise.all([
       listSimilarStorefrontProducts({
         productId: product.id,
@@ -121,11 +134,25 @@ export default async function ProductDetailPage({
       reviewsEnabled && isAuthenticated
         ? getMyProductReview(product.id)
         : Promise.resolve(null),
+      resolveActiveStoreId().then(async (storeId) => {
+        const [reels, showcase] = await Promise.all([
+          listStorefrontReelsForProduct(product.id, storeId, 8),
+          getReelsShowcaseSettings(storeId),
+        ]);
+        return { reels, showcase };
+      }),
     ]);
   const relatedIds = new Set(related.map((p) => p.id));
   const popular = popularRaw
     .filter((p) => !relatedIds.has(p.id))
     .slice(0, 5);
+  const productReels = productReelsPayload?.reels ?? [];
+  const reelsAutoplayMuted =
+    productReelsPayload?.showcase.autoplayMuted ?? true;
+  const productReelsHeading =
+    productReelsPayload?.showcase.productPageHeading ?? "Seen in reels";
+  const productReelsVisibleSlides =
+    productReelsPayload?.showcase.visibleSlides ?? 3;
 
   const ratingCount = reviewsEnabled
     ? Math.max(product.ratingCount, reviewSummary.count)
@@ -222,6 +249,19 @@ export default async function ProductDetailPage({
         currency={config.store.currency}
         isAuthenticated={isAuthenticated}
       />
+      {productReels.length > 0 ? (
+        <div className="mt-10 md:mt-12">
+          <ReelsShowcase
+            reels={productReels}
+            currency={config.store.currency}
+            storeName={config.brand.name}
+            heading={productReelsHeading}
+            visibleSlides={productReelsVisibleSlides}
+            autoplayMuted={reelsAutoplayMuted}
+            headingHighlightStyle={config.typography.headingHighlightStyle}
+          />
+        </div>
+      ) : null}
       {reviewsEnabled ? (
         <ProductReviewsSection
           productId={product.id}

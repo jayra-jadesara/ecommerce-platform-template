@@ -410,6 +410,74 @@
   font-size: 1.125rem !important;
 }
 
+/**
+ * Multi-select Autocomplete — compact inline chips (wrap), not full-width rows.
+ * Overrides the fixed 2.5rem single-line input height used by TextField/Select.
+ */
+.admin-shell .MuiAutocomplete-root .MuiOutlinedInput-root,
+.admin-form-dialog-paper .MuiAutocomplete-root .MuiOutlinedInput-root {
+  height: auto !important;
+  min-height: 2.5rem !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 4px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+  padding-left: 8px !important;
+  padding-right: 2.25rem !important;
+}
+
+.admin-shell .MuiAutocomplete-root .MuiOutlinedInput-input,
+.admin-form-dialog-paper .MuiAutocomplete-root .MuiOutlinedInput-input {
+  height: auto !important;
+  min-height: 1.25rem !important;
+  width: 0 !important;
+  min-width: 4.5rem !important;
+  padding: 2px 4px !important;
+  display: block !important;
+}
+
+.admin-shell .MuiAutocomplete-root .MuiChip-root,
+.admin-form-dialog-paper .MuiAutocomplete-root .MuiChip-root {
+  height: 22px !important;
+  max-width: 9.75rem !important;
+  margin: 0 !important;
+  font-size: 0.6875rem !important;
+  background-color: color-mix(
+    in srgb,
+    var(--color-primary) 8%,
+    var(--color-surface)
+  ) !important;
+  border: 1px solid
+    color-mix(in srgb, var(--color-primary) 18%, var(--color-border)) !important;
+  color: var(--color-foreground) !important;
+}
+
+.admin-shell .MuiAutocomplete-root .MuiChip-label,
+.admin-form-dialog-paper .MuiAutocomplete-root .MuiChip-label {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  padding-left: 6px !important;
+  padding-right: 4px !important;
+  line-height: 1.2 !important;
+}
+
+.admin-shell .MuiAutocomplete-root .MuiChip-deleteIcon,
+.admin-form-dialog-paper .MuiAutocomplete-root .MuiChip-deleteIcon {
+  font-size: 0.875rem !important;
+  margin: 0 2px 0 -2px !important;
+  color: var(--color-muted) !important;
+}
+
+.admin-shell .MuiAutocomplete-endAdornment,
+.admin-form-dialog-paper .MuiAutocomplete-endAdornment {
+  top: 50% !important;
+  transform: translateY(-50%);
+  right: 6px !important;
+}
+
 .admin-shell select:not([multiple]) {
   min-height: 2.5rem;
   height: 2.5rem;
@@ -1318,9 +1386,9 @@ html.dark .admin-chart-tooltip {
     );
   border-right-color: var(--color-border) !important;
   box-shadow:
-    inset -1.5px 0 0 color-mix(in srgb, var(--color-primary) 40%, transparent),
+    inset -2px 0 0 color-mix(in srgb, var(--color-primary) 55%, transparent),
     1px 0 0 color-mix(in srgb, var(--color-foreground) 3%, transparent),
-    6px 0 20px color-mix(in srgb, var(--color-foreground) 2.5%, transparent);
+    8px 0 28px color-mix(in srgb, var(--color-foreground) 3.5%, transparent);
 }
 
 .admin-sidebar-motif {
@@ -1331,49 +1399,48 @@ html.dark .admin-chart-tooltip {
   overflow: hidden;
 }
 
-/* Soft depth under the letter — keep very quiet so nav stays readable */
+/* Soft depth under the letter */
 .admin-sidebar-motif__shade {
   position: absolute;
   left: -36%;
-  bottom: -28%;
+  bottom: -22%;
   width: 128%;
-  height: 48%;
-  background: color-mix(in srgb, var(--color-foreground) 1.4%, transparent);
+  height: 58%;
+  background: color-mix(in srgb, var(--color-foreground) 2.8%, transparent);
   clip-path: polygon(42% 12%, 100% 100%, 0% 100%);
   transform: skewX(-5deg);
 }
 
-/* Peak of the A — charcoal watermark only (never covers link contrast) */
+/* Peak of the A — charcoal only */
 .admin-sidebar-motif__triangle {
   position: absolute;
-  left: -8%;
-  right: -8%;
-  bottom: -8%;
-  height: 42%;
-  opacity: 0.55;
+  left: -12%;
+  right: -12%;
+  bottom: -4%;
+  height: 54%;
   background: linear-gradient(
     185deg,
-    color-mix(in srgb, var(--color-foreground) 4.5%, transparent) 0%,
-    color-mix(in srgb, var(--color-foreground) 2%, transparent) 60%,
-    transparent 100%
+    color-mix(in srgb, var(--color-foreground) 8.5%, transparent) 0%,
+    color-mix(in srgb, var(--color-foreground) 4%, transparent) 55%,
+    color-mix(in srgb, var(--color-foreground) 2%, transparent) 100%
   );
   clip-path: polygon(50% 0%, 4% 100%, 96% 100%);
 }
 
-/* Crossbar — quiet brand tint */
+/* Crossbar — quiet brand tint, not a pink wash */
 .admin-sidebar-motif__bar {
   position: absolute;
-  left: 30%;
-  right: 30%;
-  bottom: 18%;
-  height: 1.5px;
+  left: 28%;
+  right: 28%;
+  bottom: 23%;
+  height: 2px;
   border-radius: 999px;
   background: color-mix(
     in srgb,
-    var(--color-foreground) 14%,
-    var(--color-primary) 10%
+    var(--color-foreground) 22%,
+    var(--color-primary) 18%
   );
-  opacity: 0.28;
+  opacity: 0.42;
 }
 
 .admin-sidebar-brand {
@@ -1394,29 +1461,28 @@ html.dark .admin-sidebar {
     var(--color-card) 100%
   );
   box-shadow:
-    inset -1.5px 0 0 color-mix(in srgb, var(--color-primary) 50%, transparent),
-    6px 0 24px color-mix(in srgb, #000 36%, transparent);
+    inset -2px 0 0 color-mix(in srgb, var(--color-primary) 65%, transparent),
+    8px 0 32px color-mix(in srgb, #000 42%, transparent);
 }
 
 html.dark .admin-sidebar-motif__shade {
-  background: color-mix(in srgb, var(--color-foreground) 2.2%, transparent);
+  background: color-mix(in srgb, var(--color-foreground) 4.5%, transparent);
 }
 
 html.dark .admin-sidebar-motif__triangle {
-  opacity: 0.45;
   background: linear-gradient(
     185deg,
-    color-mix(in srgb, var(--color-foreground) 6%, transparent) 0%,
-    color-mix(in srgb, var(--color-foreground) 2%, transparent) 100%
+    color-mix(in srgb, var(--color-foreground) 11%, transparent) 0%,
+    color-mix(in srgb, var(--color-foreground) 4%, transparent) 100%
   );
 }
 
 html.dark .admin-sidebar-motif__bar {
   background: color-mix(
     in srgb,
-    var(--color-foreground) 22%,
-    var(--color-primary) 18%
+    var(--color-foreground) 35%,
+    var(--color-primary) 30%
   );
-  opacity: 0.32;
+  opacity: 0.55;
 }
 

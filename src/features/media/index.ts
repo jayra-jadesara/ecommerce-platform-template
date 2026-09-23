@@ -8,11 +8,15 @@ export {
 } from "@/features/media/validation";
 export {
   ADMIN_IMAGE_MAX_MB_DEFAULT,
+  ADMIN_REEL_VIDEO_MAX_MB_DEFAULT,
   REPLACE_PHOTO_MAX_MB_DEFAULT,
   adminImageMaxMbOptions,
+  adminReelVideoMaxMbOptions,
   replacePhotoMaxMbOptions,
   formatMaxMbHint,
   formatReplacePhotoHint,
+  formatReelVideoMaxMbHint,
+  isValidReelAspectRatio,
   mbToBytes,
 } from "@/features/media/upload-limits";
 export {
