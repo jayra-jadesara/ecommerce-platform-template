@@ -41,6 +41,8 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import IconButton from "@mui/material/IconButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { AdminUserMenu } from "@/features/admin/components/AdminUserMenu";
+import { AdminImpersonationBanner } from "@/features/admin/components/AdminImpersonationBanner";
+import { AdminImpersonationExitButton } from "@/features/admin/components/AdminImpersonationExitButton";
 import { LogoutControl } from "@/features/auth/components/LogoutControl";
 import { getAdminPath } from "@/config/admin-route";
 import {
@@ -455,6 +457,7 @@ export function AdminShell({
   roles,
   navItems,
   siteUrl,
+  impersonation = null,
   children,
 }: {
   brandName: string;
@@ -462,11 +465,17 @@ export function AdminShell({
   roles: string[];
   navItems: AdminNavEntry[] | AdminNavItem[];
   siteUrl?: string;
+  impersonation?: {
+    actorEmail: string | null;
+    targetEmail: string | null;
+    targetRoleLabel: string;
+  } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const loginRedirect = getAdminPath("/login");
+  const isImpersonating = Boolean(impersonation);
 
   const tree = useMemo((): AdminNavEntry[] => {
     if (!navItems.length) return [];
@@ -600,11 +609,15 @@ export function AdminShell({
               {roleLabel || "Signed in"}
             </p>
           </div>
-          <LogoutControl
-            redirectTo={loginRedirect}
-            iconOnly
-            label="Log out"
-          />
+          {isImpersonating ? (
+            <AdminImpersonationExitButton className="!h-8 !w-8" iconOnly />
+          ) : (
+            <LogoutControl
+              redirectTo={loginRedirect}
+              iconOnly
+              label="Log out"
+            />
+          )}
         </div>
       </div>
     </>
@@ -698,9 +711,19 @@ export function AdminShell({
                 roleLabel={roleLabel}
                 initials={initials}
                 loginRedirect={loginRedirect}
+                storeHref={storeHref}
+                isImpersonating={isImpersonating}
               />
             </div>
           </header>
+
+          {impersonation ? (
+            <AdminImpersonationBanner
+              targetEmail={impersonation.targetEmail}
+              targetRoleLabel={impersonation.targetRoleLabel}
+              actorEmail={impersonation.actorEmail}
+            />
+          ) : null}
 
           <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-clip">
             <div className="admin-page-content w-full min-w-0 px-3 py-4 sm:px-5 sm:py-5 lg:px-6">

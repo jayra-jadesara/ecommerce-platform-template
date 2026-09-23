@@ -2,6 +2,8 @@
 
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -12,9 +14,11 @@ import { useMemo, useState, useTransition } from "react";
 import {
   addAdminByEmailAction,
   createAdminStaffAction,
+  removeAdminStaffAction,
   setAdminActiveAction,
   updateAdminRolesAction,
 } from "@/features/admin/team/actions";
+import { startImpersonationAction } from "@/features/auth/impersonation-actions";
 import { AdminRoleSummary } from "@/features/admin/team/components/AdminRoleSummary";
 import type {
   LinkableStoreAccount,
@@ -105,6 +109,8 @@ export function AdminTeamManager({
   canManage,
   canViewActivity,
   allowSuperAdminAssign,
+  canImpersonate = false,
+  isImpersonating = false,
 }: {
   initialMembers: TeamMember[];
   total: number;
@@ -119,6 +125,8 @@ export function AdminTeamManager({
   canManage: boolean;
   canViewActivity: boolean;
   allowSuperAdminAssign: boolean;
+  canImpersonate?: boolean;
+  isImpersonating?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -132,6 +140,7 @@ export function AdminTeamManager({
   const [addStep, setAddStep] = useState<AddStep>("account");
   const [addMode, setAddMode] = useState<AddMode>("existing");
   const [addEmail, setAddEmail] = useState("");
+  const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
   const [addEmailError, setAddEmailError] = useState<string | null>(null);
   const [addPassword, setAddPassword] = useState("");
   const [addConfirmPassword, setAddConfirmPassword] = useState("");
@@ -383,7 +392,7 @@ export function AdminTeamManager({
           />
         </form>
 
-        {canManage ? (
+        {canManage && !isImpersonating ? (
           <button
             type="button"
             className={cn(adminBtn("primary"), "!min-h-10 shrink-0")}
@@ -530,6 +539,12 @@ export function AdminTeamManager({
               {initialMembers.map((member) => {
                 const isSelf = member.userId === currentUserId;
                 const role = primaryRole(member.roles);
+                const manageEnabled = canManage && !isImpersonating;
+                const canOpenAs =
+                  canImpersonate &&
+                  !isImpersonating &&
+                  !isSelf &&
+                  member.isActive;
                 return (
                   <tr
                     key={member.userId}
@@ -566,7 +581,7 @@ export function AdminTeamManager({
                     </td>
                     <td className="px-4 py-3 align-middle">
                       <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                        {canManage ? (
+                        {manageEnabled ? (
                           <button
                             type="button"
                             className={cn(
@@ -590,7 +605,35 @@ export function AdminTeamManager({
                             Activity
                           </Link>
                         ) : null}
-                        {canManage ? (
+                        {canOpenAs ? (
+                          <IconButton
+                            size="small"
+                            title="Open admin as this person"
+                            aria-label={`Open admin as ${member.email || member.name || "staff"}`}
+                            disabled={pending}
+                            onClick={() => {
+                              setError(null);
+                              setSuccess(null);
+                              startTransition(async () => {
+                                const result =
+                                  await startImpersonationAction(member.userId);
+                                if (result && !result.ok) {
+                                  setError(result.error);
+                                }
+                              });
+                            }}
+                            sx={{
+                              color: "var(--color-primary)",
+                              "&:hover": {
+                                backgroundColor:
+                                  "color-mix(in srgb, var(--color-primary) 12%, transparent)",
+                              },
+                            }}
+                          >
+                            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        ) : null}
+                        {manageEnabled ? (
                           <AdminToggle
                             className="!ml-0.5 [&_.MuiFormControlLabel-root]:!mr-0 [&_.MuiFormControlLabel-label]:text-xs"
                             checked={member.isActive}
@@ -614,7 +657,31 @@ export function AdminTeamManager({
                             }}
                           />
                         ) : null}
-                        {!canManage && !canViewActivity ? (
+                        {manageEnabled && !isSelf ? (
+                          <IconButton
+                            size="small"
+                            title="Remove from team"
+                            aria-label={`Remove ${member.email || member.name || "staff"} from team`}
+                            disabled={pending}
+                            onClick={() => {
+                              setError(null);
+                              setSuccess(null);
+                              setRemoveTarget(member);
+                            }}
+                            sx={{
+                              color: "var(--color-error)",
+                              "&:hover": {
+                                backgroundColor:
+                                  "color-mix(in srgb, var(--color-error) 12%, transparent)",
+                              },
+                            }}
+                          >
+                            <DeleteOutlineOutlinedIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        ) : null}
+                        {!manageEnabled &&
+                        !canViewActivity &&
+                        !canOpenAs ? (
                           <span className="text-[12px] text-[var(--color-muted)]">
                             —
                           </span>
@@ -626,7 +693,7 @@ export function AdminTeamManager({
               })}
             </tbody>
           </table>
-          {canManage ? (
+          {canManage && !isImpersonating ? (
             <p className="border-t border-[var(--color-border)] px-4 py-2 text-[11px] text-[var(--color-muted)]">
               Admin access off blocks the dashboard only — they can still shop.
             </p>
@@ -1015,6 +1082,45 @@ export function AdminTeamManager({
               : null
           }
         />
+      </AdminFormDialog>
+
+      <AdminFormDialog
+        open={Boolean(removeTarget)}
+        maxWidth="sm"
+        title="Remove from team?"
+        description="This removes their admin access and roles. Their login stays so they can still shop on the store."
+        pending={pending}
+        error={error}
+        confirmLabel="Remove from team"
+        pendingLabel="Removing…"
+        onClose={() => {
+          if (pending) return;
+          setRemoveTarget(null);
+          setError(null);
+        }}
+        onConfirm={() => {
+          if (!removeTarget) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await removeAdminStaffAction(removeTarget.userId);
+            if (!result.ok) {
+              setError(result.error);
+              return;
+            }
+            setSuccess(result.message);
+            setRemoveTarget(null);
+            refresh();
+          });
+        }}
+      >
+        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2.5">
+          <p className="text-[13px] font-semibold text-[var(--color-foreground)]">
+            {removeTarget?.name || "Team member"}
+          </p>
+          <p className="mt-0.5 truncate text-[12px] text-[var(--color-muted)]">
+            {removeTarget?.email || removeTarget?.userId}
+          </p>
+        </div>
       </AdminFormDialog>
     </div>
   );

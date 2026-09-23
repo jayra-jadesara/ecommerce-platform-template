@@ -13,6 +13,19 @@ import { getPlatformConfigAsync } from "@/config/site.server";
 
 export const dynamic = "force-dynamic";
 
+function formatRoleLabel(roles: string[]): string {
+  const map: Record<string, string> = {
+    SUPER_ADMIN: "Super Admin",
+    ADMIN: "Admin",
+    EDITOR: "Editor",
+    MARKETING: "Marketing",
+    ORDER_MANAGER: "Order Manager",
+    SUPPORT: "Support",
+    READER: "Read",
+  };
+  return roles.map((r) => map[r] ?? r).join(" · ");
+}
+
 export default async function AdminProtectedLayout({
   children,
 }: {
@@ -28,6 +41,14 @@ export default async function AdminProtectedLayout({
     redirect(adminUnauthorizedPath());
   }
 
+  const impersonation = admin.impersonation
+    ? {
+        actorEmail: admin.impersonation.actorEmail,
+        targetEmail: admin.impersonation.targetEmail,
+        targetRoleLabel: formatRoleLabel(admin.impersonation.targetRoles),
+      }
+    : null;
+
   return (
     <AdminShell
       brandName={brand.name}
@@ -35,6 +56,7 @@ export default async function AdminProtectedLayout({
       roles={admin.roles}
       navItems={navItems}
       siteUrl={getSiteUrl()}
+      impersonation={impersonation}
     >
       {children}
     </AdminShell>

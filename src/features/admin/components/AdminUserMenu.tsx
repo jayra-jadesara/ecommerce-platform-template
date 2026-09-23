@@ -2,8 +2,10 @@
 
 import KeyOutlinedIcon from "@mui/icons-material/KeyOutlined";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import { useEffect, useId, useRef, useState } from "react";
 import { AdminChangePasswordDialog } from "@/features/admin/components/AdminChangePasswordDialog";
+import { AdminImpersonationExitButton } from "@/features/admin/components/AdminImpersonationExitButton";
 import { LogoutControl } from "@/features/auth/components/LogoutControl";
 import { cn } from "@/lib/cn";
 
@@ -12,16 +14,20 @@ type AdminUserMenuProps = {
   roleLabel: string;
   initials: string;
   loginRedirect: string;
+  storeHref?: string;
+  isImpersonating?: boolean;
 };
 
 /**
- * Top-bar profile avatar with Change password + Log out menu.
+ * Top-bar profile avatar with View store, Change password + Log out / Exit.
  */
 export function AdminUserMenu({
   email,
   roleLabel,
   initials,
   loginRedirect,
+  storeHref = "/",
+  isImpersonating = false,
 }: AdminUserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [passwordOpen, setPasswordOpen] = useState(false);
@@ -66,6 +72,8 @@ export function AdminUserMenu({
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]",
           menuOpen &&
             "ring-2 ring-[color-mix(in_srgb,var(--color-primary)_45%,var(--color-border))]",
+          isImpersonating &&
+            "ring-2 ring-[color-mix(in_srgb,var(--color-warning)_50%,var(--color-border))]",
         )}
         onClick={() => setMenuOpen((value) => !value)}
       >
@@ -83,37 +91,59 @@ export function AdminUserMenu({
               {email ?? "Admin"}
             </p>
             <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-              {roleLabel || "Signed in"}
+              {isImpersonating ? `Viewing as · ${roleLabel}` : roleLabel || "Signed in"}
             </p>
           </div>
 
           <div className="p-1.5">
-            <button
-              type="button"
+            <a
+              href={storeHref}
+              target="_blank"
+              rel="noopener noreferrer"
               role="menuitem"
               className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-medium text-[var(--color-foreground)] transition hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-surface))]"
-              onClick={() => {
-                setMenuOpen(false);
-                setPasswordOpen(true);
-              }}
+              onClick={() => setMenuOpen(false)}
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))] text-[var(--color-primary)]">
-                <KeyOutlinedIcon sx={{ fontSize: 18 }} />
+                <StorefrontOutlinedIcon sx={{ fontSize: 18 }} />
               </span>
-              Change password
-            </button>
+              View store
+            </a>
+
+            {!isImpersonating ? (
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-medium text-[var(--color-foreground)] transition hover:bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-surface))]"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setPasswordOpen(true);
+                }}
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))] text-[var(--color-primary)]">
+                  <KeyOutlinedIcon sx={{ fontSize: 18 }} />
+                </span>
+                Change password
+              </button>
+            ) : null}
 
             <div className="mt-0.5 border-t border-[var(--color-border)] pt-0.5">
-              <LogoutControl
-                redirectTo={loginRedirect}
-                label="Log out"
-                className="!w-full !justify-start !rounded-xl !px-2.5 !py-2 !text-[13px] !font-medium !text-[var(--color-foreground)] hover:!bg-[color-mix(in_srgb,var(--color-foreground)_6%,var(--color-surface))]"
-                icon={
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-muted)] ring-1 ring-[var(--color-border)]">
-                    <LogoutRoundedIcon sx={{ fontSize: 18 }} />
-                  </span>
-                }
-              />
+              {isImpersonating ? (
+                <div onClick={() => setMenuOpen(false)}>
+                  <AdminImpersonationExitButton />
+                </div>
+              ) : (
+                <LogoutControl
+                  redirectTo={loginRedirect}
+                  label="Log out"
+                  className="!w-full !justify-start !rounded-xl !px-2.5 !py-2 !text-[13px] !font-medium !text-[var(--color-foreground)] hover:!bg-[color-mix(in_srgb,var(--color-foreground)_6%,var(--color-surface))]"
+                  icon={
+                    <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-surface)] text-[var(--color-muted)] ring-1 ring-[var(--color-border)]">
+                      <LogoutRoundedIcon sx={{ fontSize: 18 }} />
+                    </span>
+                  }
+                />
+              )}
             </div>
           </div>
         </div>

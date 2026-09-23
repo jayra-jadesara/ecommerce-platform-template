@@ -43,7 +43,12 @@ export default async function AdminTeamPage({
   }>;
 }) {
   const admin = await requirePermission("users.view");
-  const canManage = hasPermission(admin, "users.manage");
+  const canManage =
+    hasPermission(admin, "users.manage") && !admin.impersonation;
+  const canImpersonate =
+    hasRole(admin, "SUPER_ADMIN") &&
+    hasPermission(admin, "users.manage") &&
+    !admin.impersonation;
   const params = await searchParams;
 
   const status = parseStatus(params.status);
@@ -56,6 +61,8 @@ export default async function AdminTeamPage({
     listAdminTeamMembers({ search, status, role, page, pageSize }),
     canManage ? listLinkableStoreAccounts() : Promise.resolve([]),
   ]);
+
+  const actorUserId = admin.impersonation?.actorUserId ?? admin.user.id;
 
   return (
     <div className="space-y-3">
@@ -76,13 +83,15 @@ export default async function AdminTeamPage({
         initialStatus={status}
         initialRole={role}
         linkableAccounts={linkableAccounts}
-        currentUserId={admin.user.id}
+        currentUserId={actorUserId}
         canManage={canManage}
         canViewActivity={
           hasPermission(admin, "users.view") ||
           hasPermission(admin, "audit.view")
         }
-        allowSuperAdminAssign={hasRole(admin, "SUPER_ADMIN")}
+        allowSuperAdminAssign={hasRole(admin, "SUPER_ADMIN") && !admin.impersonation}
+        canImpersonate={canImpersonate}
+        isImpersonating={Boolean(admin.impersonation)}
       />
     </div>
   );

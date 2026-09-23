@@ -5,6 +5,7 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import {
   AdminChartCard,
+  AdminDonutChart,
   AdminHorizontalBarChart,
   AdminQuotaChart,
 } from "@/features/admin/ui/charts";
@@ -41,12 +42,7 @@ function StatusBanner({
   level: QuotaLevel;
 }) {
   return (
-    <div
-      className={cn(
-        "rounded-xl border px-4 py-3",
-        levelTone(level),
-      )}
-    >
+    <div className={cn("rounded-xl border px-4 py-3", levelTone(level))}>
       <p className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">
         {title}
       </p>
@@ -127,69 +123,76 @@ function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
     );
   }
 
-  const worst: QuotaLevel =
-    data.databaseLevel === "over" || data.fileLevel === "over"
-      ? "over"
-      : data.databaseLevel === "critical" || data.fileLevel === "critical"
-        ? "critical"
-        : data.databaseLevel === "warn" || data.fileLevel === "warn"
-          ? "warn"
-          : "ok";
-
-  const statusTitle =
-    worst === "ok"
-      ? "Storage looks fine for the Free plan"
-      : worst === "warn"
-        ? "You are using a good chunk of Free plan space"
-        : worst === "critical"
-          ? "Close to Free plan limits — plan an upgrade"
-          : "Over Free plan limits — upgrade soon";
-
-  const statusDetail = `Database ${formatBytes(data.databaseBytes)} of ${formatBytes(data.databaseLimitBytes)} · Files ${formatBytes(data.fileBytes)} of ${formatBytes(data.fileLimitBytes)} (images + videos).`;
-
   return (
     <div className="space-y-4">
-      <StatusBanner title={statusTitle} detail={statusDetail} level={worst} />
+      <div className={cn(adminCard(), "px-4 py-3")}>
+        <p className="text-[14px] font-semibold tracking-tight text-[var(--color-foreground)]">
+          Live project usage
+        </p>
+        <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-muted)]">
+          Database {formatBytes(data.databaseBytes)} of{" "}
+          {formatBytes(data.databaseLimitBytes)} (
+          {formatBytes(data.databaseRemainingBytes)} left) · Files{" "}
+          {formatBytes(data.fileBytes)} of {formatBytes(data.fileLimitBytes)} (
+          {formatBytes(data.fileRemainingBytes)} left) · Combined{" "}
+          {formatBytes(data.totalBytes)} of {formatBytes(data.totalLimitBytes)}.
+        </p>
+      </div>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-3">
         <AdminChartCard
-          title="Image files"
-          tip="Product photos, branding, CMS, and media library. Shares the 1 GB Free file limit."
+          title="Overall"
+          tip="Used vs capacity across database and file storage. Grey arc = space left."
         >
-          <AdminQuotaChart
-            used={data.imageBytes}
-            limit={data.fileLimitBytes}
-            usedLabel="Images"
+          <AdminDonutChart
+            data={data.overviewSegments.map((s) => ({
+              name: s.name,
+              value: s.bytes,
+              color: s.color,
+            }))}
+            capacity={data.totalLimitBytes}
+            formatValue={formatBytes}
+            emptyLabel="No usage measured yet."
           />
         </AdminChartCard>
-        <AdminChartCard
-          title="Video files (reels)"
-          tip="Hosted reel MP4 / WebM. Shares the same 1 GB Free file limit."
-        >
-          <AdminQuotaChart
-            used={data.videoBytes}
-            limit={data.fileLimitBytes}
-            usedLabel="Videos"
-          />
-        </AdminChartCard>
+
         <AdminChartCard
           title="Database"
-          tip="All store data in Postgres. Free plan: 500 MB. Going over can block writes."
+          tip="Largest tables inside your database, plus space left to capacity."
         >
-          <AdminQuotaChart
-            used={data.databaseBytes}
-            limit={data.databaseLimitBytes}
-            usedLabel="Database"
+          <AdminDonutChart
+            data={data.databaseSegments.map((s) => ({
+              name: s.name,
+              value: s.bytes,
+              color: s.color,
+            }))}
+            capacity={data.databaseLimitBytes}
+            formatValue={formatBytes}
+            emptyLabel="Database is empty."
+          />
+        </AdminChartCard>
+
+        <AdminChartCard
+          title="Images & videos"
+          tip="File storage used vs capacity. Grey arc = space left for uploads."
+        >
+          <AdminDonutChart
+            data={data.fileSegments.map((s) => ({
+              name: s.name,
+              value: s.bytes,
+              color: s.color,
+            }))}
+            capacity={data.fileLimitBytes}
+            formatValue={formatBytes}
+            emptyLabel="No files uploaded yet."
           />
         </AdminChartCard>
       </div>
 
       <AdminChartCard
         title="Storage folders"
-        tip="Each bar is one folder in Supabase Storage. Longer bar = more space used. Sizes are shown in MB/GB (not raw numbers)."
-        empty={
-          data.buckets.length === 0 ? "No uploaded files yet." : null
-        }
+        tip="Each bar is one folder in Supabase Storage. Longer bar = more space used."
+        empty={data.buckets.length === 0 ? "No uploaded files yet." : null}
       >
         <AdminHorizontalBarChart
           data={data.buckets.map((b) => ({
@@ -228,8 +231,10 @@ function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
               All folders total
             </span>
             <span className="shrink-0 font-semibold tabular-nums text-[var(--color-foreground)]">
-              {formatBytes(data.fileBytes)} / {formatBytes(data.fileLimitBytes)}{" "}
-              free
+              {formatBytes(data.fileBytes)} of {formatBytes(data.fileLimitBytes)}
+              <span className="ml-1 font-normal text-[var(--color-muted)]">
+                ({formatBytes(data.fileRemainingBytes)} left)
+              </span>
             </span>
           </li>
         </ul>
@@ -237,16 +242,8 @@ function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
 
       <div className={cn(adminCard(), "p-4")}>
         <h3 className="text-[13px] font-semibold text-[var(--color-foreground)]">
-          Good to know (Supabase Free)
+          Good to know
         </h3>
-        <p className="mt-1 text-[12px] text-[var(--color-muted)]">
-          Plan: <span className="font-medium text-[var(--color-foreground)]">{data.planLabel}</span>
-          {" · "}
-          Monthly transfer allowance:{" "}
-          {formatBytes(data.egressUncachedLimitBytes)} uncached +{" "}
-          {formatBytes(data.egressCachedLimitBytes)} cached (check usage in
-          Supabase dashboard).
-        </p>
         <div className="mt-3">
           <TipList tips={data.tips} />
         </div>
@@ -257,12 +254,11 @@ function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
 
 function VercelPanel({ data }: { data: VercelUsageSnapshot }) {
   const liveMeters = data.meters.filter((m) => m.live && m.used != null);
-  const worstLive: QuotaLevel =
-    liveMeters.reduce<QuotaLevel>((acc, m) => {
-      const level = m.level ?? "ok";
-      const rank = { ok: 0, warn: 1, critical: 2, over: 3 } as const;
-      return rank[level] > rank[acc] ? level : acc;
-    }, "ok");
+  const worstLive: QuotaLevel = liveMeters.reduce<QuotaLevel>((acc, m) => {
+    const level = m.level ?? "ok";
+    const rank = { ok: 0, warn: 1, critical: 2, over: 3 } as const;
+    return rank[level] > rank[acc] ? level : acc;
+  }, "ok");
 
   return (
     <div className="space-y-4">
@@ -286,11 +282,7 @@ function VercelPanel({ data }: { data: VercelUsageSnapshot }) {
 
       <div className="grid gap-3 md:grid-cols-2">
         {data.meters.map((meter) => (
-          <AdminChartCard
-            key={meter.id}
-            title={meter.label}
-            tip={meter.tip}
-          >
+          <AdminChartCard key={meter.id} title={meter.label} tip={meter.tip}>
             {meter.used != null ? (
               <AdminQuotaChart
                 used={meter.used}

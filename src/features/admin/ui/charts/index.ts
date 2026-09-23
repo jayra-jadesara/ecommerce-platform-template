@@ -22,3 +22,7 @@ export {
   type AdminMultiBarSeries,
 } from "@/features/admin/ui/charts/AdminMultiBarChart";
 export { AdminQuotaChart } from "@/features/admin/ui/charts/AdminQuotaChart";
+export {
+  AdminDonutChart,
+  type AdminDonutSegment,
+} from "@/features/admin/ui/charts/AdminDonutChart";

@@ -20,6 +20,7 @@ export {
   createAdminStaffAction,
   updateAdminRolesAction,
   setAdminActiveAction,
+  removeAdminStaffAction,
   listStaffActivityAction,
 } from "@/features/admin/team/actions";
 export { ROLE_SUMMARY_BULLETS } from "@/features/admin/team/role-summaries";

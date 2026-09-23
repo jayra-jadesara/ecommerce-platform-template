@@ -18,7 +18,7 @@ export default async function AdminPlatformUsagePage() {
     <div className="space-y-4 pb-16">
       <AdminPageHeader
         title="Hosting & storage"
-        description="See if Free / Hobby limits are getting full — Supabase files & database, Vercel traffic."
+        description="Live Supabase usage vs capacity (space left), plus Vercel traffic limits."
         breadcrumbs={[{ label: "Hosting & storage" }]}
       />
       <PlatformUsageClient supabase={supabase} vercel={vercel} />

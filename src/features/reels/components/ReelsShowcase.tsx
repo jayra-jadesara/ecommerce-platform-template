@@ -16,6 +16,7 @@ import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontReel } from "@/features/reels/types";
 import { SectionAccentHeading } from "@/components/ui/SectionAccentHeading";
+import { sfBtn } from "@/components/ui/storefront-classes";
 import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import { cn } from "@/lib/cn";
 
@@ -392,7 +393,12 @@ export function ReelPopup({
                         </p>
                       ) : null}
                     </div>
-                    <span className="rounded-lg bg-[var(--color-button-background)] px-2 py-1 text-[10px] font-semibold text-[var(--color-button-foreground)]">
+                    <span
+                      className={cn(
+                        sfBtn("primary"),
+                        "!min-h-0 shrink-0 !rounded-lg !px-2.5 !py-1.5 !text-[10px] !shadow-[0_6px_16px_color-mix(in_srgb,var(--color-primary)_32%,transparent)]",
+                      )}
+                    >
                       {reel.productCtaLabel || "Shop"}
                     </span>
                   </Link>
@@ -438,7 +444,6 @@ export function ReelsShowcase({
 }: ReelsShowcaseProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<string, HTMLVideoElement>>(new Map());
-  const [activeId, setActiveId] = useState<string | null>(reels[0]?.id ?? null);
   const [popupIndex, setPopupIndex] = useState<number | null>(null);
   const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
 
@@ -456,15 +461,12 @@ export function ReelsShowcase({
     });
   }, []);
 
-  const pauseAllExcept = useCallback((keepId: string | null) => {
-    videoRefs.current.forEach((el, id) => {
-      if (id === keepId) return;
-      el.pause();
-      try {
-        el.currentTime = 0;
-      } catch {
-        /* ignore */
-      }
+  const playAllMuted = useCallback(() => {
+    videoRefs.current.forEach((el) => {
+      el.muted = true;
+      el.defaultMuted = true;
+      el.disablePictureInPicture = true;
+      void el.play().catch(() => undefined);
     });
   }, []);
 
@@ -477,42 +479,8 @@ export function ReelsShowcase({
       pauseAll();
       return;
     }
-    const active = activeId ? videoRefs.current.get(activeId) : null;
-    pauseAllExcept(activeId);
-    if (active) {
-      active.muted = true;
-      active.disablePictureInPicture = true;
-      void active.play().catch(() => undefined);
-    }
-  }, [activeId, autoplayMuted, popupOpen, pauseAll, pauseAllExcept]);
-
-  useEffect(() => {
-    const root = scrollerRef.current;
-    if (!root) return;
-
-    const cards = Array.from(
-      root.querySelectorAll<HTMLElement>("[data-reel-id]"),
-    );
-    if (!cards.length) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let best: { id: string; ratio: number } | null = null;
-        for (const entry of entries) {
-          const id = entry.target.getAttribute("data-reel-id");
-          if (!id || !entry.isIntersecting) continue;
-          if (!best || entry.intersectionRatio > best.ratio) {
-            best = { id, ratio: entry.intersectionRatio };
-          }
-        }
-        if (best) setActiveId(best.id);
-      },
-      { root, threshold: [0.4, 0.55, 0.7] },
-    );
-
-    cards.forEach((card) => observer.observe(card));
-    return () => observer.disconnect();
-  }, [reels]);
+    playAllMuted();
+  }, [autoplayMuted, popupOpen, pauseAll, playAllMuted, reels]);
 
   if (!reels.length) return null;
 
@@ -540,7 +508,6 @@ export function ReelsShowcase({
         }}
       >
         {reels.map((reel, reelIndex) => {
-          const isActive = reel.id === activeId && !popupOpen;
           const failed = failedIds.has(reel.id);
           const ctaLabel = reel.productCtaLabel || "Shop";
           const cardWidth = showCentered
@@ -553,10 +520,9 @@ export function ReelsShowcase({
               tabIndex={0}
               data-reel-id={reel.id}
               className={cn(
-                "group relative shrink-0 cursor-pointer snap-center rounded-[1.25rem] bg-transparent text-left transition duration-300 outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]",
-                isActive
-                  ? "scale-100 opacity-100 ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-background)]"
-                  : "scale-[0.96] opacity-75 hover:opacity-90",
+                "group relative shrink-0 cursor-pointer snap-center rounded-[1.25rem] bg-transparent text-left transition duration-300 outline-none",
+                "scale-100 opacity-100 ring-2 ring-[var(--color-primary)] ring-offset-2 ring-offset-[var(--color-background)]",
+                "focus-visible:ring-[color-mix(in_srgb,var(--color-primary)_80%,var(--color-foreground))]",
               )}
               style={{
                 width: cardWidth,
@@ -594,17 +560,22 @@ export function ReelsShowcase({
                     muted
                     playsInline
                     loop
-                    autoPlay={isActive && autoplayMuted && !failed}
-                    preload={isActive ? "auto" : "metadata"}
+                    autoPlay={autoplayMuted && !failed}
+                    preload="auto"
                     disablePictureInPicture
                     controlsList="nodownload noplaybackrate noremoteplayback"
-                    onLoadedData={() => {
+                    onLoadedData={(e) => {
                       setFailedIds((prev) => {
                         if (!prev.has(reel.id)) return prev;
                         const next = new Set(prev);
                         next.delete(reel.id);
                         return next;
                       });
+                      if (autoplayMuted && !popupOpen) {
+                        const el = e.currentTarget;
+                        el.muted = true;
+                        void el.play().catch(() => undefined);
+                      }
                     }}
                     onError={() => {
                       setFailedIds((prev) => {
@@ -659,7 +630,12 @@ export function ReelsShowcase({
                               </p>
                             ) : null}
                           </div>
-                          <span className="rounded-lg bg-white px-2 py-1 text-[10px] font-semibold text-black">
+                          <span
+                            className={cn(
+                              sfBtn("primary"),
+                              "!min-h-0 shrink-0 !rounded-lg !px-2 !py-1 !text-[10px] !shadow-[0_6px_16px_color-mix(in_srgb,var(--color-primary)_32%,transparent)]",
+                            )}
+                          >
                             {ctaLabel}
                           </span>
                         </Link>

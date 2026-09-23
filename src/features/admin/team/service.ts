@@ -27,7 +27,10 @@ import {
   permissionsForRoles,
   type Permission,
 } from "@/features/auth/permissions";
-import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
+import { getActorAdmin, getCurrentAdmin, hasPermission } from "@/features/auth/session";
+import {
+  readImpersonationCookie,
+} from "@/features/auth/impersonation";
 import { authEmailSchema } from "@/features/auth/validations";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
@@ -35,6 +38,24 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AdminRoleCode } from "@/types/database";
 
 const TEAM_ROUTE = getAdminPath("/team");
+
+async function requireTeamManagerActor(): Promise<
+  | { ok: true; actor: NonNullable<Awaited<ReturnType<typeof getActorAdmin>>> }
+  | { ok: false; error: string }
+> {
+  const overlay = await readImpersonationCookie();
+  if (overlay) {
+    return {
+      ok: false,
+      error: "Exit staff view before managing the team.",
+    };
+  }
+  const actor = await getActorAdmin();
+  if (!actor || !hasPermission(actor, "users.manage")) {
+    return { ok: false, error: "You do not have permission to manage team." };
+  }
+  return { ok: true, actor };
+}
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
@@ -385,10 +406,9 @@ export async function addAdminByEmail(input: {
   roles?: AdminRoleCode[];
   isActive?: boolean;
 }): Promise<TeamResult> {
-  const actor = await getCurrentAdmin();
-  if (!actor || !hasPermission(actor, "users.manage")) {
-    return { ok: false, error: "You do not have permission to manage team." };
-  }
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
 
   const email = normalizeEmail(input.email);
   const emailCheck = authEmailSchema.safeParse(email);
@@ -509,10 +529,9 @@ export async function createAdminStaff(input: {
   password: string;
   role: AdminRoleCode;
 }): Promise<TeamResult> {
-  const actor = await getCurrentAdmin();
-  if (!actor || !hasPermission(actor, "users.manage")) {
-    return { ok: false, error: "You do not have permission to manage team." };
-  }
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
 
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()) {
     return {
@@ -707,10 +726,9 @@ export async function updateAdminRoles(
   userId: string,
   roleOrRoles: AdminRoleCode | AdminRoleCode[],
 ): Promise<TeamResult> {
-  const actor = await getCurrentAdmin();
-  if (!actor || !hasPermission(actor, "users.manage")) {
-    return { ok: false, error: "You do not have permission to manage team." };
-  }
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
 
   const role = normalizeSingleRole(
     Array.isArray(roleOrRoles) ? undefined : roleOrRoles,
@@ -1204,10 +1222,9 @@ export async function setAdminActive(
   userId: string,
   isActive: boolean,
 ): Promise<TeamResult> {
-  const actor = await getCurrentAdmin();
-  if (!actor || !hasPermission(actor, "users.manage")) {
-    return { ok: false, error: "You do not have permission to manage team." };
-  }
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
 
   const supabase = await createSupabaseServerClient();
   const storeId = await resolveActiveStoreId(supabase);
@@ -1277,6 +1294,105 @@ export async function setAdminActive(
     message: isActive
       ? "Admin access restored."
       : "Admin access revoked. They can still shop on the store.",
+  };
+}
+
+/**
+ * Remove staff from admin completely (roles + admin_users).
+ * Keeps Auth login + profile so they can still shop.
+ */
+export async function removeAdminStaff(userId: string): Promise<TeamResult> {
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
+
+  if (!hasAnyRole(actor.roles, ["SUPER_ADMIN"])) {
+    return {
+      ok: false,
+      error: "Only Super Admin can remove team members.",
+    };
+  }
+
+  if (userId === actor.user.id) {
+    return { ok: false, error: "You can't remove yourself from the team." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+
+  const { data: target } = await supabase
+    .from("admin_users")
+    .select("user_id, is_active")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!target) return { ok: false, error: "Team member not found." };
+
+  const currentRoles = await loadRolesForUser(supabase, userId);
+  const activeSuperCount = await countActiveSuperAdmins(supabase);
+  const lastGuard = wouldRemoveLastSuperAdmin({
+    targetCurrentRoles: currentRoles,
+    targetCurrentlyActive: target.is_active,
+    targetNextRoles: [],
+    targetNextActive: false,
+    activeSuperAdminCount: activeSuperCount,
+  });
+  if (lastGuard) return { ok: false, error: lastGuard };
+
+  const { error: rolesError } = await supabase
+    .from("admin_user_roles")
+    .delete()
+    .eq("user_id", userId);
+
+  if (rolesError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_REMOVE_STAFF_ROLES",
+      feature: "USERS",
+      message: "Unable to remove staff roles",
+      error: rolesError,
+      databaseCode: rolesError.code,
+      storeId,
+      entityType: "admin_user_roles",
+      entityId: userId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  const { error: adminError } = await supabase
+    .from("admin_users")
+    .delete()
+    .eq("user_id", userId);
+
+  if (adminError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_REMOVE_STAFF",
+      feature: "USERS",
+      message: "Unable to remove staff member",
+      error: adminError,
+      databaseCode: adminError.code,
+      storeId,
+      entityType: "admin_users",
+      entityId: userId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: actor.user.id,
+    action: "ADMIN_USER_REMOVED",
+    entity_type: "admin_users",
+    entity_id: userId,
+    metadata: { previous_roles: currentRoles },
+  });
+
+  return {
+    ok: true,
+    message:
+      "Removed from the team. Their login still works for shopping on the store.",
   };
 }
 

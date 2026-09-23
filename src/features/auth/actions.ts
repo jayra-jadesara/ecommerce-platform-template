@@ -481,6 +481,14 @@ export async function registerAction(raw: unknown): Promise<AuthActionResult> {
 }
 
 export async function logoutAction(redirectTo = "/"): Promise<void> {
+  try {
+    const { clearImpersonationCookie } = await import(
+      "@/features/auth/impersonation"
+    );
+    await clearImpersonationCookie();
+  } catch {
+    // Still sign out below.
+  }
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signOut();
   redirect(safeInternalPath(redirectTo, "/"));

@@ -114,6 +114,24 @@ export async function setAdminActiveAction(userId: string, isActive: boolean) {
   );
 }
 
+export async function removeAdminStaffAction(userId: string) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "TEAM_REMOVE_STAFF",
+      feature: "USERS",
+      entityType: "admin_users",
+      entityId: userId,
+      route: TEAM_ROUTE,
+    },
+    async () => {
+      const { removeAdminStaff } = await teamService();
+      return removeAdminStaff(userId);
+    },
+  );
+}
+
 export async function listStaffActivityAction(
   userId: string,
   options?: StaffActivityQuery,

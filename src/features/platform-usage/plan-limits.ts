@@ -1,18 +1,17 @@
-/** Free-plan caps and helpers for Hosting & storage (Supabase + Vercel). */
+/** Shared formatters + quota helpers (Vercel meters still use plan caps). */
 
 export const BYTES_PER_MB = 1024 * 1024;
 export const BYTES_PER_GB = 1024 * BYTES_PER_MB;
 
-/** Supabase Free — https://supabase.com/pricing */
-export const SUPABASE_FREE = {
-  planLabel: "Free",
-  fileStorageBytes: 1 * BYTES_PER_GB,
+/**
+ * Default included capacity for Hosting charts (Space left meter).
+ * Override with SUPABASE_DATABASE_LIMIT_BYTES / SUPABASE_FILE_LIMIT_BYTES —
+ * no plan name shown in the UI.
+ * @see https://supabase.com/pricing
+ */
+export const SUPABASE_INCLUDED_CAPACITY = {
   databaseBytes: 500 * BYTES_PER_MB,
-  egressUncachedBytes: 5 * BYTES_PER_GB,
-  egressCachedBytes: 5 * BYTES_PER_GB,
-  mau: 50_000,
-  maxActiveProjects: 2,
-  pauseAfterIdleDays: 7,
+  fileStorageBytes: 1 * BYTES_PER_GB,
 } as const;
 
 /** Vercel Hobby — https://vercel.com/docs/plans/hobby */
@@ -64,6 +63,6 @@ export function quotaStatusLabel(level: QuotaLevel): string {
     case "critical":
       return "Near the limit";
     case "over":
-      return "Over the free limit";
+      return "Over the plan limit";
   }
 }
