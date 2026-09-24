@@ -168,4 +168,8 @@ export const defaultPlatformConfig: PlatformConfig = {
     showFeaturedProduct: false,
     featuredProductId: null,
   },
+  ui: {
+    loaderStyle: "spinner",
+    loaderLabel: "Loading…",
+  },
 };

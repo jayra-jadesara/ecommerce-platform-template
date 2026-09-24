@@ -46,6 +46,11 @@ import {
   type ReturnPolicy,
 } from "@/features/shipping/policies";
 import { cn } from "@/lib/cn";
+import type { ProductPageSettings } from "@/features/catalog/product-page-settings";
+import {
+  DEFAULT_PRODUCT_DETAIL_SECTIONS,
+  DEFAULT_PRODUCT_FAQ_HEADING,
+} from "@/features/catalog/product-page-settings";
 
 const STORE_DEFAULT_POLICY = "store_default";
 
@@ -64,6 +69,8 @@ interface ProductFormProps {
   imagesSlot?: ReactNode;
   /** After create — show CTA to set stock on Inventory. */
   showStockHint?: boolean;
+  /** Store-wide PDP section headings + FAQ questions. */
+  pageSettings?: ProductPageSettings;
 }
 
 function sizeSelectOptions(
@@ -142,11 +149,18 @@ export function ProductForm({
   storeReturnPolicy = "no_return_refund",
   imagesSlot,
   showStockHint = false,
+  pageSettings,
 }: ProductFormProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const detailSections =
+    pageSettings?.sections?.filter((s) => s.active) ??
+    DEFAULT_PRODUCT_DETAIL_SECTIONS.filter((s) => s.active);
+  const faqQuestions =
+    pageSettings?.faqQuestions?.filter((q) => q.active) ?? [];
+  const faqHeading = pageSettings?.faqHeading ?? DEFAULT_PRODUCT_FAQ_HEADING;
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBlocked, setDeleteBlocked] = useState(false);
@@ -180,11 +194,18 @@ export function ProductForm({
   const shortDescriptionWatch =
     useWatch({ control, name: "shortDescription" }) ?? "";
   const descriptionWatch = useWatch({ control, name: "description" }) ?? "";
+  const sectionContentWatch =
+    useWatch({ control, name: "sectionContent" }) ?? {};
+  const faqAnswersWatch = useWatch({ control, name: "faqAnswers" }) ?? {};
+  const faqEnabledWatch = useWatch({ control, name: "faqEnabled" });
   const seoTitleWatch = useWatch({ control, name: "seoTitle" }) ?? "";
   const seoDescriptionWatch = useWatch({ control, name: "seoDescription" }) ?? "";
   const slugWatch = useWatch({ control, name: "slug" }) ?? "";
+  const sectionDescription =
+    String(sectionContentWatch.description ?? "").trim() ||
+    String(descriptionWatch).trim();
   const seoSourceDescription =
-    String(shortDescriptionWatch).trim() || String(descriptionWatch).trim();
+    String(shortDescriptionWatch).trim() || sectionDescription;
 
   function syncAutoCodesFromName(name: string) {
     if (mode !== "create") return;
@@ -395,7 +416,7 @@ export function ProductForm({
       <StepCard
         step={1}
         title="Basics"
-        description="Name, category, description, ingredients"
+        description="Name, category, short blurb, and detail sections"
       >
         <div className={adminFieldsGrid(2) + " admin-fields-grid--2-md"}>
           <Controller
@@ -469,65 +490,112 @@ export function ProductForm({
               )}
             />
           </div>
-          <div className="md:col-span-2">
-            <Controller
-              name="description"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Full description"
-                  placeholder="Details customers see on the product page"
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  disabled={!fieldsEditable}
-                />
-              )}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Controller
-              name="ingredients"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="Ingredients"
-                  placeholder="List ingredients if food or cosmetics"
-                  fullWidth
-                  multiline
-                  minRows={1}
-                  disabled={!fieldsEditable}
-                />
-              )}
-            />
-          </div>
-          <div className="md:col-span-2">
-            <Controller
-              name="usageInstructions"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  size="small"
-                  label="How to use"
-                  placeholder="Short tips or instructions"
-                  fullWidth
-                  multiline
-                  minRows={1}
-                  disabled={!fieldsEditable}
-                />
-              )}
-            />
-          </div>
+          {detailSections.map((section) => (
+            <div key={section.id} className="md:col-span-2">
+              <TextField
+                size="small"
+                label={section.heading}
+                value={sectionContentWatch[section.id] ?? ""}
+                onChange={(event) => {
+                  setValue(
+                    "sectionContent",
+                    {
+                      ...sectionContentWatch,
+                      [section.id]: event.target.value,
+                    },
+                    { shouldDirty: true },
+                  );
+                }}
+                placeholder={`Content for “${section.heading}”`}
+                fullWidth
+                multiline
+                minRows={section.id === "description" ? 2 : 1}
+                disabled={!fieldsEditable}
+              />
+            </div>
+          ))}
         </div>
       </StepCard>
 
       <StepCard
         step={2}
+        title={faqHeading.trim() || "FAQs"}
+        description="Answers for store-wide FAQ questions (off by default on the store)"
+      >
+        <div className="space-y-4">
+          <Controller
+            name="faqEnabled"
+            control={control}
+            render={({ field }) => (
+              <AdminToggle
+                checked={Boolean(field.value)}
+                disabled={!fieldsEditable}
+                onChange={field.onChange}
+                label="Show FAQs on store"
+                description="Appears above Related products when answers are filled"
+                variant="row"
+              />
+            )}
+          />
+          {faqEnabledWatch ? (
+            faqQuestions.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-4 text-[12px] text-[var(--color-muted)]">
+                No FAQ questions configured yet. Add them under Catalog →
+                Product settings → Product FAQs.
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-4">
+                {faqQuestions.map((q, index) => (
+                  <li
+                    key={q.id}
+                    className="rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_80%,var(--color-card))] p-3.5 sm:p-4"
+                  >
+                    <div className="mb-2.5 flex items-start gap-2.5">
+                      <span
+                        className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] text-[11px] font-semibold text-[var(--color-primary)]"
+                        aria-hidden
+                      >
+                        {index + 1}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
+                          Question
+                        </p>
+                        <p className="mt-0.5 text-[13px] font-medium leading-snug text-[var(--color-foreground)]">
+                          {q.question}
+                        </p>
+                      </div>
+                    </div>
+                    <TextField
+                      size="small"
+                      label="Answer"
+                      value={faqAnswersWatch[q.id] ?? ""}
+                      onChange={(event) => {
+                        setValue(
+                          "faqAnswers",
+                          {
+                            ...faqAnswersWatch,
+                            [q.id]: event.target.value,
+                          },
+                          { shouldDirty: true },
+                        );
+                      }}
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      disabled={!fieldsEditable}
+                      placeholder="Write the answer customers will see for this product"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )
+          ) : null}
+        </div>
+      </StepCard>
+
+      <StepCard
+        step={3}
         title="Price & sizes"
         description={
           productName
@@ -734,7 +802,7 @@ export function ProductForm({
       </StepCard>
 
       <StepCard
-        step={3}
+        step={4}
         title="Visibility"
         description="Draft is private. Active is for sale."
       >
@@ -824,7 +892,7 @@ export function ProductForm({
 
       {imagesSlot ? (
         <StepCard
-          step={4}
+          step={5}
           title="Photos"
           description="Shown on the product page and in listings"
         >
@@ -832,7 +900,7 @@ export function ProductForm({
         </StepCard>
       ) : mode === "create" ? (
         <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-xs text-[var(--color-muted)]">
-          After save, upload photos in step 4 on the edit screen.
+          After save, upload photos in the Photos step on the edit screen.
         </p>
       ) : null}
 

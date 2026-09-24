@@ -6,6 +6,7 @@ import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
+import type { Resolver } from "react-hook-form";
 import { saveGeneralSettingsAction } from "@/features/admin/settings/actions";
 import { SettingsFormToolbar } from "@/features/admin/settings/components/SettingsFormToolbar";
 import {
@@ -39,6 +40,14 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
+import { MediaPicker } from "@/features/media";
+import { resolveCmsImageUrl } from "@/features/cms/section-styles";
+import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";
+import {
+  STOREFRONT_LOADER_STYLES,
+  STOREFRONT_LOADER_STYLE_META,
+  type StorefrontLoaderStyle,
+} from "@/components/ui/storefront-loader";
 import { cn } from "@/lib/cn";
 
 interface GeneralSettingsFormProps {
@@ -162,6 +171,7 @@ export function GeneralSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [customCity, setCustomCity] = useState(false);
+  const [contactBannerMediaOpen, setContactBannerMediaOpen] = useState(false);
 
   const defaults = useMemo(() => {
     const country = normalizeSelectValue(
@@ -206,7 +216,9 @@ export function GeneralSettingsForm({
     setFocus,
     formState: { isDirty },
   } = useForm<GeneralSettingsFormValues>({
-    resolver: zodResolver(generalSettingsSchema),
+    resolver: zodResolver(
+      generalSettingsSchema,
+    ) as Resolver<GeneralSettingsFormValues>,
     defaultValues: defaults,
   });
 
@@ -214,6 +226,15 @@ export function GeneralSettingsForm({
   const state = useWatch({ control, name: "state" }) ?? "";
   const city = useWatch({ control, name: "city" }) ?? "";
   const adminImageMaxMb = useWatch({ control, name: "adminImageMaxMb" }) ?? 5;
+  const contactBannerEnabled = useWatch({
+    control,
+    name: "contactBannerEnabled",
+  });
+  const contactBannerImagePath = useWatch({
+    control,
+    name: "contactBannerImagePath",
+  });
+  const contactBannerPreview = resolveCmsImageUrl(contactBannerImagePath);
   const isIndia = country === "India";
   const cityOptions = isIndia ? citiesForState(state) : [];
   const cityInList = cityOptions.includes(city);
@@ -392,6 +413,141 @@ export function GeneralSettingsForm({
                     size="small"
                     disabled={locked}
                     error={Boolean(fieldState.error)}
+                  />
+                  <FieldError message={fieldState.error?.message} />
+                </div>
+              )}
+            />
+          </div>
+        </Section>
+
+        <Section
+          title="Contact page banner"
+          hint="Optional full-width image on /contact (off by default)."
+          className={adminCardSpanFull()}
+        >
+          <Controller
+            name="contactBannerEnabled"
+            control={control}
+            render={({ field }) => (
+              <AdminToggle
+                checked={Boolean(field.value)}
+                disabled={locked}
+                onChange={field.onChange}
+                label="Show banner on store"
+                description="Requires an image from Images & Files"
+                variant="row"
+              />
+            )}
+          />
+          {contactBannerEnabled ? (
+            <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+              {contactBannerPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={contactBannerPreview}
+                  alt=""
+                  className="mb-3 h-36 w-full rounded-lg object-cover"
+                />
+              ) : (
+                <p className="mb-3 text-sm text-[var(--color-muted)]">
+                  No banner image selected yet
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={locked || pending}
+                  className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium"
+                  onClick={() => setContactBannerMediaOpen(true)}
+                >
+                  Choose image
+                </button>
+                {contactBannerImagePath ? (
+                  <button
+                    type="button"
+                    disabled={locked || pending}
+                    className="rounded-md px-3 py-1.5 text-sm text-[var(--color-muted)]"
+                    onClick={() =>
+                      setValue("contactBannerImagePath", null, {
+                        shouldDirty: true,
+                      })
+                    }
+                  >
+                    Remove
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+        </Section>
+
+        <Section
+          title="Storefront loading"
+          hint="Shown while store pages load. Pick a style and label used across the store."
+          className={adminCardSpanFull()}
+        >
+          <Controller
+            name="storefrontLoaderStyle"
+            control={control}
+            render={({ field }) => (
+              <div
+                className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+                role="radiogroup"
+                aria-label="Loader style"
+              >
+                {STOREFRONT_LOADER_STYLES.map((style) => {
+                  const meta = STOREFRONT_LOADER_STYLE_META[style];
+                  const selected = field.value === style;
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={locked}
+                      onClick={() => field.onChange(style as StorefrontLoaderStyle)}
+                      className={cn(
+                        "flex flex-col items-center gap-2 rounded-xl border px-2.5 py-3 text-center transition-colors",
+                        selected
+                          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] ring-1 ring-[var(--color-primary)]"
+                          : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))]",
+                        locked && "cursor-not-allowed opacity-60",
+                      )}
+                    >
+                      <span className="flex h-10 items-center justify-center">
+                        <StorefrontLoaderMark style={style} size={26} />
+                      </span>
+                      <span className="text-[12px] font-semibold text-[var(--color-foreground)]">
+                        {meta.label}
+                      </span>
+                      <span className="text-[10px] leading-snug text-[var(--color-muted)]">
+                        {meta.hint}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          />
+          <div className="mt-4 max-w-sm">
+            <Controller
+              name="storefrontLoaderLabel"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div>
+                  <TextField
+                    {...field}
+                    label="Page loading label"
+                    placeholder="Loading…"
+                    fullWidth
+                    size="small"
+                    disabled={locked}
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error?.message ??
+                      "Used on full-page store loads"
+                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -781,6 +937,19 @@ export function GeneralSettingsForm({
           </div>
         </Section>
       </div>
+
+      <MediaPicker
+        open={contactBannerMediaOpen}
+        folder="cms"
+        allowUpload
+        onClose={() => setContactBannerMediaOpen(false)}
+        onSelect={(selection) => {
+          setValue("contactBannerImagePath", selection.storagePath, {
+            shouldDirty: true,
+          });
+          setContactBannerMediaOpen(false);
+        }}
+      />
     </form>
   );
 }

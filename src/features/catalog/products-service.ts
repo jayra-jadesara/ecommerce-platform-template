@@ -39,8 +39,45 @@ import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { checkProductDependencies } from "@/features/admin/validation/dependencies";
 import { zodValidationFailure } from "@/lib/validation";
 import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
+import {
+  PRODUCT_SECTION_DESCRIPTION,
+  PRODUCT_SECTION_HOW_TO_USE,
+  PRODUCT_SECTION_INGREDIENTS,
+} from "@/features/catalog/product-page-settings";
+import { parseStringRecord } from "@/features/catalog/product-page-settings-parse";
 
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
+
+function syncLegacyFromSectionContent(
+  sectionContent: Record<string, string>,
+): {
+  description: string | null;
+  usage_instructions: string | null;
+  ingredients: string | null;
+} {
+  const emptyToNull = (value: string | undefined) => {
+    const trimmed = value?.trim();
+    return trimmed ? trimmed : null;
+  };
+  return {
+    description: emptyToNull(sectionContent[PRODUCT_SECTION_DESCRIPTION]),
+    usage_instructions: emptyToNull(
+      sectionContent[PRODUCT_SECTION_HOW_TO_USE],
+    ),
+    ingredients: emptyToNull(sectionContent[PRODUCT_SECTION_INGREDIENTS]),
+  };
+}
+
+function cleanStringRecord(
+  record: Record<string, string>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(record)) {
+    const trimmed = value.trim();
+    if (trimmed) out[key] = trimmed;
+  }
+  return out;
+}
 
 export type AdminProductListItem = {
   id: string;
@@ -77,6 +114,11 @@ export type AdminProductDetail = {
     seo_title: string | null;
     seo_description: string | null;
     model_path: string | null;
+    banner_enabled: boolean;
+    banner_image_path: string | null;
+    faq_enabled: boolean;
+    faq_answers: Record<string, string>;
+    section_content: Record<string, string>;
   };
   variants: Array<{
     id: string;
@@ -392,6 +434,7 @@ export async function getAdminProduct(
       id, name, slug, category_id, brand, short_description, description,
       ingredients, usage_instructions, status, featured, returns_allowed,
       return_policy, seo_title, seo_description, model_path,
+      banner_enabled, banner_image_path, faq_enabled, faq_answers, section_content,
       product_variants (
         id, name, sku, price, compare_at_price, cost_price, weight, unit,
         track_inventory, is_active,
@@ -443,6 +486,34 @@ export async function getAdminProduct(
       seo_title: data.seo_title,
       seo_description: data.seo_description,
       model_path: (data as { model_path?: string | null }).model_path ?? null,
+      banner_enabled: Boolean(
+        (data as { banner_enabled?: boolean }).banner_enabled,
+      ),
+      banner_image_path:
+        (data as { banner_image_path?: string | null }).banner_image_path ??
+        null,
+      faq_enabled: Boolean((data as { faq_enabled?: boolean }).faq_enabled),
+      faq_answers: parseStringRecord(
+        (data as { faq_answers?: unknown }).faq_answers,
+      ),
+      section_content: (() => {
+        const fromJson = parseStringRecord(
+          (data as { section_content?: unknown }).section_content,
+        );
+        if (Object.keys(fromJson).length > 0) return fromJson;
+        // Fallback for stores that have not run backfill yet.
+        const legacy: Record<string, string> = {};
+        if (data.description?.trim()) {
+          legacy[PRODUCT_SECTION_DESCRIPTION] = data.description.trim();
+        }
+        if (data.usage_instructions?.trim()) {
+          legacy[PRODUCT_SECTION_HOW_TO_USE] = data.usage_instructions.trim();
+        }
+        if (data.ingredients?.trim()) {
+          legacy[PRODUCT_SECTION_INGREDIENTS] = data.ingredients.trim();
+        }
+        return legacy;
+      })(),
     },
     variants,
   };
@@ -644,6 +715,10 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
     };
   }
 
+  const sectionContent = cleanStringRecord(values.sectionContent ?? {});
+  const legacy = syncLegacyFromSectionContent(sectionContent);
+  const faqAnswers = cleanStringRecord(values.faqAnswers ?? {});
+
   const { data: product, error } = await supabase
     .from("products")
     .insert({
@@ -652,10 +727,10 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
       name: values.name.trim(),
       slug: values.slug,
       short_description: emptyToNull(values.shortDescription),
-      description: emptyToNull(values.description),
+      description: legacy.description,
       brand: emptyToNull(values.brand),
-      ingredients: emptyToNull(values.ingredients),
-      usage_instructions: emptyToNull(values.usageInstructions),
+      ingredients: legacy.ingredients,
+      usage_instructions: legacy.usage_instructions,
       status: values.status,
       featured: values.featured,
       return_policy: values.returnPolicy,
@@ -663,6 +738,11 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
       model_path: modelPath,
+      banner_enabled: Boolean(values.bannerEnabled),
+      banner_image_path: values.bannerImagePath?.trim() || null,
+      faq_enabled: Boolean(values.faqEnabled),
+      faq_answers: faqAnswers,
+      section_content: sectionContent,
     })
     .select("id, slug")
     .single();
@@ -769,6 +849,10 @@ export async function updateProduct(
     };
   }
 
+  const sectionContent = cleanStringRecord(values.sectionContent ?? {});
+  const legacy = syncLegacyFromSectionContent(sectionContent);
+  const faqAnswers = cleanStringRecord(values.faqAnswers ?? {});
+
   const { error } = await supabase
     .from("products")
     .update({
@@ -776,10 +860,10 @@ export async function updateProduct(
       name: values.name.trim(),
       slug: values.slug,
       short_description: emptyToNull(values.shortDescription),
-      description: emptyToNull(values.description),
+      description: legacy.description,
       brand: emptyToNull(values.brand),
-      ingredients: emptyToNull(values.ingredients),
-      usage_instructions: emptyToNull(values.usageInstructions),
+      ingredients: legacy.ingredients,
+      usage_instructions: legacy.usage_instructions,
       status: values.status,
       featured: values.featured,
       return_policy: values.returnPolicy,
@@ -787,6 +871,11 @@ export async function updateProduct(
       seo_title: emptyToNull(values.seoTitle),
       seo_description: emptyToNull(values.seoDescription),
       model_path: modelPath,
+      banner_enabled: Boolean(values.bannerEnabled),
+      banner_image_path: values.bannerImagePath?.trim() || null,
+      faq_enabled: Boolean(values.faqEnabled),
+      faq_answers: faqAnswers,
+      section_content: sectionContent,
     })
     .eq("id", id)
     .eq("store_id", storeId);
@@ -1095,6 +1184,11 @@ export function toProductFormValues(
     seoTitle: detail.product.seo_title ?? "",
     seoDescription: detail.product.seo_description ?? "",
     modelPath: detail.product.model_path,
+    bannerEnabled: detail.product.banner_enabled,
+    bannerImagePath: detail.product.banner_image_path,
+    faqEnabled: detail.product.faq_enabled,
+    faqAnswers: detail.product.faq_answers,
+    sectionContent: detail.product.section_content,
     variants: detail.variants.map((variant) => ({
       id: variant.id,
       clientKey: variant.id,

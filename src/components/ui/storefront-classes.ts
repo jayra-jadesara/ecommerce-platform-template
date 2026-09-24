@@ -22,7 +22,7 @@ export function sfBtn(
 }
 
 export function sfSectionInner(): string {
-  return "mx-auto w-full max-w-[var(--layout-content-max,1520px)] pl-[var(--layout-container-padding)] pr-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]";
+  return "mx-auto w-full max-w-[var(--layout-content-max,1520px)] px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]";
 }
 
 export function sfCard(): string {

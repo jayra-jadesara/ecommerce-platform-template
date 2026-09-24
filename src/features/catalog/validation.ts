@@ -163,6 +163,21 @@ export const productFormSchema = z.object({
     .transform((v) => v.trim()),
   /** Optional trusted path: products/{storeId}/3d/{file}.glb|gltf */
   modelPath: safeModelPathSchema.optional().default(null),
+  /** Legacy per-product PDP banner — unused; listing banner lives in Product settings. */
+  bannerEnabled: z.boolean().default(false),
+  bannerImagePath: z
+    .string()
+    .trim()
+    .max(500)
+    .nullable()
+    .optional()
+    .default(null)
+    .transform((v) => (v?.trim() ? v.trim() : null)),
+  /** Product FAQ block — off by default. */
+  faqEnabled: z.boolean().default(false),
+  faqAnswers: z.record(z.string(), z.string().max(4000)).default({}),
+  /** Collapse section bodies keyed by settings section id. */
+  sectionContent: z.record(z.string(), z.string().max(20_000)).default({}),
   variants: z.array(variantFormSchema).min(1, "Add at least one variant").max(50),
 });
 
@@ -302,5 +317,10 @@ export const DEFAULT_PRODUCT_FORM: ProductFormValues = {
   seoTitle: "",
   seoDescription: "",
   modelPath: null,
+  bannerEnabled: false,
+  bannerImagePath: null,
+  faqEnabled: false,
+  faqAnswers: {},
+  sectionContent: {},
   variants: [emptyVariant("variant-1")],
 };

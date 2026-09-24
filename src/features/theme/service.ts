@@ -13,6 +13,7 @@ import {
   mapSettingsRowToHeader,
   mapSettingsRowToSocial,
   mapSettingsRowToStore,
+  mapSettingsRowToUi,
   mapThemeRowToConfig,
   mapVisualEffectsRowToConfig,
   type AnimationRow,
@@ -141,6 +142,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
     store.name,
     store.legal_name,
   );
+  const ui = mapSettingsRowToUi(settings);
 
   return {
     ...fallback,
@@ -176,6 +178,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
     social,
     header,
     footer,
+    ui,
   };
 }
 

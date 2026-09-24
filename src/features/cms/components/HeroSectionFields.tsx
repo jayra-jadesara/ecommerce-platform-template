@@ -4,10 +4,15 @@ import { useState } from "react";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
-import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { adminFieldGroup } from "@/features/admin/ui/admin-classes";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+  adminSortableIds,
+  reorderBySortableIds,
+} from "@/features/admin/ui/AdminSortable";
 import {
   pageOptionLabel,
   StorePageLinkField,
@@ -46,9 +51,22 @@ type Props = {
 };
 
 const MAX_SLIDES = 8;
+const SORT_PREFIX = "hero";
 
-const iconBtn =
-  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] disabled:opacity-35 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]";
+function mapExpandedAfterReorder(
+  current: number | null,
+  oldIndex: number,
+  newIndex: number,
+): number | null {
+  if (current === null) return null;
+  if (current === oldIndex) return newIndex;
+  if (oldIndex < newIndex) {
+    if (current > oldIndex && current <= newIndex) return current - 1;
+  } else if (current >= newIndex && current < oldIndex) {
+    return current + 1;
+  }
+  return current;
+}
 
 function CompactImageField({
   label,
@@ -192,21 +210,6 @@ export function HeroSectionFields({
     });
   }
 
-  function move(index: number, direction: -1 | 1) {
-    const next = index + direction;
-    if (next < 0 || next >= slides.length) return;
-    const copy = [...slides];
-    const tmp = copy[index]!;
-    copy[index] = copy[next]!;
-    copy[next] = tmp;
-    onChange({ slides: copy });
-    setOpenIndex((current) => {
-      if (current === index) return next;
-      if (current === next) return index;
-      return current;
-    });
-  }
-
   function addSlide() {
     if (slides.length >= MAX_SLIDES) return;
     const nextIndex = slides.length;
@@ -271,7 +274,7 @@ export function HeroSectionFields({
         <p className="admin-field-group__title">2. Campaign slides</p>
         <p className="admin-field-group__hint">
           Full-bleed photos shoppers see. Open one at a time — each slide has
-          its own image and buttons.
+          its own image and buttons. Drag the handle to reorder.
         </p>
 
         {slides.length === 0 ? (
@@ -279,7 +282,29 @@ export function HeroSectionFields({
             No slides yet — add your first campaign image below.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <AdminSortableList
+            ids={adminSortableIds(slides.length, SORT_PREFIX)}
+            className="space-y-2"
+            onReorder={(activeId, overId) => {
+              const oldIndex = slides.findIndex(
+                (_, i) => `${SORT_PREFIX}-${i}` === activeId,
+              );
+              const newIndex = slides.findIndex(
+                (_, i) => `${SORT_PREFIX}-${i}` === overId,
+              );
+              const next = reorderBySortableIds(
+                slides,
+                activeId,
+                overId,
+                SORT_PREFIX,
+              );
+              if (!next) return;
+              onChange({ slides: next });
+              setOpenIndex((current) =>
+                mapExpandedAfterReorder(current, oldIndex, newIndex),
+              );
+            }}
+          >
             {slides.map((slide, index) => {
               const open = openIndex === index;
               const summary =
@@ -287,15 +312,27 @@ export function HeroSectionFields({
                 slide.ctaLabel.trim() ||
                 (slide.imagePath ? "Image set" : "Empty slide");
               return (
+                <AdminSortableItem
+                  key={`${SORT_PREFIX}-${index}`}
+                  id={`${SORT_PREFIX}-${index}`}
+                >
+                  {({ setNodeRef, style, isDragging, attributes, listeners }) => (
                 <li
-                  key={`hero-slide-${index}`}
+                  ref={setNodeRef}
+                  style={style}
                   className={cn(
                     "overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]",
                     open &&
                       "border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))]",
+                    isDragging && "z-10 opacity-90 shadow-md",
                   )}
                 >
                   <div className="flex items-center gap-1.5 px-2 py-1.5">
+                    <AdminDragHandle
+                      attributes={attributes}
+                      listeners={listeners}
+                      className="!self-center rounded-md"
+                    />
                     <button
                       type="button"
                       className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-[color-mix(in_srgb,var(--color-foreground)_3%,transparent)]"
@@ -315,24 +352,6 @@ export function HeroSectionFields({
                       <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-muted)]">
                         {open ? "Hide" : "Edit"}
                       </span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      aria-label="Move up"
-                      className={iconBtn}
-                      onClick={() => move(index, -1)}
-                    >
-                      <ArrowUpwardOutlinedIcon sx={{ fontSize: 15 }} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === slides.length - 1}
-                      aria-label="Move down"
-                      className={iconBtn}
-                      onClick={() => move(index, 1)}
-                    >
-                      <ArrowDownwardOutlinedIcon sx={{ fontSize: 15 }} />
                     </button>
                     <button
                       type="button"
@@ -472,9 +491,11 @@ export function HeroSectionFields({
                     </div>
                   ) : null}
                 </li>
+                  )}
+                </AdminSortableItem>
               );
             })}
-          </ul>
+          </AdminSortableList>
         )}
 
         <button

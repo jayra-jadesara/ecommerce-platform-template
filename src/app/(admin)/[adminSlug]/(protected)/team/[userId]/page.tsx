@@ -107,7 +107,7 @@ export default async function AdminStaffActivityPage({
         description="Charts or a day-grouped activity table — compact filters by page and date."
         breadcrumbs={[
           { label: "Store", href: getAdminPath("/settings") },
-          { label: "Team", href: getAdminPath("/team") },
+          { label: "Team & roles", href: getAdminPath("/team") },
           { label: member.name || member.email || "Staff" },
         ]}
       />

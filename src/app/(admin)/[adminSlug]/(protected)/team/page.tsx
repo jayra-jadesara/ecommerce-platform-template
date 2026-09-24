@@ -14,6 +14,7 @@ import {
   requirePermission,
 } from "@/features/auth/session";
 import type { AdminRoleCode } from "@/types/database";
+import { AdminSettingsTabs } from "@/features/admin/ui/AdminSettingsTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,10 @@ function parsePageSize(value: string | undefined): 10 | 25 {
   return value === "25" ? 25 : 10;
 }
 
+function parseSection(value: string | undefined): "staff" | "roles" {
+  return value === "roles" ? "roles" : "staff";
+}
+
 export default async function AdminTeamPage({
   searchParams,
 }: {
@@ -48,6 +53,7 @@ export default async function AdminTeamPage({
     q?: string;
     status?: string;
     role?: string;
+    tab?: string;
   }>;
 }) {
   const admin = await requirePermission("users.view");
@@ -62,6 +68,7 @@ export default async function AdminTeamPage({
     hasPermission(admin, "users.manage") &&
     !admin.impersonation;
   const params = await searchParams;
+  const section = parseSection(params.tab);
 
   const jar = await cookies();
   const staffViewError =
@@ -82,18 +89,35 @@ export default async function AdminTeamPage({
   ]);
 
   const actorUserId = admin.impersonation?.actorUserId ?? admin.user.id;
+  const teamBase = getAdminPath("/team");
 
   return (
     <div className="space-y-3">
       <AdminPageHeader
-        title="Team"
-        description="Invite people to run your store. Turn off Admin access anytime — they can still shop."
+        title="Team & roles"
+        description="Invite staff, assign roles, and edit page-level access — all in one place."
         breadcrumbs={[
           { label: "Store", href: getAdminPath("/settings") },
-          { label: "Team" },
+          { label: "Team & roles" },
+        ]}
+      />
+      <AdminSettingsTabs
+        activeId={section}
+        tabs={[
+          { id: "staff", label: "Staff", href: `${teamBase}?tab=staff` },
+          ...(canCreateRoles
+            ? [
+                {
+                  id: "roles",
+                  label: "Roles",
+                  href: `${teamBase}?tab=roles`,
+                },
+              ]
+            : []),
         ]}
       />
       <AdminTeamManager
+        section={section}
         initialMembers={list.items}
         total={list.total}
         page={list.page}
@@ -105,11 +129,8 @@ export default async function AdminTeamPage({
         customRoles={customRoles}
         currentUserId={actorUserId}
         canManage={canManage}
-        canViewActivity={
-          hasPermission(admin, "users.view") ||
-          hasPermission(admin, "audit.view")
-        }
-        allowSuperAdminAssign={hasRole(admin, "SUPER_ADMIN") && !admin.impersonation}
+        canViewActivity={hasPermission(admin, "audit.view")}
+        allowSuperAdminAssign={hasRole(admin, "SUPER_ADMIN")}
         canCreateRoles={canCreateRoles}
         canImpersonate={canImpersonate}
         isImpersonating={Boolean(admin.impersonation)}

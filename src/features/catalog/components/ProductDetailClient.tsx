@@ -4,8 +4,6 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
-import SpaOutlinedIcon from "@mui/icons-material/SpaOutlined";
 import SubjectOutlinedIcon from "@mui/icons-material/SubjectOutlined";
 import Chip from "@mui/material/Chip";
 import { ProductPurchaseActions } from "@/features/cart/components/ProductPurchaseActions";
@@ -14,6 +12,12 @@ import { ProductImageZoom } from "@/features/catalog/components/ProductImageZoom
 import { ProductWishlistButton } from "@/features/catalog/components/ProductWishlistButton";
 import { formatMoney } from "@/features/catalog/money";
 import type { StorefrontProductDetail } from "@/features/catalog/types";
+import type { ProductDetailSectionDef } from "@/features/catalog/product-page-settings";
+import {
+  PRODUCT_SECTION_DESCRIPTION,
+  PRODUCT_SECTION_HOW_TO_USE,
+  PRODUCT_SECTION_INGREDIENTS,
+} from "@/features/catalog/product-page-settings";
 import type {
   SocialLinksConfig,
   VisualEffectsConfig,
@@ -42,6 +46,12 @@ interface ProductDetailClientProps {
   social?: SocialLinksConfig;
   /** When false, hide rating row on the PDP. */
   reviewsEnabled?: boolean;
+  /** Active store-wide detail section headings. */
+  detailSections?: ProductDetailSectionDef[];
+}
+
+function sectionIcon(): ReactNode {
+  return <SubjectOutlinedIcon sx={{ fontSize: 18 }} aria-hidden />;
 }
 
 const stockColor: Record<string, "default" | "success" | "warning" | "error"> = {
@@ -59,6 +69,7 @@ export function ProductDetailClient({
   shareUrl,
   social,
   reviewsEnabled = true,
+  detailSections = [],
 }: ProductDetailClientProps) {
   const [variantId, setVariantId] = useState(product.variants[0]?.id ?? "");
   const [activeImageId, setActiveImageId] = useState(
@@ -387,30 +398,63 @@ export function ProductDetailClient({
         <DeliveryInfoBlock currency={currency} />
 
         <div className="border-t border-[var(--color-border)]">
-          {product.description ? (
-            <ProductDetailDisclosure
-              title="Description"
-              icon={<SubjectOutlinedIcon sx={{ fontSize: 18 }} aria-hidden />}
-            >
-              {product.description}
-            </ProductDetailDisclosure>
-          ) : null}
-          {product.usageInstructions ? (
-            <ProductDetailDisclosure
-              title="How to use"
-              icon={<MenuBookOutlinedIcon sx={{ fontSize: 18 }} aria-hidden />}
-            >
-              {product.usageInstructions}
-            </ProductDetailDisclosure>
-          ) : null}
-          {product.ingredients ? (
-            <ProductDetailDisclosure
-              title="Ingredients"
-              icon={<SpaOutlinedIcon sx={{ fontSize: 18 }} aria-hidden />}
-            >
-              {product.ingredients}
-            </ProductDetailDisclosure>
-          ) : null}
+          {(detailSections.length
+            ? detailSections
+            : [
+                {
+                  id: PRODUCT_SECTION_DESCRIPTION,
+                  heading: "Description",
+                  sortOrder: 0,
+                  active: true,
+                },
+                {
+                  id: PRODUCT_SECTION_HOW_TO_USE,
+                  heading: "How to use",
+                  sortOrder: 1,
+                  active: true,
+                },
+                {
+                  id: PRODUCT_SECTION_INGREDIENTS,
+                  heading: "Ingredients",
+                  sortOrder: 2,
+                  active: true,
+                },
+              ]
+          )
+            .filter((section) => {
+              const body =
+                product.sectionContent[section.id]?.trim() ||
+                (section.id === PRODUCT_SECTION_DESCRIPTION
+                  ? product.description?.trim()
+                  : section.id === PRODUCT_SECTION_HOW_TO_USE
+                    ? product.usageInstructions?.trim()
+                    : section.id === PRODUCT_SECTION_INGREDIENTS
+                      ? product.ingredients?.trim()
+                      : "") ||
+                "";
+              return Boolean(body);
+            })
+            .map((section) => {
+              const body =
+                product.sectionContent[section.id]?.trim() ||
+                (section.id === PRODUCT_SECTION_DESCRIPTION
+                  ? product.description?.trim()
+                  : section.id === PRODUCT_SECTION_HOW_TO_USE
+                    ? product.usageInstructions?.trim()
+                    : section.id === PRODUCT_SECTION_INGREDIENTS
+                      ? product.ingredients?.trim()
+                      : "") ||
+                "";
+              return (
+                <ProductDetailDisclosure
+                  key={section.id}
+                  title={section.heading}
+                  icon={sectionIcon()}
+                >
+                  {body}
+                </ProductDetailDisclosure>
+              );
+            })}
         </div>
       </div>
     </div>

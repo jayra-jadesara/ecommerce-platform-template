@@ -84,7 +84,7 @@ export default async function ProductReviewsPage({
     <Container
       flush
       constrained={false}
-      className="relative z-0 mx-auto w-full max-w-[var(--layout-content-max,1520px)] py-8 pl-4 pr-[max(1rem,var(--sf-dev-edge-clearance,0px))] sm:pl-5 sm:pr-[max(1.25rem,var(--sf-dev-edge-clearance,0px))] md:py-10 md:pl-6 md:pr-[max(1.5rem,var(--sf-dev-edge-clearance,0px))]"
+      className="relative z-0 mx-auto w-full max-w-[var(--layout-content-max,1520px)] px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))] py-8 md:py-10"
     >
       <StorefrontBreadcrumb
         items={[

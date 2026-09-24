@@ -10,6 +10,7 @@ import {
   adminSectionTitle,
 } from "@/features/admin/ui/admin-classes";
 import type { CareerSectionConfig } from "@/features/cms/schemas";
+import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { cn } from "@/lib/cn";
 
 export type CareerEditableConfig = CareerSectionConfig & Record<string, unknown>;
@@ -19,6 +20,7 @@ type CareerSectionFieldsProps = {
   setField: (key: string, value: unknown) => void;
   disabled?: boolean;
   emailError?: string | null;
+  onPickBanner?: () => void;
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -38,6 +40,7 @@ export function CareerSectionFields({
   setField,
   disabled,
   emailError,
+  onPickBanner,
 }: CareerSectionFieldsProps) {
   const paragraphs =
     (config.introParagraphs as string[] | undefined)?.length
@@ -119,6 +122,57 @@ export function CareerSectionFields({
           onChange={(e) => setField("heading", e.target.value)}
           helperText="Used as the H1, browser title, and Career link label in the store header/footer."
         />
+
+        <AdminToggle
+          checked={Boolean(config.bannerEnabled)}
+          disabled={disabled}
+          onChange={(checked) => setField("bannerEnabled", checked)}
+          label="Show page banner"
+          description="Full-width image at the top of the Career page (off by default)"
+          variant="row"
+        />
+        {config.bannerEnabled ? (
+          <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4 space-y-3">
+            {resolveCmsImageUrl(
+              (config.bannerImagePath as string | null) ?? null,
+            ) ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={
+                  resolveCmsImageUrl(
+                    (config.bannerImagePath as string | null) ?? null,
+                  )!
+                }
+                alt=""
+                className="h-32 w-full rounded-lg object-cover"
+              />
+            ) : (
+              <p className="text-sm text-[var(--color-muted)]">
+                No banner image selected yet
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={disabled}
+                className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium"
+                onClick={() => onPickBanner?.()}
+              >
+                Choose image
+              </button>
+              {config.bannerImagePath ? (
+                <button
+                  type="button"
+                  disabled={disabled}
+                  className="rounded-md px-3 py-1.5 text-sm text-[var(--color-muted)]"
+                  onClick={() => setField("bannerImagePath", null)}
+                >
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         <div className="space-y-3">
           <div className="flex items-end justify-between gap-2">

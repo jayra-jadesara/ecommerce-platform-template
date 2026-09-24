@@ -11,6 +11,7 @@ export type AdminNavIcon =
   | "settings"
   | "categories"
   | "sizes"
+  | "productSettings"
   | "reviews"
   | "errors"
   | "platform"
@@ -99,10 +100,10 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
       {
         kind: "link",
         id: "products-sizes",
-        label: "Size / pack",
+        label: "Product settings",
         href: p("/catalog/sizes"),
         permissions: ["products.view"],
-        icon: "sizes",
+        icon: "productSettings",
         section: "catalog",
       },
       {
@@ -175,7 +176,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     id: "platform-usage",
     label: "Hosting & storage",
     href: p("/platform-usage"),
-    permissions: ["platform.view"],
+    permissions: ["platform.view", "settings.view"],
     icon: "platform",
     section: "system",
   },
@@ -283,6 +284,9 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         href: p("/settings"),
         permissions: [
           "settings.view",
+          "settings_header.view",
+          "settings_footer.view",
+          "platform.view",
           "branding.view",
           "navigation.view",
           "seo.view",
@@ -363,7 +367,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         id: "settings-header",
         label: "Header layout",
         href: p("/settings/header"),
-        permissions: ["settings_header.view"],
+        permissions: ["settings_header.view", "settings.view"],
         section: "store",
       },
       {
@@ -371,15 +375,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         id: "settings-footer",
         label: "Footer layout",
         href: p("/settings/footer"),
-        permissions: ["settings_footer.view"],
+        permissions: ["settings_footer.view", "settings.view"],
         section: "store",
       },
       {
         kind: "link",
         id: "team",
-        label: "Team",
+        label: "Team & roles",
         href: p("/team"),
-        permissions: ["users.view"],
+        permissions: ["users.view", "audit.view"],
         icon: "team",
         section: "store",
       },
@@ -396,7 +400,7 @@ export const ADMIN_NAV_SECTION_LABELS: Record<AdminNavSection, string> = {
   store: "Store",
 };
 
-/** Sidebar order follows setup flow: Categories → Size / pack → Products → Inventory. */
+/** Sidebar order follows setup flow: Categories → Product settings → Products → Inventory. */
 export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "dashboard",
   "products-categories",

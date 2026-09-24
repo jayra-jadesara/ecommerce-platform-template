@@ -9,3 +9,4 @@ export {
   StorefrontBreadcrumb,
   type StorefrontBreadcrumbItem,
 } from "./StorefrontBreadcrumb";
+export { PageHeroBanner } from "./PageHeroBanner";

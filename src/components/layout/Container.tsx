@@ -13,6 +13,8 @@ interface ContainerProps {
 
 /**
  * Storefront page container — centered content width with responsive padding.
+ * Horizontal padding is always equal (left === right). Dev-tab clearance, when
+ * set, expands both sides so the layout stays centered.
  */
 export function Container({
   children,
@@ -27,7 +29,7 @@ export function Container({
         "w-full",
         constrained && "mx-auto max-w-[var(--layout-content-max,1520px)]",
         !flush &&
-          "pl-[var(--layout-container-padding)] pr-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]",
+          "px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]",
         className,
       )}
     >

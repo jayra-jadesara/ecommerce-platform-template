@@ -79,6 +79,10 @@ export async function updateGeneralStoreSettings(
       normalizeWhatsappForStorage(values.socialWhatsapp ?? ""),
     ),
     admin_image_max_mb: values.adminImageMaxMb,
+    contact_banner_enabled: values.contactBannerEnabled,
+    contact_banner_image_path: values.contactBannerImagePath,
+    storefront_loader_style: values.storefrontLoaderStyle,
+    storefront_loader_label: values.storefrontLoaderLabel.trim(),
   };
 
   const { data: existing } = await supabase

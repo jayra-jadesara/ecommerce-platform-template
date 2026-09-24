@@ -166,14 +166,12 @@ export function ProductImagesPanel({
             router.refresh();
           });
         }}
-        onMove={(id, direction) => {
-          const index = images.findIndex((image) => image.id === id);
-          if (index < 0) return;
-          const target = direction === "up" ? index - 1 : index + 1;
-          if (target < 0 || target >= images.length) return;
-          const next = [...images];
-          const [item] = next.splice(index, 1);
-          next.splice(target, 0, item);
+        onReorder={(orderedIds) => {
+          const byId = new Map(images.map((image) => [image.id, image]));
+          const next = orderedIds
+            .map((id) => byId.get(id))
+            .filter((image): image is (typeof images)[number] => Boolean(image));
+          if (next.length !== images.length) return;
           const withOrder = next.map((image, order) => ({
             ...image,
             sort_order: order,

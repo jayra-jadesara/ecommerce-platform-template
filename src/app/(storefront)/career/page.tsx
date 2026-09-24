@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
+import { PageShell, StorefrontBreadcrumb, PageHeroBanner } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { CareerPageClient } from "@/features/career/components/CareerPageClient";
@@ -65,14 +65,28 @@ export default async function CareerPage() {
     paragraphs[0]?.trim() ||
     "Browse open roles and send your details below.";
 
+  const bannerOn = Boolean(
+    sectionConfig.bannerEnabled && sectionConfig.bannerImagePath?.trim(),
+  );
+
   return (
-    <PageShell showBack={false} className="!pt-3 md:!pt-5">
+    <PageShell
+      showBack={false}
+      className={bannerOn ? "!pt-3 md:!pt-4" : "!pt-3 md:!pt-5"}
+    >
       <StorefrontBreadcrumb
         items={[
           { label: "Home", href: "/" },
           { label: heading },
         ]}
       />
+      {bannerOn ? (
+        <PageHeroBanner
+          enabled
+          imagePath={sectionConfig.bannerImagePath}
+          alt={`${heading} banner`}
+        />
+      ) : null}
 
       <div className="sf-career-hero sf-career-hero--center">
         <p className={sfEyebrow()}>{brand.name}</p>

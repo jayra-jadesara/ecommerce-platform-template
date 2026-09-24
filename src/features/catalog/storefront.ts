@@ -23,6 +23,12 @@ import type {
 import { resolveOptimizedStorageUrl, resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { isSafeModelStoragePath } from "@/features/visual-effects/schemas";
 import { resolveReturnPolicy } from "@/features/shipping/policies";
+import {
+  PRODUCT_SECTION_DESCRIPTION,
+  PRODUCT_SECTION_HOW_TO_USE,
+  PRODUCT_SECTION_INGREDIENTS,
+} from "@/features/catalog/product-page-settings";
+import { parseStringRecord } from "@/features/catalog/product-page-settings-parse";
 import { cache } from "react";
 import { measureServerOperation } from "@/lib/perf/measure-server";
 
@@ -530,6 +536,7 @@ async function getProductBySlugUncached(
       id, name, slug, short_description, description, brand, ingredients,
       usage_instructions, featured, returns_allowed, return_policy, seo_title, seo_description,
       model_path, rating_avg, rating_count,
+      banner_enabled, banner_image_path, faq_enabled, faq_answers, section_content,
       categories ( id, name, slug ),
       product_variants (
         id, name, sku, price, compare_at_price, weight, unit,
@@ -646,6 +653,32 @@ async function getProductBySlugUncached(
       : null,
     images,
     variants,
+    bannerEnabled: Boolean(
+      (data as { banner_enabled?: boolean }).banner_enabled,
+    ),
+    bannerImagePath:
+      (data as { banner_image_path?: string | null }).banner_image_path ?? null,
+    faqEnabled: Boolean((data as { faq_enabled?: boolean }).faq_enabled),
+    faqAnswers: parseStringRecord(
+      (data as { faq_answers?: unknown }).faq_answers,
+    ),
+    sectionContent: (() => {
+      const fromJson = parseStringRecord(
+        (data as { section_content?: unknown }).section_content,
+      );
+      if (Object.keys(fromJson).length > 0) return fromJson;
+      const legacy: Record<string, string> = {};
+      if (data.description?.trim()) {
+        legacy[PRODUCT_SECTION_DESCRIPTION] = data.description.trim();
+      }
+      if (data.usage_instructions?.trim()) {
+        legacy[PRODUCT_SECTION_HOW_TO_USE] = data.usage_instructions.trim();
+      }
+      if (data.ingredients?.trim()) {
+        legacy[PRODUCT_SECTION_INGREDIENTS] = data.ingredients.trim();
+      }
+      return legacy;
+    })(),
   };
 }
 

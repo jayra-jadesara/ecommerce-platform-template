@@ -7,14 +7,17 @@ import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
-import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+} from "@/features/admin/ui/AdminSortable";
 import {
   archiveCategoryAction,
   checkCategoryDependenciesAction,
@@ -177,15 +180,22 @@ export function CategoryManager({
     setError(null);
   }
 
-  function moveRow(category: CategoryRow, direction: "up" | "down") {
+  function reorderRows(activeId: string, overId: string) {
+    const oldIndex = initialCategories.findIndex((c) => c.id === activeId);
+    const newIndex = initialCategories.findIndex((c) => c.id === overId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+    const direction = newIndex > oldIndex ? "down" : "up";
+    const steps = Math.abs(newIndex - oldIndex);
     setError(null);
     startTransition(async () => {
-      const result = await moveCategoryAction(category.id, direction);
-      if (!result.ok) {
-        setError(result.error);
-        return;
+      for (let i = 0; i < steps; i += 1) {
+        const result = await moveCategoryAction(activeId, direction);
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
       }
-      setSuccess(result.message ?? "Order updated.");
+      setSuccess("Order updated.");
       router.refresh();
     });
   }
@@ -515,8 +525,20 @@ export function CategoryManager({
           </div>
         ) : (
           <>
-            <ul className="space-y-2 md:hidden">
-              {initialCategories.map((category, index) => {
+            <div className="mb-2 hidden items-center gap-2 border-b border-[var(--color-border)] px-1 pb-2 text-[11px] uppercase tracking-wide text-[var(--color-muted)] md:grid md:grid-cols-[2rem_2.5rem_minmax(0,1fr)_7rem_7rem]">
+              <span className="sr-only">Drag</span>
+              <span>Img</span>
+              <span>Name</span>
+              <span>Status</span>
+              <span className="text-right">Actions</span>
+            </div>
+            <AdminSortableList
+              ids={initialCategories.map((c) => c.id)}
+              disabled={!canUpdate || pending}
+              className="space-y-2 md:space-y-0"
+              onReorder={reorderRows}
+            >
+              {initialCategories.map((category) => {
                 const parent = initialCategories.find(
                   (item) => item.id === category.parent_id,
                 );
@@ -524,218 +546,106 @@ export function CategoryManager({
                   resolvePublicStorageUrl("categories", category.image_path) ??
                   resolveCmsImageUrl(category.image_path);
                 return (
-                  <li
+                  <AdminSortableItem
                     key={category.id}
-                    className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5"
+                    id={category.id}
+                    disabled={!canUpdate || pending}
                   >
-                    <div className="flex shrink-0 flex-col">
-                      <IconButton
-                        size="small"
-                        disabled={!canUpdate || pending || index === 0}
-                        aria-label={`Move ${category.name} up`}
-                        onClick={() => moveRow(category, "up")}
-                        sx={{ p: 0.25 }}
+                    {({
+                      setNodeRef,
+                      style,
+                      isDragging,
+                      attributes,
+                      listeners,
+                    }) => (
+                      <li
+                        ref={setNodeRef}
+                        style={style}
+                        className={cn(
+                          "flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-2.5 md:grid md:grid-cols-[2rem_2.5rem_minmax(0,1fr)_7rem_7rem] md:gap-2 md:rounded-none md:border-0 md:border-b md:bg-transparent md:px-1 md:py-2 md:last:border-0",
+                          isDragging && "z-10 opacity-90 shadow-md",
+                        )}
                       >
-                        <KeyboardArrowUpIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        disabled={
-                          !canUpdate ||
-                          pending ||
-                          index === initialCategories.length - 1
-                        }
-                        aria-label={`Move ${category.name} down`}
-                        onClick={() => moveRow(category, "down")}
-                        sx={{ p: 0.25 }}
-                      >
-                        <KeyboardArrowDownIcon fontSize="small" />
-                      </IconButton>
-                    </div>
-                    <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]">
-                      {preview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={preview}
-                          alt=""
-                          className="h-full w-full object-cover"
+                        <AdminDragHandle
+                          disabled={!canUpdate || pending}
+                          attributes={attributes}
+                          listeners={listeners}
+                          className="!h-9 !w-8 !self-center rounded-md"
                         />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-[9px] text-[var(--color-muted)]">
-                          —
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] md:h-9 md:w-9 md:rounded-md">
+                          {preview ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={preview}
+                              alt=""
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[9px] text-[var(--color-muted)]">
+                              —
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
-                        {parent ? `${parent.name} / ` : null}
-                        {category.name}
-                      </p>
-                      <div className="mt-1">
-                        <AdminStatusBadge
-                          tone={category.is_active ? "success" : "neutral"}
-                        >
-                          {category.is_active ? "Visible" : "Hidden"}
-                        </AdminStatusBadge>
-                      </div>
-                    </div>
-                    <div className="flex shrink-0 items-center">
-                      <IconButton
-                        size="small"
-                        disabled={!canUpdate || pending}
-                        aria-label={`Edit ${category.name}`}
-                        onClick={() => startEdit(category)}
-                      >
-                        <EditOutlinedIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        disabled={
-                          !canUpdate || !category.is_active || pending
-                        }
-                        aria-label={`Hide ${category.name}`}
-                        onClick={() => hideCategory(category)}
-                      >
-                        <VisibilityOffOutlinedIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        disabled={!canDelete || pending || deleteChecking}
-                        aria-label={`Delete ${category.name}`}
-                        onClick={() => requestDelete(category)}
-                      >
-                        <DeleteOutlineOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <div className="hidden overflow-x-auto md:block">
-              <table className="min-w-full table-fixed text-left text-sm">
-                <thead className="border-b border-[var(--color-border)] text-[11px] uppercase tracking-wide text-[var(--color-muted)]">
-                  <tr>
-                    <th className="w-16 px-2 py-2">Order</th>
-                    <th className="w-12 px-2 py-2">Img</th>
-                    <th className="px-2 py-2">Name</th>
-                    <th className="w-28 px-2 py-2">Status</th>
-                    <th className="w-28 px-2 py-2 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {initialCategories.map((category, index) => {
-                    const parent = initialCategories.find(
-                      (item) => item.id === category.parent_id,
-                    );
-                    const preview =
-                      resolvePublicStorageUrl(
-                        "categories",
-                        category.image_path,
-                      ) ?? resolveCmsImageUrl(category.image_path);
-                    return (
-                      <tr
-                        key={category.id}
-                        className="border-b border-[var(--color-border)] last:border-0"
-                      >
-                        <td className="px-2 py-2">
-                          <div className="flex items-center">
-                            <IconButton
-                              size="small"
-                              disabled={!canUpdate || pending || index === 0}
-                              aria-label={`Move ${category.name} up`}
-                              onClick={() => moveRow(category, "up")}
-                              sx={{ p: 0.25 }}
-                            >
-                              <KeyboardArrowUpIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              disabled={
-                                !canUpdate ||
-                                pending ||
-                                index === initialCategories.length - 1
-                              }
-                              aria-label={`Move ${category.name} down`}
-                              onClick={() => moveRow(category, "down")}
-                              sx={{ p: 0.25 }}
-                            >
-                              <KeyboardArrowDownIcon fontSize="small" />
-                            </IconButton>
-                          </div>
-                        </td>
-                        <td className="px-2 py-2">
-                          <div className="h-9 w-9 overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-surface)]">
-                            {preview ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={preview}
-                                alt=""
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full items-center justify-center text-[9px] text-[var(--color-muted)]">
-                                —
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="min-w-0 px-2 py-2">
-                          <p className="truncate font-medium text-[var(--color-foreground)]">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[var(--color-foreground)] md:font-medium">
                             {parent ? `${parent.name} / ` : null}
                             {category.name}
                           </p>
-                          <p className="truncate text-[11px] text-[var(--color-muted)]">
-                            /categories/{category.slug}
+                          <p className="mt-1 md:mt-0">
+                            <span className="md:hidden">
+                              <AdminStatusBadge
+                                tone={category.is_active ? "success" : "neutral"}
+                              >
+                                {category.is_active ? "Visible" : "Hidden"}
+                              </AdminStatusBadge>
+                            </span>
+                            <span className="hidden truncate text-[11px] text-[var(--color-muted)] md:block">
+                              /categories/{category.slug}
+                            </span>
                           </p>
-                        </td>
-                        <td className="px-2 py-2">
+                        </div>
+                        <div className="hidden md:block">
                           <AdminStatusBadge
                             tone={category.is_active ? "success" : "neutral"}
                           >
                             {category.is_active ? "Visible" : "Hidden"}
                           </AdminStatusBadge>
-                        </td>
-                        <td className="px-2 py-2">
-                          <div className="flex justify-end">
-                            <IconButton
-                              size="small"
-                              disabled={!canUpdate || pending}
-                              aria-label={`Edit ${category.name}`}
-                              onClick={() => startEdit(category)}
-                            >
-                              <EditOutlinedIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              disabled={
-                                !canUpdate || !category.is_active || pending
-                              }
-                              aria-label={`Hide ${category.name}`}
-                              onClick={() => hideCategory(category)}
-                            >
-                              <VisibilityOffOutlinedIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              color="error"
-                              disabled={
-                                !canDelete || pending || deleteChecking
-                              }
-                              aria-label={`Delete ${category.name}`}
-                              onClick={() => requestDelete(category)}
-                            >
-                              <DeleteOutlineOutlinedIcon fontSize="small" />
-                            </IconButton>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                        <div className="flex shrink-0 items-center justify-end">
+                          <IconButton
+                            size="small"
+                            disabled={!canUpdate || pending}
+                            aria-label={`Edit ${category.name}`}
+                            onClick={() => startEdit(category)}
+                          >
+                            <EditOutlinedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            disabled={
+                              !canUpdate || !category.is_active || pending
+                            }
+                            aria-label={`Hide ${category.name}`}
+                            onClick={() => hideCategory(category)}
+                          >
+                            <VisibilityOffOutlinedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            disabled={!canDelete || pending || deleteChecking}
+                            aria-label={`Delete ${category.name}`}
+                            onClick={() => requestDelete(category)}
+                          >
+                            <DeleteOutlineOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        </div>
+                      </li>
+                    )}
+                  </AdminSortableItem>
+                );
+              })}
+            </AdminSortableList>
           </>
         )}
       </section>

@@ -1,10 +1,11 @@
-import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
+import { PageShell, StorefrontBreadcrumb, PageHeroBanner } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { getCurrentUser } from "@/features/auth/session";
+import type { AboutSectionConfig } from "@/features/cms/schemas";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +27,32 @@ export default async function AboutPage() {
     cmsAbout?.page.seoDescription?.trim() || brand.tagline?.trim() || null;
   const sections = cmsAbout?.sections ?? [];
   const hasSections = sections.length > 0;
+  const aboutSection = sections.find((s) => s.sectionType === "about");
+  const aboutConfig = (aboutSection?.config ??
+    {}) as Partial<AboutSectionConfig>;
+
+  const bannerOn = Boolean(
+    aboutConfig.bannerEnabled && aboutConfig.bannerImagePath?.trim(),
+  );
 
   return (
-    <PageShell showBack={false} className="!pt-3 md:!pt-5">
+    <PageShell
+      showBack={false}
+      className={bannerOn ? "!pt-3 md:!pt-4" : "!pt-3 md:!pt-5"}
+    >
       <StorefrontBreadcrumb
         items={[
           { label: "Home", href: "/" },
           { label: "About" },
         ]}
       />
+      {bannerOn ? (
+        <PageHeroBanner
+          enabled
+          imagePath={aboutConfig.bannerImagePath}
+          alt={`${title} banner`}
+        />
+      ) : null}
       <header className="sf-page-hero sf-page-hero--center">
         <p className={sfEyebrow()}>{brand.name}</p>
         <StorefrontHeading

@@ -7,10 +7,32 @@ import {
   adminCardPadding,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+  adminSortableIds,
+  reorderBySortableIds,
+} from "@/features/admin/ui/AdminSortable";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { StorePageLinkField } from "@/features/admin/ui/StorePageLinkField";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { cn } from "@/lib/cn";
+
+function mapExpandedAfterReorder(
+  current: number | null,
+  oldIndex: number,
+  newIndex: number,
+): number | null {
+  if (current === null) return null;
+  if (current === oldIndex) return newIndex;
+  if (oldIndex < newIndex) {
+    if (current > oldIndex && current <= newIndex) return current - 1;
+  } else if (current >= newIndex && current < oldIndex) {
+    return current + 1;
+  }
+  return current;
+}
 
 export type AboutEditableConfig = Record<string, unknown>;
 
@@ -228,6 +250,32 @@ export function AboutSectionFields({
         (same content — no retyping).
       </p>
 
+      <section className={cn(adminCard(), adminCardPadding(), "space-y-3")}>
+        <div>
+          <h3 className="text-[15px] font-semibold text-[var(--color-foreground)]">
+            Page banner
+          </h3>
+          <p className="mt-1 text-[12px] text-[var(--color-muted)]">
+            Optional full-width image at the top of the About page (off by
+            default).
+          </p>
+        </div>
+        <AdminToggle
+          checked={Boolean(config.bannerEnabled)}
+          onChange={(checked) => setField("bannerEnabled", checked)}
+          label="Show banner on store"
+          variant="row"
+        />
+        {config.bannerEnabled ? (
+          <ImageField
+            label="Banner image"
+            value={config.bannerImagePath as string | null | undefined}
+            onPick={() => onPickMedia("bannerImagePath")}
+            onClear={() => setField("bannerImagePath", null)}
+          />
+        ) : null}
+      </section>
+
       <AboutPanel
         id="story"
         step={1}
@@ -442,7 +490,32 @@ export function AboutSectionFields({
               No milestones yet — add your first below.
             </p>
           ) : (
-            <ul className="divide-y divide-[var(--color-border)]">
+            <AdminSortableList
+              ids={adminSortableIds(timelineItems.length, "bogie")}
+              className="divide-y divide-[var(--color-border)]"
+              onReorder={(activeId, overId) => {
+                const items =
+                  (config.timelineItems as Array<Record<string, unknown>>) ??
+                  [];
+                const oldIndex = items.findIndex(
+                  (_, i) => `bogie-${i}` === activeId,
+                );
+                const newIndex = items.findIndex(
+                  (_, i) => `bogie-${i}` === overId,
+                );
+                const next = reorderBySortableIds(
+                  items,
+                  activeId,
+                  overId,
+                  "bogie",
+                );
+                if (!next) return;
+                setField("timelineItems", next);
+                setExpandedBogie((cur) =>
+                  mapExpandedAfterReorder(cur, oldIndex, newIndex),
+                );
+              }}
+            >
               {timelineItems.map((item, index) => {
                 const items =
                   (config.timelineItems as Array<Record<string, unknown>>) ??
@@ -454,20 +527,24 @@ export function AboutSectionFields({
                   next[index] = { ...next[index], ...patch };
                   setField("timelineItems", next);
                 };
-                const moveItem = (dir: -1 | 1) => {
-                  const target = index + dir;
-                  if (target < 0 || target >= items.length) return;
-                  const next = [...items];
-                  const [row] = next.splice(index, 1);
-                  next.splice(target, 0, row);
-                  setField("timelineItems", next);
-                  setExpandedBogie(target);
-                };
                 const year = String(item.year ?? "").trim();
                 const label = String(item.label ?? "").trim();
                 return (
-                  <li key={`timeline-${index}`}>
+                  <AdminSortableItem
+                    key={`bogie-${index}`}
+                    id={`bogie-${index}`}
+                  >
+                    {({ setNodeRef, style, isDragging, attributes, listeners }) => (
+                  <li
+                    ref={setNodeRef}
+                    style={style}
+                    className={cn(isDragging && "z-10 bg-[var(--color-card)] opacity-90 shadow-md")}
+                  >
                     <div className="flex items-stretch gap-1">
+                      <AdminDragHandle
+                        attributes={attributes}
+                        listeners={listeners}
+                      />
                       <button
                         type="button"
                         className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
@@ -496,24 +573,6 @@ export function AboutSectionFields({
                         </span>
                       </button>
                       <div className="flex shrink-0 items-center gap-0.5 pr-2">
-                        <button
-                          type="button"
-                          className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                          disabled={index === 0}
-                          aria-label="Move up"
-                          onClick={() => moveItem(-1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                          disabled={index >= items.length - 1}
-                          aria-label="Move down"
-                          onClick={() => moveItem(1)}
-                        >
-                          ↓
-                        </button>
                         <button
                           type="button"
                           className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
@@ -580,9 +639,11 @@ export function AboutSectionFields({
                       </div>
                     ) : null}
                   </li>
+                    )}
+                  </AdminSortableItem>
                 );
               })}
-            </ul>
+            </AdminSortableList>
           )}
         </div>
         <button
@@ -703,7 +764,31 @@ function AboutSlideCardsEditor({
                   : "No photos yet — add items below."}
               </p>
             ) : (
-              <ul className="divide-y divide-[var(--color-border)]">
+              <AdminSortableList
+                ids={adminSortableIds(slides.length, fieldKey)}
+                className="divide-y divide-[var(--color-border)]"
+                onReorder={(activeId, overId) => {
+                  const rows =
+                    (slides as Array<Record<string, unknown>>) ?? [];
+                  const oldIndex = rows.findIndex(
+                    (_, i) => `${fieldKey}-${i}` === activeId,
+                  );
+                  const newIndex = rows.findIndex(
+                    (_, i) => `${fieldKey}-${i}` === overId,
+                  );
+                  const next = reorderBySortableIds(
+                    rows,
+                    activeId,
+                    overId,
+                    fieldKey,
+                  );
+                  if (!next) return;
+                  setField(fieldKey, next);
+                  setExpandedIndex(
+                    mapExpandedAfterReorder(expandedIndex, oldIndex, newIndex),
+                  );
+                }}
+              >
                 {slides.map((slide, index) => {
                   const rows =
                     (slides as Array<Record<string, unknown>>) ?? [];
@@ -713,23 +798,30 @@ function AboutSlideCardsEditor({
                     next[index] = { ...next[index], ...patch };
                     setField(fieldKey, next);
                   };
-                  const moveSlide = (dir: -1 | 1) => {
-                    const target = index + dir;
-                    if (target < 0 || target >= rows.length) return;
-                    const next = [...rows];
-                    const [row] = next.splice(index, 1);
-                    next.splice(target, 0, row);
-                    setField(fieldKey, next);
-                    setExpandedIndex(target);
-                  };
                   const title = String(slide.title ?? "").trim();
                   const thumb = resolveCmsImageUrl(slide.imagePath);
                   const rowLabel = imageOnly
                     ? `Certificate ${index + 1}`
                     : title || "Untitled photo";
                   return (
-                    <li key={`${fieldKey}-row-${index}`}>
+                    <AdminSortableItem
+                      key={`${fieldKey}-row-${index}`}
+                      id={`${fieldKey}-${index}`}
+                    >
+                      {({ setNodeRef, style, isDragging, attributes, listeners }) => (
+                    <li
+                      ref={setNodeRef}
+                      style={style}
+                      className={cn(
+                        isDragging &&
+                          "z-10 bg-[var(--color-card)] opacity-90 shadow-md",
+                      )}
+                    >
                       <div className="flex items-stretch gap-1">
+                        <AdminDragHandle
+                          attributes={attributes}
+                          listeners={listeners}
+                        />
                         <button
                           type="button"
                           className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left transition hover:bg-[var(--color-surface)]"
@@ -773,24 +865,6 @@ function AboutSlideCardsEditor({
                           </span>
                         </button>
                         <div className="flex shrink-0 items-center gap-0.5 pr-2">
-                          <button
-                            type="button"
-                            className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                            disabled={index === 0}
-                            aria-label="Move up"
-                            onClick={() => moveSlide(-1)}
-                          >
-                            ↑
-                          </button>
-                          <button
-                            type="button"
-                            className="rounded px-1.5 py-1 text-xs text-[var(--color-muted)] hover:bg-[var(--color-surface)] disabled:opacity-30"
-                            disabled={index >= rows.length - 1}
-                            aria-label="Move down"
-                            onClick={() => moveSlide(1)}
-                          >
-                            ↓
-                          </button>
                           <button
                             type="button"
                             className="rounded px-1.5 py-1 text-xs text-[var(--color-error)] hover:bg-[color-mix(in_srgb,var(--color-error)_10%,transparent)]"
@@ -858,9 +932,11 @@ function AboutSlideCardsEditor({
                         </div>
                       ) : null}
                     </li>
+                      )}
+                    </AdminSortableItem>
                   );
                 })}
-              </ul>
+              </AdminSortableList>
             )}
           </div>
           <button

@@ -34,6 +34,9 @@ import {
   listStorefrontReelsForProduct,
 } from "@/features/reels/reels-service";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { getProductPageSettings } from "@/features/catalog/product-page-settings-service";
+import { FaqAccordion } from "@/features/cms/components/FaqAccordion";
+import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 
 export const dynamic = "force-dynamic";
 
@@ -88,10 +91,11 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const [product, config, user] = await Promise.all([
+  const [product, config, user, pageSettings] = await Promise.all([
     getStorefrontProductBySlug(slug),
     getPlatformConfigAsync(),
     getCurrentUser(),
+    getProductPageSettings(),
   ]);
   if (!product) notFound();
 
@@ -154,6 +158,18 @@ export default async function ProductDetailPage({
   const productReelsVisibleSlides =
     productReelsPayload?.showcase.visibleSlides ?? 3;
 
+  const activeFaqQuestions = pageSettings.faqQuestions.filter((q) => q.active);
+  const faqItems = product.faqEnabled
+    ? activeFaqQuestions
+        .map((q) => ({
+          question: q.question,
+          answer: (product.faqAnswers[q.id] ?? "").trim(),
+        }))
+        .filter((item) => item.answer.length > 0)
+    : [];
+  const showProductFaq = faqItems.length > 0;
+  const detailSections = pageSettings.sections.filter((s) => s.active);
+
   const ratingCount = reviewsEnabled
     ? Math.max(product.ratingCount, reviewSummary.count)
     : 0;
@@ -206,7 +222,7 @@ export default async function ProductDetailPage({
     <Container
       flush
       constrained={false}
-      className="relative z-0 mx-auto w-full max-w-[var(--layout-content-max,1520px)] py-8 pl-4 pr-[max(1rem,var(--sf-dev-edge-clearance,0px))] sm:pl-5 sm:pr-[max(1.25rem,var(--sf-dev-edge-clearance,0px))] md:py-10 md:pl-6 md:pr-[max(1.5rem,var(--sf-dev-edge-clearance,0px))]"
+      className="relative z-0 mx-auto w-full max-w-[var(--layout-content-max,1520px)] px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))] py-8 md:py-10"
     >
       <JsonLdScript data={[productLd, buildBreadcrumbJsonLd(crumbs)]} />
       <StorefrontBreadcrumb
@@ -233,7 +249,25 @@ export default async function ProductDetailPage({
         shareUrl={absoluteUrl(`/products/${product.slug}`)}
         social={config.social}
         reviewsEnabled={reviewsEnabled}
+        detailSections={detailSections}
       />
+      {showProductFaq ? (
+        <section className="mt-10 md:mt-12">
+          <div className="mx-auto w-full max-w-5xl">
+            <div className="text-center">
+              <StorefrontHeading
+                title={pageSettings.faqHeading}
+                as="h2"
+                align="center"
+                className="!text-2xl"
+              />
+            </div>
+            <div className="mt-6 md:mt-8">
+              <FaqAccordion items={faqItems} />
+            </div>
+          </div>
+        </section>
+      ) : null}
       <RelatedProducts
         products={related}
         currency={config.store.currency}

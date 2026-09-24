@@ -1,4 +1,5 @@
 import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
+import type { StorefrontLoaderStyle } from "@/components/ui/storefront-loader";
 
 export interface BrandConfig {
   name: string;
@@ -150,6 +151,9 @@ export interface ContactConfig {
   state?: string;
   postalCode?: string;
   country?: string;
+  /** Contact page hero banner — off until enabled + path. */
+  bannerEnabled?: boolean;
+  bannerImagePath?: string;
 }
 
 export interface SocialLinksConfig {
@@ -207,6 +211,11 @@ export type FooterFeaturedProduct = {
   imageUrl: string | null;
 };
 
+export type StorefrontUiConfig = {
+  loaderStyle: StorefrontLoaderStyle;
+  loaderLabel: string;
+};
+
 /** Aggregate config — populated from Supabase when available. */
 export interface PlatformConfig {
   brand: BrandConfig;
@@ -222,4 +231,5 @@ export interface PlatformConfig {
   social: SocialLinksConfig;
   header: HeaderChromeConfig;
   footer: FooterChromeConfig;
+  ui: StorefrontUiConfig;
 }

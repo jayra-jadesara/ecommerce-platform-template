@@ -115,16 +115,20 @@ const nextConfig: NextConfig = {
   },
   // PackFileCacheStrategy rename (*.pack.gz_ → *.pack.gz) often ENOENTs on
   // Windows HDD / Defender locks. Memory cache avoids that pack write.
-  // Also cap parallelism so huge vendor-chunks/next.js (~15MB) is not
-  // half-written when another request evaluates it (SyntaxError: unexpected token).
+  // Cap parallelism hard so huge vendor-chunks/next.js (~15MB) is not
+  // half-written when another request evaluates it
+  // (SyntaxError / TypeError reading 'call').
+  // Prefer `npm run dev` (Turbopack) on HDD — these knobs only apply to
+  // `npm run dev:webpack`.
   webpack: (config, { dev }) => {
     if (dev) {
       config.cache = { type: "memory" };
-      if (typeof config.parallelism === "number" && config.parallelism > 4) {
-        config.parallelism = 4;
-      } else if (config.parallelism == null) {
-        config.parallelism = 4;
-      }
+      config.parallelism = 1;
+      config.watchOptions = {
+        ...config.watchOptions,
+        aggregateTimeout: 800,
+        ignored: config.watchOptions?.ignored,
+      };
     }
     return config;
   },

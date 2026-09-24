@@ -40,6 +40,8 @@ type AdminCreateRoleDialogProps = {
   editing?: CustomRoleDefinition | null;
   /** Which tab to show when the dialog opens. */
   initialTab?: DialogTab;
+  /** Inline panel on Team & roles page (no modal). */
+  variant?: "dialog" | "inline";
 };
 
 function levelBadgeTone(
@@ -136,6 +138,7 @@ export function AdminCreateRoleDialog({
   roles = [],
   editing = null,
   initialTab = "list",
+  variant = "dialog",
 }: AdminCreateRoleDialogProps) {
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<DialogTab>(initialTab);
@@ -285,41 +288,14 @@ export function AdminCreateRoleDialog({
   }
 
   const onListTab = tab === "list";
+  const isInline = variant === "inline";
 
   function dismissDialog() {
     if (pending) return;
     onClose();
   }
 
-  return (
-    <AdminFormDialog
-      open={open}
-      showCloseIcon
-      onDismiss={dismissDialog}
-      onClose={
-        pending
-          ? () => undefined
-          : onListTab
-            ? dismissDialog
-            : () => {
-                setError(null);
-                setConfirmDelete(false);
-                setTab("list");
-              }
-      }
-      onConfirm={onListTab ? openCreateForm : handleConfirm}
-      title="Roles"
-      description="Edit built-in or custom roles and page-level access for staff. Super Admin stays fixed."
-      maxWidth="lg"
-      dense
-      pending={pending}
-      error={error}
-      cancelLabel={onListTab ? "Close" : "Back to list"}
-      confirmLabel={
-        onListTab ? "New custom role" : isEdit ? "Save role" : "Create role"
-      }
-      pendingLabel={isEdit ? "Saving…" : "Creating…"}
-    >
+  const body = (
       <div className="space-y-3">
         <div className="flex gap-1 rounded-xl bg-[var(--color-surface)] p-1 ring-1 ring-[var(--color-border)]">
           <button
@@ -360,8 +336,12 @@ export function AdminCreateRoleDialog({
         </div>
 
         {/* Fixed panel height so Roles / Create keep the same popup size */}
-        <div className="h-[min(32rem,58vh)] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]">
-          {onListTab ? (
+        <div
+          className={cn(
+            "overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-card)]",
+            isInline ? "min-h-[28rem]" : "h-[min(32rem,58vh)]",
+          )}
+        >          {onListTab ? (
             sortedRoles.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center px-4 text-center">
                 <p className="text-[14px] font-semibold text-[var(--color-foreground)]">
@@ -563,6 +543,93 @@ export function AdminCreateRoleDialog({
           )}
         </div>
       </div>
+  );
+
+  if (isInline) {
+    if (!open) return null;
+    return (
+      <section className={cn("space-y-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4")}>
+        <div>
+          <h2 className="text-[15px] font-semibold text-[var(--color-foreground)]">
+            Roles
+          </h2>
+          <p className="mt-1 text-[12px] text-[var(--color-muted)]">
+            Edit built-in or custom roles and page-level access for staff. Super
+            Admin stays fixed.
+          </p>
+        </div>
+        {error ? (
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">
+            {error}
+          </p>
+        ) : null}
+        {body}
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-border)] pt-3">
+          {!onListTab ? (
+            <button
+              type="button"
+              disabled={pending}
+              className={cn(adminBtn("outline"), "!min-h-9")}
+              onClick={() => {
+                setError(null);
+                setConfirmDelete(false);
+                setTab("list");
+              }}
+            >
+              Back to list
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={pending}
+            className={cn(adminBtn("primary"), "!min-h-9")}
+            onClick={onListTab ? openCreateForm : handleConfirm}
+          >
+            {pending
+              ? isEdit
+                ? "Saving…"
+                : "Creating…"
+              : onListTab
+                ? "New custom role"
+                : isEdit
+                  ? "Save role"
+                  : "Create role"}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <AdminFormDialog
+      open={open}
+      showCloseIcon
+      onDismiss={dismissDialog}
+      onClose={
+        pending
+          ? () => undefined
+          : onListTab
+            ? dismissDialog
+            : () => {
+                setError(null);
+                setConfirmDelete(false);
+                setTab("list");
+              }
+      }
+      onConfirm={onListTab ? openCreateForm : handleConfirm}
+      title="Roles"
+      description="Edit built-in or custom roles and page-level access for staff. Super Admin stays fixed."
+      maxWidth="lg"
+      dense
+      pending={pending}
+      error={error}
+      cancelLabel={onListTab ? "Close" : "Back to list"}
+      confirmLabel={
+        onListTab ? "New custom role" : isEdit ? "Save role" : "Create role"
+      }
+      pendingLabel={isEdit ? "Saving…" : "Creating…"}
+    >
+      {body}
     </AdminFormDialog>
   );
 }

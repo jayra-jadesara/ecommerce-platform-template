@@ -39,4 +39,9 @@ export type StorefrontProductDetail = {
     stockStatus: StockStatus;
     available: number;
   }>;
+  bannerEnabled: boolean;
+  bannerImagePath: string | null;
+  faqEnabled: boolean;
+  faqAnswers: Record<string, string>;
+  sectionContent: Record<string, string>;
 };

@@ -19,6 +19,7 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { loadShippingSettingsForm } from "@/features/admin/settings/update-shipping-payment";
 import { isReturnPolicy } from "@/features/shipping/policies";
+import { getProductPageSettings } from "@/features/catalog/product-page-settings-service";
 
 export const dynamic = "force-dynamic";
 
@@ -72,11 +73,13 @@ export default async function AdminCatalogProductsPage({
       );
     }
 
-    const [categories, sizeOptions, storeId, shipping] = await Promise.all([
+    const [categories, sizeOptions, storeId, shipping, pageSettings] =
+      await Promise.all([
       listAdminCategories(),
       listAdminSizeOptions({ activeOnly: true }),
       resolveActiveStoreId(),
       loadShippingSettingsForm(),
+      getProductPageSettings(),
     ]);
 
     return (
@@ -106,6 +109,7 @@ export default async function AdminCatalogProductsPage({
           sizeOptions={sizeOptions}
           canUpdate={canCreate}
           canDelete={false}
+          pageSettings={pageSettings}
           storeReturnPolicy={
             isReturnPolicy(shipping.values.returnPolicy)
               ? shipping.values.returnPolicy
@@ -118,7 +122,7 @@ export default async function AdminCatalogProductsPage({
 
   if (panel === "edit" || panel === "view") {
     if (!productId) notFound();
-    const [detail, categories, sizeOptions, images, shipping, limits] =
+    const [detail, categories, sizeOptions, images, shipping, limits, pageSettings] =
       await Promise.all([
         getAdminProduct(productId),
         listAdminCategories(),
@@ -126,6 +130,7 @@ export default async function AdminCatalogProductsPage({
         listProductImages(productId),
         loadShippingSettingsForm(),
         getImageUploadLimits(),
+        getProductPageSettings(),
       ]);
     if (!detail) notFound();
 
@@ -154,6 +159,7 @@ export default async function AdminCatalogProductsPage({
           sizeOptions={sizeOptions}
           canUpdate={canUpdate}
           canDelete={canDelete}
+          pageSettings={pageSettings}
           storeReturnPolicy={storeReturnPolicy}
           showStockHint={flat.stockHint === "1"}
           imagesSlot={

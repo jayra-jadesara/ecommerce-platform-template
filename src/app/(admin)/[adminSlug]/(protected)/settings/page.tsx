@@ -25,7 +25,8 @@ type SettingsModule = {
   href: string;
   title: string;
   description: string;
-  permission: Permission;
+  /** Any of these grants the hub card (aligned with page route rules). */
+  permissions: Permission[];
   icon: SvgIconComponent;
 };
 
@@ -44,21 +45,21 @@ const GROUPS: SettingsGroup[] = [
         href: "/settings/general",
         title: "Store Information",
         description: "Name, contact, currency, social",
-        permission: "settings.view",
+        permissions: ["settings.view"],
         icon: StorefrontOutlinedIcon,
       },
       {
         href: "/settings/branding",
         title: "Logo & Branding",
         description: "Logo, favicon, brand assets",
-        permission: "branding.view",
+        permissions: ["branding.view"],
         icon: BrushOutlinedIcon,
       },
       {
         href: "/settings/theme",
         title: "Appearance",
         description: "Colors, type, dark mode",
-        permission: "theme.view",
+        permissions: ["theme.view"],
         icon: PaletteOutlinedIcon,
       },
     ],
@@ -71,21 +72,21 @@ const GROUPS: SettingsGroup[] = [
         href: "/settings/shipping",
         title: "Shipping",
         description: "Delivery, courier, returns",
-        permission: "shipping.view",
+        permissions: ["shipping.view"],
         icon: LocalShippingOutlinedIcon,
       },
       {
         href: "/settings/payments",
         title: "Payments",
         description: "Pay method, fee & tax",
-        permission: "payments.view",
+        permissions: ["payments.view"],
         icon: PaymentsOutlinedIcon,
       },
       {
         href: "/settings/coupons",
         title: "Coupons",
         description: "Discount codes",
-        permission: "coupons.view",
+        permissions: ["coupons.view"],
         icon: LocalOfferOutlinedIcon,
       },
     ],
@@ -98,28 +99,28 @@ const GROUPS: SettingsGroup[] = [
         href: "/settings/navigation",
         title: "Menu & Navigation",
         description: "Store menu pages",
-        permission: "navigation.view",
+        permissions: ["navigation.view"],
         icon: MenuOutlinedIcon,
       },
       {
         href: "/settings/seo",
         title: "Google & SEO",
         description: "Search & social sharing",
-        permission: "seo.view",
+        permissions: ["seo.view"],
         icon: TravelExploreOutlinedIcon,
       },
       {
         href: "/settings/header",
         title: "Header layout",
         description: "Bar, sticky, logo size",
-        permission: "settings_header.view",
+        permissions: ["settings_header.view", "settings.view"],
         icon: ViewAgendaOutlinedIcon,
       },
       {
         href: "/settings/footer",
         title: "Footer layout",
         description: "Footer text & contacts",
-        permission: "settings_footer.view",
+        permissions: ["settings_footer.view", "settings.view"],
         icon: VerticalAlignBottomOutlinedIcon,
       },
     ],
@@ -130,6 +131,7 @@ const HUB_PERMISSIONS: Permission[] = [
   "settings.view",
   "settings_header.view",
   "settings_footer.view",
+  "platform.view",
   "branding.view",
   "navigation.view",
   "seo.view",
@@ -151,7 +153,7 @@ export default async function AdminSettingsPage() {
   const visibleGroups = GROUPS.map((group) => ({
     ...group,
     modules: group.modules.filter((mod) =>
-      hasPermission(admin, mod.permission),
+      mod.permissions.some((permission) => hasPermission(admin, permission)),
     ),
   })).filter((group) => group.modules.length > 0);
 

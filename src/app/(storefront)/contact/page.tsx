@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PageShell } from "@/components/layout";
+import { PageShell, PageHeroBanner } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { sfBtn, sfEyebrow } from "@/components/ui/storefront-classes";
@@ -31,9 +31,24 @@ export default async function ContactPage() {
   const hasAny = Boolean(
     email || phone || contact.phoneSecondary || addressLines.length || socialEntries.length,
   );
+  const bannerOn = Boolean(
+    contact.bannerEnabled && contact.bannerImagePath?.trim(),
+  );
 
   return (
-    <PageShell showBack backHref="/" backLabel="Back to home">
+    <PageShell
+      showBack
+      backHref="/"
+      backLabel="Back to home"
+      className={bannerOn ? "!pt-3 md:!pt-4" : undefined}
+    >
+      {bannerOn ? (
+        <PageHeroBanner
+          enabled
+          imagePath={contact.bannerImagePath}
+          alt="Contact banner"
+        />
+      ) : null}
       <div className="overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[radial-gradient(ellipse_at_20%_0%,color-mix(in_srgb,var(--color-primary)_18%,transparent),transparent_55%),radial-gradient(ellipse_at_90%_80%,color-mix(in_srgb,var(--color-accent)_14%,transparent),transparent_50%),var(--color-surface)] px-6 py-10 md:px-10 md:py-14">
         <p className={sfEyebrow()}>{brand.name}</p>
         <StorefrontHeading

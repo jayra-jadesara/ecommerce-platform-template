@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
-import { PageShell, StorefrontBreadcrumb } from "@/components/layout";
+import {
+  PageShell,
+  StorefrontBreadcrumb,
+  PageHeroBanner,
+} from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { ProductsCatalog } from "@/features/catalog/components/ProductsCatalog";
 import {
@@ -7,6 +11,7 @@ import {
   listStorefrontCategories,
   listStorefrontProducts,
 } from "@/features/catalog/storefront";
+import { getProductPageSettings } from "@/features/catalog/product-page-settings-service";
 import { getCurrentUser } from "@/features/auth/session";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { metadataFromResolved } from "@/lib/metadata";
@@ -42,11 +47,12 @@ export default async function ProductsPage({
   }
 
   const config = await getPlatformConfigAsync();
-  const [list, categories, user, counts] = await Promise.all([
+  const [list, categories, user, counts, pageSettings] = await Promise.all([
     listStorefrontProducts(flat),
     listStorefrontCategories(),
     getCurrentUser(),
     countStorefrontProductsByCategory(),
+    getProductPageSettings(),
   ]);
   const isAuthenticated = Boolean(user);
 
@@ -56,14 +62,28 @@ export default async function ProductsPage({
   const page = Number(flat.page || "1") || 1;
   const totalPages = Math.max(1, Math.ceil(list.total / list.pageSize));
 
+  const bannerOn =
+    pageSettings.listingBannerEnabled &&
+    Boolean(pageSettings.listingBannerImagePath?.trim());
+
   return (
-    <PageShell showBack={false} className="!pt-3 md:!pt-5">
+    <PageShell
+      showBack={false}
+      className={bannerOn ? "!pt-3 md:!pt-4" : "!pt-3 md:!pt-5"}
+    >
       <StorefrontBreadcrumb
         items={[
           { label: "Home", href: "/" },
           { label: "Products" },
         ]}
       />
+      {bannerOn ? (
+        <PageHeroBanner
+          enabled
+          imagePath={pageSettings.listingBannerImagePath}
+          alt="Products banner"
+        />
+      ) : null}
       <header className="mx-auto mb-3 max-w-5xl md:mb-4">
         <StorefrontHeading
           title="Products"

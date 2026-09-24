@@ -2,9 +2,14 @@
 
 import type { ReactNode } from "react";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import ArrowDownwardRoundedIcon from "@mui/icons-material/ArrowDownwardRounded";
-import ArrowUpwardRoundedIcon from "@mui/icons-material/ArrowUpwardRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+  adminSortableIds,
+  reorderBySortableIds,
+} from "@/features/admin/ui/AdminSortable";
 import { cn } from "@/lib/cn";
 
 export type AdminReasonOptionsEditorProps = {
@@ -68,108 +73,109 @@ export function AdminReasonOptionsEditor({
   const setOptions = (next: string[]) => onChange(coerce(next));
   const canRemoveMore =
     options.filter((item) => !isOther(item)).length > 1;
+  const SORT_PREFIX = "reason";
 
   return (
     <div className="space-y-2">
-      <ul
+      <AdminSortableList
+        ids={adminSortableIds(options.length, SORT_PREFIX)}
+        disabled={locked}
         className={cn(
           "overflow-hidden rounded-xl border border-[var(--color-border)]",
           "bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))]",
         )}
+        onReorder={(activeId, overId) => {
+          if (locked) return;
+          const next = reorderBySortableIds(
+            options,
+            activeId,
+            overId,
+            SORT_PREFIX,
+          );
+          if (next) setOptions(next);
+        }}
       >
         {options.map((option, index) => {
           const other = isOther(option);
           const isLast = index === options.length - 1;
           return (
-            <li
-              key={`${index}-${other ? "other" : "opt"}`}
-              className={cn(
-                "group flex items-center gap-1.5 px-2 py-1.5",
-                !isLast && "border-b border-[var(--color-border)]",
-              )}
+            <AdminSortableItem
+              key={`${SORT_PREFIX}-${index}`}
+              id={`${SORT_PREFIX}-${index}`}
+              disabled={locked}
             >
-              <span
-                className="w-5 shrink-0 text-center text-[10px] font-medium tabular-nums text-[var(--color-muted)]"
-                aria-hidden
-              >
-                {index + 1}
-              </span>
-
-              {other ? (
-                <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5">
-                  <span className="truncate text-[13px] font-medium text-[var(--color-foreground)]">
-                    Other
-                  </span>
-                  <span className="rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
-                    Free text
-                  </span>
-                </div>
-              ) : (
-                <input
-                  type="text"
-                  value={option}
-                  disabled={locked}
-                  maxLength={80}
-                  onChange={(event) => {
-                    const next = [...options];
-                    next[index] = event.target.value;
-                    setOptions(next);
-                  }}
+              {({ setNodeRef, style, isDragging, attributes, listeners }) => (
+                <li
+                  ref={setNodeRef}
+                  style={style}
                   className={cn(
-                    "min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]",
-                    "px-2.5 py-1.5 text-[13px] leading-snug text-[var(--color-foreground)] outline-none transition",
-                    "placeholder:text-[var(--color-muted)]",
-                    "focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_18%,transparent)]",
-                    "disabled:cursor-not-allowed disabled:opacity-60",
+                    "group flex items-center gap-1.5 px-2 py-1.5",
+                    !isLast && "border-b border-[var(--color-border)]",
+                    isDragging && "z-10 bg-[var(--color-card)] opacity-90 shadow-md",
                   )}
-                  placeholder="Reason label"
-                />
-              )}
+                >
+                  <AdminDragHandle
+                    disabled={locked}
+                    attributes={attributes}
+                    listeners={listeners}
+                    className="!h-7 !w-7 !self-center rounded-md"
+                  />
+                  <span
+                    className="w-5 shrink-0 text-center text-[10px] font-medium tabular-nums text-[var(--color-muted)]"
+                    aria-hidden
+                  >
+                    {index + 1}
+                  </span>
 
-              <div className="flex shrink-0 items-center">
-                <IconBtn
-                  label="Move up"
-                  disabled={locked || index === 0}
-                  onClick={() => {
-                    if (index === 0) return;
-                    const next = [...options];
-                    const tmp = next[index - 1]!;
-                    next[index - 1] = next[index]!;
-                    next[index] = tmp;
-                    setOptions(next);
-                  }}
-                >
-                  <ArrowUpwardRoundedIcon className="!text-[15px]" />
-                </IconBtn>
-                <IconBtn
-                  label="Move down"
-                  disabled={locked || isLast}
-                  onClick={() => {
-                    if (isLast) return;
-                    const next = [...options];
-                    const tmp = next[index + 1]!;
-                    next[index + 1] = next[index]!;
-                    next[index] = tmp;
-                    setOptions(next);
-                  }}
-                >
-                  <ArrowDownwardRoundedIcon className="!text-[15px]" />
-                </IconBtn>
-                <IconBtn
-                  label="Remove"
-                  danger
-                  disabled={locked || other || !canRemoveMore}
-                  onClick={() => {
-                    setOptions(options.filter((_, i) => i !== index));
-                  }}
-                >
-                  <CloseRoundedIcon className="!text-[15px]" />
-                </IconBtn>
-              </div>
-            </li>
+                  {other ? (
+                    <div className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-1.5">
+                      <span className="truncate text-[13px] font-medium text-[var(--color-foreground)]">
+                        Other
+                      </span>
+                      <span className="rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_6%,transparent)] px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+                        Free text
+                      </span>
+                    </div>
+                  ) : (
+                    <input
+                      type="text"
+                      value={option}
+                      disabled={locked}
+                      maxLength={80}
+                      onChange={(event) => {
+                        const next = [...options];
+                        next[index] = event.target.value;
+                        setOptions(next);
+                      }}
+                      className={cn(
+                        "min-w-0 flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-card)]",
+                        "px-2.5 py-1.5 text-[13px] leading-snug text-[var(--color-foreground)] outline-none transition",
+                        "placeholder:text-[var(--color-muted)]",
+                        "focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_18%,transparent)]",
+                        "disabled:cursor-not-allowed disabled:opacity-60",
+                      )}
+                      placeholder="Reason label"
+                    />
+                  )}
+
+                  <div className="flex shrink-0 items-center">
+                    <IconBtn
+                      label="Remove"
+                      danger
+                      disabled={locked || other || !canRemoveMore}
+                      onClick={() => {
+                        setOptions(options.filter((_, i) => i !== index));
+                      }}
+                    >
+                      <CloseRoundedIcon className="!text-[15px]" />
+                    </IconBtn>
+                  </div>
+                </li>
+              )}
+            </AdminSortableItem>
           );
         })}
-      </ul>
+      </AdminSortableList>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <button

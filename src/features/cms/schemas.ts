@@ -311,6 +311,9 @@ export const aboutSectionConfigSchema = sectionCommonSettingsSchema.extend({
   imagePath: z.string().max(500).nullable().optional().default(null),
   imageCaptionName: z.string().max(120).optional().default(""),
   imageCaptionRole: z.string().max(120).optional().default(""),
+  /** Optional full-bleed page banner (off until enabled + image). */
+  bannerEnabled: z.boolean().default(false),
+  bannerImagePath: z.string().max(500).nullable().optional().default(null),
   /** Optional shared wheel image — used on locomotive and every bogie. */
   engineWheelImagePath: z
     .string()
@@ -407,6 +410,9 @@ export function migrateAboutConfigInput(
 /** Career page intro + form settings (jobs live in job_posts table). */
 export const careerSectionConfigSchema = sectionCommonSettingsSchema.extend({
   heading: shortTextSchema.default(""),
+  /** Optional full-bleed page banner (off until enabled + image). */
+  bannerEnabled: z.boolean().default(false),
+  bannerImagePath: z.string().max(500).nullable().optional().default(null),
   introParagraphs: z
     .array(
       z

@@ -20,6 +20,7 @@ import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import WarehouseOutlinedIcon from "@mui/icons-material/WarehouseOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import StraightenOutlinedIcon from "@mui/icons-material/StraightenOutlined";
+import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
 import StarBorderOutlinedIcon from "@mui/icons-material/StarBorderOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import ReportProblemOutlinedIcon from "@mui/icons-material/ReportProblemOutlined";
@@ -76,6 +77,7 @@ const ICONS: Record<
   dashboard: DashboardOutlinedIcon,
   categories: CategoryOutlinedIcon,
   sizes: StraightenOutlinedIcon,
+  productSettings: TuneOutlinedIcon,
   reviews: StarBorderOutlinedIcon,
   products: Inventory2OutlinedIcon,
   inventory: WarehouseOutlinedIcon,

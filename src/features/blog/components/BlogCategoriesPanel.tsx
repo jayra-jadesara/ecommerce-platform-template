@@ -10,6 +10,11 @@ import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { getAdminPath } from "@/config/admin-route";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+} from "@/features/admin/ui/AdminSortable";
+import {
   createBlogCategoryAction,
   deleteBlogCategoryAction,
   moveBlogCategoryAction,
@@ -351,155 +356,163 @@ export function BlogCategoriesPanel({
                   Add a category to help shoppers browse your journal.
                 </p>
               </li>
-            ) : (
-              categories.map((category, index) => {
+            ) : null}
+          </ul>
+          {categories.length > 0 ? (
+            <AdminSortableList
+              ids={categories.map((c) => c.id)}
+              disabled={!canUpdate || pending}
+              className="mt-4 space-y-2"
+              onReorder={(activeId, overId) => {
+                const oldIndex = categories.findIndex((c) => c.id === activeId);
+                const newIndex = categories.findIndex((c) => c.id === overId);
+                if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
+                  return;
+                }
+                const direction = newIndex > oldIndex ? "down" : "up";
+                const steps = Math.abs(newIndex - oldIndex);
+                setError(null);
+                startTransition(async () => {
+                  for (let i = 0; i < steps; i += 1) {
+                    const result = await moveBlogCategoryAction(
+                      activeId,
+                      direction,
+                    );
+                    if (!result.ok) {
+                      setError(result.error);
+                      return;
+                    }
+                  }
+                  setSuccess("Reordered.");
+                  router.refresh();
+                });
+              }}
+            >
+              {categories.map((category) => {
                 const thumb = resolveCmsImageUrl(category.imagePath);
                 return (
-                <li
-                  key={category.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {thumb ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={thumb}
-                        alt=""
-                        className="h-10 w-14 shrink-0 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
-                        —
-                      </div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="font-medium">{category.name}</p>
-                      <p className="text-xs text-[var(--color-muted)]">
-                        {typeof category.postCount === "number"
-                          ? `${category.postCount} article${category.postCount === 1 ? "" : "s"}`
-                          : null}
-                        {typeof category.postCount === "number" ? " · " : null}
-                        {category.isActive ? "Active" : "Disabled"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {canUpdate ? (
-                      <>
-                        <button
-                          type="button"
-                          className="underline disabled:opacity-40"
-                          disabled={pending || index === 0}
-                          aria-label={`Move ${category.name} up`}
-                          onClick={() => {
-                            setError(null);
-                            startTransition(async () => {
-                              const result = await moveBlogCategoryAction(
-                                category.id,
-                                "up",
-                              );
-                              if (!result.ok) {
-                                setError(result.error);
-                                return;
-                              }
-                              setSuccess(result.message ?? "Reordered.");
-                              router.refresh();
-                            });
-                          }}
-                        >
-                          Up
-                        </button>
-                        <button
-                          type="button"
-                          className="underline disabled:opacity-40"
-                          disabled={
-                            pending || index === categories.length - 1
-                          }
-                          aria-label={`Move ${category.name} down`}
-                          onClick={() => {
-                            setError(null);
-                            startTransition(async () => {
-                              const result = await moveBlogCategoryAction(
-                                category.id,
-                                "down",
-                              );
-                              if (!result.ok) {
-                                setError(result.error);
-                                return;
-                              }
-                              setSuccess(result.message ?? "Reordered.");
-                              router.refresh();
-                            });
-                          }}
-                        >
-                          Down
-                        </button>
-                        <button
-                          type="button"
-                          className="underline"
-                          onClick={() => {
-                            setEditingId(category.id);
-                            setSlugLocked(false);
-                            setSuccess(null);
-                            setError(null);
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="underline"
-                          disabled={pending}
-                          onClick={() => {
-                            setError(null);
-                            startTransition(async () => {
-                              const result = await updateBlogCategoryAction(
-                                category.id,
-                                {
-                                  name: category.name,
-                                  slug: category.slug,
-                                  description: category.description,
-                                  imagePath: category.imagePath,
-                                  isActive: !category.isActive,
-                                  sortOrder: category.sortOrder,
-                                },
-                              );
-                              if (!result.ok) {
-                                setError(result.error);
-                                return;
-                              }
-                              setSuccess(
-                                category.isActive
-                                  ? "Category disabled."
-                                  : "Category enabled.",
-                              );
-                              router.refresh();
-                            });
-                          }}
-                        >
-                          {category.isActive ? "Disable" : "Enable"}
-                        </button>
-                      </>
-                    ) : null}
-                    {canDelete ? (
-                      <button
-                        type="button"
-                        className="text-red-700 underline"
-                        disabled={pending}
-                        onClick={() => {
-                          setError(null);
-                          setDeleteTarget(category);
-                        }}
+                  <AdminSortableItem
+                    key={category.id}
+                    id={category.id}
+                    disabled={!canUpdate || pending}
+                  >
+                    {({
+                      setNodeRef,
+                      style,
+                      isDragging,
+                      attributes,
+                      listeners,
+                    }) => (
+                      <li
+                        ref={setNodeRef}
+                        style={style}
+                        className={`flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[var(--color-border)] px-3 py-2${isDragging ? " z-10 opacity-90 shadow-md" : ""}`}
                       >
-                        Delete
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
+                        <div className="flex min-w-0 items-center gap-3">
+                          {canUpdate ? (
+                            <AdminDragHandle
+                              disabled={pending}
+                              attributes={attributes}
+                              listeners={listeners}
+                              className="!h-9 !w-8 !self-center rounded-md"
+                            />
+                          ) : null}
+                          {thumb ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={thumb}
+                              alt=""
+                              className="h-10 w-14 shrink-0 rounded-lg object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-[var(--color-surface)] text-xs text-[var(--color-muted)]">
+                              —
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="font-medium">{category.name}</p>
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {typeof category.postCount === "number"
+                                ? `${category.postCount} article${category.postCount === 1 ? "" : "s"}`
+                                : null}
+                              {typeof category.postCount === "number"
+                                ? " · "
+                                : null}
+                              {category.isActive ? "Active" : "Disabled"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {canUpdate ? (
+                            <>
+                              <button
+                                type="button"
+                                className="underline"
+                                onClick={() => {
+                                  setEditingId(category.id);
+                                  setSlugLocked(false);
+                                  setSuccess(null);
+                                  setError(null);
+                                }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                className="underline"
+                                disabled={pending}
+                                onClick={() => {
+                                  setError(null);
+                                  startTransition(async () => {
+                                    const result = await updateBlogCategoryAction(
+                                      category.id,
+                                      {
+                                        name: category.name,
+                                        slug: category.slug,
+                                        description: category.description,
+                                        imagePath: category.imagePath,
+                                        isActive: !category.isActive,
+                                        sortOrder: category.sortOrder,
+                                      },
+                                    );
+                                    if (!result.ok) {
+                                      setError(result.error);
+                                      return;
+                                    }
+                                    setSuccess(
+                                      category.isActive
+                                        ? "Category disabled."
+                                        : "Category enabled.",
+                                    );
+                                    router.refresh();
+                                  });
+                                }}
+                              >
+                                {category.isActive ? "Disable" : "Enable"}
+                              </button>
+                            </>
+                          ) : null}
+                          {canDelete ? (
+                            <button
+                              type="button"
+                              className="text-red-700 underline"
+                              disabled={pending}
+                              onClick={() => {
+                                setError(null);
+                                setDeleteTarget(category);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          ) : null}
+                        </div>
+                      </li>
+                    )}
+                  </AdminSortableItem>
                 );
-              })
-            )}
-          </ul>
+              })}
+            </AdminSortableList>
+          ) : null}
         </section>
       </div>
 

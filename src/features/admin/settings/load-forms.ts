@@ -21,6 +21,10 @@ import {
   coerceAdminImageMaxMb,
   coerceAdminReelVideoMaxMb,
 } from "@/features/media/upload-limits";
+import {
+  coerceStorefrontLoaderLabel,
+  coerceStorefrontLoaderStyle,
+} from "@/components/ui/storefront-loader";
 
 type SettingsRow = Tables<"store_settings">;
 type BrandingRow = Tables<"store_branding">;
@@ -81,6 +85,14 @@ export async function loadGeneralSettingsForm(): Promise<{
       adminImageMaxMb: coerceAdminImageMaxMb(row?.admin_image_max_mb),
       adminReelVideoMaxMb: coerceAdminReelVideoMaxMb(
         row?.admin_reel_video_max_mb,
+      ),
+      contactBannerEnabled: Boolean(row?.contact_banner_enabled),
+      contactBannerImagePath: row?.contact_banner_image_path?.trim() || null,
+      storefrontLoaderStyle: coerceStorefrontLoaderStyle(
+        row?.storefront_loader_style,
+      ),
+      storefrontLoaderLabel: coerceStorefrontLoaderLabel(
+        row?.storefront_loader_label,
       ),
     },
   };

@@ -51,6 +51,32 @@ export const generalSettingsSchema = z.object({
   adminImageMaxMb: z.coerce.number().int().min(1).max(10),
   /** Admin reel video uploads max size in MB (2–50). */
   adminReelVideoMaxMb: z.coerce.number().int().min(2).max(50),
+  /** Contact page hero banner (off by default). */
+  contactBannerEnabled: z.boolean(),
+  contactBannerImagePath: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const trimmed = typeof v === "string" ? v.trim() : "";
+      return trimmed ? trimmed : null;
+    }),
+  /** Storefront LoadingState visual. */
+  storefrontLoaderStyle: z.enum([
+    "spinner",
+    "ring",
+    "dots",
+    "pulse",
+    "bars",
+    "dual",
+    "orbit",
+    "wave",
+    "bloom",
+    "dash",
+  ]),
+  storefrontLoaderLabel: z
+    .string()
+    .trim()
+    .min(1, "Enter a loading label.")
+    .max(40),
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -176,6 +202,10 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   socialWhatsapp: "",
   adminImageMaxMb: 5,
   adminReelVideoMaxMb: 25,
+  contactBannerEnabled: false,
+  contactBannerImagePath: null,
+  storefrontLoaderStyle: "spinner",
+  storefrontLoaderLabel: "Loading…",
 };
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettingsFormValues = {

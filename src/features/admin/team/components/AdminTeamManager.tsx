@@ -123,6 +123,7 @@ export function AdminTeamManager({
   canImpersonate = false,
   isImpersonating = false,
   initialStaffViewError = null,
+  section = "staff",
 }: {
   initialMembers: TeamMember[];
   total: number;
@@ -144,6 +145,8 @@ export function AdminTeamManager({
   isImpersonating?: boolean;
   /** From /view-as redirect when staff view could not start. */
   initialStaffViewError?: string | null;
+  /** Staff list vs roles manager (Team & roles page tabs). */
+  section?: "staff" | "roles";
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -176,7 +179,6 @@ export function AdminTeamManager({
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editRole, setEditRole] = useState<AdminRoleCode>("EDITOR");
 
-  const [createRoleOpen, setCreateRoleOpen] = useState(false);
   const [editingCustomRole, setEditingCustomRole] =
     useState<CustomRoleDefinition | null>(null);
 
@@ -362,6 +364,47 @@ export function AdminTeamManager({
 
   return (
     <div className="space-y-3">
+      {section === "roles" ? (
+        canCreateRoles ? (
+          <AdminCreateRoleDialog
+            variant="inline"
+            open
+            roles={customRoles}
+            editing={editingCustomRole}
+            initialTab={editingCustomRole ? "form" : "list"}
+            onClose={() => {
+              setEditingCustomRole(null);
+              router.push(getAdminPath("/team") + "?tab=staff");
+            }}
+            onSaved={(role) => {
+              setCustomRoles((prev) => {
+                const without = prev.filter((item) => item.id !== role.id);
+                return [...without, role].sort((a, b) =>
+                  a.name.localeCompare(b.name),
+                );
+              });
+              setEditingCustomRole(null);
+              setSuccess(`Role “${role.name}” saved.`);
+              refresh();
+            }}
+            onDeleted={(roleId) => {
+              setCustomRoles((prev) =>
+                prev.filter((item) => item.id !== roleId),
+              );
+              setEditingCustomRole(null);
+              setSuccess("Custom role deleted.");
+              refresh();
+            }}
+          />
+        ) : (
+          <p className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-8 text-center text-sm text-[var(--color-muted)]">
+            Only a Super Admin can manage roles.
+          </p>
+        )
+      ) : null}
+
+      {section === "staff" ? (
+        <>
       <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
         <form
           className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-3"
@@ -441,10 +484,7 @@ export function AdminTeamManager({
                 className={cn(adminBtn("outline"), "!min-h-10")}
                 disabled={pending}
                 onClick={() => {
-                  setError(null);
-                  setSuccess(null);
-                  setEditingCustomRole(null);
-                  setCreateRoleOpen(true);
+                  router.push(getAdminPath("/team") + "?tab=roles");
                 }}
               >
                 Manage roles
@@ -467,7 +507,7 @@ export function AdminTeamManager({
         ) : null}
       </div>
 
-      {error && !addOpen && !editMember && !createRoleOpen ? (
+      {error && !addOpen && !editMember ? (
         <Alert severity="error" sx={{ py: 0, fontSize: 13 }}>
           {error}
         </Alert>
@@ -1139,34 +1179,7 @@ export function AdminTeamManager({
         </div>
       </AdminFormDialog>
 
-      {canCreateRoles ? (
-        <AdminCreateRoleDialog
-          open={createRoleOpen}
-          roles={customRoles}
-          editing={editingCustomRole}
-          initialTab={editingCustomRole ? "form" : "list"}
-          onClose={() => {
-            setCreateRoleOpen(false);
-            setEditingCustomRole(null);
-          }}
-          onSaved={(role) => {
-            setCustomRoles((prev) => {
-              const without = prev.filter((item) => item.id !== role.id);
-              return [...without, role].sort((a, b) =>
-                a.name.localeCompare(b.name),
-              );
-            });
-            setEditingCustomRole(null);
-            setSuccess(`Role “${role.name}” saved.`);
-            refresh();
-          }}
-          onDeleted={(roleId) => {
-            setCustomRoles((prev) => prev.filter((item) => item.id !== roleId));
-            setEditingCustomRole(null);
-            setSuccess("Custom role deleted.");
-            refresh();
-          }}
-        />
+        </>
       ) : null}
     </div>
   );

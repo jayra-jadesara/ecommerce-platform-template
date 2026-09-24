@@ -19,6 +19,7 @@ import { CareerApplicationsInbox } from "@/features/career/components/CareerAppl
 import { defaultConfigForType } from "@/features/cms/schemas";
 import type { ContentPage, ContentSection } from "@/features/cms/types";
 import type { CareerApplication, JobPost } from "@/features/career/types";
+import { MediaPicker } from "@/features/media";
 import { focusFirstFieldError } from "@/features/admin/validation/form-errors";
 import { AdminSaveBar } from "@/features/admin/ui/AdminSaveBar";
 import type { FieldErrors } from "@/lib/validation";
@@ -76,6 +77,7 @@ export function CareerPageForm({
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [tab, setTab] = useState<TabId>("content");
+  const [bannerMediaOpen, setBannerMediaOpen] = useState(false);
 
   const isDirty = JSON.stringify(config) !== baseline;
   const emailError = validateCareersEmail(
@@ -294,6 +296,7 @@ export function CareerPageForm({
             emailError={
               String(config.careersEmail ?? "").trim() ? emailError : null
             }
+            onPickBanner={() => setBannerMediaOpen(true)}
           />
           {canUpdate ? (
             <AdminSaveBar
@@ -311,6 +314,16 @@ export function CareerPageForm({
               }}
             />
           ) : null}
+          <MediaPicker
+            open={bannerMediaOpen}
+            folder="cms"
+            allowUpload
+            onClose={() => setBannerMediaOpen(false)}
+            onSelect={(selection) => {
+              setField("bannerImagePath", selection.storagePath);
+              setBannerMediaOpen(false);
+            }}
+          />
         </>
       ) : null}
 

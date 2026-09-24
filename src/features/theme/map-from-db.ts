@@ -12,6 +12,7 @@ import type {
   SeoConfig,
   SocialLinksConfig,
   StoreConfig,
+  StorefrontUiConfig,
   ThemeConfig,
   ThemeMode,
 } from "@/types";
@@ -27,6 +28,10 @@ import { defaultPlatformConfig } from "@/config/defaults";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { parseVisualEffectsConfig } from "@/features/visual-effects/schemas";
 import type { VisualEffectsConfig } from "@/types";
+import {
+  coerceStorefrontLoaderLabel,
+  coerceStorefrontLoaderStyle,
+} from "@/components/ui/storefront-loader";
 
 export type ThemeRow = {
   default_mode: string;
@@ -167,6 +172,10 @@ export type SettingsRow = {
   footer_show_featured_product?: boolean | null;
   footer_featured_product_id?: string | null;
   copyright_text?: string | null;
+  contact_banner_enabled?: boolean | null;
+  contact_banner_image_path?: string | null;
+  storefront_loader_style?: string | null;
+  storefront_loader_label?: string | null;
 };
 
 function mapLightPalette(row: ThemeRow): ColorTokens | null {
@@ -424,6 +433,8 @@ export function mapSettingsRowToContact(
     state: row.state?.trim() || undefined,
     postalCode: row.postal_code?.trim() || undefined,
     country: row.country?.trim() || undefined,
+    bannerEnabled: Boolean(row.contact_banner_enabled),
+    bannerImagePath: row.contact_banner_image_path?.trim() || undefined,
   };
 }
 
@@ -504,6 +515,20 @@ export function mapSettingsRowToStore(
     registrationEnabled: row?.registration_enabled ?? fallback.registrationEnabled,
     checkoutGuestAllowed:
       row?.checkout_guest_allowed ?? fallback.checkoutGuestAllowed,
+  };
+}
+
+export function mapSettingsRowToUi(
+  row: SettingsRow | null | undefined,
+): StorefrontUiConfig {
+  const fallback = defaultPlatformConfig.ui;
+  return {
+    loaderStyle: coerceStorefrontLoaderStyle(
+      row?.storefront_loader_style ?? fallback.loaderStyle,
+    ),
+    loaderLabel: coerceStorefrontLoaderLabel(
+      row?.storefront_loader_label ?? fallback.loaderLabel,
+    ),
   };
 }
 

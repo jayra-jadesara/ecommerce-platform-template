@@ -1,4 +1,7 @@
-import CircularProgress from "@mui/material/CircularProgress";
+"use client";
+
+import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";
+import { usePlatformConfig } from "@/providers/PlatformConfigProvider";
 import { cn } from "@/lib/cn";
 
 interface LoadingStateProps {
@@ -8,10 +11,14 @@ interface LoadingStateProps {
 }
 
 export function LoadingState({
-  label = "Loading…",
+  label,
   className,
   fullPage = false,
 }: LoadingStateProps) {
+  const { ui } = usePlatformConfig();
+  const text = (label ?? ui?.loaderLabel ?? "Loading…").trim() || "Loading…";
+  const style = ui?.loaderStyle ?? "spinner";
+
   return (
     <div
       className={cn(
@@ -22,9 +29,10 @@ export function LoadingState({
       role="status"
       aria-live="polite"
       aria-busy="true"
+      aria-label={text}
     >
-      <CircularProgress size={28} thickness={4} color="primary" />
-      <span className="text-sm">{label}</span>
+      <StorefrontLoaderMark style={style} size={fullPage ? 32 : 28} />
+      <span className="text-sm">{text}</span>
     </div>
   );
 }

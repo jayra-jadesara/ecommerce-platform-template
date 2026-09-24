@@ -19,6 +19,7 @@ export type {
   SeoConfig,
   SocialLinksConfig,
   StoreConfig,
+  StorefrontUiConfig,
   ThemeConfig,
   ThemeMode,
   TypographyConfig,

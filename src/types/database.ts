@@ -208,6 +208,15 @@ export type Database = {
           reels_visible_slides: number;
           inventory_low_stock_threshold: number;
           inventory_count_stock: boolean;
+          product_detail_sections: Json;
+          product_faq_heading: string;
+          product_faq_questions: Json;
+          products_listing_banner_enabled: boolean;
+          products_listing_banner_image_path: string | null;
+          contact_banner_enabled: boolean;
+          contact_banner_image_path: string | null;
+          storefront_loader_style: string;
+          storefront_loader_label: string;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -271,6 +280,15 @@ export type Database = {
           reels_visible_slides?: number;
           inventory_low_stock_threshold?: number;
           inventory_count_stock?: boolean;
+          product_detail_sections?: Json;
+          product_faq_heading?: string;
+          product_faq_questions?: Json;
+          products_listing_banner_enabled?: boolean;
+          products_listing_banner_image_path?: string | null;
+          contact_banner_enabled?: boolean;
+          contact_banner_image_path?: string | null;
+          storefront_loader_style?: string;
+          storefront_loader_label?: string;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -826,6 +844,11 @@ export type Database = {
           rating_avg: number;
           rating_count: number;
           view_count: number;
+          banner_enabled: boolean;
+          banner_image_path: string | null;
+          faq_enabled: boolean;
+          faq_answers: Json;
+          section_content: Json;
         } & Timestamps;
         Insert: {
           id?: string;
@@ -848,6 +871,11 @@ export type Database = {
           rating_avg?: number;
           rating_count?: number;
           view_count?: number;
+          banner_enabled?: boolean;
+          banner_image_path?: string | null;
+          faq_enabled?: boolean;
+          faq_answers?: Json;
+          section_content?: Json;
           created_at?: string;
           updated_at?: string;
         };

@@ -1,11 +1,12 @@
 "use client";
 
-import CircularProgress from "@mui/material/CircularProgress";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
+import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";
+import { usePlatformConfig } from "@/providers/PlatformConfigProvider";
 import { createAddressAction } from "@/features/addresses/actions";
 import { AddressForm } from "@/features/addresses/components/AddressForm";
 import type { CustomerAddress } from "@/features/addresses/types";
@@ -61,6 +62,7 @@ export function CheckoutClient({
   featuredCoupon = null,
 }: CheckoutClientProps) {
   const router = useRouter();
+  const { ui } = usePlatformConfig();
   const { openCheckout } = useRazorpayCheckout();
   const [summary, setSummary] = useState(initialSummary);
   const [couponInput, setCouponInput] = useState(
@@ -287,7 +289,7 @@ export function CheckoutClient({
             }}
           >
             <div className="pointer-events-auto w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] px-6 py-8 text-center shadow-[0_24px_60px_color-mix(in_srgb,var(--color-foreground)_18%,transparent)]">
-              <CircularProgress size={36} thickness={4} color="primary" />
+              <StorefrontLoaderMark style={ui.loaderStyle} size={36} />
               <p
                 id="checkout-pay-overlay-title"
                 className="mt-4 font-[family-name:var(--font-display)] text-lg font-semibold text-[var(--color-foreground)]"

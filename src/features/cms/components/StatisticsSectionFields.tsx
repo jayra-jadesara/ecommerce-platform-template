@@ -2,10 +2,16 @@
 
 import TextField from "@mui/material/TextField";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
-import ArrowDownwardOutlinedIcon from "@mui/icons-material/ArrowDownwardOutlined";
-import ArrowUpwardOutlinedIcon from "@mui/icons-material/ArrowUpwardOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { adminFieldGroup } from "@/features/admin/ui/admin-classes";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+  adminSortableIds,
+  reorderBySortableIds,
+} from "@/features/admin/ui/AdminSortable";
+import { cn } from "@/lib/cn";
 
 export type StatisticEditableItem = {
   value: string;
@@ -20,9 +26,7 @@ type Props = {
 };
 
 const MAX_ITEMS = 8;
-
-const iconBtn =
-  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] disabled:opacity-35 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]";
+const SORT_PREFIX = "stat";
 
 export function StatisticsSectionFields({
   title,
@@ -38,16 +42,6 @@ export function StatisticsSectionFields({
 
   function removeAt(index: number) {
     onChange(items.filter((_, i) => i !== index));
-  }
-
-  function move(index: number, direction: -1 | 1) {
-    const next = index + direction;
-    if (next < 0 || next >= items.length) return;
-    const copy = [...items];
-    const tmp = copy[index]!;
-    copy[index] = copy[next]!;
-    copy[next] = tmp;
-    onChange(copy);
   }
 
   function addItem() {
@@ -76,6 +70,7 @@ export function StatisticsSectionFields({
         <p className="admin-field-group__title">2. Numbers</p>
         <p className="admin-field-group__hint">
           Each row is one stat — big number + short label. Up to {MAX_ITEMS}.
+          Drag the handle to reorder.
         </p>
 
         {items.length === 0 ? (
@@ -83,71 +78,83 @@ export function StatisticsSectionFields({
             No stats yet — add your first number below.
           </p>
         ) : (
-          <ul className="space-y-2">
+          <AdminSortableList
+            ids={adminSortableIds(items.length, SORT_PREFIX)}
+            className="space-y-2"
+            onReorder={(activeId, overId) => {
+              const next = reorderBySortableIds(
+                items,
+                activeId,
+                overId,
+                SORT_PREFIX,
+              );
+              if (next) onChange(next);
+            }}
+          >
             {items.map((item, index) => (
-              <li
-                key={`stat-${index}`}
-                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2"
+              <AdminSortableItem
+                key={`${SORT_PREFIX}-${index}`}
+                id={`${SORT_PREFIX}-${index}`}
               >
-                <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[0.65rem] font-bold tabular-nums text-[var(--color-primary)]">
-                    {index + 1}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      disabled={index === 0}
-                      aria-label="Move up"
-                      title="Move up"
-                      className={iconBtn}
-                      onClick={() => move(index, -1)}
-                    >
-                      <ArrowUpwardOutlinedIcon sx={{ fontSize: 15 }} />
-                    </button>
-                    <button
-                      type="button"
-                      disabled={index === items.length - 1}
-                      aria-label="Move down"
-                      title="Move down"
-                      className={iconBtn}
-                      onClick={() => move(index, 1)}
-                    >
-                      <ArrowDownwardOutlinedIcon sx={{ fontSize: 15 }} />
-                    </button>
-                    <button
-                      type="button"
-                      aria-label="Remove statistic"
-                      title="Remove"
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50"
-                      onClick={() => removeAt(index)}
-                    >
-                      <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
-                    </button>
-                  </div>
-                </div>
-                <div className="grid gap-1.5 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
-                  <TextField
-                    label="Number"
-                    fullWidth
-                    size="small"
-                    value={item.value}
-                    onChange={(e) => updateAt(index, { value: e.target.value })}
-                    placeholder="24+"
-                    helperText="Shown big"
-                  />
-                  <TextField
-                    label="Label"
-                    fullWidth
-                    size="small"
-                    value={item.label}
-                    onChange={(e) => updateAt(index, { label: e.target.value })}
-                    placeholder="Years of experience"
-                    helperText="Shown under the number"
-                  />
-                </div>
-              </li>
+                {({ setNodeRef, style, isDragging, attributes, listeners }) => (
+                  <li
+                    ref={setNodeRef}
+                    style={style}
+                    className={cn(
+                      "rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2",
+                      isDragging && "z-10 opacity-90 shadow-md",
+                    )}
+                  >
+                    <div className="mb-1.5 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <AdminDragHandle
+                          attributes={attributes}
+                          listeners={listeners}
+                          className="!h-7 !w-7 !self-center rounded-md"
+                        />
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[0.65rem] font-bold tabular-nums text-[var(--color-primary)]">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="Remove statistic"
+                        title="Remove"
+                        className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50"
+                        onClick={() => removeAt(index)}
+                      >
+                        <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
+                      </button>
+                    </div>
+                    <div className="grid gap-1.5 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
+                      <TextField
+                        label="Number"
+                        fullWidth
+                        size="small"
+                        value={item.value}
+                        onChange={(e) =>
+                          updateAt(index, { value: e.target.value })
+                        }
+                        placeholder="24+"
+                        helperText="Shown big"
+                      />
+                      <TextField
+                        label="Label"
+                        fullWidth
+                        size="small"
+                        value={item.label}
+                        onChange={(e) =>
+                          updateAt(index, { label: e.target.value })
+                        }
+                        placeholder="Years of experience"
+                        helperText="Shown under the number"
+                      />
+                    </div>
+                  </li>
+                )}
+              </AdminSortableItem>
             ))}
-          </ul>
+          </AdminSortableList>
         )}
 
         <button

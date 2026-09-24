@@ -122,6 +122,11 @@ async function loadAdminContextForUserId(
       permissionBags.push(permissionsForRoles([row.code as AdminRoleCode]));
     }
   }
+  // SUPER_ADMIN is not editable in-app; always union the full TS catalog so
+  // newer permissions (e.g. platform.view) appear even when DB seed is older.
+  if (roles.includes("SUPER_ADMIN")) {
+    permissionBags.push(permissionsForRoles(["SUPER_ADMIN"]));
+  }
   const permissions = mergePermissionSets(...permissionBags);
 
   return {

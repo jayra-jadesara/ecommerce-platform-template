@@ -545,9 +545,12 @@ export function SizeOptionsManager({
             fullWidth
             required
             disabled={pending}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, label: event.target.value }))
-            }
+            error={Boolean(formError)}
+            helperText={formError ?? undefined}
+            onChange={(event) => {
+              setFormError(null);
+              setForm((prev) => ({ ...prev, label: event.target.value }));
+            }}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();

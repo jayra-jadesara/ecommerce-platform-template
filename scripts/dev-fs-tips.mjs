@@ -1,8 +1,8 @@
 /**
  * Dev filesystem tips for this Windows + HDD setup.
  *
- * F: is an HDD; C: is an SSD. Large webpack vendor-chunks written on the HDD
- * can be read mid-write → SyntaxError: Invalid or unexpected token.
+ * F: is an HDD; C: is an SSD. Webpack's large vendor-chunks written on the HDD
+ * can be read mid-write → SyntaxError / TypeError: reading 'call'.
  *
  * Do NOT move `.next` to another drive — Next then fails with:
  *   Cannot find module 'react/jsx-runtime'
@@ -14,16 +14,17 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 console.log(`Project: ${root}`);
 console.log("");
-console.log("Mitigations in this repo:");
+console.log("Permanent mitigations in this repo:");
+console.log("  - npm run dev uses Turbopack (no webpack vendor-chunks)");
 console.log("  - .next stays in the project (same drive as node_modules)");
-console.log("  - webpack memory cache (no pack.gz rename races)");
-console.log("  - webpack parallelism capped (fewer half-written chunks)");
-console.log("  - npm run clean:next when vendor-chunks look corrupt");
+console.log("  - prepare-next-dev auto-clears corrupt webpack chunks");
+console.log("  - webpack fallback: memory cache + parallelism=1");
 console.log("");
-console.log("If you see SyntaxError in vendor-chunks/next.js:");
+console.log("If you still see reading 'call' / vendor-chunks errors:");
 console.log("  1. Ctrl+C the dev server");
 console.log("  2. npm run clean:next");
-console.log("  3. npm run dev");
+console.log("  3. npm run dev          (Turbopack — preferred)");
+console.log("     npm run dev:webpack  (only if you need webpack)");
 console.log("");
 console.log("Best long-term: open/copy the project on C: (SSD), e.g.");
 console.log(
