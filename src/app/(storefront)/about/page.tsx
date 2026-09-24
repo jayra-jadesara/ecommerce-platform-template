@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { PageShell, StorefrontBreadcrumb, PageHeroBanner } from "@/components/layout";
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
@@ -6,13 +7,32 @@ import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import { getCurrentUser } from "@/features/auth/session";
 import type { AboutSectionConfig } from "@/features/cms/schemas";
+import { metadataForManagedStorePage } from "@/features/seo/managed-page-metadata";
+import { resolveManagedPageSeo } from "@/features/seo/resolve";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const [config, cmsAbout] = await Promise.all([
+    getPlatformConfigAsync(),
+    getPublishedStorefrontPage("about"),
+  ]);
+  return metadataForManagedStorePage({
+    pageKey: "about",
+    path: "/about",
+    fallbackTitle:
+      cmsAbout?.page.seoTitle?.trim() ||
+      cmsAbout?.page.title?.trim() ||
+      `About ${config.brand.name}`,
+    fallbackDescription:
+      cmsAbout?.page.seoDescription?.trim() || config.brand.tagline?.trim(),
+  });
+}
 
 /**
  * Storefront About page.
  * Layout content (founder story, quote, portrait, timeline) comes from
- * Admin → Content → About sections. Page title/SEO from the published About page.
+ * Admin → Content → About sections. Page title/SEO from Google & SEO + CMS.
  */
 export default async function AboutPage() {
   const [config, cmsAbout, user] = await Promise.all([
@@ -22,9 +42,20 @@ export default async function AboutPage() {
   ]);
 
   const { brand } = config;
-  const title = cmsAbout?.page.title?.trim() || `About ${brand.name}`;
+  const seoTitle =
+    resolveManagedPageSeo({
+      seo: config.seo,
+      pageKey: "about",
+      path: "/about",
+      fallbackTitle:
+        cmsAbout?.page.title?.trim() || `About ${brand.name}`,
+    }).title;
+  const title = seoTitle;
   const subtitle =
-    cmsAbout?.page.seoDescription?.trim() || brand.tagline?.trim() || null;
+    config.seo.pages?.about?.description?.trim() ||
+    cmsAbout?.page.seoDescription?.trim() ||
+    brand.tagline?.trim() ||
+    null;
   const sections = cmsAbout?.sections ?? [];
   const hasSections = sections.length > 0;
   const aboutSection = sections.find((s) => s.sectionType === "about");

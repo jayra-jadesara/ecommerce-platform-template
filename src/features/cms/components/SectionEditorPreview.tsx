@@ -4,15 +4,10 @@ import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import type { SupportedSectionType } from "@/features/cms/schemas";
 import { SECTION_TYPE_LABELS } from "@/features/cms/schemas";
 import { sfBtn, sfDisplay } from "@/components/ui/storefront-classes";
-import {
-  pageOptionLabel,
-} from "@/features/admin/ui/StorePageLinkField";
-
-export { STORE_PAGE_OPTIONS } from "@/features/admin/ui/StorePageLinkField";
 
 function pageLabel(href: string | null | undefined): string {
   if (!href) return "";
-  return pageOptionLabel(href) || href;
+  return href;
 }
 
 type PreviewConfig = Record<string, unknown>;

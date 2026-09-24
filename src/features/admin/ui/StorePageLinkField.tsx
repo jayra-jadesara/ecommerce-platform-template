@@ -1,31 +1,20 @@
 "use client";
 
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
-
-export const STORE_PAGE_OPTIONS = [
-  { value: "/products", label: "Products" },
-  { value: "/about", label: "About" },
-  { value: "/career", label: "Career" },
-  { value: "/blog", label: "Blog" },
-  { value: "/contact", label: "Contact" },
-  { value: "/privacy", label: "Privacy Policy" },
-  { value: "/terms", label: "Terms of Use" },
-  { value: "/disclaimer", label: "Disclaimer" },
-  { value: "/", label: "Home" },
-  { value: "/cart", label: "Cart" },
-] as const;
+import { useStorefrontPathSelectOptions } from "@/features/seo/StorefrontPathsProvider";
+import { normalizeStorefrontPath } from "@/features/seo/storefront-paths";
 
 export function normalizePageValue(value: string, fallback = "/products"): string {
   const trimmed = value.trim();
   if (!trimmed) return fallback;
-  const allowed = STORE_PAGE_OPTIONS.map((o) => o.value as string);
-  if (allowed.includes(trimmed)) return trimmed;
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
-  return fallback;
+  return normalizeStorefrontPath(trimmed);
 }
 
-export function pageOptionLabel(value: string): string {
-  const found = STORE_PAGE_OPTIONS.find((o) => o.value === value);
+export function pageOptionLabel(
+  value: string,
+  options?: Array<{ value: string; label: string }>,
+): string {
+  const found = options?.find((o) => o.value === value);
   return found?.label ?? value;
 }
 
@@ -39,6 +28,8 @@ export function StorePageLinkField({
   error,
   allowEmpty = false,
   emptyLabel = "No page selected",
+  /** Override catalog — defaults to Google & SEO storefront paths from DB. */
+  options: optionsProp,
 }: {
   label?: string;
   value: string | null | undefined;
@@ -49,22 +40,22 @@ export function StorePageLinkField({
   error?: boolean;
   allowEmpty?: boolean;
   emptyLabel?: string;
+  options?: Array<{ value: string; label: string }>;
 }) {
+  const contextOptions = useStorefrontPathSelectOptions();
+  const catalog = optionsProp?.length ? optionsProp : contextOptions;
+
   const raw = String(value ?? "").trim();
   const resolved =
     allowEmpty && !raw ? "" : normalizePageValue(raw || fallback, fallback);
   const isCustom =
-    Boolean(resolved) &&
-    !STORE_PAGE_OPTIONS.some((o) => o.value === resolved);
+    Boolean(resolved) && !catalog.some((o) => o.value === resolved);
 
   const options = [
     ...(isCustom
       ? [{ value: resolved, label: `Custom path (${resolved})` }]
       : []),
-    ...STORE_PAGE_OPTIONS.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-    })),
+    ...catalog,
   ];
 
   return (
@@ -73,7 +64,12 @@ export function StorePageLinkField({
       value={resolved}
       disabled={disabled}
       error={error}
-      helperText={helperText}
+      helperText={
+        helperText ??
+        (catalog.length
+          ? "Pages from Menu & Navigation"
+          : "Add pages in Menu & Navigation first")
+      }
       allowEmpty={allowEmpty}
       emptyLabel={emptyLabel}
       options={options}

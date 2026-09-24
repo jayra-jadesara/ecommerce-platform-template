@@ -9,6 +9,8 @@ import {
   DEFAULT_GENERAL_SETTINGS,
   DEFAULT_HEADER_SETTINGS,
   DEFAULT_SEO_SETTINGS,
+  flattenPageSeo,
+  flattenSchemaSettings,
   type BrandingSettingsFormValues,
   type FooterSettingsFormValues,
   type GeneralSettingsFormValues,
@@ -17,6 +19,16 @@ import {
 } from "@/features/admin/settings/schemas";
 import type { Tables } from "@/types/database";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
+import type { PageSeoSourceInfo } from "@/features/admin/settings/seo-page-sources";
+import {
+  resolveAdminStorefrontPaths,
+} from "@/features/seo/storefront-paths.server";
+import {
+  buildDefaultSitemapPaths,
+  hydrateSitemapFromCatalog,
+} from "@/features/seo/sitemap-paths";
+
+export type { PageSeoSourceInfo };
 import {
   coerceAdminImageMaxMb,
   coerceAdminReelVideoMaxMb,
@@ -229,10 +241,27 @@ export async function loadFooterSettingsForm(): Promise<FooterSettingsFormValues
 export async function loadSeoSettingsForm(): Promise<{
   values: SeoSettingsFormValues;
   ogImageUrl?: string;
+  storeDisplayName: string;
+  sitemapUrl: string;
+  missingProductSeoCount: number;
+  pageSources: PageSeoSourceInfo[];
 }> {
   const supabase = await createSupabaseServerClient();
   const store = await resolveActiveStore(supabase);
-  if (!store) return { values: DEFAULT_SEO_SETTINGS };
+  const storeDisplayName = store?.name?.trim() || "";
+
+  if (!store) {
+    return {
+      values: {
+        ...DEFAULT_SEO_SETTINGS,
+        siteTitle: storeDisplayName || DEFAULT_SEO_SETTINGS.siteTitle,
+      },
+      storeDisplayName,
+      sitemapUrl: "",
+      missingProductSeoCount: 0,
+      pageSources: [],
+    };
+  }
 
   const { data } = await supabase
     .from("store_seo_settings")
@@ -241,8 +270,18 @@ export async function loadSeoSettingsForm(): Promise<{
     .maybeSingle();
 
   const row = data as SeoRow | null;
+  const pageFields = flattenPageSeo(
+    (row as { page_seo?: unknown } | null)?.page_seo,
+  );
+  const schemaFields = flattenSchemaSettings(
+    (row as { schema_settings?: unknown } | null)?.schema_settings,
+  );
+
   const values: SeoSettingsFormValues = {
-    siteTitle: row?.site_title || DEFAULT_SEO_SETTINGS.siteTitle,
+    siteTitle: row?.site_title?.trim() || storeDisplayName,
+    siteName: text(
+      (row as { site_name?: string | null } | null)?.site_name,
+    ),
     metaDescription: text(row?.meta_description),
     keywords: (row?.keywords ?? []).join(", "),
     canonicalUrl: text(row?.canonical_url),
@@ -251,10 +290,161 @@ export async function loadSeoSettingsForm(): Promise<{
     ogImagePath: row?.og_image_path ?? null,
     robotsIndex: row?.robots_index ?? true,
     robotsFollow: row?.robots_follow ?? true,
+    googleSiteVerification: text(
+      (row as { google_site_verification?: string | null } | null)
+        ?.google_site_verification,
+    ),
+    titleTemplate: text(
+      (row as { title_template?: string | null } | null)?.title_template,
+    ),
+    twitterHandle: text(
+      (row as { twitter_handle?: string | null } | null)?.twitter_handle,
+    ),
+    ...schemaFields,
+    ...pageFields,
   };
+
+  // Pages + labels come from Menu & Navigation — not edited on this form.
+  const navPaths = await resolveAdminStorefrontPaths();
+  values.storefrontPaths = navPaths.map((p) => ({ ...p }));
+  values.sitemapPaths = hydrateSitemapFromCatalog(
+    values.sitemapPaths.length
+      ? values.sitemapPaths
+      : buildDefaultSitemapPaths(navPaths),
+    navPaths,
+  );
+
+  const [{ count }, { data: cmsPages }, { data: settingsRow }] =
+    await Promise.all([
+      supabase
+        .from("products")
+        .select("id", { count: "exact", head: true })
+        .eq("store_id", store.id)
+        .eq("status", "active")
+        .or("seo_title.is.null,seo_title.eq."),
+      supabase
+        .from("pages")
+        .select("slug, title, seo_title, seo_description")
+        .eq("store_id", store.id)
+        .in("slug", [
+          "about",
+          "career",
+          "privacy",
+          "terms",
+          "disclaimer",
+          "products",
+          "blog",
+        ]),
+      supabase
+        .from("store_settings")
+        .select("contact_page_heading, contact_page_support")
+        .eq("store_id", store.id)
+        .maybeSingle(),
+    ]);
+
+  const bySlug = new Map(
+    (cmsPages ?? []).map((p) => [p.slug as string, p] as const),
+  );
+  const pageTitle = (slug: string, fallback: string) => {
+    const p = bySlug.get(slug);
+    return (
+      p?.seo_title?.trim() ||
+      p?.title?.trim() ||
+      fallback
+    );
+  };
+  const pageDesc = (slug: string) => {
+    const p = bySlug.get(slug);
+    return p?.seo_description?.trim() || "";
+  };
+  const contactHeading =
+    (settingsRow as { contact_page_heading?: string | null } | null)
+      ?.contact_page_heading?.trim() || "";
+  const contactSupport =
+    (settingsRow as { contact_page_support?: string | null } | null)
+      ?.contact_page_support?.trim() || "";
+
+  const pageSources: PageSeoSourceInfo[] = [
+    {
+      key: "about",
+      label: "About",
+      path: "/about",
+      sourceTitle: pageTitle("about", `About ${storeDisplayName}`),
+      sourceDescription: pageDesc("about"),
+      sourceHint: "From Content → About",
+    },
+    {
+      key: "contact",
+      label: "Contact",
+      path: "/contact",
+      sourceTitle: contactHeading || `Contact ${storeDisplayName}`,
+      sourceDescription: contactSupport,
+      sourceHint: "From Store Information → Contact page",
+    },
+    {
+      key: "career",
+      label: "Career",
+      path: "/career",
+      sourceTitle: pageTitle("career", `Careers at ${storeDisplayName}`),
+      sourceDescription: pageDesc("career"),
+      sourceHint: "From Content → Career",
+    },
+    {
+      key: "products",
+      label: "Products",
+      path: "/products",
+      sourceTitle: pageTitle("products", "Products"),
+      sourceDescription: pageDesc("products") || values.metaDescription,
+      sourceHint: "From catalog listing (or store description)",
+    },
+    {
+      key: "blog",
+      label: "Blog",
+      path: "/blog",
+      sourceTitle: pageTitle("blog", "Blog"),
+      sourceDescription: pageDesc("blog") || values.metaDescription,
+      sourceHint: "From Blog settings / store description",
+    },
+    {
+      key: "privacy",
+      label: "Privacy",
+      path: "/privacy",
+      sourceTitle: pageTitle("privacy", "Privacy Policy"),
+      sourceDescription: pageDesc("privacy"),
+      sourceHint: "From Content → Legal pages",
+    },
+    {
+      key: "terms",
+      label: "Terms",
+      path: "/terms",
+      sourceTitle: pageTitle("terms", "Terms of Use"),
+      sourceDescription: pageDesc("terms"),
+      sourceHint: "From Content → Legal pages",
+    },
+    {
+      key: "disclaimer",
+      label: "Disclaimer",
+      path: "/disclaimer",
+      sourceTitle: pageTitle("disclaimer", "Disclaimer"),
+      sourceDescription: pageDesc("disclaimer"),
+      sourceHint: "From Content → Legal pages",
+    },
+  ];
+
+  const origin =
+    (values.canonicalUrl ?? "").trim() ||
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    "";
+  const sitemapUrl = origin
+    ? `${origin.replace(/\/$/, "")}/sitemap.xml`
+    : "/sitemap.xml";
 
   return {
     values,
     ogImageUrl: resolvePublicStorageUrl("branding", values.ogImagePath),
+    storeDisplayName,
+    sitemapUrl,
+    missingProductSeoCount: count ?? 0,
+    pageSources,
   };
 }

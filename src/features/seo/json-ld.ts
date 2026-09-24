@@ -184,6 +184,7 @@ export function buildOrganizationJsonLd(input: {
   logoUrl?: string | null;
   email?: string | null;
   phone?: string | null;
+  sameAs?: string[] | null;
 }): JsonLd {
   const json: JsonLd = {
     "@context": "https://schema.org",
@@ -194,6 +195,87 @@ export function buildOrganizationJsonLd(input: {
   if (isSafePublicAssetUrl(input.logoUrl)) json.logo = input.logoUrl;
   if (input.email?.trim()) json.email = input.email.trim();
   if (input.phone?.trim()) json.telephone = input.phone.trim();
+  const sameAs = (input.sameAs ?? []).filter((u) => isSafePublicAssetUrl(u));
+  if (sameAs.length) json.sameAs = sameAs;
+  return json;
+}
+
+function safeSchemaOrgType(raw: string | null | undefined, fallback: string): string {
+  const t = raw?.trim();
+  if (!t || !/^[A-Za-z][A-Za-z0-9]{0,79}$/.test(t)) return fallback;
+  return t;
+}
+
+function parseGeoCoord(raw: string | null | undefined): number | null {
+  if (!raw?.trim()) return null;
+  const n = Number(raw.trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+/** LocalBusiness from Store Information + Google & SEO schema fields. */
+export function buildLocalBusinessJsonLd(input: {
+  name: string;
+  url: string;
+  logoUrl?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: {
+    streetAddress?: string | null;
+    addressLocality?: string | null;
+    addressRegion?: string | null;
+    postalCode?: string | null;
+    addressCountry?: string | null;
+  } | null;
+  businessType?: string | null;
+  priceRange?: string | null;
+  geoLat?: string | null;
+  geoLng?: string | null;
+  sameAs?: string[] | null;
+}): JsonLd | null {
+  const street = [input.address?.streetAddress?.trim()]
+    .filter(Boolean)
+    .join(", ");
+  const locality = input.address?.addressLocality?.trim() || "";
+  const region = input.address?.addressRegion?.trim() || "";
+  const postal = input.address?.postalCode?.trim() || "";
+  const country = input.address?.addressCountry?.trim() || "";
+  const hasAddress = Boolean(street || locality || region || postal || country);
+  const hasContact = Boolean(
+    input.email?.trim() || input.phone?.trim() || hasAddress,
+  );
+  if (!hasContact) return null;
+
+  const json: JsonLd = {
+    "@context": "https://schema.org",
+    "@type": safeSchemaOrgType(input.businessType, "LocalBusiness"),
+    name: input.name,
+    url: input.url,
+  };
+  if (isSafePublicAssetUrl(input.logoUrl)) json.logo = input.logoUrl;
+  if (input.email?.trim()) json.email = input.email.trim();
+  if (input.phone?.trim()) json.telephone = input.phone.trim();
+  if (input.priceRange?.trim()) json.priceRange = input.priceRange.trim();
+  if (hasAddress) {
+    json.address = {
+      "@type": "PostalAddress",
+      ...(street ? { streetAddress: street } : {}),
+      ...(locality ? { addressLocality: locality } : {}),
+      ...(region ? { addressRegion: region } : {}),
+      ...(postal ? { postalCode: postal } : {}),
+      ...(country ? { addressCountry: country } : {}),
+    };
+  }
+  const lat = parseGeoCoord(input.geoLat);
+  const lng = parseGeoCoord(input.geoLng);
+  if (lat != null && lng != null) {
+    json.geo = {
+      "@type": "GeoCoordinates",
+      latitude: lat,
+      longitude: lng,
+    };
+  }
+  const sameAs = (input.sameAs ?? []).filter((u) => isSafePublicAssetUrl(u));
+  if (sameAs.length) json.sameAs = sameAs;
   return json;
 }
 

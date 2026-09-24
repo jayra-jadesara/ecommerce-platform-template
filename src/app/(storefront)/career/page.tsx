@@ -7,6 +7,8 @@ import { listPublishedJobPosts } from "@/features/career/service";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import type { CareerSectionConfig } from "@/features/cms/schemas";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
+import { metadataForManagedStorePage } from "@/features/seo/managed-page-metadata";
+import { resolveManagedPageSeo } from "@/features/seo/resolve";
 
 export const dynamic = "force-dynamic";
 
@@ -20,22 +22,31 @@ async function loadCareerPayload() {
   );
   const sectionConfig = (careerSection?.config ??
     {}) as Partial<CareerSectionConfig>;
-  const heading =
+  const cmsHeading =
     sectionConfig.heading?.trim() ||
     cmsCareer?.page.title?.trim() ||
     `Careers at ${config.brand.name}`;
+  const heading = resolveManagedPageSeo({
+    seo: config.seo,
+    pageKey: "career",
+    path: "/career",
+    fallbackTitle: cmsHeading,
+  }).title;
   return { config, cmsCareer, sectionConfig, heading };
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  const { heading, cmsCareer } = await loadCareerPayload();
+  const { heading, cmsCareer, config } = await loadCareerPayload();
   if (!cmsCareer) {
-    return { title: "Career", robots: { index: false, follow: false } };
+    return { title: heading, robots: { index: false, follow: false } };
   }
-  return {
-    title: heading,
-    description: cmsCareer.page.seoDescription?.trim() || undefined,
-  };
+  return metadataForManagedStorePage({
+    pageKey: "career",
+    path: "/career",
+    fallbackTitle: heading,
+    fallbackDescription:
+      cmsCareer.page.seoDescription?.trim() || config.seo.description,
+  });
 }
 
 /**

@@ -12,6 +12,8 @@ import { STAFF_VIEW_HEADER } from "@/features/auth/staff-view-constants";
 import { getSiteUrl } from "@/config/site";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { APP_VERSION } from "@/config/version";
+import { StorefrontPathsProvider } from "@/features/seo/StorefrontPathsProvider";
+import { resolveAdminStorefrontPaths } from "@/features/seo/storefront-paths.server";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +36,11 @@ export default async function AdminProtectedLayout({
   children: ReactNode;
 }) {
   const admin = await requireAdmin();
-  const { brand } = await getPlatformConfigAsync();
+  const [config, storefrontPaths] = await Promise.all([
+    getPlatformConfigAsync(),
+    resolveAdminStorefrontPaths(),
+  ]);
+  const { brand } = config;
   const navItems = getAdminNavTreeForPermissions(admin.permissions);
 
   const headerList = await headers();
@@ -63,7 +69,9 @@ export default async function AdminProtectedLayout({
       impersonation={impersonation}
       staffViewToken={staffViewToken}
     >
-      {children}
+      <StorefrontPathsProvider paths={storefrontPaths}>
+        {children}
+      </StorefrontPathsProvider>
     </AdminShell>
   );
 }

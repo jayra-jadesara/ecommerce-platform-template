@@ -102,13 +102,15 @@ export function buildDefaultThemeInsert(storeId: string): DefaultThemeInsert {
 }
 
 export function buildDefaultSeoInsert(storeId: string, brandName: string) {
+  const name = brandName.trim() || "Store";
   return {
     store_id: storeId,
-    site_title: brandName,
-    meta_description:
-      defaultPlatformConfig.seo.description ||
-      "Shop online at your store.",
+    site_title: name,
+    meta_description: null as string | null,
+    keywords: [] as string[],
     robots_index: true,
     robots_follow: true,
+    page_seo: {} as Record<string, never>,
+    schema_settings: {} as Record<string, never>,
   };
 }

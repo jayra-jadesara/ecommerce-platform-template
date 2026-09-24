@@ -6,6 +6,7 @@ export {
   resolveProductsListingSeo,
   resolveBlogListingSeo,
   resolveBlogPostSeo,
+  resolveManagedPageSeo,
   type ResolvedPageSeo,
 } from "./resolve";
 
@@ -15,6 +16,7 @@ export {
   buildBlogPostingJsonLd,
   buildBreadcrumbJsonLd,
   buildOrganizationJsonLd,
+  buildLocalBusinessJsonLd,
   buildWebSiteJsonLd,
   schemaAvailability,
   type JsonLd,

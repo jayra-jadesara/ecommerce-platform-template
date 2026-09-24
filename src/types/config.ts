@@ -114,6 +114,61 @@ export interface NavigationConfig {
   footer: NavItem[];
 }
 
+export interface SeoPageCopy {
+  title?: string;
+  description?: string;
+}
+
+/** Keys for storefront pages with SEO managed from Google & SEO admin. */
+export type SeoManagedPageKey =
+  | "about"
+  | "contact"
+  | "career"
+  | "products"
+  | "blog"
+  | "privacy"
+  | "terms"
+  | "disclaimer";
+
+/** Structured data + sitemap controls from Google & SEO admin. */
+export interface SeoSitemapPathConfig {
+  id: string;
+  path: string;
+  label: string;
+  priority: number;
+  enabled: boolean;
+  cmsSlug: string;
+}
+
+/** Master storefront URL catalog — single source for path dropdowns. */
+export interface SeoStorefrontPathConfig {
+  id: string;
+  path: string;
+  label: string;
+  cmsSlug: string;
+}
+
+export interface SeoSchemaSettings {
+  localBusiness: boolean;
+  organization: boolean;
+  websiteSearch: boolean;
+  /** schema.org subtype, e.g. Store, ClothingStore. Empty = LocalBusiness. */
+  businessType?: string;
+  priceRange?: string;
+  geoLat?: string;
+  geoLng?: string;
+  /** Include /products/{slug} URLs. */
+  sitemapProducts: boolean;
+  /** Include /categories/{slug} URLs. */
+  sitemapCategories: boolean;
+  /** Include /blog/{slug} post URLs. */
+  sitemapBlog: boolean;
+  /** Canonical storefront paths managed in Google & SEO. */
+  storefrontPaths: SeoStorefrontPathConfig[];
+  /** Sitemap enable/priority for paths from storefrontPaths. */
+  sitemapPaths: SeoSitemapPathConfig[];
+}
+
 export interface SeoConfig {
   title: string;
   titleTemplate?: string;
@@ -122,11 +177,18 @@ export interface SeoConfig {
   ogImage?: string;
   ogTitle?: string;
   ogDescription?: string;
+  /** Live store origin from admin (preferred over NEXT_PUBLIC_SITE_URL). */
   canonicalUrl?: string;
   siteName?: string;
   twitterHandle?: string;
   robotsIndex?: boolean;
   robotsFollow?: boolean;
+  /** Google Search Console meta verification token. */
+  googleSiteVerification?: string;
+  /** Per-page title/description from DB. */
+  pages?: Partial<Record<SeoManagedPageKey, SeoPageCopy>>;
+  /** JSON-LD + sitemap controls from schema_settings. */
+  schema?: SeoSchemaSettings;
 }
 
 export interface StoreConfig {

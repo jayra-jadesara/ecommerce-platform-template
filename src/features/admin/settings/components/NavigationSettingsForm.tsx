@@ -23,26 +23,8 @@ import {
   focusFirstFieldError,
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
-import { STORE_PAGE_OPTIONS } from "@/features/admin/ui/StorePageLinkField";
 import { cn } from "@/lib/cn";
-
-/** Page order clients expect (fixed list — no free-form “add link”). */
-const MENU_PAGE_ORDER = [
-  "/",
-  "/products",
-  "/about",
-  "/career",
-  "/blog",
-  "/contact",
-  "/privacy",
-  "/terms",
-  "/disclaimer",
-] as const;
-
-const MENU_PAGE_CATALOG = MENU_PAGE_ORDER.map((href) => {
-  const page = STORE_PAGE_OPTIONS.find((option) => option.value === href);
-  return page ?? { value: href, label: href };
-});
+import { DEFAULT_STOREFRONT_PATHS } from "@/features/seo/storefront-paths";
 
 function createClientKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -68,8 +50,12 @@ const menuPagesFormSchema = z.object({
 
 type MenuPagesFormValues = z.infer<typeof menuPagesFormSchema>;
 type PageRow = z.infer<typeof pageRowSchema>;
+type CatalogPage = { value: string; label: string };
 
-function buildDefaults(rows: AdminNavItemRow[]): MenuPagesFormValues {
+function buildDefaults(
+  rows: AdminNavItemRow[],
+  catalog: CatalogPage[],
+): MenuPagesFormValues {
   const headerByHref = new Map<string, AdminNavItemRow>();
   const footerByHref = new Map<string, AdminNavItemRow>();
 
@@ -82,7 +68,7 @@ function buildDefaults(rows: AdminNavItemRow[]): MenuPagesFormValues {
     }
   }
 
-  const pages: PageRow[] = MENU_PAGE_CATALOG.map((page, index) => {
+  const pages: PageRow[] = catalog.map((page, index) => {
     const header = headerByHref.get(page.value);
     const footer = footerByHref.get(page.value);
     const label =
@@ -102,26 +88,16 @@ function buildDefaults(rows: AdminNavItemRow[]): MenuPagesFormValues {
     };
   });
 
-  // Empty store: match sensible defaults (header main pages, footer legal).
-  if (rows.length === 0) {
-    const headerDefaults = new Set([
-      "/",
-      "/products",
-      "/about",
-      "/career",
-      "/blog",
-      "/contact",
-    ]);
-    const footerDefaults = new Set([
-      "/privacy",
-      "/terms",
-      "/disclaimer",
-      "/career",
-      "/contact",
-    ]);
+  // Empty store: first half of catalog in header, paths with cmsSlug-like legal in footer heuristics via path
+  if (rows.length === 0 && pages.length) {
     for (const page of pages) {
-      page.showHeader = headerDefaults.has(page.href);
-      page.showFooter = footerDefaults.has(page.href);
+      const isLegal =
+        page.href.includes("privacy") ||
+        page.href.includes("terms") ||
+        page.href.includes("disclaimer");
+      const isCart = page.href === "/cart";
+      page.showHeader = !isLegal && !isCart;
+      page.showFooter = isLegal || page.href === "/contact" || page.href === "/career";
     }
   }
 
@@ -131,8 +107,9 @@ function buildDefaults(rows: AdminNavItemRow[]): MenuPagesFormValues {
 function pagesToNavItems(
   pages: PageRow[],
   existingRows: AdminNavItemRow[],
+  catalog: CatalogPage[],
 ): NavigationItemFormValues[] {
-  const catalogHrefs = new Set(MENU_PAGE_CATALOG.map((p) => p.value));
+  const catalogHrefs = new Set(catalog.map((p) => p.value));
   const items: NavigationItemFormValues[] = [];
 
   // Remove nested / unknown catalog rows we no longer manage in this UI.
@@ -238,9 +215,29 @@ export function NavigationSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const catalog = useMemo<CatalogPage[]>(() => {
+    const byPath = new Map<string, CatalogPage>();
+    for (const p of DEFAULT_STOREFRONT_PATHS) {
+      if (p.path === "/cart") continue;
+      byPath.set(p.path, { value: p.path, label: p.label || p.path });
+    }
+    for (const row of initialItems) {
+      if (row.parent_id) continue;
+      const href = row.href?.trim();
+      if (!href?.startsWith("/") || href.startsWith("//")) continue;
+      if (!byPath.has(href)) {
+        byPath.set(href, {
+          value: href,
+          label: row.label?.trim() || href,
+        });
+      }
+    }
+    return [...byPath.values()];
+  }, [initialItems]);
+
   const defaults = useMemo(
-    () => buildDefaults(initialItems),
-    [initialItems],
+    () => buildDefaults(initialItems, catalog),
+    [initialItems, catalog],
   );
 
   const {
@@ -265,7 +262,7 @@ export function NavigationSettingsForm({
     setError(null);
     setSuccess(null);
     startTransition(async () => {
-      const items = pagesToNavItems(values.pages, initialItems);
+      const items = pagesToNavItems(values.pages, initialItems, catalog);
       const result = await saveNavigationSettingsAction({ items });
       if (!result.ok) {
         const serverFieldErrors = resultFieldErrors(result);

@@ -1,12 +1,12 @@
 /**
- * Pure SEO metadata resolution — no invented marketing copy.
+ * Pure SEO metadata resolution — values come from DB (store SEO + entity SEO).
  */
 
-import type { SeoConfig } from "@/types";
+import type { SeoConfig, SeoManagedPageKey } from "@/types";
 import {
   absoluteUrl,
   isSafePublicAssetUrl,
-  resolveTrustedSiteUrl,
+  resolveSiteOrigin,
 } from "@/lib/site-url";
 
 export type ResolvedPageSeo = {
@@ -28,13 +28,28 @@ function firstNonEmpty(...values: Array<string | null | undefined>): string {
   return "";
 }
 
+function siteOrigin(seo: SeoConfig): string {
+  return resolveSiteOrigin(seo.canonicalUrl);
+}
+
+function abs(path: string, seo: SeoConfig): string {
+  return absoluteUrl(path, siteOrigin(seo));
+}
+
+function robotsFrom(seo: SeoConfig, index = true, follow = true) {
+  return {
+    robotsIndex: index && seo.robotsIndex !== false,
+    robotsFollow: follow && seo.robotsFollow !== false,
+  };
+}
+
 export function resolveStoreHomepageSeo(input: {
   seo: SeoConfig;
   brandName?: string;
 }): ResolvedPageSeo {
   const brand = input.brandName?.trim() || input.seo.siteName || "Store";
   const title = firstNonEmpty(input.seo.title, brand) || brand;
-  const description = firstNonEmpty(input.seo.description) || "";
+  const description = firstNonEmpty(input.seo.description);
   const ogImage = isSafePublicAssetUrl(input.seo.ogImage)
     ? input.seo.ogImage
     : undefined;
@@ -42,11 +57,40 @@ export function resolveStoreHomepageSeo(input: {
     title,
     description,
     canonicalPath: "/",
-    canonicalUrl: absoluteUrl("/", resolveTrustedSiteUrl()),
+    canonicalUrl: abs("/", input.seo),
     ogImage,
     ogType: "website",
-    robotsIndex: input.seo.robotsIndex !== false,
-    robotsFollow: input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo),
+  };
+}
+
+/** About, Contact, Career, legal, etc. — titles/descriptions from Google & SEO page_seo. */
+export function resolveManagedPageSeo(input: {
+  seo: SeoConfig;
+  pageKey: SeoManagedPageKey;
+  path: string;
+  fallbackTitle: string;
+  fallbackDescription?: string;
+}): ResolvedPageSeo {
+  const page = input.seo.pages?.[input.pageKey];
+  const title =
+    firstNonEmpty(page?.title, input.fallbackTitle, input.seo.title) ||
+    input.fallbackTitle;
+  const description = firstNonEmpty(
+    page?.description,
+    input.fallbackDescription,
+    input.seo.description,
+  );
+  return {
+    title,
+    description,
+    canonicalPath: input.path,
+    canonicalUrl: abs(input.path, input.seo),
+    ogImage: isSafePublicAssetUrl(input.seo.ogImage)
+      ? input.seo.ogImage
+      : undefined,
+    ogType: "website",
+    ...robotsFrom(input.seo),
   };
 }
 
@@ -64,8 +108,12 @@ export function resolveProductSeo(input: {
 }): ResolvedPageSeo {
   const brand = input.brandName?.trim() || input.seo.siteName || input.seo.title;
   const title =
-    firstNonEmpty(input.product.seoTitle, input.product.name, input.seo.title, brand) ||
-    input.product.name;
+    firstNonEmpty(
+      input.product.seoTitle,
+      input.product.name,
+      input.seo.title,
+      brand,
+    ) || input.product.name;
   const description = firstNonEmpty(
     input.product.seoDescription,
     input.product.shortDescription,
@@ -81,11 +129,10 @@ export function resolveProductSeo(input: {
     title,
     description,
     canonicalPath: path,
-    canonicalUrl: absoluteUrl(path),
+    canonicalUrl: abs(path, input.seo),
     ogImage,
     ogType: "product",
-    robotsIndex: input.seo.robotsIndex !== false,
-    robotsFollow: input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo),
   };
 }
 
@@ -120,11 +167,10 @@ export function resolveCategorySeo(input: {
     title,
     description,
     canonicalPath: path,
-    canonicalUrl: absoluteUrl(path),
+    canonicalUrl: abs(path, input.seo),
     ogImage,
     ogType: "website",
-    robotsIndex: input.seo.robotsIndex !== false,
-    robotsFollow: input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo),
   };
 }
 
@@ -140,8 +186,15 @@ export function resolveCmsPageSeo(input: {
   seo: SeoConfig;
 }): ResolvedPageSeo {
   const published = input.page.status === "published";
-  const title = firstNonEmpty(input.page.seoTitle, input.page.title, input.seo.title);
-  const description = firstNonEmpty(input.page.seoDescription, input.seo.description);
+  const title = firstNonEmpty(
+    input.page.seoTitle,
+    input.page.title,
+    input.seo.title,
+  );
+  const description = firstNonEmpty(
+    input.page.seoDescription,
+    input.seo.description,
+  );
   const path = `/pages/${input.page.slug}`;
   const ogImage = isSafePublicAssetUrl(input.page.ogImageUrl)
     ? input.page.ogImageUrl!
@@ -152,30 +205,30 @@ export function resolveCmsPageSeo(input: {
     title,
     description,
     canonicalPath: path,
-    canonicalUrl: absoluteUrl(path),
+    canonicalUrl: abs(path, input.seo),
     ogImage,
     ogType: "article",
-    robotsIndex: published && input.seo.robotsIndex !== false,
-    robotsFollow: published && input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo, published, published),
   };
 }
 
-/** Listing pages: prefer canonical without page query when page>1 still points at listing. */
 export function resolveProductsListingSeo(input: {
   seo: SeoConfig;
   page?: number;
 }): ResolvedPageSeo {
   const page = input.page && input.page > 1 ? input.page : 1;
+  const pageSeo = input.seo.pages?.products;
   return {
-    title: firstNonEmpty(input.seo.title) || "Products",
-    description: firstNonEmpty(input.seo.description),
+    title:
+      firstNonEmpty(pageSeo?.title, input.seo.title, "Products") || "Products",
+    description: firstNonEmpty(pageSeo?.description, input.seo.description),
     canonicalPath: "/products",
-    canonicalUrl: absoluteUrl("/products"),
-    ogImage: isSafePublicAssetUrl(input.seo.ogImage) ? input.seo.ogImage : undefined,
+    canonicalUrl: abs("/products", input.seo),
+    ogImage: isSafePublicAssetUrl(input.seo.ogImage)
+      ? input.seo.ogImage
+      : undefined,
     ogType: "website",
-    // Paginated pages: index only page 1 to reduce duplicates
-    robotsIndex: page <= 1 && input.seo.robotsIndex !== false,
-    robotsFollow: input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo, page <= 1),
   };
 }
 
@@ -191,10 +244,16 @@ export function resolveBlogListingSeo(input: {
 }): ResolvedPageSeo {
   const page = input.page && input.page > 1 ? input.page : 1;
   const hasFilter = Boolean(input.categorySlug?.trim() || input.q?.trim());
+  const pageSeo = input.seo.pages?.blog;
   const title =
-    firstNonEmpty(input.settings.pageTitle, input.seo.title, input.seo.siteName) ||
-    "Blog";
+    firstNonEmpty(
+      pageSeo?.title,
+      input.settings.pageTitle,
+      input.seo.title,
+      input.seo.siteName,
+    ) || "Blog";
   const description = firstNonEmpty(
+    pageSeo?.description,
     input.settings.pageDescription,
     input.seo.description,
   );
@@ -202,12 +261,12 @@ export function resolveBlogListingSeo(input: {
     title,
     description,
     canonicalPath: "/blog",
-    canonicalUrl: absoluteUrl("/blog"),
-    ogImage: isSafePublicAssetUrl(input.seo.ogImage) ? input.seo.ogImage : undefined,
+    canonicalUrl: abs("/blog", input.seo),
+    ogImage: isSafePublicAssetUrl(input.seo.ogImage)
+      ? input.seo.ogImage
+      : undefined,
     ogType: "website",
-    robotsIndex:
-      page <= 1 && !hasFilter && input.seo.robotsIndex !== false,
-    robotsFollow: input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo, page <= 1 && !hasFilter),
   };
 }
 
@@ -227,8 +286,12 @@ export function resolveBlogPostSeo(input: {
 }): ResolvedPageSeo {
   const brand = input.brandName?.trim() || input.seo.siteName || input.seo.title;
   const title =
-    firstNonEmpty(input.post.seoTitle, input.post.title, input.seo.title, brand) ||
-    input.post.title;
+    firstNonEmpty(
+      input.post.seoTitle,
+      input.post.title,
+      input.seo.title,
+      brand,
+    ) || input.post.title;
   const description = firstNonEmpty(
     input.post.seoDescription,
     input.post.excerpt,
@@ -242,16 +305,14 @@ export function resolveBlogPostSeo(input: {
       : isSafePublicAssetUrl(input.seo.ogImage)
         ? input.seo.ogImage
         : undefined;
-  const published =
-    !input.post.status || input.post.status === "published";
+  const published = !input.post.status || input.post.status === "published";
   return {
     title,
     description,
     canonicalPath: path,
-    canonicalUrl: absoluteUrl(path),
+    canonicalUrl: abs(path, input.seo),
     ogImage,
     ogType: "article",
-    robotsIndex: published && input.seo.robotsIndex !== false,
-    robotsFollow: published && input.seo.robotsFollow !== false,
+    ...robotsFrom(input.seo, published, published),
   };
 }

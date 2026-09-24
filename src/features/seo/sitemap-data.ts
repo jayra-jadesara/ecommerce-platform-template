@@ -1,11 +1,17 @@
 import "server-only";
 
 import { createSupabasePublicClient } from "@/lib/supabase/public";
-import { absoluteUrl } from "@/lib/site-url";
+import { absoluteUrl, resolveSiteOrigin } from "@/lib/site-url";
 import {
   buildRobotsDisallowPaths,
   shouldIncludeInSitemap,
 } from "@/features/seo/sitemap-rules";
+import {
+  enabledSitemapPaths,
+  parseSitemapPaths,
+  prettyRouteCmsSlugs,
+  type SeoSitemapPath,
+} from "@/features/seo/sitemap-paths";
 
 export { buildRobotsDisallowPaths, shouldIncludeInSitemap };
 
@@ -34,6 +40,48 @@ async function resolveStoreId(): Promise<string | null> {
   }
   const { data } = await query;
   return data?.[0]?.id ?? null;
+}
+
+async function loadSeoForSitemap(storeId: string): Promise<{
+  robotsIndex: boolean;
+  siteOrigin: string;
+  sitemapProducts: boolean;
+  sitemapCategories: boolean;
+  sitemapBlog: boolean;
+  sitemapPaths: SeoSitemapPath[];
+}> {
+  const empty = {
+    robotsIndex: true,
+    siteOrigin: resolveSiteOrigin(),
+    sitemapProducts: true,
+    sitemapCategories: true,
+    sitemapBlog: true,
+    sitemapPaths: [] as SeoSitemapPath[],
+  };
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return empty;
+  const { data } = await supabase
+    .from("store_seo_settings")
+    .select("robots_index, canonical_url, schema_settings")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  const raw = (data as { schema_settings?: unknown } | null)?.schema_settings;
+  const o =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const bool = (key: string, fallback: boolean) =>
+    typeof o[key] === "boolean" ? (o[key] as boolean) : fallback;
+
+  // Paths come from DB only — never fall back to a hardcoded URL list at runtime.
+  return {
+    robotsIndex: data?.robots_index !== false,
+    siteOrigin: resolveSiteOrigin(data?.canonical_url),
+    sitemapProducts: bool("sitemapProducts", true),
+    sitemapCategories: bool("sitemapCategories", true),
+    sitemapBlog: bool("sitemapBlog", true),
+    sitemapPaths: parseSitemapPaths(o.sitemapPaths),
+  };
 }
 
 export type SitemapEntry = {
@@ -89,41 +137,40 @@ async function fetchAllSlugs(
 }
 
 /**
- * Public indexable URLs only — excludes admin, account, cart, checkout, drafts.
- * Batched DB reads for large catalogs.
+ * Public indexable URLs — core paths from Google & SEO schema_settings.sitemapPaths.
+ * Product / category / blog item URLs follow the include toggles on that same page.
  */
 export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
   const storeId = await resolveStoreId();
-  const entries: SitemapEntry[] = [
-    {
-      url: absoluteUrl("/"),
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: absoluteUrl("/products"),
-      changeFrequency: "daily",
-      priority: 0.9,
-    },
-    {
-      url: absoluteUrl("/blog"),
-      changeFrequency: "daily",
-      priority: 0.8,
-    },
-  ];
+  if (!storeId) return [];
 
-  if (!storeId) return entries;
+  const seo = await loadSeoForSitemap(storeId);
+  if (!seo.robotsIndex) return [];
+
+  const core = enabledSitemapPaths(seo.sitemapPaths);
+  const prettySlugs = prettyRouteCmsSlugs(seo.sitemapPaths);
+  const entries: SitemapEntry[] = core.map(({ path, priority }) => ({
+    url: absoluteUrl(path, seo.siteOrigin),
+    changeFrequency: path === "/" || path === "/products" ? "daily" : "weekly",
+    priority,
+  }));
 
   const [products, categories, pages, blogPosts] = await Promise.all([
-    fetchAllSlugs("products", storeId, { status: "active" }),
-    fetchAllSlugs("categories", storeId, { is_active: true }),
+    seo.sitemapProducts
+      ? fetchAllSlugs("products", storeId, { status: "active" })
+      : Promise.resolve([]),
+    seo.sitemapCategories
+      ? fetchAllSlugs("categories", storeId, { is_active: true })
+      : Promise.resolve([]),
     fetchAllSlugs("pages", storeId, { status: "published" }),
-    fetchPublishedBlogPostSlugs(storeId),
+    seo.sitemapBlog
+      ? fetchPublishedBlogPostSlugs(storeId)
+      : Promise.resolve([]),
   ]);
 
   for (const product of products) {
     entries.push({
-      url: absoluteUrl(`/products/${product.slug}`),
+      url: absoluteUrl(`/products/${product.slug}`, seo.siteOrigin),
       lastModified: product.updated_at ?? undefined,
       changeFrequency: "weekly",
       priority: 0.8,
@@ -131,10 +178,9 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
   }
 
   for (const category of categories) {
-    // Skip reserved homepage slug if ever used as category
     if (category.slug === "home") continue;
     entries.push({
-      url: absoluteUrl(`/categories/${category.slug}`),
+      url: absoluteUrl(`/categories/${category.slug}`, seo.siteOrigin),
       lastModified: category.updated_at ?? undefined,
       changeFrequency: "weekly",
       priority: 0.7,
@@ -143,8 +189,10 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
 
   for (const page of pages) {
     if (page.slug === "home") continue;
+    // Skip CMS pages that already have a pretty route listed in admin sitemap paths
+    if (prettySlugs.has(page.slug)) continue;
     entries.push({
-      url: absoluteUrl(`/pages/${page.slug}`),
+      url: absoluteUrl(`/pages/${page.slug}`, seo.siteOrigin),
       lastModified: page.updated_at ?? undefined,
       changeFrequency: "monthly",
       priority: 0.6,
@@ -153,7 +201,7 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
 
   for (const post of blogPosts) {
     entries.push({
-      url: absoluteUrl(`/blog/${post.slug}`),
+      url: absoluteUrl(`/blog/${post.slug}`, seo.siteOrigin),
       lastModified: post.updated_at ?? undefined,
       changeFrequency: "weekly",
       priority: 0.7,

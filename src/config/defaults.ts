@@ -125,13 +125,23 @@ export const defaultPlatformConfig: PlatformConfig = {
     ],
   },
   seo: {
-    title: "Brand Name",
-    titleTemplate: "%s | Brand Name",
-    description:
-      "A reusable white-label e-commerce storefront. Configure brand, theme, and catalog per client.",
-    siteName: "Brand Name",
+    title: "",
+    titleTemplate: "%s",
+    description: "",
+    siteName: "",
     robotsIndex: true,
     robotsFollow: true,
+    pages: {},
+    schema: {
+      localBusiness: true,
+      organization: true,
+      websiteSearch: true,
+      sitemapProducts: true,
+      sitemapCategories: true,
+      sitemapBlog: true,
+      storefrontPaths: [],
+      sitemapPaths: [],
+    },
   },
   store: {
     currency: "INR",

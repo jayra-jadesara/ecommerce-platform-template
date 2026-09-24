@@ -26,6 +26,8 @@ import {
 } from "@/features/theme/validation";
 import { defaultPlatformConfig } from "@/config/defaults";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import { parseSitemapPaths } from "@/features/seo/sitemap-paths";
+import { parseStorefrontPaths } from "@/features/seo/storefront-paths";
 import {
   normalizeNationalPhone,
   normalizePhoneCountryCode,
@@ -119,6 +121,12 @@ export type SeoRow = {
   og_image_path: string | null;
   robots_index: boolean;
   robots_follow: boolean;
+  google_site_verification?: string | null;
+  title_template?: string | null;
+  twitter_handle?: string | null;
+  page_seo?: unknown;
+  site_name?: string | null;
+  schema_settings?: unknown;
 };
 
 export type NavRow = {
@@ -326,30 +334,114 @@ export function mapSeoRowToConfig(
   row: SeoRow | null | undefined,
   brandName: string,
 ): SeoConfig {
+  const brand = brandName.trim() || "Store";
+  const pages = parsePageSeo(row?.page_seo);
+  const schema = parseSchemaSettings(row?.schema_settings);
+
   if (!row?.site_title?.trim()) {
     return {
-      ...defaultPlatformConfig.seo,
-      title: brandName,
-      titleTemplate: `%s | ${brandName}`,
-      siteName: brandName,
+      title: brand,
+      titleTemplate: `%s | ${brand}`,
+      description: "",
+      siteName: brand,
+      robotsIndex: true,
+      robotsFollow: true,
+      pages,
+      schema,
     };
   }
 
+  const siteTitle = row.site_title.trim();
+  const template =
+    row.title_template?.trim() ||
+    `%s | ${siteTitle}`;
+
   return {
-    title: row.site_title.trim(),
-    titleTemplate: `%s | ${row.site_title.trim()}`,
-    description:
-      row.meta_description?.trim() || defaultPlatformConfig.seo.description,
+    title: siteTitle,
+    titleTemplate: template,
+    description: row.meta_description?.trim() || "",
     keywords: row.keywords?.filter(Boolean) ?? undefined,
     canonicalUrl: row.canonical_url?.trim() || undefined,
     ogTitle: row.og_title?.trim() || undefined,
     ogDescription: row.og_description?.trim() || undefined,
     ogImage:
       resolvePublicStorageUrl("branding", row.og_image_path) || undefined,
-    siteName: row.og_title?.trim() || row.site_title.trim(),
+    siteName: row.site_name?.trim() || siteTitle,
+    twitterHandle: normalizeTwitterHandle(row.twitter_handle),
     robotsIndex: row.robots_index ?? true,
     robotsFollow: row.robots_follow ?? true,
+    googleSiteVerification: row.google_site_verification?.trim() || undefined,
+    pages,
+    schema,
   };
+}
+
+function normalizeTwitterHandle(
+  raw: string | null | undefined,
+): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.startsWith("@") ? trimmed : `@${trimmed}`;
+}
+
+function parseSchemaSettings(raw: unknown): SeoConfig["schema"] {
+  const o =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as Record<string, unknown>)
+      : {};
+  const bool = (key: string, fallback: boolean) =>
+    typeof o[key] === "boolean" ? (o[key] as boolean) : fallback;
+  const str = (key: string) => {
+    const v = o[key];
+    return typeof v === "string" && v.trim() ? v.trim() : undefined;
+  };
+  return {
+    localBusiness: bool("localBusiness", true),
+    organization: bool("organization", true),
+    websiteSearch: bool("websiteSearch", true),
+    businessType: str("businessType"),
+    priceRange: str("priceRange"),
+    geoLat: str("geoLat"),
+    geoLng: str("geoLng"),
+    sitemapProducts: bool("sitemapProducts", true),
+    sitemapCategories: bool("sitemapCategories", true),
+    sitemapBlog: bool("sitemapBlog", true),
+    storefrontPaths: parseStorefrontPaths(o.storefrontPaths),
+    sitemapPaths: parseSitemapPaths(o.sitemapPaths),
+  };
+}
+
+function parsePageSeo(raw: unknown): SeoConfig["pages"] {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: NonNullable<SeoConfig["pages"]> = {};
+  for (const key of [
+    "about",
+    "contact",
+    "career",
+    "products",
+    "blog",
+    "privacy",
+    "terms",
+    "disclaimer",
+  ] as const) {
+    const entry = (raw as Record<string, unknown>)[key];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) continue;
+    const title =
+      typeof (entry as { title?: unknown }).title === "string"
+        ? (entry as { title: string }).title.trim()
+        : "";
+    const description =
+      typeof (entry as { description?: unknown }).description === "string"
+        ? (entry as { description: string }).description.trim()
+        : "";
+    if (title || description) {
+      out[key] = {
+        ...(title ? { title } : {}),
+        ...(description ? { description } : {}),
+      };
+    }
+  }
+  return out;
 }
 
 function toNavItem(row: NavRow): NavItem {

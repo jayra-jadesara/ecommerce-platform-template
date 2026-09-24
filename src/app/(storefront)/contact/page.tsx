@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   PageShell,
@@ -9,6 +10,12 @@ import { getPlatformConfigAsync } from "@/config/site.server";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { ContactMailtoForm } from "@/features/cms/components/ContactMailtoForm";
+import { metadataForManagedStorePage } from "@/features/seo/managed-page-metadata";
+import {
+  buildLocalBusinessJsonLd,
+  JsonLdScript,
+} from "@/features/seo";
+import { resolveSiteOrigin } from "@/lib/site-url";
 import { resolveContactMapsEmbedUrl } from "@/lib/google-maps-embed";
 import {
   DEFAULT_PHONE_COUNTRY_CODE,
@@ -19,11 +26,20 @@ import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
-const DEFAULT_HEADING = "Let’s connect";
-const DEFAULT_SUPPORT = "Our representative will get back to you shortly";
+export async function generateMetadata(): Promise<Metadata> {
+  const { contact, brand, seo } = await getPlatformConfigAsync();
+  return metadataForManagedStorePage({
+    pageKey: "contact",
+    path: "/contact",
+    fallbackTitle:
+      contact.pageHeading?.trim() || `Contact ${brand.name}`,
+    fallbackDescription:
+      contact.pageSupport?.trim() || seo.description || brand.tagline,
+  });
+}
 
 export default async function ContactPage() {
-  const { contact, store, brand, social } = await getPlatformConfigAsync();
+  const { contact, store, brand, social, seo } = await getPlatformConfigAsync();
   const email = contact.email ?? store.supportEmail;
   const phone = contact.phone ?? store.supportPhone;
   const dialCode =
@@ -31,8 +47,47 @@ export default async function ContactPage() {
     store.phoneCountryCode ||
     DEFAULT_PHONE_COUNTRY_CODE;
   const companyName = store.legalName?.trim() || brand.name;
-  const heading = contact.pageHeading?.trim() || DEFAULT_HEADING;
-  const support = contact.pageSupport?.trim() || DEFAULT_SUPPORT;
+  const heading =
+    seo.pages?.contact?.title?.trim() ||
+    contact.pageHeading?.trim() ||
+    `Contact ${brand.name}`;
+  const support =
+    seo.pages?.contact?.description?.trim() ||
+    contact.pageSupport?.trim() ||
+    "";
+  const siteUrl = resolveSiteOrigin(seo.canonicalUrl);
+  const street = [contact.addressLine1, contact.addressLine2]
+    .filter(Boolean)
+    .join(", ");
+  const sameAs = [
+    social.instagram,
+    social.facebook,
+    social.youtube,
+    social.linkedin,
+    social.x,
+  ].filter((u): u is string => Boolean(u?.trim()));
+  const localLd =
+    seo.schema?.localBusiness !== false
+      ? buildLocalBusinessJsonLd({
+          name: companyName,
+          url: siteUrl,
+          logoUrl: brand.logoUrl,
+          email,
+          phone,
+          address: {
+            streetAddress: street || null,
+            addressLocality: contact.city,
+            addressRegion: contact.state,
+            postalCode: contact.postalCode,
+            addressCountry: contact.country,
+          },
+          businessType: seo.schema?.businessType,
+          priceRange: seo.schema?.priceRange,
+          geoLat: seo.schema?.geoLat,
+          geoLng: seo.schema?.geoLng,
+          sameAs,
+        })
+      : null;
 
   const addressLines = [
     contact.addressLine1,
@@ -91,6 +146,7 @@ export default async function ContactPage() {
       showBack={false}
       className={bannerOn ? "!pt-3 md:!pt-4" : "!pt-3 md:!pt-5"}
     >
+      {localLd ? <JsonLdScript data={localLd} /> : null}
       <StorefrontBreadcrumb
         items={[
           { label: "Home", href: "/" },

@@ -4,7 +4,7 @@ import type { SeoConfig } from "@/types";
 import {
   absoluteUrl,
   isSafePublicAssetUrl,
-  resolveTrustedSiteUrl,
+  resolveSiteOrigin,
 } from "@/lib/site-url";
 import type { ResolvedPageSeo } from "@/features/seo/resolve";
 
@@ -26,7 +26,7 @@ export function buildPageMetadata(
   options: BuildMetadataOptions = {},
 ): Metadata {
   const config = options.seo ?? getPlatformConfig().seo;
-  const siteUrl = resolveTrustedSiteUrl();
+  const siteUrl = resolveSiteOrigin(config.canonicalUrl);
   const title = options.title ?? config.title;
   const description = options.description ?? config.description;
   const rawOg = options.ogImage ?? config.ogImage;
@@ -35,19 +35,17 @@ export function buildPageMetadata(
     options.canonicalPath != null
       ? absoluteUrl(options.canonicalPath, siteUrl)
       : config.canonicalUrl && isSafePublicAssetUrl(config.canonicalUrl)
-        ? config.canonicalUrl
+        ? config.canonicalUrl.replace(/\/$/, "")
         : undefined;
 
   const index =
-    options.noIndex === true
-      ? false
-      : (config.robotsIndex ?? true);
+    options.noIndex === true ? false : (config.robotsIndex ?? true);
   const follow =
-    options.noFollow === true
-      ? false
-      : (config.robotsFollow ?? true);
+    options.noFollow === true ? false : (config.robotsFollow ?? true);
 
   const ogType = options.ogType ?? "website";
+
+  const verification = config.googleSiteVerification?.trim();
 
   return {
     title: config.titleTemplate
@@ -80,6 +78,9 @@ export function buildPageMetadata(
       images: ogImage ? [ogImage] : undefined,
       site: config.twitterHandle,
     },
+    ...(verification
+      ? { verification: { google: verification } }
+      : {}),
   };
 }
 

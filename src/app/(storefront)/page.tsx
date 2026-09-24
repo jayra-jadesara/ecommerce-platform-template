@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/layout";
-import { getSiteUrl } from "@/config/site";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { HomepageSections } from "@/features/cms/components/SectionRenderer";
 import {
@@ -9,8 +8,10 @@ import {
 } from "@/features/catalog/storefront";
 import { getCurrentUser } from "@/features/auth/session";
 import { metadataFromResolved } from "@/lib/metadata";
+import { resolveSiteOrigin } from "@/lib/site-url";
 import { resolveStoreHomepageSeo } from "@/features/seo/resolve";
 import {
+  buildLocalBusinessJsonLd,
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
   JsonLdScript,
@@ -49,23 +50,63 @@ export default async function HomePage() {
 
   const isAuthenticated = Boolean(user);
   const hasSections = (homepage?.sections.length ?? 0) > 0;
-  const siteUrl = getSiteUrl();
-  const org = buildOrganizationJsonLd({
-    name: config.brand.name,
-    url: siteUrl,
-    logoUrl: config.brand.logoUrl,
-    email: config.contact.email,
-    phone: config.contact.phone,
-  });
+  const siteUrl = resolveSiteOrigin(config.seo.canonicalUrl);
+  const schema = config.seo.schema;
+  const sameAs = [
+    config.social.instagram,
+    config.social.facebook,
+    config.social.youtube,
+    config.social.linkedin,
+    config.social.x,
+  ].filter((u): u is string => Boolean(u?.trim()));
+  const street = [config.contact.addressLine1, config.contact.addressLine2]
+    .filter(Boolean)
+    .join(", ");
+  const local =
+    schema?.localBusiness !== false
+      ? buildLocalBusinessJsonLd({
+          name: config.store.legalName?.trim() || config.brand.name,
+          url: siteUrl,
+          logoUrl: config.brand.logoUrl,
+          email: config.contact.email ?? config.store.supportEmail,
+          phone: config.contact.phone ?? config.store.supportPhone,
+          address: {
+            streetAddress: street || null,
+            addressLocality: config.contact.city,
+            addressRegion: config.contact.state,
+            postalCode: config.contact.postalCode,
+            addressCountry: config.contact.country,
+          },
+          businessType: schema?.businessType,
+          priceRange: schema?.priceRange,
+          geoLat: schema?.geoLat,
+          geoLng: schema?.geoLng,
+          sameAs,
+        })
+      : null;
+  const org =
+    !local && schema?.organization !== false
+      ? buildOrganizationJsonLd({
+          name: config.brand.name,
+          url: siteUrl,
+          logoUrl: config.brand.logoUrl,
+          email: config.contact.email,
+          phone: config.contact.phone,
+          sameAs,
+        })
+      : null;
   const website = buildWebSiteJsonLd({
     name: config.seo.siteName || config.brand.name,
     url: siteUrl,
-    includeSearchAction: true,
+    includeSearchAction: schema?.websiteSearch !== false,
   });
+  const jsonLd = [local, org, website].filter(
+    (item): item is NonNullable<typeof item> => Boolean(item),
+  );
 
   return (
     <Container as="main" flush constrained={false} className="relative z-0 flex-1">
-      <JsonLdScript data={[org, website]} />
+      {jsonLd.length ? <JsonLdScript data={jsonLd} /> : null}
       {hasSections && homepage ? (
         <HomepageSections
           sections={homepage.sections}

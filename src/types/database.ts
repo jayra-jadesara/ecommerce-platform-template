@@ -506,6 +506,12 @@ export type Database = {
           og_image_path: string | null;
           robots_index: boolean;
           robots_follow: boolean;
+          google_site_verification: string | null;
+          title_template: string | null;
+          twitter_handle: string | null;
+          page_seo: Json;
+          site_name: string | null;
+          schema_settings: Json;
         } & Timestamps;
         Insert: {
           store_id: string;
@@ -518,6 +524,12 @@ export type Database = {
           og_image_path?: string | null;
           robots_index?: boolean;
           robots_follow?: boolean;
+          google_site_verification?: string | null;
+          title_template?: string | null;
+          twitter_handle?: string | null;
+          page_seo?: Json;
+          site_name?: string | null;
+          schema_settings?: Json;
           created_at?: string;
           updated_at?: string;
         };

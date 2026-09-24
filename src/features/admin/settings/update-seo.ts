@@ -5,10 +5,15 @@ import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import {
+  buildPageSeoPayload,
+  buildSchemaSettingsPayload,
   parseKeywordsInput,
   seoSettingsSchema,
   type SeoSettingsFormValues,
 } from "@/features/admin/settings/schemas";
+import { loadStorefrontPathsFromNavigation } from "@/features/seo/storefront-paths.server";
+import { cmsSlugFromPath } from "@/features/seo/storefront-paths";
+import { hydrateSitemapFromCatalog } from "@/features/seo/sitemap-paths";
 import {
   resolveActiveStoreId,
   type SettingsUpdateResult,
@@ -17,6 +22,7 @@ import { diffChangedKeys } from "@/features/admin/settings/validation";
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
+import type { Json } from "@/types/database";
 
 const SEO_ROUTE = getAdminPath("/settings/seo");
 
@@ -46,8 +52,24 @@ export async function updateSeoSettings(
   const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) return { ok: false, error: "No active store found." };
 
+  // Always sync page list from Menu & Navigation (labels + paths).
+  const navPaths = await loadStorefrontPathsFromNavigation();
+  if (navPaths.length) {
+    values.storefrontPaths = navPaths.map((p) => ({
+      id: p.id,
+      path: p.path,
+      label: p.label,
+      cmsSlug: p.cmsSlug || cmsSlugFromPath(p.path),
+    }));
+    values.sitemapPaths = hydrateSitemapFromCatalog(
+      values.sitemapPaths,
+      values.storefrontPaths,
+    );
+  }
+
   const payload = {
     site_title: values.siteTitle.trim(),
+    site_name: emptyToNull(values.siteName),
     meta_description: emptyToNull(values.metaDescription),
     keywords: parseKeywordsInput(values.keywords),
     canonical_url: emptyToNull(values.canonicalUrl),
@@ -56,6 +78,11 @@ export async function updateSeoSettings(
     og_image_path: emptyToNull(values.ogImagePath ?? undefined),
     robots_index: values.robotsIndex,
     robots_follow: values.robotsFollow,
+    google_site_verification: emptyToNull(values.googleSiteVerification),
+    title_template: emptyToNull(values.titleTemplate),
+    twitter_handle: emptyToNull(values.twitterHandle),
+    page_seo: buildPageSeoPayload(values) as Json,
+    schema_settings: buildSchemaSettingsPayload(values) as Json,
   };
 
   const { data: existing } = await supabase
