@@ -215,6 +215,13 @@ export type Database = {
           products_listing_banner_image_path: string | null;
           contact_banner_enabled: boolean;
           contact_banner_image_path: string | null;
+          contact_spotlight_enabled: boolean;
+          contact_spotlight_image_path: string | null;
+          contact_page_heading: string | null;
+          contact_page_support: string | null;
+          contact_map_enabled: boolean;
+          contact_map_embed_url: string | null;
+          phone_country_code: string;
           storefront_loader_style: string;
           storefront_loader_label: string;
           extra: Json;
@@ -287,6 +294,13 @@ export type Database = {
           products_listing_banner_image_path?: string | null;
           contact_banner_enabled?: boolean;
           contact_banner_image_path?: string | null;
+          contact_spotlight_enabled?: boolean;
+          contact_spotlight_image_path?: string | null;
+          contact_page_heading?: string | null;
+          contact_page_support?: string | null;
+          contact_map_enabled?: boolean;
+          contact_map_embed_url?: string | null;
+          phone_country_code?: string;
           storefront_loader_style?: string;
           storefront_loader_label?: string;
           extra?: Json;

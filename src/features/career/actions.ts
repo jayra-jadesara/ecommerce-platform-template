@@ -11,6 +11,7 @@ import {
 } from "@/features/career/service";
 import { careerApplicationFormSchema } from "@/features/career/schemas";
 import { formatAddressPhoneForStorage } from "@/features/addresses/validation";
+import { getStorePhoneCountryCode } from "@/lib/store-location";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
 export async function createJobPostAction(raw: unknown) {
@@ -121,10 +122,11 @@ export async function submitCareerApplicationAction(raw: unknown) {
   }
 
   const v = parsed.data;
+  const dialCode = await getStorePhoneCountryCode();
   const result = await insertCareerApplication({
     name: v.name,
     email: v.email,
-    phone: formatAddressPhoneForStorage(v.phone),
+    phone: formatAddressPhoneForStorage(v.phone, dialCode),
     state: v.state,
     city: v.city,
     department: v.department,

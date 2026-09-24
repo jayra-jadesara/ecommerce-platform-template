@@ -16,6 +16,7 @@ import { diffChangedKeys, normalizeWhatsappForStorage } from "@/features/admin/s
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
+import { DEFAULT_PHONE_COUNTRY_CODE } from "@/lib/phone";
 
 const GENERAL_ROUTE = getAdminPath("/settings/general");
 
@@ -53,14 +54,20 @@ export async function updateGeneralStoreSettings(
 
   const settingsPayload = {
     contact_email: emptyToNull(values.contactEmail),
-    contact_phone: emptyToNull(values.contactPhone),
-    contact_phone_secondary: emptyToNull(values.contactPhoneSecondary),
+    contact_phone: emptyToNull(
+      values.contactPhone.replace(/\D/g, "").slice(0, 10),
+    ),
+    contact_phone_secondary: emptyToNull(
+      values.contactPhoneSecondary.replace(/\D/g, "").slice(0, 10),
+    ),
     address_line_1: emptyToNull(values.addressLine1),
     address_line_2: emptyToNull(values.addressLine2),
     city: emptyToNull(values.city),
     state: emptyToNull(values.state),
     postal_code: emptyToNull(values.postalCode),
     country: emptyToNull(values.country),
+    phone_country_code:
+      values.phoneCountryCode.trim() || DEFAULT_PHONE_COUNTRY_CODE,
     currency: values.currency,
     timezone: values.timezone,
     default_locale: values.defaultLocale,
@@ -81,6 +88,8 @@ export async function updateGeneralStoreSettings(
     admin_image_max_mb: values.adminImageMaxMb,
     contact_banner_enabled: values.contactBannerEnabled,
     contact_banner_image_path: values.contactBannerImagePath,
+    contact_page_heading: emptyToNull(values.contactPageHeading),
+    contact_page_support: emptyToNull(values.contactPageSupport),
     storefront_loader_style: values.storefrontLoaderStyle,
     storefront_loader_label: values.storefrontLoaderLabel.trim(),
   };

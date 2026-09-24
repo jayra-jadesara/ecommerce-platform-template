@@ -333,7 +333,7 @@ export async function createCheckoutPaymentSession(input: {
       message:
         providerError instanceof Error
           ? providerError.message
-          : "Razorpay order creation failed",
+          : "Online payment could not be started. Please try again.",
       error: providerError,
       source: "PROVIDER",
       severity: "ERROR",

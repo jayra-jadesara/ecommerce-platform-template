@@ -316,7 +316,7 @@ export function CareerPageForm({
           ) : null}
           <MediaPicker
             open={bannerMediaOpen}
-            folder="cms"
+            folder="career"
             allowUpload
             onClose={() => setBannerMediaOpen(false)}
             onSelect={(selection) => {

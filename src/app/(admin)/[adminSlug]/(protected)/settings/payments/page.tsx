@@ -25,7 +25,7 @@ export default async function AdminPaymentSettingsPage() {
     <div>
       <AdminPageHeader
         title="Payments"
-        description="Enable Razorpay and/or COD. Optional fee & tax."
+        description="Enable online payment and/or COD. Optional fee & tax."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Payments" },

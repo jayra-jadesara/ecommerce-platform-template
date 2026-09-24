@@ -76,6 +76,7 @@ function PaymentCells({ payment }: { payment: AccountPaymentRow }) {
   const showInstrumentDetail =
     Boolean(payment.instrument) &&
     instrumentLine !== "Cash on Delivery" &&
+    instrumentLine !== "Online payment" &&
     instrumentLine !== "Razorpay" &&
     instrumentLine !== "—";
 

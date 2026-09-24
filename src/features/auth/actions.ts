@@ -11,7 +11,6 @@ import {
   forgotPasswordSchema,
   loginSchema,
   profileUpdateSchema,
-  REGISTER_COUNTRY_CODE,
   registerSchema,
   resetPasswordSchema,
   changePasswordSchema,
@@ -36,6 +35,8 @@ import {
   verifyRecoveryAnswer,
 } from "@/features/auth/recovery";
 import { isRecoveryQuestionId } from "@/features/auth/recovery-questions";
+import { getStorePhoneCountryCode } from "@/lib/store-location";
+import { formatPhoneForStorage } from "@/lib/phone";
 
 export type AuthActionResult =
   | {
@@ -100,6 +101,7 @@ async function registerViaServiceRole(input: {
   firstName: string;
   lastName: string;
   fullPhone: string;
+  countryCode: string;
   recoveryQuestionId: string;
   recoveryAnswer: string;
 }): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
@@ -117,7 +119,7 @@ async function registerViaServiceRole(input: {
         first_name: input.firstName,
         last_name: input.lastName,
         phone: input.fullPhone,
-        country_code: REGISTER_COUNTRY_CODE,
+        country_code: input.countryCode,
         recovery_question_id: input.recoveryQuestionId,
       },
     });
@@ -306,7 +308,8 @@ export async function registerAction(raw: unknown): Promise<AuthActionResult> {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Invalid input." };
   }
 
-  const fullPhone = `${REGISTER_COUNTRY_CODE}${parsed.data.phone}`;
+  const dialCode = await getStorePhoneCountryCode();
+  const fullPhone = formatPhoneForStorage(parsed.data.phone, dialCode);
   let redirectToLogin = false;
 
   try {
@@ -321,7 +324,7 @@ export async function registerAction(raw: unknown): Promise<AuthActionResult> {
           first_name: parsed.data.firstName,
           last_name: parsed.data.lastName,
           phone: fullPhone,
-          country_code: REGISTER_COUNTRY_CODE,
+          country_code: dialCode,
           recovery_question_id: parsed.data.recoveryQuestionId,
         },
         emailRedirectTo: `${siteUrl}/auth/callback?next=/`,
@@ -350,6 +353,7 @@ export async function registerAction(raw: unknown): Promise<AuthActionResult> {
           firstName: parsed.data.firstName,
           lastName: parsed.data.lastName,
           fullPhone,
+          countryCode: dialCode,
           recoveryQuestionId: parsed.data.recoveryQuestionId,
           recoveryAnswer: parsed.data.recoveryAnswer,
         });
@@ -544,10 +548,12 @@ export async function verifyPasswordRecoveryAction(
       return { ok: false, error: RECOVERY_VERIFY_FAIL };
     }
 
+    const dialCode = await getStorePhoneCountryCode();
     const phoneOk =
-      normalizePhoneForCompare(profile.phone ?? "") ===
+      normalizePhoneForCompare(profile.phone ?? "", dialCode) ===
       normalizePhoneForCompare(
-        `${REGISTER_COUNTRY_CODE}${parsed.data.phone}`,
+        formatPhoneForStorage(parsed.data.phone, dialCode),
+        dialCode,
       );
     const questionOk =
       profile.recovery_question_id === parsed.data.recoveryQuestionId;
@@ -741,13 +747,14 @@ export async function updateProfileAction(
       route: "/account/profile",
     },
     async () => {
+      const dialCode = await getStorePhoneCountryCode();
       const supabase = await createSupabaseServerClient();
       const { error } = await supabase
         .from("user_profiles")
         .update({
           first_name: parsed.data.firstName,
           last_name: parsed.data.lastName,
-          phone: `${REGISTER_COUNTRY_CODE}${parsed.data.phone}`,
+          phone: formatPhoneForStorage(parsed.data.phone, dialCode),
         })
         .eq("id", user.id);
 

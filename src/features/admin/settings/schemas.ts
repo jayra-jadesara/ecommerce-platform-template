@@ -9,6 +9,10 @@ import {
   optionalWhatsapp,
   requiredSafeNavHref,
 } from "@/features/admin/settings/validation";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  DEFAULT_STORE_COUNTRY,
+} from "@/lib/phone";
 
 const optionalText = (max: number) =>
   z
@@ -29,6 +33,10 @@ export const generalSettingsSchema = z.object({
   state: optionalText(80),
   postalCode: optionalText(32),
   country: optionalText(80),
+  phoneCountryCode: z
+    .string()
+    .trim()
+    .regex(/^\+\d{1,4}$/, "Select a valid dial code (e.g. +91)"),
   currency: z
     .string()
     .trim()
@@ -54,6 +62,22 @@ export const generalSettingsSchema = z.object({
   /** Contact page hero banner (off by default). */
   contactBannerEnabled: z.boolean(),
   contactBannerImagePath: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const trimmed = typeof v === "string" ? v.trim() : "";
+      return trimmed ? trimmed : null;
+    }),
+  contactSpotlightEnabled: z.boolean(),
+  contactSpotlightImagePath: z
+    .union([z.string(), z.null(), z.undefined()])
+    .transform((v) => {
+      const trimmed = typeof v === "string" ? v.trim() : "";
+      return trimmed ? trimmed : null;
+    }),
+  contactPageHeading: optionalText(80),
+  contactPageSupport: optionalText(160),
+  contactMapEnabled: z.boolean(),
+  contactMapEmbedUrl: z
     .union([z.string(), z.null(), z.undefined()])
     .transform((v) => {
       const trimmed = typeof v === "string" ? v.trim() : "";
@@ -186,7 +210,8 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   city: "",
   state: "",
   postalCode: "",
-  country: "India",
+  country: DEFAULT_STORE_COUNTRY,
+  phoneCountryCode: DEFAULT_PHONE_COUNTRY_CODE,
   currency: "INR",
   timezone: "Asia/Kolkata",
   defaultLocale: "en-IN",
@@ -204,6 +229,12 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   adminReelVideoMaxMb: 25,
   contactBannerEnabled: false,
   contactBannerImagePath: null,
+  contactSpotlightEnabled: false,
+  contactSpotlightImagePath: null,
+  contactPageHeading: "Let’s connect",
+  contactPageSupport: "Our representative will get back to you shortly",
+  contactMapEnabled: true,
+  contactMapEmbedUrl: null,
   storefrontLoaderStyle: "spinner",
   storefrontLoaderLabel: "Loading…",
 };

@@ -61,19 +61,28 @@ export const optionalEmail = z
   .string()
   .trim()
   .max(254)
-  .refine((v) => !v || z.string().email().safeParse(v).success, {
-    message: "Enter a valid email address.",
-  })
-  .transform((v) => (v.trim() ? v.trim() : ""));
+  .refine(
+    (v) =>
+      !v ||
+      (/^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/.test(v) &&
+        z.string().email().safeParse(v).success),
+    {
+      message: "Enter a valid email (e.g. name@example.com).",
+    },
+  )
+  .transform((v) => (v.trim() ? v.trim().toLowerCase() : ""));
 
-export const optionalPhone = z
+/** Empty or exactly 10 national digits (dial code stored separately). */
+export const optionalNationalPhone = z
   .string()
   .trim()
-  .max(40)
-  .refine((v) => !v || /^[+0-9()\-\s.]{5,40}$/.test(v), {
-    message: "Enter a valid phone number.",
-  })
-  .transform((v) => (v.trim() ? v.trim() : ""));
+  .transform((v) => v.replace(/\D/g, "").slice(0, 10))
+  .refine((v) => !v || /^\d{10}$/.test(v), {
+    message: "Enter a valid 10-digit phone number.",
+  });
+
+/** @deprecated Prefer optionalNationalPhone + StorePhoneField */
+export const optionalPhone = optionalNationalPhone;
 
 const PHONE_LIKE = /^[+0-9()\-\s.]{5,40}$/;
 

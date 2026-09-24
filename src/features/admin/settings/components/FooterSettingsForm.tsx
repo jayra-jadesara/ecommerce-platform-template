@@ -31,6 +31,8 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { cn } from "@/lib/cn";
+import { DEFAULT_PHONE_COUNTRY_CODE } from "@/lib/phone";
+import { formatPhoneDisplay } from "@/lib/phone";
 import type { BrandConfig, ContactConfig } from "@/types";
 
 const DEFAULT_TAGLINE = "your store, your brand.";
@@ -108,9 +110,10 @@ export function FooterSettingsForm({
     watched.description?.trim() || autoDescription || "";
   const showLogo = Boolean(watched.showLogo);
 
-  const previewPhones = [contact?.phone, contact?.phoneSecondary].filter(
-    Boolean,
-  ) as string[];
+  const dialCode = contact?.phoneCountryCode || DEFAULT_PHONE_COUNTRY_CODE;
+  const previewPhones = [contact?.phone, contact?.phoneSecondary]
+    .map((p) => formatPhoneDisplay(p, dialCode))
+    .filter(Boolean) as string[];
   const previewAddress = [
     contact?.addressLine1,
     contact?.city,

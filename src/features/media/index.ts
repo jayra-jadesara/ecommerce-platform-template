@@ -23,6 +23,10 @@ export {
   MEDIA_FOLDER_LABELS,
   MEDIA_FOLDER_HINTS,
   MEDIA_FOLDER_NAV,
+  MEDIA_FOLDER_NAV_GROUPS,
+  mediaFolderLabel,
+  mediaFolderHint,
+  mediaFolderLibraryDescription,
 } from "@/features/media/media-folder-labels";
 export { MediaPicker } from "@/features/media/components/MediaPicker";
 export { UploadDropzone } from "@/features/media/components/UploadDropzone";

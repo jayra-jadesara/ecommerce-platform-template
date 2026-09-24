@@ -22,8 +22,13 @@ import {
   type ForgotPasswordInput,
   type ResetPasswordInput,
 } from "@/features/auth/validations";
+import { DEFAULT_PHONE_COUNTRY_CODE } from "@/lib/phone";
 
-export function ForgotPasswordForm() {
+export function ForgotPasswordForm({
+  phoneCountryCode = DEFAULT_PHONE_COUNTRY_CODE,
+}: {
+  phoneCountryCode?: string;
+} = {}) {
   const router = useRouter();
   const [step, setStep] = useState<"verify" | "reset">("verify");
   const [error, setError] = useState<string | null>(null);
@@ -145,11 +150,12 @@ export function ForgotPasswordForm() {
       <IndianMobileField
         name="phone"
         control={verifyForm.control}
+        countryCode={phoneCountryCode}
         disabled={pending}
         error={Boolean(verifyForm.formState.errors.phone)}
         helperText={
           verifyForm.formState.errors.phone?.message ??
-          "Enter your 10-digit account number"
+          "Enter your 10-digit mobile number"
         }
       />
 

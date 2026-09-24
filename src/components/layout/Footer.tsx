@@ -16,6 +16,11 @@ import type {
   SocialLinksConfig,
 } from "@/types";
 import type { ReactNode } from "react";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  formatPhoneDisplay,
+  formatPhoneTelHref,
+} from "@/lib/phone";
 
 interface FooterProps {
   brand: BrandConfig;
@@ -188,20 +193,40 @@ export function Footer({
                   {contactSafe.phone ? (
                     <li>
                       <a
-                        href={`tel:${contactSafe.phone.replace(/\s+/g, "")}`}
+                        href={
+                          formatPhoneTelHref(
+                            contactSafe.phone,
+                            contactSafe.phoneCountryCode ||
+                              DEFAULT_PHONE_COUNTRY_CODE,
+                          ) ?? undefined
+                        }
                         className="hover:text-[var(--color-primary)]"
                       >
-                        {contactSafe.phone}
+                        {formatPhoneDisplay(
+                          contactSafe.phone,
+                          contactSafe.phoneCountryCode ||
+                            DEFAULT_PHONE_COUNTRY_CODE,
+                        )}
                       </a>
                     </li>
                   ) : null}
                   {contactSafe.phoneSecondary ? (
                     <li>
                       <a
-                        href={`tel:${contactSafe.phoneSecondary.replace(/\s+/g, "")}`}
+                        href={
+                          formatPhoneTelHref(
+                            contactSafe.phoneSecondary,
+                            contactSafe.phoneCountryCode ||
+                              DEFAULT_PHONE_COUNTRY_CODE,
+                          ) ?? undefined
+                        }
                         className="hover:text-[var(--color-primary)]"
                       >
-                        {contactSafe.phoneSecondary}
+                        {formatPhoneDisplay(
+                          contactSafe.phoneSecondary,
+                          contactSafe.phoneCountryCode ||
+                            DEFAULT_PHONE_COUNTRY_CODE,
+                        )}
                       </a>
                     </li>
                   ) : null}

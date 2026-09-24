@@ -16,6 +16,7 @@ type CareerApplyFormProps = {
   formTitle?: string;
   careersEmail?: string | null;
   selectedJobId?: string | null;
+  phoneCountryCode?: string;
 };
 
 type FieldKey =
@@ -34,6 +35,7 @@ export function CareerApplyForm({
   formTitle = "Apply now",
   careersEmail,
   selectedJobId = null,
+  phoneCountryCode = REGISTER_COUNTRY_CODE,
 }: CareerApplyFormProps) {
   const initialJob = jobs.find((j) => j.id === selectedJobId) ?? null;
 
@@ -338,7 +340,7 @@ export function CareerApplyForm({
           >
             <div className="sf-phone">
               <span className="sf-phone__code" aria-hidden>
-                {REGISTER_COUNTRY_CODE}
+                {phoneCountryCode}
               </span>
               <input
                 id="career-phone"
@@ -361,7 +363,7 @@ export function CareerApplyForm({
               />
             </div>
             <p id="career-phone-hint" className="sf-career-field-hint">
-              10-digit Indian mobile number
+              10-digit mobile number
             </p>
           </Field>
 

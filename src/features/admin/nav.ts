@@ -18,6 +18,7 @@ export type AdminNavIcon =
   | "reports"
   | "homepage"
   | "about"
+  | "contact"
   | "career"
   | "legal"
   | "pages"
@@ -203,6 +204,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         href: p("/content/about"),
         permissions: ["content.view", "cms.view"],
         icon: "about",
+        section: "content",
+      },
+      {
+        kind: "link",
+        id: "content-contact",
+        label: "Contact",
+        href: p("/content/contact"),
+        permissions: ["content.view", "cms.view", "settings.view"],
+        icon: "contact",
         section: "content",
       },
       {
@@ -415,6 +425,7 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "customers",
   "content-homepage",
   "content-about",
+  "content-contact",
   "content-career",
   "content-legal",
   "content-pages",
@@ -551,6 +562,7 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   content: "Content",
   homepage: "Homepage",
   about: "About",
+  contact: "Contact",
   career: "Career",
   pages: "Pages",
   banners: "Banners",

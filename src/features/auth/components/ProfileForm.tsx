@@ -34,9 +34,11 @@ function FieldError({ message }: { message?: string }) {
 export function ProfileForm({
   defaultValues,
   email,
+  phoneCountryCode = REGISTER_COUNTRY_CODE,
 }: {
   defaultValues: ProfileUpdateInput;
   email?: string | null;
+  phoneCountryCode?: string;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -142,7 +144,7 @@ export function ProfileForm({
             <div className="grid grid-cols-[4.5rem_1fr] gap-2">
               <input
                 className={cn(fieldClass, "text-center tabular-nums")}
-                value={REGISTER_COUNTRY_CODE}
+                value={phoneCountryCode}
                 disabled
                 readOnly
                 aria-label="Country code"
@@ -172,7 +174,7 @@ export function ProfileForm({
               />
             </div>
             <p className="mt-1 text-[11px] text-[var(--color-muted)]">
-              {errors.phone?.message ?? "10-digit Indian mobile number"}
+              {errors.phone?.message ?? "10-digit mobile number"}
             </p>
           </div>
         </div>

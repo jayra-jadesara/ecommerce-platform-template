@@ -25,6 +25,10 @@ import {
   coerceStorefrontLoaderLabel,
   coerceStorefrontLoaderStyle,
 } from "@/components/ui/storefront-loader";
+import {
+  normalizeNationalPhone,
+  normalizePhoneCountryCode,
+} from "@/lib/phone";
 
 type SettingsRow = Tables<"store_settings">;
 type BrandingRow = Tables<"store_branding">;
@@ -58,14 +62,17 @@ export async function loadGeneralSettingsForm(): Promise<{
       displayName: store.name || DEFAULT_GENERAL_SETTINGS.displayName,
       legalName: text(store.legal_name),
       contactEmail: text(row?.contact_email),
-      contactPhone: text(row?.contact_phone),
-      contactPhoneSecondary: text(row?.contact_phone_secondary),
+      contactPhone: normalizeNationalPhone(row?.contact_phone),
+      contactPhoneSecondary: normalizeNationalPhone(
+        row?.contact_phone_secondary,
+      ),
       addressLine1: text(row?.address_line_1),
       addressLine2: text(row?.address_line_2),
       city: text(row?.city),
       state: text(row?.state),
       postalCode: text(row?.postal_code),
       country: text(row?.country),
+      phoneCountryCode: normalizePhoneCountryCode(row?.phone_country_code),
       currency: row?.currency || DEFAULT_GENERAL_SETTINGS.currency,
       timezone: row?.timezone || DEFAULT_GENERAL_SETTINGS.timezone,
       defaultLocale: row?.default_locale || DEFAULT_GENERAL_SETTINGS.defaultLocale,
@@ -88,6 +95,17 @@ export async function loadGeneralSettingsForm(): Promise<{
       ),
       contactBannerEnabled: Boolean(row?.contact_banner_enabled),
       contactBannerImagePath: row?.contact_banner_image_path?.trim() || null,
+      contactSpotlightEnabled: Boolean(row?.contact_spotlight_enabled),
+      contactSpotlightImagePath:
+        row?.contact_spotlight_image_path?.trim() || null,
+      contactPageHeading:
+        row?.contact_page_heading?.trim() ||
+        DEFAULT_GENERAL_SETTINGS.contactPageHeading,
+      contactPageSupport:
+        row?.contact_page_support?.trim() ||
+        DEFAULT_GENERAL_SETTINGS.contactPageSupport,
+      contactMapEnabled: row?.contact_map_enabled !== false,
+      contactMapEmbedUrl: row?.contact_map_embed_url?.trim() || null,
       storefrontLoaderStyle: coerceStorefrontLoaderStyle(
         row?.storefront_loader_style,
       ),

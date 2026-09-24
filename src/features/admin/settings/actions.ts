@@ -138,3 +138,21 @@ export async function savePaymentSettingsAction(input: unknown) {
     () => updatePaymentSettings(input),
   );
 }
+
+export async function saveContactContentAction(input: unknown) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "STORE_SETTINGS_UPDATE",
+      feature: "CONTENT",
+      route: getAdminPath("/content/contact"),
+    },
+    async () => {
+      const { updateContactContentSettings } = await import(
+        "@/features/admin/settings/update-contact-content"
+      );
+      return updateContactContentSettings(input);
+    },
+  );
+}

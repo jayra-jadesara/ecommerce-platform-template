@@ -110,6 +110,7 @@ export function defaultsForCountry(country: string): {
   timezone: string;
   defaultLocale: string;
   currency: string;
+  phoneCountryCode: string;
 } {
   switch (country) {
     case "India":
@@ -117,36 +118,42 @@ export function defaultsForCountry(country: string): {
         timezone: "Asia/Kolkata",
         defaultLocale: "en-IN",
         currency: "INR",
+        phoneCountryCode: "+91",
       };
     case "United Arab Emirates":
       return {
         timezone: "Asia/Dubai",
         defaultLocale: "ar-AE",
         currency: "AED",
+        phoneCountryCode: "+971",
       };
     case "United States":
       return {
         timezone: "America/New_York",
         defaultLocale: "en-US",
         currency: "USD",
+        phoneCountryCode: "+1",
       };
     case "United Kingdom":
       return {
         timezone: "Europe/London",
         defaultLocale: "en-GB",
         currency: "GBP",
+        phoneCountryCode: "+44",
       };
     case "Singapore":
       return {
         timezone: "Asia/Singapore",
         defaultLocale: "en-US",
         currency: "SGD",
+        phoneCountryCode: "+65",
       };
     default:
       return {
         timezone: "UTC",
         defaultLocale: "en-IN",
         currency: "INR",
+        phoneCountryCode: "+91",
       };
   }
 }

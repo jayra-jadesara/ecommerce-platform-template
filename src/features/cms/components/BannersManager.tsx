@@ -550,7 +550,7 @@ function BannerForm({
       </form>
       <MediaPicker
         open={mediaOpen}
-        folder="cms"
+        folder="banners"
         onClose={() => setMediaOpen(false)}
         onSelect={(selection) => {
           setValue("imagePath", selection.storagePath, { shouldDirty: true });

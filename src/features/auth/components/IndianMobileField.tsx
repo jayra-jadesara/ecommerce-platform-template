@@ -9,15 +9,18 @@ import {
   Controller,
 } from "react-hook-form";
 import { REGISTER_COUNTRY_CODE } from "@/features/auth/validations";
+import { sanitizeNationalPhoneInput } from "@/lib/phone";
 
-/** Digits only, max 10 — matches locked +91 Indian mobile. */
+/** Digits only, max 10 — matches locked dial-code mobile. */
 export function sanitizeIndianMobileInput(raw: string): string {
-  return raw.replace(/\D/g, "").slice(0, 10);
+  return sanitizeNationalPhoneInput(raw);
 }
 
 type IndianMobileFieldProps<T extends FieldValues> = {
   name: FieldPath<T>;
   control: Control<T>;
+  /** Override store/register dial code (default +91). */
+  countryCode?: string;
   disabled?: boolean;
   error?: boolean;
   helperText?: ReactNode;
@@ -29,16 +32,19 @@ type IndianMobileFieldProps<T extends FieldValues> = {
 export function IndianMobileField<T extends FieldValues>({
   name,
   control,
+  countryCode = REGISTER_COUNTRY_CODE,
   disabled,
   error,
   helperText,
   ...textFieldProps
 }: IndianMobileFieldProps<T>) {
+  const code = countryCode.trim() || REGISTER_COUNTRY_CODE;
+
   return (
     <div className="grid grid-cols-[5.5rem_1fr] gap-3">
       <TextField
         label="Code"
-        value={REGISTER_COUNTRY_CODE}
+        value={code}
         fullWidth
         disabled
         slotProps={{

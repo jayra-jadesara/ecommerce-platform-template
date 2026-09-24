@@ -22,7 +22,7 @@ const FALLBACK_THEME = "#9f1239";
 
 function loadRazorpayScript(): Promise<RazorpayConstructor> {
   if (typeof window === "undefined") {
-    return Promise.reject(new Error("Razorpay requires a browser."));
+    return Promise.reject(new Error("Online payment requires a browser."));
   }
   if (window.Razorpay) return Promise.resolve(window.Razorpay);
 
@@ -33,10 +33,13 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
     if (existing) {
       existing.addEventListener("load", () => {
         if (window.Razorpay) resolve(window.Razorpay);
-        else reject(new Error("Razorpay failed to load."));
+        else
+          reject(
+            new Error("Online payment failed to load. Please try again."),
+          );
       });
       existing.addEventListener("error", () =>
-        reject(new Error("Razorpay failed to load.")),
+        reject(new Error("Online payment failed to load. Please try again.")),
       );
       return;
     }
@@ -46,9 +49,11 @@ function loadRazorpayScript(): Promise<RazorpayConstructor> {
     script.async = true;
     script.onload = () => {
       if (window.Razorpay) resolve(window.Razorpay);
-      else reject(new Error("Razorpay failed to load."));
+      else
+        reject(new Error("Online payment failed to load. Please try again."));
     };
-    script.onerror = () => reject(new Error("Razorpay failed to load."));
+    script.onerror = () =>
+      reject(new Error("Online payment failed to load. Please try again."));
     document.body.appendChild(script);
   });
 }

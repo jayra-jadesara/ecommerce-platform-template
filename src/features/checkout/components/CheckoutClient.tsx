@@ -31,6 +31,10 @@ import {
 import { useRazorpayCheckout } from "@/features/payments/components/useRazorpayCheckout";
 import { sfBtn } from "@/components/ui/storefront-classes";
 import { cn } from "@/lib/cn";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  DEFAULT_STORE_COUNTRY,
+} from "@/lib/phone";
 
 type CheckoutUiStep = "address" | "confirm" | "payment";
 type PayOverlayPhase = "idle" | "opening" | "confirming" | "placing";
@@ -62,7 +66,12 @@ export function CheckoutClient({
   featuredCoupon = null,
 }: CheckoutClientProps) {
   const router = useRouter();
-  const { ui } = usePlatformConfig();
+  const { ui, store, contact } = usePlatformConfig();
+  const phoneCountryCode =
+    store.phoneCountryCode ||
+    contact.phoneCountryCode ||
+    DEFAULT_PHONE_COUNTRY_CODE;
+  const storeCountry = contact.country?.trim() || DEFAULT_STORE_COUNTRY;
   const { openCheckout } = useRazorpayCheckout();
   const [summary, setSummary] = useState(initialSummary);
   const [couponInput, setCouponInput] = useState(
@@ -246,7 +255,7 @@ export function CheckoutClient({
     if (paying) return "Processing…";
     if (!hasPaymentMethods) return "Payments not set up";
     if (activeMethod === "cod") return "Place COD order";
-    return "Pay now";
+    return "Pay online";
   }
 
   function runPaymentAction() {
@@ -270,7 +279,7 @@ export function CheckoutClient({
       : {
           title: "Confirming your payment",
           detail:
-            "Verifying with Razorpay and preparing your order. Please wait — don’t close this page or click away.",
+            "Confirming your online payment and preparing your order. Please wait — don’t close this page or click away.",
         };
 
   const payOverlay =
@@ -457,6 +466,8 @@ export function CheckoutClient({
               <div className="mt-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/50 p-4 sm:p-5">
                 <AddressForm
                   submitLabel="Save and continue"
+                  phoneCountryCode={phoneCountryCode}
+                  storeCountry={storeCountry}
                   onCancel={() => setShowNewAddress(false)}
                   onSubmit={async (values) => {
                     const result = await createAddressAction({
@@ -692,7 +703,7 @@ export function CheckoutClient({
                     )}
                   >
                     <p className="text-sm font-semibold text-[var(--color-foreground)]">
-                      Pay now (Razorpay)
+                      Online payment
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-[var(--color-muted)]">
                       Pay online with card or UPI. Order is placed after payment

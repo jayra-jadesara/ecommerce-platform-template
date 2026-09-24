@@ -305,8 +305,8 @@ export function PaymentSettingsForm({
               <MethodChip
                 selected={razorpayOn}
                 disabled={locked}
-                title="Razorpay"
-                hint="Pay online (card / UPI)"
+                title="Online payment"
+                hint="Card / UPI via Razorpay gateway"
                 onToggle={() =>
                   setValue("razorpayEnabled", !razorpayOn, {
                     shouldDirty: true,
@@ -337,8 +337,8 @@ export function PaymentSettingsForm({
                   Payment fee
                 </h2>
                 <p className="mt-1 text-[12px] leading-relaxed text-[var(--color-muted)]">
-                  Pass gateway cost to customers. Fee applies only for Razorpay —
-                  never for COD.
+                  Pass gateway cost to customers. Fee applies only for online
+                  payment — never for COD.
                 </p>
               </div>
               <div className="shrink-0 whitespace-nowrap [&_.MuiFormControlLabel-root]:!ml-0 [&_.MuiFormControlLabel-root]:!mr-0">
@@ -453,7 +453,7 @@ export function PaymentSettingsForm({
                   Tax / GST
                 </h2>
                 <p className="mt-1 text-[12px] leading-relaxed text-[var(--color-muted)]">
-                  Added at checkout for Razorpay and COD.
+                  Added at checkout for online payment and COD.
                 </p>
               </div>
               <div className="shrink-0 whitespace-nowrap [&_.MuiFormControlLabel-root]:!ml-0 [&_.MuiFormControlLabel-root]:!mr-0">

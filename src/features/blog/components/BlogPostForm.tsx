@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
@@ -603,7 +603,7 @@ export function BlogPostForm({
 
       <MediaPicker
         open={Boolean(mediaOpen)}
-        folder="cms"
+        folder="blog"
         onClose={() => setMediaOpen(null)}
         onSelect={(selection) => {
           if (mediaOpen === "featured") {

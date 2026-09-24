@@ -20,7 +20,9 @@ import type { MediaRow } from "@/features/media/media-service";
 import {
   MEDIA_FOLDER_HINTS,
   MEDIA_FOLDER_NAV,
+  mediaFolderHint,
   mediaFolderLabel,
+  mediaFolderLibraryDescription,
   resolveMediaUploadFolder,
   type MediaFolderFilter,
 } from "@/features/media/media-folder-labels";
@@ -246,12 +248,12 @@ export function MediaLibraryClient({
       <div
         className={cn(
           adminCard(),
-          "grid overflow-hidden lg:grid-cols-[8.75rem_minmax(0,1fr)]",
+          "grid overflow-hidden lg:grid-cols-[11rem_minmax(0,1fr)]",
         )}
       >
         <aside className="flex flex-col gap-1.5 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-1.5 py-2 lg:border-b-0 lg:border-r">
           <p className="px-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
-            Folders
+            Folders by page
           </p>
           <MediaFolderNav
             size="sm"
@@ -262,19 +264,22 @@ export function MediaLibraryClient({
           />
           <p className="mt-auto hidden border-t border-[var(--color-border)] px-1.5 pt-1.5 text-[9px] leading-snug text-[var(--color-muted)] xl:block">
             {folder === "all"
-              ? "Uploads → Homepage & pages"
+              ? "Upload from All → Homepage & pages. Same folders as the image picker popup."
               : MEDIA_FOLDER_HINTS[folder]}
           </p>
         </aside>
 
         <div className="flex min-w-0 flex-col">
           <div className="space-y-2.5 border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_35%,var(--color-card))] p-2.5 sm:p-3">
+            <p className="text-[11px] leading-snug text-[var(--color-muted)]">
+              {mediaFolderLibraryDescription(folder)}
+            </p>
             {canUpload ? (
               <UploadDropzone
                 compact
                 disabled={pending}
                 label="Drop images here"
-                hint={`${mediaFolderLabel(uploadFolder)} · JPEG / PNG / WebP · max ${adminImageMaxMb} MB`}
+                hint={`${mediaFolderLabel(uploadFolder)} — ${mediaFolderHint(uploadFolder)} · JPEG / PNG / WebP · max ${adminImageMaxMb} MB`}
                 maxMb={adminImageMaxMb}
                 onFiles={async (files) => {
                   setError(null);

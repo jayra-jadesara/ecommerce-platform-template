@@ -13,6 +13,8 @@ import type { AddressFormInput } from "@/features/addresses/validation";
 
 interface AddressBookClientProps {
   initialAddresses: CustomerAddress[];
+  phoneCountryCode?: string;
+  storeCountry?: string;
 }
 
 function formatAddress(address: CustomerAddress): string {
@@ -28,6 +30,8 @@ function formatAddress(address: CustomerAddress): string {
 
 export function AddressBookClient({
   initialAddresses,
+  phoneCountryCode,
+  storeCountry,
 }: AddressBookClientProps) {
   const [addresses, setAddresses] = useState(initialAddresses);
   const [mode, setMode] = useState<"list" | "create" | "edit">("list");
@@ -174,6 +178,8 @@ export function AddressBookClient({
           <AddressForm
             key={editing?.id ?? "new"}
             initial={editing}
+            phoneCountryCode={phoneCountryCode}
+            storeCountry={storeCountry}
             onCancel={() => {
               setMode("list");
               setEditing(null);

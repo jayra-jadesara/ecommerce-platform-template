@@ -74,7 +74,7 @@ export function PaymentSuccessView({
               </div>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--color-muted)]">
-                  {isCod ? "Cash on delivery" : "Payment"}
+                  {isCod ? "Cash on delivery" : "Online payment"}
                 </p>
                 <h1 className="mt-0.5 font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-[1.75rem]">
                   {isCod ? "Order placed" : "Payment successful"}

@@ -14,11 +14,16 @@ import { IndianMobileField } from "@/features/auth/components/IndianMobileField"
 import { PasswordField } from "@/features/auth/components/PasswordField";
 import { RECOVERY_QUESTIONS } from "@/features/auth/recovery-questions";
 import {
+  REGISTER_COUNTRY_CODE,
   registerSchema,
   type RegisterInput,
 } from "@/features/auth/validations";
 
-export function RegisterForm() {
+export function RegisterForm({
+  phoneCountryCode = REGISTER_COUNTRY_CODE,
+}: {
+  phoneCountryCode?: string;
+} = {}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -128,9 +133,10 @@ export function RegisterForm() {
       <IndianMobileField
         name="phone"
         control={control}
+        countryCode={phoneCountryCode}
         disabled={pending}
         error={Boolean(errors.phone)}
-        helperText={errors.phone?.message ?? "Enter your 10-digit account number"}
+        helperText={errors.phone?.message ?? "Enter your 10-digit mobile number"}
       />
 
       <Controller

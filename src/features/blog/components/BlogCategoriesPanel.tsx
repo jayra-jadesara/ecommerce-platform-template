@@ -518,7 +518,7 @@ export function BlogCategoriesPanel({
 
       <MediaPicker
         open={mediaOpen}
-        folder="cms"
+        folder="blog"
         onClose={() => setMediaOpen(false)}
         onSelect={(selection) => {
           setValue("imagePath", selection.storagePath, { shouldDirty: true });

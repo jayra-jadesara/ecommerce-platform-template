@@ -8,6 +8,7 @@ import {
 } from "@/features/addresses/types";
 import type { AddressFormInput } from "@/features/addresses/validation";
 import { formatAddressPhoneForStorage } from "@/features/addresses/validation";
+import { getStorePhoneCountryCode } from "@/lib/store-location";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { Tables } from "@/types/database";
@@ -104,12 +105,13 @@ export async function createCustomerAddress(
     }
   }
 
+  const dialCode = await getStorePhoneCountryCode();
   const { data, error } = await supabase
     .from("user_addresses")
     .insert({
       user_id: user.id,
       full_name: input.fullName,
-      phone: formatAddressPhoneForStorage(input.phone),
+      phone: formatAddressPhoneForStorage(input.phone, dialCode),
       address_line_1: input.addressLine1,
       address_line_2: input.addressLine2,
       city: input.city,
@@ -182,11 +184,12 @@ export async function updateCustomerAddress(
     }
   }
 
+  const dialCode = await getStorePhoneCountryCode();
   const { data, error } = await supabase
     .from("user_addresses")
     .update({
       full_name: input.fullName,
-      phone: formatAddressPhoneForStorage(input.phone),
+      phone: formatAddressPhoneForStorage(input.phone, dialCode),
       address_line_1: input.addressLine1,
       address_line_2: input.addressLine2,
       city: input.city,

@@ -26,6 +26,10 @@ import {
 } from "@/features/theme/validation";
 import { defaultPlatformConfig } from "@/config/defaults";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
+import {
+  normalizeNationalPhone,
+  normalizePhoneCountryCode,
+} from "@/lib/phone";
 import { parseVisualEffectsConfig } from "@/features/visual-effects/schemas";
 import type { VisualEffectsConfig } from "@/types";
 import {
@@ -174,6 +178,13 @@ export type SettingsRow = {
   copyright_text?: string | null;
   contact_banner_enabled?: boolean | null;
   contact_banner_image_path?: string | null;
+  contact_spotlight_enabled?: boolean | null;
+  contact_spotlight_image_path?: string | null;
+  contact_page_heading?: string | null;
+  contact_page_support?: string | null;
+  contact_map_enabled?: boolean | null;
+  contact_map_embed_url?: string | null;
+  phone_country_code?: string | null;
   storefront_loader_style?: string | null;
   storefront_loader_label?: string | null;
 };
@@ -425,8 +436,9 @@ export function mapSettingsRowToContact(
   if (!row) return defaultPlatformConfig.contact;
   return {
     email: row.contact_email?.trim() || undefined,
-    phone: row.contact_phone?.trim() || undefined,
-    phoneSecondary: row.contact_phone_secondary?.trim() || undefined,
+    phone: normalizeNationalPhone(row.contact_phone) || undefined,
+    phoneSecondary:
+      normalizeNationalPhone(row.contact_phone_secondary) || undefined,
     addressLine1: row.address_line_1?.trim() || undefined,
     addressLine2: row.address_line_2?.trim() || undefined,
     city: row.city?.trim() || undefined,
@@ -435,6 +447,13 @@ export function mapSettingsRowToContact(
     country: row.country?.trim() || undefined,
     bannerEnabled: Boolean(row.contact_banner_enabled),
     bannerImagePath: row.contact_banner_image_path?.trim() || undefined,
+    spotlightEnabled: Boolean(row.contact_spotlight_enabled),
+    spotlightImagePath: row.contact_spotlight_image_path?.trim() || undefined,
+    pageHeading: row.contact_page_heading?.trim() || undefined,
+    pageSupport: row.contact_page_support?.trim() || undefined,
+    mapEnabled: row.contact_map_enabled !== false,
+    mapEmbedUrl: row.contact_map_embed_url?.trim() || undefined,
+    phoneCountryCode: normalizePhoneCountryCode(row.phone_country_code),
   };
 }
 
@@ -509,12 +528,13 @@ export function mapSettingsRowToStore(
     locale: row?.default_locale?.trim() || fallback.locale,
     timezone: row?.timezone || fallback.timezone,
     supportEmail: row?.contact_email || undefined,
-    supportPhone: row?.contact_phone || undefined,
+    supportPhone: normalizeNationalPhone(row?.contact_phone) || undefined,
     displayName: storeName?.trim() || fallback.displayName,
     legalName: legalName?.trim() || undefined,
     registrationEnabled: row?.registration_enabled ?? fallback.registrationEnabled,
     checkoutGuestAllowed:
       row?.checkout_guest_allowed ?? fallback.checkoutGuestAllowed,
+    phoneCountryCode: normalizePhoneCountryCode(row?.phone_country_code),
   };
 }
 

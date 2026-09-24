@@ -39,7 +39,7 @@ export default async function AdminMediaPage({
     <div className="space-y-3">
       <AdminPageHeader
         title="Images & Files"
-        description="Library for products, banners, and pages."
+        description="Central media library. Folders match Content pages (Contact, About, Career, Banners, Blog…) plus catalog and branding — the same folders as the Choose-an-image popup on each page."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Images & Files" },

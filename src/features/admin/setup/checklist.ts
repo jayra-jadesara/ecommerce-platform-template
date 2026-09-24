@@ -126,7 +126,7 @@ export async function getStoreSetupChecklist(): Promise<{
     {
       id: "payments",
       label: "Turn on payments",
-      description: "Online pay (Razorpay) and/or cash on delivery",
+      description: "Online payment and/or cash on delivery",
       href: getAdminPath("/settings/payments"),
       done: paymentsDone,
     },

@@ -140,6 +140,7 @@ export const defaultPlatformConfig: PlatformConfig = {
     displayName: "Brand Name",
     registrationEnabled: true,
     checkoutGuestAllowed: true,
+    phoneCountryCode: "+91",
   },
   contact: {},
   social: {},

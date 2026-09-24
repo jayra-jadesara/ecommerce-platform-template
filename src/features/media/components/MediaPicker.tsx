@@ -19,6 +19,7 @@ import { MediaFolderNav } from "@/features/media/components/MediaFolderNav";
 import { UploadDropzone } from "@/features/media/components/UploadDropzone";
 import type { MediaRow } from "@/features/media/media-service";
 import {
+  mediaFolderHint,
   mediaFolderLabel,
   resolveMediaUploadFolder,
   type MediaFolderFilter,
@@ -224,25 +225,34 @@ export function MediaPicker({
       <DialogTitle
         sx={{
           display: "flex",
-          alignItems: "center",
+          alignItems: "flex-start",
           justifyContent: "space-between",
           gap: 1,
           borderBottom: "1px solid var(--color-border)",
           py: 1.25,
           px: 1.75,
-          fontSize: "0.9375rem",
-          fontWeight: 600,
-          letterSpacing: "-0.01em",
         }}
       >
-        <span>Choose an image</span>
+        <div className="min-w-0 pr-2">
+          <p className="text-[0.9375rem] font-semibold tracking-[-0.01em] text-[var(--color-foreground)]">
+            Choose an image
+          </p>
+          <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+            Same library as{" "}
+            <span className="font-medium text-[var(--color-foreground)]">
+              Images &amp; Files
+            </span>
+            . Folders match Content pages — pick Contact, About, Career, and more
+            on the left.
+          </p>
+        </div>
         <IconButton
           type="button"
           size="small"
           aria-label="Close"
           disabled={busy}
           onClick={onClose}
-          sx={{ color: "var(--color-muted)" }}
+          sx={{ color: "var(--color-muted)", mt: -0.25 }}
         >
           <CloseIcon sx={{ fontSize: 18 }} />
         </IconButton>
@@ -254,14 +264,14 @@ export function MediaPicker({
           p: 0,
           display: "flex",
           flexDirection: "column",
-          maxHeight: "min(68vh, 560px)",
+          maxHeight: "min(72vh, 620px)",
           overflow: "hidden",
         }}
       >
-        <div className="grid min-h-0 flex-1 grid-cols-[8.5rem_minmax(0,1fr)] overflow-hidden">
+        <div className="grid min-h-0 flex-1 grid-cols-[10.5rem_minmax(0,1fr)] overflow-hidden">
           <aside className="flex flex-col gap-1 overflow-y-auto border-r border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-1.5 py-2">
             <p className="px-1.5 pb-0.5 text-[9px] font-semibold uppercase tracking-[0.08em] text-[var(--color-muted)]">
-              Folders
+              Folders by page
             </p>
             <MediaFolderNav
               size="sm"
@@ -280,7 +290,7 @@ export function MediaPicker({
                   multiple={false}
                   disabled={busy}
                   label="Upload new"
-                  hint={`${mediaFolderLabel(uploadFolder)} · max ${resolvedMaxMb} MB`}
+                  hint={`${mediaFolderLabel(uploadFolder)} — ${mediaFolderHint(uploadFolder)} · max ${resolvedMaxMb} MB`}
                   maxMb={resolvedMaxMb}
                   onFiles={handleUpload}
                 />

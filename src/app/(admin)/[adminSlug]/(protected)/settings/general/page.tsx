@@ -20,7 +20,7 @@ export default async function AdminGeneralSettingsPage() {
     <div className="space-y-3 pb-10">
       <AdminPageHeader
         title="Store Information"
-        description="Identity, locale, media upload limits, address, and contact links."
+        description="Identity, dial code, locale, address — used across admin and storefront."
         breadcrumbs={[
           { label: "Store Settings", href: getAdminPath("/settings") },
           { label: "Store Information" },

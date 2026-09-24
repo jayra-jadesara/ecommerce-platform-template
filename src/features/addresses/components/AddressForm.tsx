@@ -22,10 +22,16 @@ import {
 } from "@/features/geo/actions";
 import type { IndiaCity, IndiaState } from "@/features/geo/service";
 import { sfBtn } from "@/components/ui/storefront-classes";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  DEFAULT_STORE_COUNTRY,
+} from "@/lib/phone";
 
 interface AddressFormProps {
   initial?: CustomerAddress | null;
   submitLabel?: string;
+  phoneCountryCode?: string;
+  storeCountry?: string;
   onSubmit: (values: AddressFormInput) => Promise<{ ok: boolean; error?: string }>;
   onCancel?: () => void;
 }
@@ -33,15 +39,19 @@ interface AddressFormProps {
 export function AddressForm({
   initial,
   submitLabel = "Save address",
+  phoneCountryCode = DEFAULT_PHONE_COUNTRY_CODE,
+  storeCountry = DEFAULT_STORE_COUNTRY,
   onSubmit,
   onCancel,
 }: AddressFormProps) {
+  const lockedCountry = storeCountry.trim() || DEFAULT_STORE_COUNTRY;
+  const isIndia = lockedCountry === "India";
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [states, setStates] = useState<IndiaState[]>([]);
   const [cities, setCities] = useState<IndiaCity[]>([]);
   const [selectedStateId, setSelectedStateId] = useState("");
-  const [geoLoading, setGeoLoading] = useState(true);
+  const [geoLoading, setGeoLoading] = useState(isIndia);
 
   const {
     register,
@@ -54,13 +64,13 @@ export function AddressForm({
     mode: "onBlur",
     defaultValues: {
       fullName: initial?.fullName ?? "",
-      phone: toNationalMobileDigits(initial?.phone ?? ""),
+      phone: toNationalMobileDigits(initial?.phone ?? "", phoneCountryCode),
       addressLine1: initial?.addressLine1 ?? "",
       addressLine2: initial?.addressLine2 ?? "",
       city: initial?.city ?? "",
       state: initial?.state ?? "",
       postalCode: initial?.postalCode ?? "",
-      country: "India",
+      country: lockedCountry,
       isDefault: initial?.isDefault ?? false,
     },
   });
@@ -68,6 +78,10 @@ export function AddressForm({
   const watchedState = useWatch({ control, name: "state" });
 
   useEffect(() => {
+    if (!isIndia) {
+      setGeoLoading(false);
+      return;
+    }
     let cancelled = false;
     void (async () => {
       setGeoLoading(true);
@@ -94,7 +108,7 @@ export function AddressForm({
     return () => {
       cancelled = true;
     };
-  }, [initial?.state]);
+  }, [initial?.state, isIndia]);
 
   useEffect(() => {
     if (!selectedStateId) return;
@@ -111,7 +125,7 @@ export function AddressForm({
   const submit = handleSubmit((values) => {
     setError(null);
     startTransition(async () => {
-      const result = await onSubmit({ ...values, country: "India" });
+      const result = await onSubmit({ ...values, country: lockedCountry });
       if (!result.ok) setError(result.error ?? "Could not save address.");
     });
   });
@@ -133,11 +147,12 @@ export function AddressForm({
       <IndianMobileField
         name="phone"
         control={control}
+        countryCode={phoneCountryCode}
         label="Phone"
         disabled={pending}
         error={Boolean(errors.phone)}
         helperText={
-          errors.phone?.message ?? "Enter your 10-digit account number"
+          errors.phone?.message ?? "Enter your 10-digit mobile number"
         }
       />
 
@@ -239,13 +254,13 @@ export function AddressForm({
         />
         <TextField
           label="Country"
-          value="India"
+          value={lockedCountry}
           fullWidth
           disabled
           slotProps={{
             htmlInput: { readOnly: true, "aria-label": "Country" },
           }}
-          helperText="Fixed for this store"
+          helperText="From Store Information"
         />
       </div>
 

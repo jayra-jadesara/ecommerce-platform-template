@@ -369,7 +369,7 @@ export function AdminOrderDetailClient({
               {order.payment?.provider === "cod"
                 ? "Cash on Delivery"
                 : order.payment?.provider === "razorpay"
-                  ? "Razorpay"
+                  ? "Online payment"
                   : order.payment?.provider || "—"}
             </p>
           </div>
@@ -569,7 +569,7 @@ export function AdminOrderDetailClient({
                           {order.payment.provider === "cod"
                             ? "Cash on Delivery"
                             : order.payment.provider === "razorpay"
-                              ? "Razorpay"
+                              ? "Online payment"
                               : order.payment.provider}
                         </dd>
                       </div>

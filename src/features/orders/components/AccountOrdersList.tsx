@@ -59,6 +59,7 @@ function OrderPaymentCells({ order }: { order: OrderListItem }) {
   const showInstrumentDetail =
     Boolean(order.paymentInstrument) &&
     instrumentLine !== "Cash on Delivery" &&
+    instrumentLine !== "Online payment" &&
     instrumentLine !== "Razorpay" &&
     instrumentLine !== "—";
   const paymentLabel = paymentStatusLabel(

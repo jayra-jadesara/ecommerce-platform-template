@@ -30,6 +30,7 @@ import PeopleOutlinedIcon from "@mui/icons-material/PeopleOutlined";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import HomeOutlinedIcon from "@mui/icons-material/HomeOutlined";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ContactMailOutlinedIcon from "@mui/icons-material/ContactMailOutlined";
 import WorkOutlineOutlinedIcon from "@mui/icons-material/WorkOutlineOutlined";
 import GavelOutlinedIcon from "@mui/icons-material/GavelOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
@@ -89,6 +90,7 @@ const ICONS: Record<
   content: ArticleOutlinedIcon,
   homepage: HomeOutlinedIcon,
   about: InfoOutlinedIcon,
+  contact: ContactMailOutlinedIcon,
   career: WorkOutlineOutlinedIcon,
   legal: GavelOutlinedIcon,
   pages: DescriptionOutlinedIcon,
@@ -296,7 +298,7 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
   return (
     <div
       ref={rootRef}
-      className="relative mx-auto hidden min-w-0 max-w-md flex-1 md:block"
+      className="relative z-50 mx-auto hidden min-w-0 max-w-md flex-1 md:block"
     >
       <label className="relative block">
         <span className="sr-only">Search navigation</span>
@@ -738,7 +740,7 @@ export function AdminShell({
         ) : null}
 
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <header className={cn(adminTopBar(), "z-20")}>
+          <header className={cn(adminTopBar(), "relative z-40")}>
             <IconButton
               className="lg:!hidden"
               aria-label="Open menu"

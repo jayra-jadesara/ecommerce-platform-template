@@ -15,7 +15,7 @@ export function resolvePaymentProviderKind(
   return "other";
 }
 
-/** Short chip label shown in headers / tabs. */
+/** Short chip label shown in headers / tabs (customer-facing). */
 export function paymentMethodShortLabel(
   provider: string | null | undefined,
 ): string {
@@ -23,13 +23,13 @@ export function paymentMethodShortLabel(
     case "cod":
       return "COD";
     case "razorpay":
-      return "Razorpay";
+      return "Online";
     default:
       return provider?.trim() ? provider.trim() : "Payment";
   }
 }
 
-/** Longer label for detail rows. */
+/** Longer label for detail rows (customer-facing). */
 export function paymentMethodFullLabel(
   provider: string | null | undefined,
 ): string {
@@ -37,7 +37,7 @@ export function paymentMethodFullLabel(
     case "cod":
       return "Cash on Delivery";
     case "razorpay":
-      return "Razorpay";
+      return "Online payment";
     default:
       return provider?.trim() ? provider.trim() : "—";
   }

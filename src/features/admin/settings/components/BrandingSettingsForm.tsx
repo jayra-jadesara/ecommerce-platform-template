@@ -270,7 +270,7 @@ export function BrandingSettingsForm({
 
       <AdminSection
         title="Brand images"
-        description="Choose from Images & Files or upload new. Save this page to publish."
+        description="Choose from Images & Files (Branding folder) or upload new. Save this page to publish."
         icon={<ImageOutlinedIcon sx={{ fontSize: 20 }} />}
       >
         <div className="grid gap-2 sm:grid-cols-2">

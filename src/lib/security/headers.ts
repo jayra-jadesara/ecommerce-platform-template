@@ -20,7 +20,7 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
       // 'none' shows "This content is blocked" for blob: PDF previews.
       "object-src 'self' blob:",
       "frame-ancestors 'self'",
-      "form-action 'self'",
+      "form-action 'self' mailto:",
       // Next.js + theme boot + Razorpay + Instagram embed.js
       "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com https://www.instagram.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -28,8 +28,8 @@ export const SECURITY_HEADER_ENTRIES: Array<{ key: string; value: string }> = [
       "font-src 'self' data: https://fonts.gstatic.com",
       // blob: for object URLs; 127.0.0.1:7429 for local debug ingest only
       "connect-src 'self' blob: http://127.0.0.1:7429 https://*.supabase.co wss://*.supabase.co https://api.razorpay.com https://lumberjack.razorpay.com https://fonts.googleapis.com https://fonts.gstatic.com https://www.instagram.com",
-      // blob: PDF previews; Razorpay checkout; Instagram reel embeds
-      "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com https://www.instagram.com https://instagram.com",
+      // blob: PDF previews; Razorpay checkout; Instagram reel embeds; Google Maps (contact)
+      "frame-src 'self' blob: https://api.razorpay.com https://checkout.razorpay.com https://www.instagram.com https://instagram.com https://www.google.com https://maps.google.com https://*.google.com",
       "worker-src 'self' blob:",
       // Hosted reel MP4s (Supabase Storage) + Instagram CDN fallbacks
       "media-src 'self' blob: https: https://*.supabase.co https://www.instagram.com https://*.cdninstagram.com",

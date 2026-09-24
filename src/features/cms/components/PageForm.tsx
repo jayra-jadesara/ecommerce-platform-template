@@ -406,12 +406,16 @@ function ImagePickCard({
       style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
     >
       {previewUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={previewUrl}
-          alt=""
-          className="h-36 w-full rounded-lg object-cover"
-        />
+        <div className="max-w-3xl overflow-hidden rounded-lg border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-foreground)_4%,var(--color-card))]">
+          <div className="relative aspect-video w-full">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover object-center"
+            />
+          </div>
+        </div>
       ) : (
         <p className="text-sm text-[var(--color-muted)]">No image selected</p>
       )}

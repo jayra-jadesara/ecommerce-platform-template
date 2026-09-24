@@ -643,12 +643,21 @@
 }
 
 /**
- * Admin chrome footer — thin muted text bar, flush to the content column bottom.
+ * Admin chrome footer — compact bar with a right→left theme gradient
+ * (sidebar card/surface → muted → deep foreground), matching the sidebar palette.
  */
 .admin-chrome-footer {
   flex-shrink: 0;
-  border-top: 1px solid var(--color-border);
-  background: var(--color-card);
+  border-top: 1px solid
+    color-mix(in srgb, var(--color-border) 70%, transparent);
+  /* Light (left / sidebar A) → mid → deep (right), so shade reads right→left */
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--color-foreground) 88%, var(--color-primary) 12%)
+      0%,
+    color-mix(in srgb, var(--color-foreground) 42%, var(--color-card) 58%) 46%,
+    var(--color-card) 100%
+  );
   border-radius: 0;
 }
 
@@ -679,12 +688,34 @@
   margin: 0;
   font-size: 10px;
   line-height: 1.3;
-  color: var(--color-muted);
+  color: color-mix(in srgb, var(--color-foreground) 55%, var(--color-muted));
+}
+
+.admin-chrome-footer__line--end {
+  color: color-mix(in srgb, var(--color-card) 78%, transparent);
 }
 
 .admin-chrome-footer__dot {
   margin: 0 0.35rem;
-  color: color-mix(in srgb, var(--color-muted) 55%, transparent);
+  opacity: 0.65;
+}
+
+html.dark .admin-chrome-footer {
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--color-foreground) 72%, var(--color-primary) 14%)
+      0%,
+    color-mix(in srgb, var(--color-card) 55%, var(--color-foreground) 45%) 48%,
+    var(--color-card) 100%
+  );
+}
+
+html.dark .admin-chrome-footer__line {
+  color: color-mix(in srgb, var(--color-muted) 85%, var(--color-foreground));
+}
+
+html.dark .admin-chrome-footer__line--end {
+  color: color-mix(in srgb, var(--color-card) 70%, var(--color-foreground));
 }
 
 /**

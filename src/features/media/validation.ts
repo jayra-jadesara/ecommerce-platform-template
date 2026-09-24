@@ -21,10 +21,25 @@ export const MEDIA_FOLDERS = [
   "categories",
   "branding",
   "cms",
+  "about",
+  "contact",
+  "career",
+  "banners",
+  "blog",
   "general",
 ] as const;
 
 export type MediaFolder = (typeof MEDIA_FOLDERS)[number];
+
+/** Folders that store files in the public `cms` bucket. */
+export const CMS_BUCKET_FOLDERS: ReadonlySet<MediaFolder> = new Set([
+  "cms",
+  "about",
+  "contact",
+  "career",
+  "banners",
+  "blog",
+]);
 
 export function isAllowedImageMime(mime: string): mime is AllowedImageMime {
   return (ALLOWED_IMAGE_MIME as readonly string[]).includes(mime);
@@ -212,6 +227,11 @@ export function bucketForFolder(folder: MediaFolder): StorageBucket {
     case "branding":
       return "branding";
     case "cms":
+    case "about":
+    case "contact":
+    case "career":
+    case "banners":
+    case "blog":
       return "cms";
     default:
       return "media";

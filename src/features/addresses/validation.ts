@@ -4,6 +4,10 @@ import {
   registerPhoneSchema,
 } from "@/features/auth/validations";
 import { normalizePhoneForCompare } from "@/features/auth/phone-normalize";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  formatPhoneForStorage,
+} from "@/lib/phone";
 
 /** Strip control chars / obvious script payloads; keep international text. */
 function sanitizePlainText(value: string): string {
@@ -39,8 +43,8 @@ const optionalPlainText = (max: number, label: string) =>
     });
 
 /**
- * Address phone: same 10-digit Indian mobile as signup (national digits in the form).
- * Stored with +91 via `formatAddressPhoneForStorage`.
+ * Address phone: same 10-digit national mobile as signup.
+ * Stored with store dial code via `formatAddressPhoneForStorage`.
  */
 export const phoneSchema = registerPhoneSchema;
 
@@ -74,10 +78,14 @@ export const addressIdSchema = z.object({
 
 export type AddressFormInput = z.infer<typeof addressFormSchema>;
 
-/** Persist phone as +91##########. */
-export function formatAddressPhoneForStorage(nationalDigits: string): string {
+/** Persist phone with store dial code (default from Store Information). */
+export function formatAddressPhoneForStorage(
+  nationalDigits: string,
+  countryCode: string = DEFAULT_PHONE_COUNTRY_CODE,
+): string {
   return normalizePhoneForCompare(
-    `${REGISTER_COUNTRY_CODE}${nationalDigits.replace(/\D/g, "")}`,
+    formatPhoneForStorage(nationalDigits, countryCode),
+    countryCode,
   );
 }
 

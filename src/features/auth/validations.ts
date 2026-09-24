@@ -3,6 +3,7 @@ import {
   isRecoveryQuestionId,
   RECOVERY_QUESTION_IDS,
 } from "@/features/auth/recovery-questions";
+import { DEFAULT_PHONE_COUNTRY_CODE } from "@/lib/phone";
 
 /** Required email with clear empty + format messages (shown on blur in forms). */
 export const authEmailSchema = z
@@ -16,15 +17,18 @@ export const authEmailSchema = z
     "Enter a valid email address (e.g. name@example.com)",
   );
 
-/** Fixed India country code for storefront registration. */
-export const REGISTER_COUNTRY_CODE = "+91";
+/**
+ * Fallback dial code when Store Information is unavailable.
+ * Prefer `store.phoneCountryCode` from platform config in UI + actions.
+ */
+export const REGISTER_COUNTRY_CODE = DEFAULT_PHONE_COUNTRY_CODE;
 
-/** 10-digit Indian mobile (without country code) — shown as account number in UI. */
+/** 10-digit national mobile (without dial code) — shown as account number in UI. */
 export const registerPhoneSchema = z
   .string()
   .trim()
   .min(1, "Enter your account number")
-  .regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit account number");
+  .regex(/^\d{10}$/, "Enter a valid 10-digit account number");
 
 export const recoveryQuestionIdSchema = z.enum(RECOVERY_QUESTION_IDS, {
   required_error: "Select a security question",

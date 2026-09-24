@@ -43,10 +43,11 @@ export function firstFieldErrorKey(
 /**
  * Focus the first invalid control. Prefer RHF setFocus when available.
  */
-export function focusFirstFieldError(options: {
+export function focusFirstFieldError(options?: {
   fieldErrors?: FieldErrors | null;
   setFocus?: (name: string) => void;
 }): void {
+  if (!options) return;
   const key = firstFieldErrorKey(options.fieldErrors);
   if (!key) return;
   if (options.setFocus) {

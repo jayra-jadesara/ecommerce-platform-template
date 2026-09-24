@@ -27,6 +27,11 @@ import {
   normalizeSelectValue,
 } from "@/features/admin/settings/location-options";
 import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  DEFAULT_STORE_COUNTRY,
+  PHONE_COUNTRY_CODES,
+} from "@/lib/phone";
+import {
   adminCard,
   adminCardsGrid,
   adminCardSpanFull,
@@ -40,8 +45,6 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
-import { MediaPicker } from "@/features/media";
-import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";
 import {
   STOREFRONT_LOADER_STYLES,
@@ -70,27 +73,27 @@ function Section({
 }) {
   return (
     <section
-      className={cn(adminCard(), "p-3.5 md:p-4", className)}
+      className={cn(adminCard(), "p-3 md:p-3.5", className)}
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: "0.75rem",
+        gap: "0.65rem",
         width: "100%",
       }}
     >
-      <header className="flex flex-wrap items-start justify-between gap-2">
+      <header className="flex flex-wrap items-start justify-between gap-1.5">
         <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold tracking-tight text-[var(--color-foreground)]">
+          <h2 className="text-[12px] font-semibold tracking-tight text-[var(--color-foreground)]">
             {title}
           </h2>
           {hint ? (
-            <p className="mt-0.5 text-[11px] leading-snug text-[var(--color-muted)]">
+            <p className="mt-0.5 text-[10px] leading-snug text-[var(--color-muted)]">
               {hint}
             </p>
           ) : null}
         </div>
         {badge ? (
-          <span className="rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+          <span className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
             {badge}
           </span>
         ) : null}
@@ -171,19 +174,22 @@ export function GeneralSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [customCity, setCustomCity] = useState(false);
-  const [contactBannerMediaOpen, setContactBannerMediaOpen] = useState(false);
 
   const defaults = useMemo(() => {
     const country = normalizeSelectValue(
       initialValues.country,
       STORE_COUNTRIES.map((c) => c.value),
-      "India",
+      DEFAULT_STORE_COUNTRY,
     );
     const countryDefaults = defaultsForCountry(country);
     return {
       ...DEFAULT_GENERAL_SETTINGS,
       ...initialValues,
-      country: initialValues.country?.trim() || "India",
+      country: initialValues.country?.trim() || DEFAULT_STORE_COUNTRY,
+      phoneCountryCode:
+        initialValues.phoneCountryCode?.trim() ||
+        countryDefaults.phoneCountryCode ||
+        DEFAULT_PHONE_COUNTRY_CODE,
       currency: normalizeSelectValue(
         initialValues.currency,
         STORE_CURRENCIES.map((c) => c.value),
@@ -222,19 +228,12 @@ export function GeneralSettingsForm({
     defaultValues: defaults,
   });
 
-  const country = useWatch({ control, name: "country" }) ?? "India";
+  const country = useWatch({ control, name: "country" }) ?? DEFAULT_STORE_COUNTRY;
+  const phoneCountryCode =
+    useWatch({ control, name: "phoneCountryCode" }) ?? DEFAULT_PHONE_COUNTRY_CODE;
   const state = useWatch({ control, name: "state" }) ?? "";
   const city = useWatch({ control, name: "city" }) ?? "";
   const adminImageMaxMb = useWatch({ control, name: "adminImageMaxMb" }) ?? 5;
-  const contactBannerEnabled = useWatch({
-    control,
-    name: "contactBannerEnabled",
-  });
-  const contactBannerImagePath = useWatch({
-    control,
-    name: "contactBannerImagePath",
-  });
-  const contactBannerPreview = resolveCmsImageUrl(contactBannerImagePath);
   const isIndia = country === "India";
   const cityOptions = isIndia ? citiesForState(state) : [];
   const cityInList = cityOptions.includes(city);
@@ -275,7 +274,7 @@ export function GeneralSettingsForm({
         event.preventDefault();
         onSubmit();
       }}
-      className="space-y-3"
+      className="space-y-2.5"
     >
       <SettingsFormToolbar
         isDirty={isDirty}
@@ -291,22 +290,24 @@ export function GeneralSettingsForm({
           setCustomCity(false);
         }}
         onResetDefaults={() => {
+          const d = defaultsForCountry(DEFAULT_STORE_COUNTRY);
           reset({
             ...DEFAULT_GENERAL_SETTINGS,
-            country: "India",
-            timezone: "Asia/Kolkata",
-            defaultLocale: "en-IN",
-            currency: "INR",
+            country: DEFAULT_STORE_COUNTRY,
+            timezone: d.timezone,
+            defaultLocale: d.defaultLocale,
+            currency: d.currency,
+            phoneCountryCode: d.phoneCountryCode,
           });
           setSuccess(null);
           setCustomCity(false);
         }}
       />
 
-      <div className={cn(adminCardsGrid(), "!gap-3")}>
+      <div className={cn(adminCardsGrid(), "!gap-2.5")}>
         <Section
           title="Store identity"
-          hint="Name and how customers reach you."
+          hint="Name & WhatsApp. Contact details → Content → Contact."
         >
           <div className={adminFieldsGrid(2)}>
             <Controller
@@ -323,7 +324,7 @@ export function GeneralSettingsForm({
                     disabled={locked}
                     error={Boolean(fieldState.error)}
                     helperText={
-                      fieldState.error ? undefined : "Example: Sonet Spices"
+                      fieldState.error ? undefined : "Shown in header & emails"
                     }
                   />
                   <FieldError message={fieldState.error?.message} />
@@ -336,36 +337,19 @@ export function GeneralSettingsForm({
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Legal business name"
+                  label="Legal name"
                   fullWidth
                   size="small"
                   disabled={locked}
-                  helperText="Optional — invoices & paperwork"
+                  helperText="Optional · invoices"
                 />
-              )}
-            />
-            <Controller
-              name="contactEmail"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Contact email"
-                    fullWidth
-                    size="small"
-                    disabled={locked}
-                    error={Boolean(fieldState.error)}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
               )}
             />
             <Controller
               name="socialWhatsapp"
               control={control}
               render={({ field, fieldState }) => (
-                <div>
+                <div className="sm:col-span-2">
                   <TextField
                     {...field}
                     label="WhatsApp"
@@ -373,46 +357,12 @@ export function GeneralSettingsForm({
                     size="small"
                     disabled={locked}
                     error={Boolean(fieldState.error)}
-                    placeholder="+91 98765 43210"
+                    placeholder={`${phoneCountryCode} 98765 43210`}
                     helperText={
                       fieldState.error
                         ? undefined
-                        : "Country code included · storefront chat link"
+                        : `Include dial code · default ${phoneCountryCode}`
                     }
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="contactPhone"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Main phone"
-                    fullWidth
-                    size="small"
-                    disabled={locked}
-                    error={Boolean(fieldState.error)}
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
-            />
-            <Controller
-              name="contactPhoneSecondary"
-              control={control}
-              render={({ field, fieldState }) => (
-                <div>
-                  <TextField
-                    {...field}
-                    label="Second phone"
-                    fullWidth
-                    size="small"
-                    disabled={locked}
-                    error={Boolean(fieldState.error)}
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -422,145 +372,56 @@ export function GeneralSettingsForm({
         </Section>
 
         <Section
-          title="Contact page banner"
-          hint="Optional full-width image on /contact (off by default)."
-          className={adminCardSpanFull()}
+          title="Locale & dial code"
+          hint="Currency, language, timezone, and phone country code for the whole store."
         >
-          <Controller
-            name="contactBannerEnabled"
-            control={control}
-            render={({ field }) => (
-              <AdminToggle
-                checked={Boolean(field.value)}
-                disabled={locked}
-                onChange={field.onChange}
-                label="Show banner on store"
-                description="Requires an image from Images & Files"
-                variant="row"
-              />
-            )}
-          />
-          {contactBannerEnabled ? (
-            <div className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-              {contactBannerPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={contactBannerPreview}
-                  alt=""
-                  className="mb-3 h-36 w-full rounded-lg object-cover"
+          <div className={adminFieldsGrid(2)}>
+            <Controller
+              name="country"
+              control={control}
+              render={({ field }) => (
+                <SelectField
+                  label="Country"
+                  disabled={locked}
+                  value={field.value || DEFAULT_STORE_COUNTRY}
+                  options={[...STORE_COUNTRIES]}
+                  onChange={(next) => {
+                    field.onChange(next);
+                    const d = defaultsForCountry(next);
+                    setValue("timezone", d.timezone, { shouldDirty: true });
+                    setValue("defaultLocale", d.defaultLocale, {
+                      shouldDirty: true,
+                    });
+                    setValue("currency", d.currency, { shouldDirty: true });
+                    setValue("phoneCountryCode", d.phoneCountryCode, {
+                      shouldDirty: true,
+                    });
+                    if (next !== "India") {
+                      setCustomCity(true);
+                    }
+                  }}
+                  helperText="Sets locale defaults & dial code"
                 />
-              ) : (
-                <p className="mb-3 text-sm text-[var(--color-muted)]">
-                  No banner image selected yet
-                </p>
               )}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={locked || pending}
-                  className="rounded-md border border-[var(--color-border)] px-3 py-1.5 text-sm font-medium"
-                  onClick={() => setContactBannerMediaOpen(true)}
-                >
-                  Choose image
-                </button>
-                {contactBannerImagePath ? (
-                  <button
-                    type="button"
-                    disabled={locked || pending}
-                    className="rounded-md px-3 py-1.5 text-sm text-[var(--color-muted)]"
-                    onClick={() =>
-                      setValue("contactBannerImagePath", null, {
-                        shouldDirty: true,
-                      })
-                    }
-                  >
-                    Remove
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </Section>
-
-        <Section
-          title="Storefront loading"
-          hint="Shown while store pages load. Pick a style and label used across the store."
-          className={adminCardSpanFull()}
-        >
-          <Controller
-            name="storefrontLoaderStyle"
-            control={control}
-            render={({ field }) => (
-              <div
-                className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
-                role="radiogroup"
-                aria-label="Loader style"
-              >
-                {STOREFRONT_LOADER_STYLES.map((style) => {
-                  const meta = STOREFRONT_LOADER_STYLE_META[style];
-                  const selected = field.value === style;
-                  return (
-                    <button
-                      key={style}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      disabled={locked}
-                      onClick={() => field.onChange(style as StorefrontLoaderStyle)}
-                      className={cn(
-                        "flex flex-col items-center gap-2 rounded-xl border px-2.5 py-3 text-center transition-colors",
-                        selected
-                          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] ring-1 ring-[var(--color-primary)]"
-                          : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))]",
-                        locked && "cursor-not-allowed opacity-60",
-                      )}
-                    >
-                      <span className="flex h-10 items-center justify-center">
-                        <StorefrontLoaderMark style={style} size={26} />
-                      </span>
-                      <span className="text-[12px] font-semibold text-[var(--color-foreground)]">
-                        {meta.label}
-                      </span>
-                      <span className="text-[10px] leading-snug text-[var(--color-muted)]">
-                        {meta.hint}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          />
-          <div className="mt-4 max-w-sm">
+            />
             <Controller
-              name="storefrontLoaderLabel"
+              name="phoneCountryCode"
               control={control}
               render={({ field, fieldState }) => (
                 <div>
-                  <TextField
-                    {...field}
-                    label="Page loading label"
-                    placeholder="Loading…"
-                    fullWidth
-                    size="small"
+                  <SelectField
+                    label="Phone dial code"
                     disabled={locked}
+                    value={field.value || DEFAULT_PHONE_COUNTRY_CODE}
+                    options={[...PHONE_COUNTRY_CODES]}
+                    onChange={field.onChange}
+                    helperText="Contact, footer, signup, checkout"
                     error={Boolean(fieldState.error)}
-                    helperText={
-                      fieldState.error?.message ??
-                      "Used on full-page store loads"
-                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
               )}
             />
-          </div>
-        </Section>
-
-        <Section
-          title="Locale"
-          hint="Currency, language, and timezone."
-        >
-          <div className={adminFieldsGrid(1)}>
             <Controller
               name="currency"
               control={control}
@@ -571,11 +432,6 @@ export function GeneralSettingsForm({
                     required
                     disabled={locked}
                     error={Boolean(fieldState.error)}
-                    helperText={
-                      fieldState.error
-                        ? undefined
-                        : "Prices & checkout"
-                    }
                     value={field.value}
                     options={[...STORE_CURRENCIES]}
                     onChange={field.onChange}
@@ -589,10 +445,9 @@ export function GeneralSettingsForm({
               control={control}
               render={({ field }) => (
                 <SelectField
-                  label="Language / region"
+                  label="Language"
                   required
                   disabled={locked}
-                  helperText="Dates & language"
                   value={field.value}
                   options={[...STORE_LOCALES]}
                   onChange={field.onChange}
@@ -604,59 +459,17 @@ export function GeneralSettingsForm({
               name="timezone"
               control={control}
               render={({ field }) => (
-                <SelectField
-                  label="Timezone"
-                  required
-                  disabled={locked}
-                  helperText="Order times"
-                  value={field.value}
-                  options={[...STORE_TIMEZONES]}
-                  onChange={field.onChange}
-                  allowCustom
-                />
-              )}
-            />
-          </div>
-        </Section>
-
-        <Section
-          className={adminCardSpanFull()}
-          title="Media upload limits"
-          hint="Caps for admin image uploads (catalog, media library, branding). Reel video size is under Content → Reels → Settings."
-        >
-          <div className="rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] p-3 sm:max-w-md">
-            <div className="mb-2.5 flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
-                  <ImageOutlinedIcon sx={{ fontSize: 16 }} />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[12px] font-semibold text-[var(--color-foreground)]">
-                    Images
-                  </p>
-                  <p className="text-[10px] leading-snug text-[var(--color-muted)]">
-                    Products · media · branding
-                  </p>
+                <div className="sm:col-span-2">
+                  <SelectField
+                    label="Timezone"
+                    required
+                    disabled={locked}
+                    value={field.value}
+                    options={[...STORE_TIMEZONES]}
+                    onChange={field.onChange}
+                    allowCustom
+                  />
                 </div>
-              </div>
-              <span className="shrink-0 rounded-full border border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] px-2 py-0.5 text-[10px] font-semibold tabular-nums text-[var(--color-primary)]">
-                {adminImageMaxMb} MB
-              </span>
-            </div>
-            <Controller
-              name="adminImageMaxMb"
-              control={control}
-              render={({ field }) => (
-                <AdminSelect
-                  label="Max size"
-                  required
-                  disabled={locked}
-                  value={String(field.value)}
-                  onChange={(next) => field.onChange(Number(next))}
-                  name={field.name}
-                  helperText="1–10 MB"
-                  options={adminImageMaxMbOptions()}
-                />
               )}
             />
           </div>
@@ -664,35 +477,10 @@ export function GeneralSettingsForm({
 
         <Section
           className={adminCardSpanFull()}
-          title="Address & location"
-          hint="Business address shown to customers where configured."
+          title="Business address"
+          hint="Used on /contact. Email & phones → Content → Contact."
         >
           <div className={adminFieldsGrid(3)}>
-            <Controller
-              name="country"
-              control={control}
-              render={({ field }) => (
-                <SelectField
-                  label="Country"
-                  disabled={locked}
-                  value={field.value || "India"}
-                  options={[...STORE_COUNTRIES]}
-                  onChange={(next) => {
-                    field.onChange(next);
-                    const d = defaultsForCountry(next);
-                    setValue("timezone", d.timezone, { shouldDirty: true });
-                    setValue("defaultLocale", d.defaultLocale, {
-                      shouldDirty: true,
-                    });
-                    setValue("currency", d.currency, { shouldDirty: true });
-                    if (next !== "India") {
-                      setCustomCity(true);
-                    }
-                  }}
-                  helperText="Updates currency, language & timezone"
-                />
-              )}
-            />
             <Controller
               name="postalCode"
               control={control}
@@ -752,38 +540,6 @@ export function GeneralSettingsForm({
                 )}
               />
             )}
-            <div className="md:col-span-2 xl:col-span-2">
-              <Controller
-                name="addressLine1"
-                control={control}
-                render={({ field, fieldState }) => (
-                  <div>
-                    <TextField
-                      {...field}
-                      label="Street address"
-                      fullWidth
-                      size="small"
-                      disabled={locked}
-                      error={Boolean(fieldState.error)}
-                    />
-                    <FieldError message={fieldState.error?.message} />
-                  </div>
-                )}
-              />
-            </div>
-            <Controller
-              name="addressLine2"
-              control={control}
-              render={({ field }) => (
-                <TextField
-                  {...field}
-                  label="Landmark / area"
-                  fullWidth
-                  size="small"
-                  disabled={locked}
-                />
-              )}
-            />
             {isIndia && !showCityText ? (
               <Controller
                 name="city"
@@ -821,17 +577,145 @@ export function GeneralSettingsForm({
                       size="small"
                       disabled={locked}
                       error={Boolean(fieldState.error)}
-                      helperText={
-                        isIndia
-                          ? "Type city, or pick a state for suggestions"
-                          : undefined
-                      }
                     />
                     <FieldError message={fieldState.error?.message} />
                   </div>
                 )}
               />
             )}
+            <div className="md:col-span-2 xl:col-span-2">
+              <Controller
+                name="addressLine1"
+                control={control}
+                render={({ field, fieldState }) => (
+                  <div>
+                    <TextField
+                      {...field}
+                      label="Street address"
+                      fullWidth
+                      size="small"
+                      disabled={locked}
+                      error={Boolean(fieldState.error)}
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
+                )}
+              />
+            </div>
+            <Controller
+              name="addressLine2"
+              control={control}
+              render={({ field }) => (
+                <TextField
+                  {...field}
+                  label="Landmark / area"
+                  fullWidth
+                  size="small"
+                  disabled={locked}
+                />
+              )}
+            />
+          </div>
+        </Section>
+
+        <Section
+          title="Loading"
+          hint="Storefront page loader."
+        >
+          <Controller
+            name="storefrontLoaderStyle"
+            control={control}
+            render={({ field }) => (
+              <div
+                className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5"
+                role="radiogroup"
+                aria-label="Loader style"
+              >
+                {STOREFRONT_LOADER_STYLES.map((style) => {
+                  const meta = STOREFRONT_LOADER_STYLE_META[style];
+                  const selected = field.value === style;
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      disabled={locked}
+                      onClick={() =>
+                        field.onChange(style as StorefrontLoaderStyle)
+                      }
+                      className={cn(
+                        "flex flex-col items-center gap-1 rounded-lg border px-1.5 py-2 text-center transition-colors",
+                        selected
+                          ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] ring-1 ring-[var(--color-primary)]"
+                          : "border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))]",
+                        locked && "cursor-not-allowed opacity-60",
+                      )}
+                    >
+                      <StorefrontLoaderMark style={style} size={22} />
+                      <span className="text-[10px] font-semibold text-[var(--color-foreground)]">
+                        {meta.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          />
+          <Controller
+            name="storefrontLoaderLabel"
+            control={control}
+            render={({ field, fieldState }) => (
+              <div>
+                <TextField
+                  {...field}
+                  label="Loading label"
+                  placeholder="Loading…"
+                  fullWidth
+                  size="small"
+                  disabled={locked}
+                  error={Boolean(fieldState.error)}
+                />
+                <FieldError message={fieldState.error?.message} />
+              </div>
+            )}
+          />
+        </Section>
+
+        <Section
+          title="Media limits"
+          hint="Admin image upload cap."
+        >
+          <div className="rounded-lg border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] p-2.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                  <ImageOutlinedIcon sx={{ fontSize: 14 }} />
+                </span>
+                <p className="text-[11px] font-semibold text-[var(--color-foreground)]">
+                  Images
+                </p>
+              </div>
+              <span className="shrink-0 rounded-md border border-[color-mix(in_srgb,var(--color-primary)_28%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] px-1.5 py-0.5 text-[9px] font-semibold tabular-nums text-[var(--color-primary)]">
+                {adminImageMaxMb} MB
+              </span>
+            </div>
+            <Controller
+              name="adminImageMaxMb"
+              control={control}
+              render={({ field }) => (
+                <AdminSelect
+                  label="Max size"
+                  required
+                  disabled={locked}
+                  value={String(field.value)}
+                  onChange={(next) => field.onChange(Number(next))}
+                  name={field.name}
+                  helperText="1–10 MB"
+                  options={adminImageMaxMbOptions()}
+                />
+              )}
+            />
           </div>
         </Section>
 
@@ -901,8 +785,8 @@ export function GeneralSettingsForm({
 
         <Section
           className={adminCardSpanFull()}
-          title="Social profiles"
-          hint="Full profile URLs. WhatsApp is under Store identity."
+          title="Social"
+          hint="Profile URLs. WhatsApp is under Store identity."
         >
           <div className={adminFieldsGrid(3)}>
             {(
@@ -937,19 +821,6 @@ export function GeneralSettingsForm({
           </div>
         </Section>
       </div>
-
-      <MediaPicker
-        open={contactBannerMediaOpen}
-        folder="cms"
-        allowUpload
-        onClose={() => setContactBannerMediaOpen(false)}
-        onSelect={(selection) => {
-          setValue("contactBannerImagePath", selection.storagePath, {
-            shouldDirty: true,
-          });
-          setContactBannerMediaOpen(false);
-        }}
-      />
     </form>
   );
 }

@@ -139,6 +139,8 @@ export interface StoreConfig {
   legalName?: string;
   registrationEnabled?: boolean;
   checkoutGuestAllowed?: boolean;
+  /** Dial code for store phones (e.g. +91). */
+  phoneCountryCode?: string;
 }
 
 export interface ContactConfig {
@@ -154,6 +156,19 @@ export interface ContactConfig {
   /** Contact page hero banner — off until enabled + path. */
   bannerEnabled?: boolean;
   bannerImagePath?: string;
+  /** Visit & reach us side image — off by default. */
+  spotlightEnabled?: boolean;
+  spotlightImagePath?: string;
+  /** Storefront /contact H1 (falls back to “Let’s connect”). */
+  pageHeading?: string;
+  /** Line under the heading. */
+  pageSupport?: string;
+  /** Show map block on /contact. Default true when unset. */
+  mapEnabled?: boolean;
+  /** Optional Google Maps embed `src` URL (preferred pin). */
+  mapEmbedUrl?: string;
+  /** Dial code mirrored from store settings for display helpers. */
+  phoneCountryCode?: string;
 }
 
 export interface SocialLinksConfig {

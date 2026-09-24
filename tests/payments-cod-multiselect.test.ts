@@ -37,7 +37,7 @@ describe("Razorpay + COD multi-select payments", () => {
     expect(form).toContain("razorpayEnabled");
     expect(form).toContain("codEnabled");
     expect(form).not.toMatch(/Other \(not set up yet\)|Reserved for another provider/);
-    expect(form).toContain("Fee applies only for Razorpay");
+    expect(form).toContain("Fee applies only for online");
   });
 
   it("checkout exposes method picker and COD place-order path", () => {

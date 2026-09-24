@@ -18,6 +18,12 @@ const SECTIONS = [
       "Edit the /about founder story — portrait, quote, and optional heritage train milestones.",
   },
   {
+    href: "/content/contact",
+    title: "Contact",
+    description:
+      "Banner, heading, and contact details for the storefront /contact page.",
+  },
+  {
     href: "/content/legal",
     title: "Legal pages",
     description:

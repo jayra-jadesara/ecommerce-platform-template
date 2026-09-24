@@ -232,7 +232,7 @@ export function AboutPageForm({
 
       <MediaPicker
         open={Boolean(mediaField)}
-        folder="cms"
+        folder="about"
         onClose={() => setMediaField(null)}
         onSelect={(selection) => {
           if (!mediaField) return;

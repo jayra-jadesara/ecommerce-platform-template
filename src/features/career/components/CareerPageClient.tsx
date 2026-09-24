@@ -13,6 +13,7 @@ type CareerPageClientProps = {
   formEnabled: boolean;
   formTitle: string;
   careersEmail: string | null;
+  phoneCountryCode?: string;
 };
 
 export function CareerPageClient({
@@ -20,6 +21,7 @@ export function CareerPageClient({
   formEnabled,
   formTitle,
   careersEmail,
+  phoneCountryCode,
 }: CareerPageClientProps) {
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
@@ -47,6 +49,7 @@ export function CareerPageClient({
             formTitle={formTitle}
             careersEmail={careersEmail}
             selectedJobId={selectedJobId}
+            phoneCountryCode={phoneCountryCode}
           />
         </section>
       ) : (

@@ -1,11 +1,15 @@
 import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { AddressBookClient } from "@/features/addresses/components/AddressBookClient";
 import { getCustomerAddresses } from "@/features/addresses/service";
+import { getStoreLocationDefaults } from "@/lib/store-location";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountAddressesPage() {
-  const addresses = await getCustomerAddresses();
+  const [addresses, location] = await Promise.all([
+    getCustomerAddresses(),
+    getStoreLocationDefaults(),
+  ]);
 
   return (
     <div>
@@ -15,7 +19,11 @@ export default async function AccountAddressesPage() {
         default.
       </p>
       <div className="mt-6">
-        <AddressBookClient initialAddresses={addresses} />
+        <AddressBookClient
+          initialAddresses={addresses}
+          phoneCountryCode={location.phoneCountryCode}
+          storeCountry={location.country}
+        />
       </div>
     </div>
   );
