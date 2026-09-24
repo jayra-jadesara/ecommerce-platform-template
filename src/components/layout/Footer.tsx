@@ -67,16 +67,21 @@ export function Footer({
   const year = new Date().getFullYear();
   const copyright = `© ${year} ${brand.name}. All rights reserved.`;
 
-  const socialLinks = SOCIAL_ITEMS.filter(({ key }) => Boolean(social[key]));
+  const socialSafe = social ?? {};
+  const contactSafe = contact ?? {};
+
+  const socialLinks = SOCIAL_ITEMS.filter(({ key }) =>
+    Boolean(socialSafe[key]),
+  );
   const hasContact =
     footer.showContact &&
     Boolean(
-      contact.email ||
-        contact.phone ||
-        contact.phoneSecondary ||
-        contact.addressLine1 ||
-        contact.city ||
-        contact.country,
+      contactSafe.email ||
+        contactSafe.phone ||
+        contactSafe.phoneSecondary ||
+        contactSafe.addressLine1 ||
+        contactSafe.city ||
+        contactSafe.country,
     );
   const shopLinks = navigation.primary.slice(0, 6);
   const supportLinks = navigation.footer;
@@ -180,44 +185,46 @@ export function Footer({
               </p>
               {hasContact ? (
                 <ul className="sf-footer-muted mt-1.5 space-y-1 text-xs md:mt-2.5 md:space-y-1.5 md:text-sm">
-                  {contact.phone ? (
+                  {contactSafe.phone ? (
                     <li>
                       <a
-                        href={`tel:${contact.phone.replace(/\s+/g, "")}`}
+                        href={`tel:${contactSafe.phone.replace(/\s+/g, "")}`}
                         className="hover:text-[var(--color-primary)]"
                       >
-                        {contact.phone}
+                        {contactSafe.phone}
                       </a>
                     </li>
                   ) : null}
-                  {contact.phoneSecondary ? (
+                  {contactSafe.phoneSecondary ? (
                     <li>
                       <a
-                        href={`tel:${contact.phoneSecondary.replace(/\s+/g, "")}`}
+                        href={`tel:${contactSafe.phoneSecondary.replace(/\s+/g, "")}`}
                         className="hover:text-[var(--color-primary)]"
                       >
-                        {contact.phoneSecondary}
+                        {contactSafe.phoneSecondary}
                       </a>
                     </li>
                   ) : null}
-                  {contact.email ? (
+                  {contactSafe.email ? (
                     <li>
                       <a
-                        href={`mailto:${contact.email}`}
+                        href={`mailto:${contactSafe.email}`}
                         className="underline underline-offset-2 hover:text-[var(--color-primary)]"
                       >
-                        {contact.email}
+                        {contactSafe.email}
                       </a>
                     </li>
                   ) : null}
-                  {contact.addressLine1 || contact.city || contact.country ? (
+                  {contactSafe.addressLine1 ||
+                  contactSafe.city ||
+                  contactSafe.country ? (
                     <li className="leading-relaxed">
                       {[
-                        contact.addressLine1,
-                        contact.city,
-                        contact.state,
-                        contact.postalCode,
-                        contact.country,
+                        contactSafe.addressLine1,
+                        contactSafe.city,
+                        contactSafe.state,
+                        contactSafe.postalCode,
+                        contactSafe.country,
                       ]
                         .filter(Boolean)
                         .join(", ")}
@@ -240,7 +247,7 @@ export function Footer({
                       {socialLinks.map(({ key, label, icon }) => (
                         <li key={key}>
                           <a
-                            href={social[key]}
+                            href={socialSafe[key]}
                             target="_blank"
                             rel="noopener noreferrer"
                             aria-label={label}

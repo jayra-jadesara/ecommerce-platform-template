@@ -1,4 +1,4 @@
-import type { AdminRoleCode } from "@/types/database";
+import type { AdminRoleCode, SystemAdminRoleCode } from "@/types/database";
 import { STAFF_ROLE_OPTIONS } from "@/features/admin/team/types";
 import {
   ADMIN_NAV_SECTION_LABELS,
@@ -10,7 +10,7 @@ import { permissionsForRoles } from "@/features/auth/permissions";
 
 /** Two-line plain summary — can / cannot. */
 export const ROLE_QUICK: Record<
-  AdminRoleCode,
+  SystemAdminRoleCode,
   { can: string; cannot: string }
 > = {
   SUPER_ADMIN: {
@@ -44,7 +44,7 @@ export const ROLE_QUICK: Record<
 };
 
 /** Longer bullets kept for tests / docs; UI uses ROLE_QUICK. */
-export const ROLE_SUMMARY_BULLETS: Record<AdminRoleCode, string[]> = {
+export const ROLE_SUMMARY_BULLETS: Record<SystemAdminRoleCode, string[]> = {
   SUPER_ADMIN: [
     ROLE_QUICK.SUPER_ADMIN.can,
     "Can add or remove team members",
@@ -92,13 +92,18 @@ export function roleOptionDescription(role: AdminRoleCode): string {
 
 export function roleOptionLevel(role: AdminRoleCode): string {
   return (
-    STAFF_ROLE_OPTIONS.find((option) => option.value === role)?.level ?? ""
+    STAFF_ROLE_OPTIONS.find((option) => option.value === role)?.level ??
+    (role.startsWith("custom_") ? "Custom" : "")
   );
 }
 
 /** Sidebar section labels this role will see (others stay hidden). */
-export function roleSidebarSections(role: AdminRoleCode): string[] {
-  const tree = getAdminNavTreeForPermissions(permissionsForRoles([role]));
+export function roleSidebarSections(
+  role: AdminRoleCode,
+  permissionOverride?: Set<import("@/features/auth/permissions").Permission>,
+): string[] {
+  const perms = permissionOverride ?? permissionsForRoles([role]);
+  const tree = getAdminNavTreeForPermissions(perms);
   const links = getAdminSidebarLinks(tree);
   const seen = new Set<AdminNavSection>();
   const ordered: string[] = [];

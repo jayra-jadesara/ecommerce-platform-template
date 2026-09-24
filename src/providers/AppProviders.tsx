@@ -23,7 +23,7 @@ export function AppProviders({ config, children }: AppProvidersProps) {
   const themeBoot = buildThemeBootScript(config);
 
   return (
-    <AppRouterCacheProvider options={{ enableCssLayer: true }}>
+    <AppRouterCacheProvider options={{ key: "mui", enableCssLayer: true }}>
       <ThemeBootScript script={themeBoot} />
       <PlatformConfigProvider config={config}>
         <QueryProvider>

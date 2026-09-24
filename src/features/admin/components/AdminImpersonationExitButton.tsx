@@ -4,7 +4,7 @@ import LoginOutlinedIcon from "@mui/icons-material/LoginOutlined";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { getAdminPath } from "@/config/admin-route";
-import { stopImpersonationAction } from "@/features/auth/impersonation-actions";
+import { stopImpersonationAction } from "@/features/auth/stop-impersonation-actions";
 import { cn } from "@/lib/cn";
 
 /** Compact exit control for sidebar / menus while impersonating. */
@@ -23,7 +23,7 @@ export function AdminImpersonationExitButton({
   function exit() {
     startTransition(async () => {
       await stopImpersonationAction();
-      router.push(getAdminPath("/team"));
+      router.push(getAdminPath("/team", { staffViewToken: null }));
       router.refresh();
     });
   }

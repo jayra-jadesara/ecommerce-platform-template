@@ -4,7 +4,7 @@ import LoginOutlinedIcon from "@mui/icons-material/LoginOutlined";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { getAdminPath } from "@/config/admin-route";
-import { stopImpersonationAction } from "@/features/auth/impersonation-actions";
+import { stopImpersonationAction } from "@/features/auth/stop-impersonation-actions";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
@@ -34,8 +34,8 @@ export function AdminImpersonationBanner({
             ) : null}
           </p>
           <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
-            Your Super Admin session stays signed in
-            {actorEmail ? ` (${actorEmail})` : ""}. Exit to return.
+            Staff menus in this tab only — your Super Admin tab is unchanged
+            {actorEmail ? ` (${actorEmail})` : ""}.
           </p>
         </div>
         <button
@@ -45,7 +45,7 @@ export function AdminImpersonationBanner({
           onClick={() => {
             startTransition(async () => {
               await stopImpersonationAction();
-              router.push(getAdminPath("/team"));
+              router.push(getAdminPath("/team", { staffViewToken: null }));
               router.refresh();
             });
           }}

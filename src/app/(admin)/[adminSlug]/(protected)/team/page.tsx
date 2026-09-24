@@ -1,7 +1,9 @@
+import { cookies } from "next/headers";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { AdminTeamManager } from "@/features/admin/team/components/AdminTeamManager";
 import {
   listAdminTeamMembers,
+  listCustomRoles,
   listLinkableStoreAccounts,
 } from "@/features/admin/team/service";
 import { ASSIGNABLE_ROLES } from "@/features/admin/team/types";
@@ -15,13 +17,19 @@ import type { AdminRoleCode } from "@/types/database";
 
 export const dynamic = "force-dynamic";
 
+const STAFF_VIEW_FLASH_COOKIE = "wl_staff_view_flash";
+
 function parseStatus(value: string | undefined): "ALL" | "ACTIVE" | "INACTIVE" {
   if (value === "ACTIVE" || value === "INACTIVE") return value;
   return "ALL";
 }
 
-function parseRole(value: string | undefined): AdminRoleCode | "ALL" {
-  if (value && (ASSIGNABLE_ROLES as string[]).includes(value)) {
+function parseRole(
+  value: string | undefined,
+  customCodes: Set<string>,
+): AdminRoleCode | "ALL" {
+  if (!value) return "ALL";
+  if ((ASSIGNABLE_ROLES as string[]).includes(value) || customCodes.has(value)) {
     return value as AdminRoleCode;
   }
   return "ALL";
@@ -49,10 +57,21 @@ export default async function AdminTeamPage({
     hasRole(admin, "SUPER_ADMIN") &&
     hasPermission(admin, "users.manage") &&
     !admin.impersonation;
+  const canCreateRoles =
+    hasRole(admin, "SUPER_ADMIN") &&
+    hasPermission(admin, "users.manage") &&
+    !admin.impersonation;
   const params = await searchParams;
 
+  const jar = await cookies();
+  const staffViewError =
+    jar.get(STAFF_VIEW_FLASH_COOKIE)?.value?.trim() || null;
+
+  const customRoles = canManage ? await listCustomRoles() : [];
+  const customCodes = new Set(customRoles.map((role) => role.code));
+
   const status = parseStatus(params.status);
-  const role = parseRole(params.role);
+  const role = parseRole(params.role, customCodes);
   const pageSize = parsePageSize(params.pageSize);
   const page = Math.max(1, Number(params.page) || 1);
   const search = params.q?.trim() ?? "";
@@ -83,6 +102,7 @@ export default async function AdminTeamPage({
         initialStatus={status}
         initialRole={role}
         linkableAccounts={linkableAccounts}
+        customRoles={customRoles}
         currentUserId={actorUserId}
         canManage={canManage}
         canViewActivity={
@@ -90,8 +110,10 @@ export default async function AdminTeamPage({
           hasPermission(admin, "audit.view")
         }
         allowSuperAdminAssign={hasRole(admin, "SUPER_ADMIN") && !admin.impersonation}
+        canCreateRoles={canCreateRoles}
         canImpersonate={canImpersonate}
         isImpersonating={Boolean(admin.impersonation)}
+        initialStaffViewError={staffViewError}
       />
     </div>
   );

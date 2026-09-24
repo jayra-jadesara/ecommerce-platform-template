@@ -4,11 +4,11 @@ import { DeveloperCredit } from "@/components/layout/DeveloperCredit";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
-import creditJson from "@/data/developer-credit.json";
-import type { FooterFeaturedProduct, PlatformConfig } from "@/types";
+import { developerCredit } from "@/data/developer-credit";
 import type { CategoryMenuSource } from "@/features/catalog/category-menu";
+import type { FooterFeaturedProduct, PlatformConfig } from "@/types";
 
-interface AppLayoutProps {
+type AppLayoutProps = {
   config: PlatformConfig;
   children: ReactNode;
   /** Streamed cart control (Suspense). Falls back to empty badge if omitted. */
@@ -16,7 +16,7 @@ interface AppLayoutProps {
   featuredProduct?: FooterFeaturedProduct | null;
   /** Active categories for Products dropdown (empty when setting is off). */
   categoryMenu?: CategoryMenuSource[];
-}
+};
 
 /** Storefront chrome: header, footer, and scroll affordance. */
 export function AppLayout({
@@ -26,9 +26,7 @@ export function AppLayout({
   featuredProduct = null,
   categoryMenu = [],
 }: AppLayoutProps) {
-  const showDevCredit = Boolean(
-    (creditJson as { enabled?: boolean }).enabled,
-  );
+  const showDevCredit = Boolean(developerCredit.enabled);
 
   return (
     <div
@@ -43,9 +41,8 @@ export function AppLayout({
         header={config.header}
         cartSlot={cartSlot}
         categoryMenu={categoryMenu}
-        currency={config.store.currency}
       />
-      {children}
+      <main className="flex-1">{children}</main>
       <Footer
         brand={config.brand}
         navigation={config.navigation}
@@ -54,8 +51,8 @@ export function AppLayout({
         social={config.social}
         featuredProduct={featuredProduct}
       />
-      <DeveloperCredit />
       <ScrollToTop />
+      <DeveloperCredit />
     </div>
   );
 }

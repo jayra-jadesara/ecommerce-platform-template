@@ -112,14 +112,14 @@ const GROUPS: SettingsGroup[] = [
         href: "/settings/header",
         title: "Header layout",
         description: "Bar, sticky, logo size",
-        permission: "settings.view",
+        permission: "settings_header.view",
         icon: ViewAgendaOutlinedIcon,
       },
       {
         href: "/settings/footer",
         title: "Footer layout",
         description: "Footer text & contacts",
-        permission: "settings.view",
+        permission: "settings_footer.view",
         icon: VerticalAlignBottomOutlinedIcon,
       },
     ],
@@ -128,6 +128,8 @@ const GROUPS: SettingsGroup[] = [
 
 const HUB_PERMISSIONS: Permission[] = [
   "settings.view",
+  "settings_header.view",
+  "settings_footer.view",
   "branding.view",
   "navigation.view",
   "seo.view",

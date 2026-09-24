@@ -1,6 +1,6 @@
 import { FooterSettingsForm } from "@/features/admin/settings/components/FooterSettingsForm";
 import { loadFooterSettingsForm } from "@/features/admin/settings/load-forms";
-import { requirePermission, hasPermission } from "@/features/auth/session";
+import { requireAnyPermission, hasPermission } from "@/features/auth/session";
 import {
   getStoreBranding,
   getStoreContact,
@@ -12,14 +12,19 @@ import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 export const dynamic = "force-dynamic";
 
 export default async function AdminFooterSettingsPage() {
-  const admin = await requirePermission("settings.view");
+  const admin = await requireAnyPermission([
+    "settings_footer.view",
+    "settings.view",
+  ]);
   const [values, brand, contact, productOptions] = await Promise.all([
     loadFooterSettingsForm(),
     getStoreBranding(),
     getStoreContact(),
     listBlogProductOptions(),
   ]);
-  const canUpdate = hasPermission(admin, "settings.update");
+  const canUpdate =
+    hasPermission(admin, "settings_footer.update") ||
+    hasPermission(admin, "settings.update");
 
   return (
     <div className="space-y-3">

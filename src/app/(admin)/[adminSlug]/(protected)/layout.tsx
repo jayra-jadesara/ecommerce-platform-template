@@ -8,8 +8,10 @@ import {
   canAccessAdminPath,
 } from "@/features/admin/route-permissions";
 import { requireAdmin } from "@/features/auth/session";
+import { STAFF_VIEW_HEADER } from "@/features/auth/staff-view-constants";
 import { getSiteUrl } from "@/config/site";
 import { getPlatformConfigAsync } from "@/config/site.server";
+import { APP_VERSION } from "@/config/version";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +39,9 @@ export default async function AdminProtectedLayout({
 
   const headerList = await headers();
   const pathname = headerList.get("x-admin-pathname");
+  const staffViewToken = headerList.get(STAFF_VIEW_HEADER);
   if (pathname && !canAccessAdminPath(pathname, admin.permissions)) {
-    redirect(adminUnauthorizedPath());
+    redirect(adminUnauthorizedPath(staffViewToken));
   }
 
   const impersonation = admin.impersonation
@@ -56,7 +59,9 @@ export default async function AdminProtectedLayout({
       roles={admin.roles}
       navItems={navItems}
       siteUrl={getSiteUrl()}
+      appVersion={APP_VERSION}
       impersonation={impersonation}
+      staffViewToken={staffViewToken}
     >
       {children}
     </AdminShell>

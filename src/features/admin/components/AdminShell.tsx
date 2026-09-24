@@ -41,10 +41,11 @@ import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import IconButton from "@mui/material/IconButton";
 import { ThemeToggle } from "@/components/common/ThemeToggle";
 import { AdminUserMenu } from "@/features/admin/components/AdminUserMenu";
+import { AdminFooter } from "@/features/admin/components/AdminFooter";
 import { AdminImpersonationBanner } from "@/features/admin/components/AdminImpersonationBanner";
 import { AdminImpersonationExitButton } from "@/features/admin/components/AdminImpersonationExitButton";
 import { LogoutControl } from "@/features/auth/components/LogoutControl";
-import { getAdminPath } from "@/config/admin-route";
+import { getAdminPath, stripStaffViewFromPathname } from "@/config/admin-route";
 import {
   adminAppBg,
   adminBtn,
@@ -215,16 +216,17 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
     [results],
   );
 
-  useEffect(() => {
-    setHighlight(0);
-  }, [query, open]);
+  const activeHighlight =
+    flatResults.length === 0
+      ? 0
+      : Math.min(highlight, flatResults.length - 1);
 
   useEffect(() => {
     if (!open) return;
-    optionRefs.current[highlight]?.scrollIntoView({
+    optionRefs.current[activeHighlight]?.scrollIntoView({
       block: "nearest",
     });
-  }, [highlight, open]);
+  }, [activeHighlight, open]);
 
   useEffect(() => {
     if (!open) return;
@@ -249,14 +251,17 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
 
   function goTo(href: string) {
     setQuery("");
+    setHighlight(0);
     setOpen(false);
     inputRef.current?.blur();
-    router.push(href);
+    // Preserve `/as/{token}` when staff view is active in this tab.
+    router.push(getAdminPath(href));
   }
 
   function onKeyDown(event: ReactKeyboardEvent<HTMLInputElement>) {
     if (!open && (event.key === "ArrowDown" || event.key === "Enter")) {
       setOpen(true);
+      setHighlight(0);
       return;
     }
     if (!open) return;
@@ -279,13 +284,12 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
     }
     if (event.key === "Enter") {
       event.preventDefault();
-      const target = flatResults[highlight];
+      const target = flatResults[activeHighlight];
       if (target) goTo(target.href);
     }
   }
 
   let optionIndex = -1;
-  optionRefs.current = [];
 
   return (
     <div
@@ -303,17 +307,21 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
           aria-controls={listId}
           aria-autocomplete="list"
           aria-activedescendant={
-            open && flatResults[highlight]
-              ? `${listId}-opt-${flatResults[highlight]!.id}`
+            open && flatResults[activeHighlight]
+              ? `${listId}-opt-${flatResults[activeHighlight]!.id}`
               : undefined
           }
           value={query}
           placeholder="Search navigation…"
           autoComplete="off"
           className="h-10 w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] pl-10 pr-9 text-sm text-[var(--color-foreground)] shadow-[0_1px_0_color-mix(in_srgb,var(--color-foreground)_4%,transparent)] placeholder:text-[var(--color-muted)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--color-primary)_22%,transparent)] [&::-webkit-search-cancel-button]:hidden"
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            setHighlight(0);
+          }}
           onChange={(event) => {
             setQuery(event.target.value);
+            setHighlight(0);
             setOpen(true);
           }}
           onKeyDown={onKeyDown}
@@ -326,6 +334,7 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
             onMouseDown={(event) => event.preventDefault()}
             onClick={() => {
               setQuery("");
+              setHighlight(0);
               setOpen(true);
               inputRef.current?.focus();
             }}
@@ -380,7 +389,7 @@ function AdminNavSearch({ links }: { links: SearchLink[] }) {
                     {group.links.map((link) => {
                       optionIndex += 1;
                       const index = optionIndex;
-                      const active = index === highlight;
+                      const active = index === activeHighlight;
                       const Icon = link.icon ? ICONS[link.icon] : null;
                       return (
                         <li
@@ -457,7 +466,9 @@ export function AdminShell({
   roles,
   navItems,
   siteUrl,
+  appVersion,
   impersonation = null,
+  staffViewToken = null,
   children,
 }: {
   brandName: string;
@@ -465,17 +476,28 @@ export function AdminShell({
   roles: string[];
   navItems: AdminNavEntry[] | AdminNavItem[];
   siteUrl?: string;
+  /** From package.json — shown in the chrome footer. */
+  appVersion: string;
   impersonation?: {
     actorEmail: string | null;
     targetEmail: string | null;
     targetRoleLabel: string;
   } | null;
+  /** URL-scoped staff view token — keeps this tab isolated from Super Admin tabs. */
+  staffViewToken?: string | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [open, setOpen] = useState(false);
-  const loginRedirect = getAdminPath("/login");
+  const loginRedirect = getAdminPath("/login", { staffViewToken: null });
   const isImpersonating = Boolean(impersonation);
+  const pathForNav = stripStaffViewFromPathname(pathname);
+
+  const adminHref = (href: string) =>
+    getAdminPath(href, {
+      staffViewToken: staffViewToken ?? undefined,
+    });
 
   const tree = useMemo((): AdminNavEntry[] => {
     if (!navItems.length) return [];
@@ -509,7 +531,7 @@ export function AdminShell({
     })).filter((group) => group.links.length > 0);
   }, [sidebarLinks]);
 
-  const title = pageTitleFromPath(pathname, sidebarLinks);
+  const title = pageTitleFromPath(pathForNav, sidebarLinks);
   const roleLabel = roles.map(formatRole).join(" · ");
   const initials = (email ?? "A")
     .split("@")[0]!
@@ -531,6 +553,58 @@ export function AdminShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  // Keep staff-view URL prefix when clicking RSC links that omit `/as/{token}`.
+  useEffect(() => {
+    if (!staffViewToken) return;
+    const onClickCapture = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+      }
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a[href]");
+      if (!(anchor instanceof HTMLAnchorElement)) return;
+      if (anchor.target && anchor.target !== "_self") return;
+      const hrefAttr = anchor.getAttribute("href");
+      if (!hrefAttr || hrefAttr.startsWith("#") || hrefAttr.startsWith("mailto:")) {
+        return;
+      }
+      let url: URL;
+      try {
+        url = new URL(hrefAttr, window.location.origin);
+      } catch {
+        return;
+      }
+      if (url.origin !== window.location.origin) return;
+      const segment = url.pathname.split("/").filter(Boolean)[0];
+      if (!segment) return;
+      // Already under staff-view prefix
+      if (url.pathname.includes(`/${segment}/as/`)) return;
+      const adminBase = `/${segment}`;
+      if (
+        url.pathname !== adminBase &&
+        !url.pathname.startsWith(`${adminBase}/`)
+      ) {
+        return;
+      }
+      // Login / public admin auth — leave staff view
+      if (
+        url.pathname === `${adminBase}/login` ||
+        url.pathname.startsWith(`${adminBase}/login/`)
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const next = getAdminPath(url.pathname + url.search + url.hash, {
+        staffViewToken,
+      });
+      router.push(next);
+    };
+    document.addEventListener("click", onClickCapture, true);
+    return () => document.removeEventListener("click", onClickCapture, true);
+  }, [staffViewToken, router]);
+
   const navLinkClass = (active: boolean) =>
     cn(
       "relative flex items-center gap-2.5 rounded-xl px-2.5 py-[7px] text-[13px] font-medium transition-colors",
@@ -543,7 +617,7 @@ export function AdminShell({
     <>
       <div className="admin-sidebar-brand flex h-14 shrink-0 items-center gap-2 border-b border-[var(--color-border)] px-4">
         <Link
-          href={getAdminPath("/dashboard")}
+          href={adminHref("/dashboard")}
           className="min-w-0 flex-1 truncate text-[17px] font-semibold tracking-tight text-[var(--color-foreground)]"
           onClick={() => setOpen(false)}
         >
@@ -571,12 +645,12 @@ export function AdminShell({
             <p className={adminNavSectionLabel()}>{group.label}</p>
             <div className="space-y-1">
               {group.links.map((link) => {
-                const active = isActivePath(pathname, link.href);
+                const active = isActivePath(pathForNav, link.href);
                 const label = SIDEBAR_LABEL[link.id] ?? link.label;
                 return (
                   <Link
                     key={link.id}
-                    href={link.href}
+                    href={adminHref(link.href)}
                     className={navLinkClass(active)}
                     onClick={() => setOpen(false)}
                     aria-current={active ? "page" : undefined}
@@ -593,8 +667,8 @@ export function AdminShell({
         ))}
       </nav>
 
-      <div className="relative z-[1] shrink-0 border-t border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-card)_88%,transparent)] px-3 py-3 backdrop-blur-[6px]">
-        <div className="flex items-center gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2 shadow-[0_2px_8px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]">
+      <div className="relative z-[1] shrink-0 border-t border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2.5">
+        <div className="flex items-center gap-2.5">
           <span
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] text-[11px] font-semibold tracking-wide text-[var(--color-foreground)]"
             aria-hidden
@@ -730,6 +804,7 @@ export function AdminShell({
               {children}
             </div>
           </main>
+          <AdminFooter brandName={brandName} appVersion={appVersion} />
         </div>
       </div>
     </AdminDatePickersProvider>

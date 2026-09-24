@@ -1,7 +1,19 @@
-import type { AdminRoleCode } from "@/types/database";
+import {
+  isSystemAdminRoleCode,
+  type AdminRoleCode,
+  type SystemAdminRoleCode,
+} from "@/types/database";
+
+export type { SystemAdminRoleCode };
+export { isSystemAdminRoleCode };
 
 export const PERMISSIONS = [
   "dashboard.view",
+  /** Dashboard page cards — grantable separately in custom roles. */
+  "dash_overview.view",
+  "dash_charts.view",
+  "dash_attention.view",
+  "dash_recent.view",
   "products.view",
   "products.create",
   "products.update",
@@ -36,6 +48,12 @@ export const PERMISSIONS = [
   "product_images.delete",
   "settings.view",
   "settings.update",
+  /** Store layout / hosting — split from settings.view for custom roles. */
+  "settings_header.view",
+  "settings_header.update",
+  "settings_footer.view",
+  "settings_footer.update",
+  "platform.view",
   "branding.view",
   "branding.update",
   "navigation.view",
@@ -68,10 +86,37 @@ export type Permission = (typeof PERMISSIONS)[number];
 
 const ALL_PERMISSIONS: Permission[] = [...PERMISSIONS];
 
-export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
+/** Default dashboard cards when a role can open Dashboard. */
+const DASHBOARD_CARD_PERMISSIONS = [
+  "dash_overview.view",
+  "dash_charts.view",
+  "dash_attention.view",
+  "dash_recent.view",
+] as const satisfies readonly Permission[];
+
+/** Header / footer / hosting when a role can open Store settings. */
+const SETTINGS_DETAIL_PERMISSIONS = [
+  "settings_header.view",
+  "settings_header.update",
+  "settings_footer.view",
+  "settings_footer.update",
+  "platform.view",
+] as const satisfies readonly Permission[];
+
+const SETTINGS_DETAIL_VIEW_ONLY = [
+  "settings_header.view",
+  "settings_footer.view",
+  "platform.view",
+] as const satisfies readonly Permission[];
+
+export const ROLE_PERMISSIONS: Record<
+  SystemAdminRoleCode,
+  readonly Permission[]
+> = {
   SUPER_ADMIN: ALL_PERMISSIONS,
   ADMIN: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "products.view",
     "products.create",
     "products.update",
@@ -106,6 +151,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "product_images.delete",
     "settings.view",
     "settings.update",
+    ...SETTINGS_DETAIL_PERMISSIONS,
     "branding.view",
     "branding.update",
     "navigation.view",
@@ -132,6 +178,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
   ],
   EDITOR: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "products.view",
     "products.create",
     "products.update",
@@ -174,6 +221,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
   ],
   ORDER_MANAGER: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "orders.view",
     "orders.update",
     "customers.view",
@@ -184,6 +232,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
   ],
   MARKETING: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "products.view",
     "categories.view",
     "reviews.view",
@@ -214,6 +263,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
   ],
   SUPPORT: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "products.view",
     "categories.view",
     "inventory.view",
@@ -225,6 +275,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
   ],
   READER: [
     "dashboard.view",
+    ...DASHBOARD_CARD_PERMISSIONS,
     "products.view",
     "reviews.view",
     "categories.view",
@@ -236,6 +287,7 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
     "media.view",
     "product_images.view",
     "settings.view",
+    ...SETTINGS_DETAIL_VIEW_ONLY,
     "branding.view",
     "navigation.view",
     "seo.view",
@@ -251,11 +303,27 @@ export const ROLE_PERMISSIONS: Record<AdminRoleCode, readonly Permission[]> = {
 export function permissionsForRoles(roles: AdminRoleCode[]): Set<Permission> {
   const set = new Set<Permission>();
   for (const role of roles) {
+    if (!isSystemAdminRoleCode(role)) continue;
     const list = ROLE_PERMISSIONS[role];
     if (!list) continue;
     for (const permission of list) set.add(permission);
   }
   return set;
+}
+
+/** Merge TS system map + DB permission strings (unknown strings ignored). */
+export function mergePermissionSets(
+  ...sets: Array<Iterable<string> | Set<string> | null | undefined>
+): Set<Permission> {
+  const allowed = new Set<string>(PERMISSIONS);
+  const out = new Set<Permission>();
+  for (const set of sets) {
+    if (!set) continue;
+    for (const p of set) {
+      if (allowed.has(p)) out.add(p as Permission);
+    }
+  }
+  return out;
 }
 
 export function hasPermission(

@@ -1,13 +1,12 @@
-/**
- * Team feature barrel — client-safe types/constants + server actions only.
- * Import UI from `components/…` and server helpers from `service` directly.
- */
 export {
   ASSIGNABLE_ROLES,
   STAFF_ROLE_OPTIONS,
+  buildStaffRoleOptions,
+  type CustomRoleDefinition,
   type LinkableStoreAccount,
   type StaffActivityItem,
   type StaffActivityQuery,
+  type StaffRoleOption,
   type TeamListQuery,
   type TeamListResult,
   type TeamMember,
@@ -22,6 +21,10 @@ export {
   setAdminActiveAction,
   removeAdminStaffAction,
   listStaffActivityAction,
+  listCustomRolesAction,
+  createCustomRoleAction,
+  updateCustomRoleAction,
+  deleteCustomRoleAction,
 } from "@/features/admin/team/actions";
 export { ROLE_SUMMARY_BULLETS } from "@/features/admin/team/role-summaries";
 export {

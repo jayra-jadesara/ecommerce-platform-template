@@ -139,3 +139,69 @@ export async function listStaffActivityAction(
   const { listStaffActivity } = await teamService();
   return listStaffActivity(userId, options);
 }
+
+export async function listCustomRolesAction() {
+  const { listCustomRoles } = await teamService();
+  return listCustomRoles();
+}
+
+export async function createCustomRoleAction(input: {
+  name: string;
+  description?: string | null;
+  permissions: string[];
+}) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "TEAM_CREATE_CUSTOM_ROLE",
+      feature: "USERS",
+      route: TEAM_ROUTE,
+    },
+    async () => {
+      const { createCustomRole } = await teamService();
+      return createCustomRole(input);
+    },
+  );
+}
+
+export async function updateCustomRoleAction(input: {
+  roleId: string;
+  name: string;
+  description?: string | null;
+  permissions: string[];
+}) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "TEAM_UPDATE_CUSTOM_ROLE",
+      feature: "USERS",
+      entityType: "roles",
+      entityId: input.roleId,
+      route: TEAM_ROUTE,
+    },
+    async () => {
+      const { updateCustomRole } = await teamService();
+      return updateCustomRole(input);
+    },
+  );
+}
+
+export async function deleteCustomRoleAction(roleId: string) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "TEAM_DELETE_CUSTOM_ROLE",
+      feature: "USERS",
+      entityType: "roles",
+      entityId: roleId,
+      route: TEAM_ROUTE,
+    },
+    async () => {
+      const { deleteCustomRole } = await teamService();
+      return deleteCustomRole(roleId);
+    },
+  );
+}

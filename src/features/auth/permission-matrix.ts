@@ -32,6 +32,10 @@ export const PERMISSION_VERB_LABELS: Record<PermissionVerb, string> = {
 
 export type PermissionAreaId =
   | "dashboard"
+  | "dash_overview"
+  | "dash_charts"
+  | "dash_attention"
+  | "dash_recent"
   | "products"
   | "reviews"
   | "categories"
@@ -43,6 +47,9 @@ export type PermissionAreaId =
   | "media"
   | "product_images"
   | "settings"
+  | "settings_header"
+  | "settings_footer"
+  | "platform"
   | "branding"
   | "navigation"
   | "seo"
@@ -57,6 +64,10 @@ export type PermissionAreaId =
 
 export const PERMISSION_AREA_LABELS: Record<PermissionAreaId, string> = {
   dashboard: "Dashboard",
+  dash_overview: "Dashboard · Overview",
+  dash_charts: "Dashboard · Charts",
+  dash_attention: "Dashboard · Attention",
+  dash_recent: "Dashboard · Recent orders",
   products: "Products",
   reviews: "Reviews",
   categories: "Categories",
@@ -68,6 +79,9 @@ export const PERMISSION_AREA_LABELS: Record<PermissionAreaId, string> = {
   media: "Media",
   product_images: "Product images",
   settings: "Settings",
+  settings_header: "Header layout",
+  settings_footer: "Footer layout",
+  platform: "Hosting & storage",
   branding: "Branding",
   navigation: "Navigation",
   seo: "SEO",
@@ -83,6 +97,10 @@ export const PERMISSION_AREA_LABELS: Record<PermissionAreaId, string> = {
 
 const AREA_ORDER: PermissionAreaId[] = [
   "dashboard",
+  "dash_overview",
+  "dash_attention",
+  "dash_recent",
+  "dash_charts",
   "products",
   "categories",
   "inventory",
@@ -98,6 +116,9 @@ const AREA_ORDER: PermissionAreaId[] = [
   "theme",
   "navigation",
   "settings",
+  "settings_header",
+  "settings_footer",
+  "platform",
   "shipping",
   "payments",
   "coupons",

@@ -4,11 +4,19 @@ import {
   ROLE_QUICK,
   roleOptionDescription,
   roleOptionLabel,
-  roleOptionLevel,
   roleSidebarSections,
 } from "@/features/admin/team/role-summaries";
-import { STAFF_ROLE_OPTIONS } from "@/features/admin/team/types";
+import { RoleMenuAccessList } from "@/features/admin/team/components/RoleMenuAccessList";
+import {
+  STAFF_ROLE_OPTIONS,
+  type StaffRoleOption,
+} from "@/features/admin/team/types";
 import { ADMIN_NAV_SECTION_LABELS, type AdminNavSection } from "@/features/admin/nav";
+import {
+  permissionsForRoles,
+  type Permission,
+} from "@/features/auth/permissions";
+import { isSystemAdminRoleCode } from "@/types/database";
 import { AdminRadio } from "@/features/admin/ui/AdminRadio";
 import { cn } from "@/lib/cn";
 import type { AdminRoleCode } from "@/types/database";
@@ -30,6 +38,8 @@ type AdminRoleSummaryProps = {
   person?: AdminRolePerson | null;
   /** Denser layout for dialogs that must fit without page scroll. */
   compact?: boolean;
+  /** System + custom roles (defaults to built-in system roles only). */
+  roleOptions?: StaffRoleOption[];
 };
 
 const SECTION_ORDER: AdminNavSection[] = [
@@ -40,6 +50,23 @@ const SECTION_ORDER: AdminNavSection[] = [
   "system",
   "store",
 ];
+
+function permissionsForOption(option: StaffRoleOption): Set<Permission> {
+  if (option.permissions?.length) {
+    return new Set(option.permissions);
+  }
+  return permissionsForRoles([option.value]);
+}
+
+function quickForOption(option: StaffRoleOption): { can: string; cannot: string } {
+  if (isSystemAdminRoleCode(option.value) && ROLE_QUICK[option.value]) {
+    return ROLE_QUICK[option.value];
+  }
+  return {
+    can: "Menus granted by the permissions below",
+    cannot: "Team and audit (Super Admin only)",
+  };
+}
 
 /**
  * Premium split role picker: roles rail + access preview panel.
@@ -53,15 +80,21 @@ export function AdminRoleSummary({
   className,
   person = null,
   compact = false,
+  roleOptions = STAFF_ROLE_OPTIONS,
 }: AdminRoleSummaryProps) {
-  const options = STAFF_ROLE_OPTIONS.filter(
+  const options = roleOptions.filter(
     (option) => allowSuperAdmin || option.value !== "SUPER_ADMIN",
   );
   const selected = value
     ? (options.find((option) => option.value === value) ?? null)
     : null;
-  const quick = value ? ROLE_QUICK[value] : null;
-  const openSections = new Set(value ? roleSidebarSections(value) : []);
+  const quick = selected ? quickForOption(selected) : null;
+  const selectedPerms = selected ? permissionsForOption(selected) : null;
+  const openSections = new Set(
+    selected && selectedPerms
+      ? roleSidebarSections(selected.value, selectedPerms)
+      : [],
+  );
   const personName = person?.name?.trim() || null;
   const personEmail = person?.email?.trim() || null;
   const personInitials = (personName || personEmail || "?")
@@ -144,13 +177,20 @@ export function AdminRoleSummary({
                         onChange={() => onChange(option.value)}
                       />
                       <span className="min-w-0 flex-1">
-                        <span
-                          className={cn(
-                            "block font-semibold leading-tight text-[var(--color-foreground)]",
-                            compact ? "text-[12px]" : "text-[13px]",
-                          )}
-                        >
-                          {option.label}
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span
+                            className={cn(
+                              "block truncate font-semibold leading-tight text-[var(--color-foreground)]",
+                              compact ? "text-[12px]" : "text-[13px]",
+                            )}
+                          >
+                            {option.label}
+                          </span>
+                          {!option.isSystem ? (
+                            <span className="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.04em] text-[var(--color-primary)]">
+                              Custom
+                            </span>
+                          ) : null}
                         </span>
                         {!compact ? (
                           <span className="mt-0.5 block text-[10px] text-[var(--color-muted)]">
@@ -216,7 +256,7 @@ export function AdminRoleSummary({
                 compact ? "gap-2.5 p-2.5" : "gap-4 p-4",
               )}
             >
-              {selected && quick ? (
+              {selected && quick && selectedPerms ? (
                 <>
                   <div>
                     <div className="flex flex-wrap items-baseline gap-2">
@@ -226,10 +266,10 @@ export function AdminRoleSummary({
                           compact ? "text-[15px]" : "text-[18px]",
                         )}
                       >
-                        {roleOptionLabel(selected.value)}
+                        {selected.label}
                       </h3>
                       <span className="rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.05em] text-[var(--color-primary)]">
-                        {roleOptionLevel(selected.value)}
+                        {selected.level}
                       </span>
                     </div>
                     <p
@@ -240,7 +280,9 @@ export function AdminRoleSummary({
                           : "max-w-md text-[13px] leading-relaxed",
                       )}
                     >
-                      {roleOptionDescription(selected.value)}
+                      {selected.description ||
+                        roleOptionDescription(selected.value) ||
+                        roleOptionLabel(selected.value)}
                     </p>
                   </div>
 
@@ -296,7 +338,7 @@ export function AdminRoleSummary({
                           compact ? "text-[11px]" : "text-[12px]",
                         )}
                       >
-                        Sidebar access
+                        Sidebar sections
                       </p>
                       {!compact ? (
                         <p className="text-[10px] text-[var(--color-muted)]">
@@ -344,6 +386,11 @@ export function AdminRoleSummary({
                       })}
                     </ul>
                   </div>
+
+                  <RoleMenuAccessList
+                    permissions={selectedPerms}
+                    compact={compact}
+                  />
                 </>
               ) : (
                 <div className={cn("m-auto text-center", compact ? "py-6" : "max-w-[14rem] py-10")}>

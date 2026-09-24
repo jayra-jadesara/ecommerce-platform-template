@@ -24,7 +24,7 @@ const ADMIN_ROUTE_RULES: RouteRule[] = [
   { prefix: "/orders", anyOf: ["orders.view"] },
   { prefix: "/customers", anyOf: ["customers.view"] },
   { prefix: "/error-logs", anyOf: ["error_logs.view"] },
-  { prefix: "/platform-usage", anyOf: ["settings.view"] },
+  { prefix: "/platform-usage", anyOf: ["platform.view", "settings.view"] },
   { prefix: "/media", anyOf: ["media.view"] },
   { prefix: "/content", anyOf: ["content.view", "cms.view", "blog.view"] },
   { prefix: "/cms", anyOf: ["cms.view", "content.view"] },
@@ -37,12 +37,20 @@ const ADMIN_ROUTE_RULES: RouteRule[] = [
   { prefix: "/settings/shipping", anyOf: ["shipping.view"] },
   { prefix: "/settings/payments", anyOf: ["payments.view"] },
   { prefix: "/settings/coupons", anyOf: ["coupons.view"] },
-  { prefix: "/settings/header", anyOf: ["settings.view"] },
-  { prefix: "/settings/footer", anyOf: ["settings.view"] },
+  {
+    prefix: "/settings/header",
+    anyOf: ["settings_header.view", "settings.view"],
+  },
+  {
+    prefix: "/settings/footer",
+    anyOf: ["settings_footer.view", "settings.view"],
+  },
   {
     prefix: "/settings",
     anyOf: [
       "settings.view",
+      "settings_header.view",
+      "settings_footer.view",
       "branding.view",
       "navigation.view",
       "seo.view",
@@ -81,9 +89,22 @@ export function resolveAdminRoutePermissions(
     return null;
   }
 
+  // Staff-view entry — Super Admin only; handler enforces auth.
+  if (relative === "/view-as" || relative.startsWith("/view-as/")) {
+    return null;
+  }
+
+  // URL-scoped staff view prefix (normally stripped in proxy).
+  const pathRelative = relative.startsWith("/as/")
+    ? relative.replace(/^\/as\/[^/]+/, "") || "/"
+    : relative;
+
   let best: RouteRule | null = null;
   for (const rule of ADMIN_ROUTE_RULES) {
-    if (relative === rule.prefix || relative.startsWith(`${rule.prefix}/`)) {
+    if (
+      pathRelative === rule.prefix ||
+      pathRelative.startsWith(`${rule.prefix}/`)
+    ) {
       if (!best || rule.prefix.length > best.prefix.length) {
         best = rule;
       }
@@ -101,6 +122,8 @@ export function canAccessAdminPath(
   return required.some((permission) => permissions.has(permission));
 }
 
-export function adminUnauthorizedPath(): string {
-  return getAdminPath("/unauthorized");
+export function adminUnauthorizedPath(staffViewToken?: string | null): string {
+  return getAdminPath("/unauthorized", {
+    staffViewToken: staffViewToken === undefined ? undefined : staffViewToken,
+  });
 }

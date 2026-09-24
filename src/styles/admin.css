@@ -643,6 +643,51 @@
 }
 
 /**
+ * Admin chrome footer — thin muted text bar, flush to the content column bottom.
+ */
+.admin-chrome-footer {
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-card);
+  border-radius: 0;
+}
+
+.admin-chrome-footer__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.15rem 1rem;
+  padding: 0.3rem 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .admin-chrome-footer__inner {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-chrome-footer__inner {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+}
+
+.admin-chrome-footer__line {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.3;
+  color: var(--color-muted);
+}
+
+.admin-chrome-footer__dot {
+  margin: 0 0.35rem;
+  color: color-mix(in srgb, var(--color-muted) 55%, transparent);
+}
+
+/**
  * Phase 25.4 — Motion & 3D true two-panel workspace.
  * Uses container + viewport queries so preview stays RIGHT on desktop
  * even when the admin sidebar narrows the content area.

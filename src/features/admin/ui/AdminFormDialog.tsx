@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
+import CloseIcon from "@mui/icons-material/Close";
 import Dialog from "@mui/material/Dialog";
 import DialogActions from "@mui/material/DialogActions";
 import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
+import IconButton from "@mui/material/IconButton";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
@@ -30,6 +32,13 @@ export type AdminFormDialogProps = {
   hideCancel?: boolean;
   /** Hide the whole footer (custom actions live in children). */
   hideActions?: boolean;
+  /** Show an X control in the title bar. */
+  showCloseIcon?: boolean;
+  /**
+   * Called by the X button and backdrop/Escape.
+   * Defaults to `onClose` (cancel button still uses `onClose`).
+   */
+  onDismiss?: () => void;
   onClose: () => void;
   onConfirm: () => void;
   children: ReactNode;
@@ -53,6 +62,8 @@ export function AdminFormDialog({
   pendingLabel = "Saving…",
   hideCancel = false,
   hideActions = false,
+  showCloseIcon = false,
+  onDismiss,
   onClose,
   onConfirm,
   children,
@@ -60,11 +71,12 @@ export function AdminFormDialog({
 }: AdminFormDialogProps) {
   const titleId = "admin-form-dialog-title";
   const descId = description ? "admin-form-dialog-desc" : undefined;
+  const dismiss = onDismiss ?? onClose;
 
   return (
     <Dialog
       open={open}
-      onClose={pending ? undefined : onClose}
+      onClose={pending ? undefined : dismiss}
       fullWidth
       maxWidth={maxWidth}
       aria-labelledby={titleId}
@@ -88,9 +100,28 @@ export function AdminFormDialog({
         className={
           dense ? "!px-3.5 !pb-0.5 !pt-3 !text-base" : "!pb-1 !pt-4 !text-lg"
         }
-        sx={{ flexShrink: 0 }}
+        sx={{
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 1,
+          pr: showCloseIcon ? (dense ? 1.25 : 1.5) : undefined,
+        }}
       >
-        {title}
+        <span className="min-w-0 flex-1">{title}</span>
+        {showCloseIcon ? (
+          <IconButton
+            type="button"
+            size="small"
+            aria-label="Close dialog"
+            disabled={pending}
+            onClick={dismiss}
+            className="!-mt-0.5 !text-[var(--color-muted)] hover:!bg-[var(--color-surface)] hover:!text-[var(--color-foreground)]"
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        ) : null}
       </DialogTitle>
       <DialogContent
         className={dense ? "!px-3.5 !pt-1.5" : "!pt-2"}

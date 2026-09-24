@@ -16,7 +16,7 @@ export default async function AdminUnauthorizedPage() {
       title="Access denied"
       subtitle={
         impersonating
-          ? "This staff role cannot open that area. Exit staff view to return to Super Admin."
+          ? "This staff role cannot open that area. Use Exit staff view, or switch to your Super Admin tab — that tab is unaffected."
           : "Your account is signed in but does not have permission for this area."
       }
     >

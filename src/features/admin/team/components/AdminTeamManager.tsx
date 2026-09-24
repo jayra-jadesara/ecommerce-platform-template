@@ -2,13 +2,10 @@
 
 import CloseIcon from "@mui/icons-material/Close";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
-import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import Alert from "@mui/material/Alert";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
@@ -18,13 +15,17 @@ import {
   setAdminActiveAction,
   updateAdminRolesAction,
 } from "@/features/admin/team/actions";
-import { startImpersonationAction } from "@/features/auth/impersonation-actions";
+import { AdminCreateRoleDialog } from "@/features/admin/team/components/AdminCreateRoleDialog";
 import { AdminRoleSummary } from "@/features/admin/team/components/AdminRoleSummary";
+import { TeamMemberRowActions } from "@/features/admin/team/components/TeamMemberRowActions";
 import type {
+  CustomRoleDefinition,
   LinkableStoreAccount,
   TeamMember,
 } from "@/features/admin/team/types";
-import { STAFF_ROLE_OPTIONS } from "@/features/admin/team/types";
+import {
+  buildStaffRoleOptions,
+} from "@/features/admin/team/types";
 import { getAdminPath } from "@/config/admin-route";
 import { PasswordField } from "@/features/auth/components/PasswordField";
 import { authEmailSchema } from "@/features/auth/validations";
@@ -36,7 +37,11 @@ import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { adminBtn, adminCard } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/format-date";
-import type { AdminRoleCode } from "@/types/database";
+import {
+  isSystemAdminRoleCode,
+  type AdminRoleCode,
+} from "@/types/database";
+
 
 const PAGE_SIZE_OPTIONS = [
   { value: "10", label: "10" },
@@ -54,7 +59,7 @@ type RoleFilter = AdminRoleCode | "ALL";
 type AddMode = "existing" | "create";
 type AddStep = "account" | "role";
 
-const ROLE_LABEL: Record<AdminRoleCode, string> = {
+const SYSTEM_ROLE_LABEL: Record<string, string> = {
   SUPER_ADMIN: "Super Admin",
   ADMIN: "Admin",
   EDITOR: "Editor",
@@ -65,14 +70,18 @@ const ROLE_LABEL: Record<AdminRoleCode, string> = {
 };
 
 function primaryRole(roles: AdminRoleCode[]): AdminRoleCode {
-  if (roles.includes("SUPER_ADMIN")) return "SUPER_ADMIN";
-  if (roles.includes("ADMIN")) return "ADMIN";
-  if (roles.includes("EDITOR")) return "EDITOR";
-  if (roles.includes("MARKETING")) return "MARKETING";
-  if (roles.includes("ORDER_MANAGER")) return "ORDER_MANAGER";
-  if (roles.includes("SUPPORT")) return "SUPPORT";
-  if (roles.includes("READER")) return "READER";
-  return "EDITOR";
+  for (const code of [
+    "SUPER_ADMIN",
+    "ADMIN",
+    "EDITOR",
+    "MARKETING",
+    "ORDER_MANAGER",
+    "SUPPORT",
+    "READER",
+  ] as const) {
+    if (roles.includes(code)) return code;
+  }
+  return roles[0] ?? "EDITOR";
 }
 
 function buildPageItems(
@@ -105,12 +114,15 @@ export function AdminTeamManager({
   initialStatus,
   initialRole,
   linkableAccounts = [],
+  customRoles: customRolesProp = [],
   currentUserId,
   canManage,
   canViewActivity,
   allowSuperAdminAssign,
+  canCreateRoles = false,
   canImpersonate = false,
   isImpersonating = false,
+  initialStaffViewError = null,
 }: {
   initialMembers: TeamMember[];
   total: number;
@@ -121,20 +133,32 @@ export function AdminTeamManager({
   initialRole: RoleFilter;
   /** Store shoppers not yet on the team — for “Existing account” dropdown. */
   linkableAccounts?: LinkableStoreAccount[];
+  customRoles?: CustomRoleDefinition[];
   currentUserId: string;
   canManage: boolean;
   canViewActivity: boolean;
   allowSuperAdminAssign: boolean;
+  /** Super Admin (not impersonating) may create/edit custom roles. */
+  canCreateRoles?: boolean;
   canImpersonate?: boolean;
   isImpersonating?: boolean;
+  /** From /view-as redirect when staff view could not start. */
+  initialStaffViewError?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(initialSearch);
   const [status, setStatus] = useState<StatusFilter>(initialStatus);
   const [roleFilter, setRoleFilter] = useState<RoleFilter>(initialRole);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(initialStaffViewError);
   const [success, setSuccess] = useState<string | null>(null);
+  const [customRoles, setCustomRoles] =
+    useState<CustomRoleDefinition[]>(customRolesProp);
+  const [customRolesSyncKey, setCustomRolesSyncKey] = useState(customRolesProp);
+  if (customRolesProp !== customRolesSyncKey) {
+    setCustomRolesSyncKey(customRolesProp);
+    setCustomRoles(customRolesProp);
+  }
 
   const [addOpen, setAddOpen] = useState(false);
   const [addStep, setAddStep] = useState<AddStep>("account");
@@ -152,6 +176,10 @@ export function AdminTeamManager({
   const [editMember, setEditMember] = useState<TeamMember | null>(null);
   const [editRole, setEditRole] = useState<AdminRoleCode>("EDITOR");
 
+  const [createRoleOpen, setCreateRoleOpen] = useState(false);
+  const [editingCustomRole, setEditingCustomRole] =
+    useState<CustomRoleDefinition | null>(null);
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, total);
@@ -160,15 +188,28 @@ export function AdminTeamManager({
     [page, totalPages],
   );
 
+  const roleOptions = useMemo(
+    () => buildStaffRoleOptions(customRoles),
+    [customRoles],
+  );
+
+  function roleLabel(code: AdminRoleCode): string {
+    return (
+      roleOptions.find((option) => option.value === code)?.label ??
+      SYSTEM_ROLE_LABEL[code] ??
+      code
+    );
+  }
+
   const roleSelectOptions = useMemo(
     () => [
       { value: "ALL", label: "All roles" },
-      ...STAFF_ROLE_OPTIONS.map((option) => ({
+      ...roleOptions.map((option) => ({
         value: option.value,
-        label: option.label,
+        label: option.isSystem ? option.label : `${option.label} (Custom)`,
       })),
     ],
-    [],
+    [roleOptions],
   );
 
   const linkableOptions = useMemo(
@@ -393,23 +434,40 @@ export function AdminTeamManager({
         </form>
 
         {canManage && !isImpersonating ? (
-          <button
-            type="button"
-            className={cn(adminBtn("primary"), "!min-h-10 shrink-0")}
-            disabled={pending}
-            onClick={() => {
-              setError(null);
-              setSuccess(null);
-              resetAddForm();
-              setAddOpen(true);
-            }}
-          >
-            Add Staff
-          </button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canCreateRoles ? (
+              <button
+                type="button"
+                className={cn(adminBtn("outline"), "!min-h-10")}
+                disabled={pending}
+                onClick={() => {
+                  setError(null);
+                  setSuccess(null);
+                  setEditingCustomRole(null);
+                  setCreateRoleOpen(true);
+                }}
+              >
+                Manage roles
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={cn(adminBtn("primary"), "!min-h-10")}
+              disabled={pending}
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                resetAddForm();
+                setAddOpen(true);
+              }}
+            >
+              Add Staff
+            </button>
+          </div>
         ) : null}
       </div>
 
-      {error && !addOpen && !editMember ? (
+      {error && !addOpen && !editMember && !createRoleOpen ? (
         <Alert severity="error" sx={{ py: 0, fontSize: 13 }}>
           {error}
         </Alert>
@@ -539,12 +597,18 @@ export function AdminTeamManager({
               {initialMembers.map((member) => {
                 const isSelf = member.userId === currentUserId;
                 const role = primaryRole(member.roles);
+                const isCustomRole = !isSystemAdminRoleCode(role);
                 const manageEnabled = canManage && !isImpersonating;
                 const canOpenAs =
                   canImpersonate &&
                   !isImpersonating &&
                   !isSelf &&
                   member.isActive;
+                const showEdit = manageEnabled;
+                const showActivity = canViewActivity;
+                const showOpenAs = canOpenAs;
+                const showAccess = manageEnabled;
+                const showRemove = manageEnabled && !isSelf;
                 return (
                   <tr
                     key={member.userId}
@@ -564,78 +628,31 @@ export function AdminTeamManager({
                       </p>
                     </td>
                     <td className="px-4 py-3 align-middle">
-                      <span className="inline-block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold">
-                        {ROLE_LABEL[role]}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-block rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-semibold">
+                          {roleLabel(role)}
+                        </span>
+                        {isCustomRole ? (
+                          <span
+                            className="inline-flex items-center rounded-full bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.04em] text-[var(--color-primary)]"
+                            title="Role created for this store"
+                          >
+                            Custom
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-middle">
-                      <AdminStatusBadge
-                        tone={member.isActive ? "success" : "neutral"}
-                        className="!px-1.5 !py-0 !text-[10px]"
-                      >
-                        {member.isActive ? "On" : "Blocked"}
-                      </AdminStatusBadge>
-                    </td>
-                    <td className="hidden px-4 py-3 align-middle text-xs text-[var(--color-muted)] sm:table-cell">
-                      {formatDateTime(member.createdAt)}
-                    </td>
-                    <td className="px-4 py-3 align-middle">
-                      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                        {manageEnabled ? (
-                          <button
-                            type="button"
-                            className={cn(
-                              adminBtn("outline"),
-                              "!min-h-8 !px-2.5 !text-xs",
-                            )}
-                            disabled={pending}
-                            onClick={() => openEdit(member)}
-                          >
-                            Edit Role
-                          </button>
-                        ) : null}
-                        {canViewActivity ? (
-                          <Link
-                            href={getAdminPath(`/team/${member.userId}`)}
-                            className={cn(
-                              adminBtn("ghost"),
-                              "!min-h-8 !px-2.5 !text-xs",
-                            )}
-                          >
-                            Activity
-                          </Link>
-                        ) : null}
-                        {canOpenAs ? (
-                          <IconButton
-                            size="small"
-                            title="Open admin as this person"
-                            aria-label={`Open admin as ${member.email || member.name || "staff"}`}
-                            disabled={pending}
-                            onClick={() => {
-                              setError(null);
-                              setSuccess(null);
-                              startTransition(async () => {
-                                const result =
-                                  await startImpersonationAction(member.userId);
-                                if (result && !result.ok) {
-                                  setError(result.error);
-                                }
-                              });
-                            }}
-                            sx={{
-                              color: "var(--color-primary)",
-                              "&:hover": {
-                                backgroundColor:
-                                  "color-mix(in srgb, var(--color-primary) 12%, transparent)",
-                              },
-                            }}
-                          >
-                            <VisibilityOutlinedIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        ) : null}
-                        {manageEnabled ? (
+                      <div className="flex flex-col items-start gap-1.5">
+                        <AdminStatusBadge
+                          tone={member.isActive ? "success" : "neutral"}
+                          className="!px-1.5 !py-0 !text-[10px]"
+                        >
+                          {member.isActive ? "On" : "Blocked"}
+                        </AdminStatusBadge>
+                        {showAccess ? (
                           <AdminToggle
-                            className="!ml-0.5 [&_.MuiFormControlLabel-root]:!mr-0 [&_.MuiFormControlLabel-label]:text-xs"
+                            className="[&_.MuiFormControlLabel-root]:!mr-0 [&_.MuiFormControlLabel-label]:text-[11px]"
                             checked={member.isActive}
                             disabled={pending}
                             label="Admin access"
@@ -657,36 +674,33 @@ export function AdminTeamManager({
                             }}
                           />
                         ) : null}
-                        {manageEnabled && !isSelf ? (
-                          <IconButton
-                            size="small"
-                            title="Remove from team"
-                            aria-label={`Remove ${member.email || member.name || "staff"} from team`}
-                            disabled={pending}
-                            onClick={() => {
-                              setError(null);
-                              setSuccess(null);
-                              setRemoveTarget(member);
-                            }}
-                            sx={{
-                              color: "var(--color-error)",
-                              "&:hover": {
-                                backgroundColor:
-                                  "color-mix(in srgb, var(--color-error) 12%, transparent)",
-                              },
-                            }}
-                          >
-                            <DeleteOutlineOutlinedIcon sx={{ fontSize: 18 }} />
-                          </IconButton>
-                        ) : null}
-                        {!manageEnabled &&
-                        !canViewActivity &&
-                        !canOpenAs ? (
-                          <span className="text-[12px] text-[var(--color-muted)]">
-                            —
-                          </span>
-                        ) : null}
                       </div>
+                    </td>
+                    <td className="hidden px-4 py-3 align-middle text-xs text-[var(--color-muted)] sm:table-cell">
+                      {formatDateTime(member.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <TeamMemberRowActions
+                        userId={member.userId}
+                        label={
+                          member.email || member.name || "staff"
+                        }
+                        showEdit={showEdit}
+                        showActivity={showActivity}
+                        showOpenAs={showOpenAs}
+                        showRemove={showRemove}
+                        disabled={pending}
+                        onEdit={() => openEdit(member)}
+                        onRemove={() => {
+                          setError(null);
+                          setSuccess(null);
+                          setRemoveTarget(member);
+                        }}
+                        onError={(message) => {
+                          setError(message);
+                          setSuccess(null);
+                        }}
+                      />
                     </td>
                   </tr>
                 );
@@ -1027,6 +1041,7 @@ export function AdminTeamManager({
                   disabled={pending || addStep !== "role"}
                   allowSuperAdmin={allowSuperAdminAssign}
                   onChange={setAddRole}
+                  roleOptions={roleOptions}
                 />
               </div>
             </div>
@@ -1072,12 +1087,13 @@ export function AdminTeamManager({
           disabled={pending}
           allowSuperAdmin={allowSuperAdminAssign}
           onChange={setEditRole}
+          roleOptions={roleOptions}
           person={
             editMember
               ? {
                   name: editMember.name,
                   email: editMember.email,
-                  currentRoleLabel: ROLE_LABEL[primaryRole(editMember.roles)],
+                  currentRoleLabel: roleLabel(primaryRole(editMember.roles)),
                 }
               : null
           }
@@ -1122,6 +1138,36 @@ export function AdminTeamManager({
           </p>
         </div>
       </AdminFormDialog>
+
+      {canCreateRoles ? (
+        <AdminCreateRoleDialog
+          open={createRoleOpen}
+          roles={customRoles}
+          editing={editingCustomRole}
+          initialTab={editingCustomRole ? "form" : "list"}
+          onClose={() => {
+            setCreateRoleOpen(false);
+            setEditingCustomRole(null);
+          }}
+          onSaved={(role) => {
+            setCustomRoles((prev) => {
+              const without = prev.filter((item) => item.id !== role.id);
+              return [...without, role].sort((a, b) =>
+                a.name.localeCompare(b.name),
+              );
+            });
+            setEditingCustomRole(null);
+            setSuccess(`Role “${role.name}” saved.`);
+            refresh();
+          }}
+          onDeleted={(roleId) => {
+            setCustomRoles((prev) => prev.filter((item) => item.id !== roleId));
+            setEditingCustomRole(null);
+            setSuccess("Custom role deleted.");
+            refresh();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

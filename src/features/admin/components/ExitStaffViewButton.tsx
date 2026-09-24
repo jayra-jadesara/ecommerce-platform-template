@@ -2,10 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import { stopStaffImpersonationAction } from "@/features/admin/team/actions";
+import { stopImpersonationAction } from "@/features/auth/stop-impersonation-actions";
 import { getAdminPath } from "@/config/admin-route";
-import { adminBtn } from "@/features/admin/ui/admin-classes";
-import { cn } from "@/lib/cn";
 
 /** Exit impersonation from pages outside AdminShell (e.g. unauthorized). */
 export function ExitStaffViewButton({
@@ -20,11 +18,14 @@ export function ExitStaffViewButton({
     <button
       type="button"
       disabled={pending}
-      className={cn(adminBtn("outline"), className)}
+      className={
+        className ??
+        "inline-flex min-h-10 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 text-sm font-semibold text-[var(--color-foreground)] transition hover:bg-[var(--color-surface)] disabled:opacity-55"
+      }
       onClick={() => {
         startTransition(async () => {
-          await stopStaffImpersonationAction();
-          router.push(getAdminPath("/team"));
+          await stopImpersonationAction();
+          router.push(getAdminPath("/team", { staffViewToken: null }));
           router.refresh();
         });
       }}

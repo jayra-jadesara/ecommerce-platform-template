@@ -6,13 +6,13 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getAdminPath } from "@/config/admin-route";
 import {
   hasPermission as roleHasPermission,
+  mergePermissionSets,
   permissionsForRoles,
   type Permission,
 } from "@/features/auth/permissions";
-import {
-  clearImpersonationCookie,
-  readImpersonationCookie,
-} from "@/features/auth/impersonation";
+import { readStaffViewOverlay } from "@/features/auth/impersonation";
+import { STAFF_VIEW_HEADER } from "@/features/auth/staff-view-constants";
+import { headers } from "next/headers";
 import { measureServerOperation } from "@/lib/perf/measure-server";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AdminRoleCode, Tables } from "@/types/database";
@@ -85,7 +85,7 @@ async function loadAdminContextForUserId(
   const roleIds = roleLinks.map((row) => row.role_id);
   const { data: roleRows, error: rolesError } = await supabase
     .from("roles")
-    .select("code")
+    .select("id, code")
     .in("id", roleIds);
 
   if (rolesError || !roleRows?.length) return null;
@@ -96,11 +96,39 @@ async function loadAdminContextForUserId(
 
   if (roles.length === 0) return null;
 
+  const { data: permRows } = await supabase
+    .from("role_permissions")
+    .select("role_id, permission")
+    .in("role_id", roleIds);
+
+  const permsByRoleId = new Map<string, string[]>();
+  for (const row of permRows ?? []) {
+    if (!row.role_id) continue;
+    const list = permsByRoleId.get(row.role_id) ?? [];
+    list.push(String(row.permission ?? ""));
+    permsByRoleId.set(row.role_id, list);
+  }
+
+  // Prefer DB grants per role (so Super Admin edits stick). Fall back to the
+  // TS system map only when a role has no role_permissions rows yet.
+  const permissionBags: Array<Iterable<string>> = [];
+  for (const row of roleRows) {
+    const dbList = (permsByRoleId.get(row.id) ?? []).filter(Boolean);
+    if (dbList.length > 0) {
+      permissionBags.push(dbList);
+      continue;
+    }
+    if (row.code) {
+      permissionBags.push(permissionsForRoles([row.code as AdminRoleCode]));
+    }
+  }
+  const permissions = mergePermissionSets(...permissionBags);
+
   return {
     user: { id: userId, email: emailHint ?? null },
     admin,
     roles,
-    permissions: permissionsForRoles(roles),
+    permissions,
   };
 }
 
@@ -132,7 +160,7 @@ export const getCurrentAdmin = cache(async (): Promise<AdminContext | null> => {
     );
     if (!actor) return null;
 
-    const overlay = await readImpersonationCookie();
+    const overlay = await readStaffViewOverlay();
     if (
       overlay &&
       overlay.actorUserId === authUser.id &&
@@ -161,37 +189,11 @@ export const getCurrentAdmin = cache(async (): Promise<AdminContext | null> => {
           },
         };
       }
-      await clearImpersonationCookie();
-    } else if (overlay && overlay.actorUserId !== authUser.id) {
-      await clearImpersonationCookie();
     }
 
     return { ...actor, impersonation: null };
   });
 });
-
-export async function requireAdmin(
-  permission?: Permission,
-): Promise<AdminContext> {
-  const admin = await getCurrentAdmin();
-  if (!admin) {
-    const user = await getCurrentUser();
-    if (!user) {
-      redirect(getAdminPath("/login"));
-    }
-    redirect(getAdminPath("/unauthorized"));
-  }
-  if (permission && !admin.permissions.has(permission)) {
-    redirect(getAdminPath("/unauthorized"));
-  }
-  return admin;
-}
-
-export async function requirePermission(
-  permission: Permission,
-): Promise<AdminContext> {
-  return requireAdmin(permission);
-}
 
 export function hasRole(
   admin: AdminContext,
@@ -205,7 +207,62 @@ export function hasPermission(
   admin: AdminContext,
   permission: Permission,
 ): boolean {
+  // Prefer the resolved set (system map and/or DB role_permissions for custom roles).
+  if (admin.permissions.has(permission)) return true;
+  // System roles: fall back to TS map when DB seed is older than the catalog.
   return roleHasPermission(admin.roles, permission);
+}
+
+async function unauthorizedRedirectPath(): Promise<string> {
+  const headerList = await headers();
+  const token = headerList.get(STAFF_VIEW_HEADER);
+  return getAdminPath("/unauthorized", {
+    staffViewToken: token,
+  });
+}
+
+export async function requireAdmin(
+  permission?: Permission,
+): Promise<AdminContext> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    const user = await getCurrentUser();
+    if (!user) {
+      redirect(getAdminPath("/login", { staffViewToken: null }));
+    }
+    redirect(await unauthorizedRedirectPath());
+  }
+  if (permission && !hasPermission(admin, permission)) {
+    redirect(await unauthorizedRedirectPath());
+  }
+  return admin;
+}
+
+export async function requirePermission(
+  permission: Permission,
+): Promise<AdminContext> {
+  return requireAdmin(permission);
+}
+
+/** Allow access when the admin has any one of the listed permissions. */
+export async function requireAnyPermission(
+  permissions: Permission[],
+): Promise<AdminContext> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    const user = await getCurrentUser();
+    if (!user) {
+      redirect(getAdminPath("/login", { staffViewToken: null }));
+    }
+    redirect(await unauthorizedRedirectPath());
+  }
+  if (
+    permissions.length > 0 &&
+    !permissions.some((permission) => hasPermission(admin, permission))
+  ) {
+    redirect(await unauthorizedRedirectPath());
+  }
+  return admin;
 }
 
 function toAuthUser(user: User): AuthUser {

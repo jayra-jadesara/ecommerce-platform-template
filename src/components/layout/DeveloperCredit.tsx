@@ -5,22 +5,10 @@ import EmailOutlinedIcon from "@mui/icons-material/EmailOutlined";
 import PhoneOutlinedIcon from "@mui/icons-material/PhoneOutlined";
 import { useEffect, useId, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import creditJson from "@/data/developer-credit.json";
+import { developerCredit } from "@/data/developer-credit";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 
-type DeveloperCreditData = {
-  enabled: boolean;
-  label: string;
-  company: string;
-  tagline: string;
-  email: string;
-  phone: string;
-  phoneHref: string;
-  website: string | null;
-  ctaLabel: string;
-};
-
-const credit = creditJson as DeveloperCreditData;
+const credit = developerCredit;
 
 const tabStyle: CSSProperties = {
   display: "inline-flex",
@@ -53,7 +41,7 @@ function getCoarsePointerServerSnapshot() {
 /**
  * Fixed right-edge developer marketing strip (storefront only).
  * Collapsed by default; expands on hover / focus / tap.
- * Content is static — edit `src/data/developer-credit.json`.
+ * Content is static — edit `src/data/developer-credit.json` (shared with admin footer).
  */
 export function DeveloperCredit() {
   const panelId = useId();

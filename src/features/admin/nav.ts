@@ -175,7 +175,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
     id: "platform-usage",
     label: "Hosting & storage",
     href: p("/platform-usage"),
-    permissions: ["settings.view"],
+    permissions: ["platform.view"],
     icon: "platform",
     section: "system",
   },
@@ -363,7 +363,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         id: "settings-header",
         label: "Header layout",
         href: p("/settings/header"),
-        permissions: ["settings.view"],
+        permissions: ["settings_header.view"],
         section: "store",
       },
       {
@@ -371,7 +371,7 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         id: "settings-footer",
         label: "Footer layout",
         href: p("/settings/footer"),
-        permissions: ["settings.view"],
+        permissions: ["settings_footer.view"],
         section: "store",
       },
       {

@@ -70,7 +70,8 @@ export type DiscountType = "percentage" | "fixed";
 export type ShippingMethod = "flat_rate" | "free" | "percentage" | "zone";
 export type InquiryStatus = "NEW" | "IN_PROGRESS" | "RESOLVED" | "SPAM";
 export type CareerApplicationStatus = "NEW" | "REVIEWED" | "ARCHIVED";
-export type AdminRoleCode =
+/** Built-in role codes. */
+export type SystemAdminRoleCode =
   | "SUPER_ADMIN"
   | "ADMIN"
   | "EDITOR"
@@ -78,6 +79,22 @@ export type AdminRoleCode =
   | "ORDER_MANAGER"
   | "SUPPORT"
   | "READER";
+/** System or custom role code (custom = slug like `custom_warehouse`). */
+export type AdminRoleCode = SystemAdminRoleCode | (string & {});
+export const SYSTEM_ADMIN_ROLE_CODES: readonly SystemAdminRoleCode[] = [
+  "SUPER_ADMIN",
+  "ADMIN",
+  "EDITOR",
+  "MARKETING",
+  "ORDER_MANAGER",
+  "SUPPORT",
+  "READER",
+] as const;
+export function isSystemAdminRoleCode(
+  code: string,
+): code is SystemAdminRoleCode {
+  return (SYSTEM_ADMIN_ROLE_CODES as readonly string[]).includes(code);
+}
 export type NavigationLocation = "header" | "footer";
 export type PageSectionType =
   | "hero"
@@ -675,6 +692,8 @@ export type Database = {
           code: AdminRoleCode;
           name: string;
           description: string | null;
+          is_system: boolean;
+          store_id: string | null;
           created_at: string;
         };
         Insert: {
@@ -682,9 +701,23 @@ export type Database = {
           code: AdminRoleCode;
           name: string;
           description?: string | null;
+          is_system?: boolean;
+          store_id?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["roles"]["Insert"]>;
+        Relationships: [];
+      };
+      role_permissions: {
+        Row: {
+          role_id: string;
+          permission: string;
+        };
+        Insert: {
+          role_id: string;
+          permission: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["role_permissions"]["Insert"]>;
         Relationships: [];
       };
       admin_users: {

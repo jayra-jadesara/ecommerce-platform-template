@@ -1,5 +1,5 @@
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
-import { requirePermission } from "@/features/auth/session";
+import { requireAnyPermission } from "@/features/auth/session";
 import { PlatformUsageClient } from "@/features/platform-usage/components/PlatformUsageClient";
 import { getSupabaseUsageSnapshot } from "@/features/platform-usage/supabase-usage-service";
 import { getVercelUsageSnapshot } from "@/features/platform-usage/vercel-usage-service";
@@ -7,7 +7,7 @@ import { getVercelUsageSnapshot } from "@/features/platform-usage/vercel-usage-s
 export const dynamic = "force-dynamic";
 
 export default async function AdminPlatformUsagePage() {
-  await requirePermission("settings.view");
+  await requireAnyPermission(["platform.view", "settings.view"]);
 
   const [supabase, vercel] = await Promise.all([
     getSupabaseUsageSnapshot(),

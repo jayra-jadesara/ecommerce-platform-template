@@ -13,6 +13,7 @@ import {
 } from "@/features/admin/team/activity-labels";
 import {
   ASSIGNABLE_ROLES,
+  type CustomRoleDefinition,
   type LinkableStoreAccount,
   type StaffActivityItem,
   type StaffActivityQuery,
@@ -21,9 +22,14 @@ import {
   type TeamMember,
   type TeamResult,
 } from "@/features/admin/team/types";
+import {
+  filterGrantablePermissions,
+  slugifyCustomRoleCode,
+} from "@/features/admin/team/role-permission-options";
 import { formatDateTime } from "@/lib/format-date";
 import {
   hasAnyRole,
+  mergePermissionSets,
   permissionsForRoles,
   type Permission,
 } from "@/features/auth/permissions";
@@ -36,6 +42,7 @@ import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { AdminRoleCode } from "@/types/database";
+import { isSystemAdminRoleCode } from "@/types/database";
 
 const TEAM_ROUTE = getAdminPath("/team");
 
@@ -61,22 +68,92 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-function normalizeRoles(roles: AdminRoleCode[]): AdminRoleCode[] {
-  const allowed = new Set(ASSIGNABLE_ROLES);
+function normalizeRoles(
+  roles: AdminRoleCode[],
+  allowed: Set<string>,
+): AdminRoleCode[] {
   return [...new Set(roles.filter((role) => allowed.has(role)))];
 }
 
 function normalizeSingleRole(
   role: AdminRoleCode | AdminRoleCode[] | undefined,
-  roles?: AdminRoleCode[],
+  roles: AdminRoleCode[] | undefined,
+  allowed: Set<string>,
 ): AdminRoleCode | null {
-  if (role && !Array.isArray(role) && ASSIGNABLE_ROLES.includes(role)) {
+  if (role && !Array.isArray(role) && allowed.has(role)) {
     return role;
   }
   const list = normalizeRoles(
-    Array.isArray(role) ? role : roles ?? [],
+    Array.isArray(role) ? role : (roles ?? []),
+    allowed,
   );
   return list[0] ?? null;
+}
+
+async function loadAssignableRoleCodes(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  storeId: string | null,
+): Promise<Set<string>> {
+  const allowed = new Set<string>(ASSIGNABLE_ROLES as string[]);
+  let query = supabase
+    .from("roles")
+    .select("code")
+    .eq("is_system", false);
+  if (storeId) {
+    query = query.or(`store_id.eq.${storeId},store_id.is.null`);
+  }
+  const { data } = await query;
+  for (const row of data ?? []) {
+    if (row.code) allowed.add(String(row.code));
+  }
+  return allowed;
+}
+
+/** Case-insensitive name clash vs built-in + this store’s custom roles. */
+async function isRoleNameTaken(
+  supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>,
+  storeId: string,
+  name: string,
+  excludeRoleId?: string,
+): Promise<boolean> {
+  const normalized = name.trim().toLowerCase();
+  if (!normalized) return false;
+
+  const [{ data: systemRoles }, { data: customRoles }] = await Promise.all([
+    supabase
+      .from("roles")
+      .select("id, name")
+      .eq("is_system", true)
+      .is("store_id", null),
+    supabase
+      .from("roles")
+      .select("id, name")
+      .eq("is_system", false)
+      .eq("store_id", storeId),
+  ]);
+
+  for (const row of [...(systemRoles ?? []), ...(customRoles ?? [])]) {
+    if (excludeRoleId && row.id === excludeRoleId) continue;
+    if (String(row.name ?? "").trim().toLowerCase() === normalized) {
+      return true;
+    }
+  }
+  return false;
+}
+
+async function requireSuperAdminActor(): Promise<
+  | { ok: true; actor: NonNullable<Awaited<ReturnType<typeof getActorAdmin>>> }
+  | { ok: false; error: string }
+> {
+  const gate = await requireTeamManagerActor();
+  if (!gate.ok) return gate;
+  if (!hasAnyRole(gate.actor.roles, ["SUPER_ADMIN"])) {
+    return {
+      ok: false,
+      error: "Only a Super Admin can manage custom roles.",
+    };
+  }
+  return gate;
 }
 
 function assertCanAssignRole(
@@ -419,7 +496,12 @@ export async function addAdminByEmail(input: {
     };
   }
 
-  const role = normalizeSingleRole(input.role, input.roles);
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const allowed = await loadAssignableRoleCodes(supabase, storeId);
+  const role = normalizeSingleRole(input.role, input.roles, allowed);
   if (!role) {
     return { ok: false, error: "Select a job role." };
   }
@@ -428,10 +510,6 @@ export async function addAdminByEmail(input: {
   if (assignError) return { ok: false, error: assignError };
 
   const roles: AdminRoleCode[] = [role];
-
-  const supabase = await createSupabaseServerClient();
-  const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
 
   let userId: string | null = null;
   try {
@@ -557,17 +635,18 @@ export async function createAdminStaff(input: {
     return { ok: false, error: "Password is too long." };
   }
 
-  const role = normalizeSingleRole(input.role);
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const allowed = await loadAssignableRoleCodes(supabase, storeId);
+  const role = normalizeSingleRole(input.role, undefined, allowed);
   if (!role) {
     return { ok: false, error: "Select a job role." };
   }
 
   const assignError = assertCanAssignRole(actor.roles, role);
   if (assignError) return { ok: false, error: assignError };
-
-  const supabase = await createSupabaseServerClient();
-  const storeId = await resolveActiveStoreId(supabase);
-  if (!storeId) return { ok: false, error: "No active store found." };
 
   let existingId: string | null = null;
   try {
@@ -730,9 +809,14 @@ export async function updateAdminRoles(
   if (!gate.ok) return gate;
   const { actor } = gate;
 
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  const allowed = await loadAssignableRoleCodes(supabase, storeId);
+
   const role = normalizeSingleRole(
     Array.isArray(roleOrRoles) ? undefined : roleOrRoles,
     Array.isArray(roleOrRoles) ? roleOrRoles : [roleOrRoles],
+    allowed,
   );
   if (!role) {
     return { ok: false, error: "Select a job role." };
@@ -742,9 +826,6 @@ export async function updateAdminRoles(
   if (assignError) return { ok: false, error: assignError };
 
   const roles: AdminRoleCode[] = [role];
-
-  const supabase = await createSupabaseServerClient();
-  const storeId = await resolveActiveStoreId(supabase);
 
   const { data: target } = await supabase
     .from("admin_users")
@@ -1401,4 +1482,397 @@ export function effectivePermissionsForRoles(
   roles: AdminRoleCode[],
 ): Permission[] {
   return [...permissionsForRoles(roles)].sort();
+}
+
+export async function listCustomRoles(): Promise<CustomRoleDefinition[]> {
+  const admin = await getCurrentAdmin();
+  if (!admin || !hasPermission(admin, "users.view")) return [];
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return [];
+
+  // System roles (except Super Admin) + this store’s custom roles.
+  const [{ data: systemRoles }, { data: customRoles }] = await Promise.all([
+    supabase
+      .from("roles")
+      .select("id, code, name, description, is_system, store_id")
+      .eq("is_system", true)
+      .is("store_id", null)
+      .neq("code", "SUPER_ADMIN")
+      .order("name", { ascending: true }),
+    supabase
+      .from("roles")
+      .select("id, code, name, description, is_system, store_id")
+      .eq("is_system", false)
+      .eq("store_id", storeId)
+      .order("name", { ascending: true }),
+  ]);
+
+  const roles = [...(systemRoles ?? []), ...(customRoles ?? [])];
+  if (!roles.length) return [];
+
+  const roleIds = roles.map((row) => row.id);
+  const { data: permRows } = await supabase
+    .from("role_permissions")
+    .select("role_id, permission")
+    .in("role_id", roleIds);
+
+  const byRole = new Map<string, Permission[]>();
+  for (const row of permRows ?? []) {
+    const list = byRole.get(row.role_id) ?? [];
+    const merged = mergePermissionSets([String(row.permission)]);
+    for (const p of merged) list.push(p);
+    byRole.set(row.role_id, list);
+  }
+
+  return roles.map((row) => {
+    const fromDb = byRole.get(row.id) ?? [];
+    const permissions =
+      fromDb.length > 0
+        ? [...new Set(fromDb)].sort()
+        : [...permissionsForRoles([row.code as AdminRoleCode])].sort();
+    return {
+      id: row.id,
+      code: row.code as AdminRoleCode,
+      name: row.name,
+      description: row.description,
+      permissions,
+      isSystem: Boolean(row.is_system),
+    };
+  });
+}
+
+export async function createCustomRole(input: {
+  name: string;
+  description?: string | null;
+  permissions: string[];
+}): Promise<TeamResult & { role?: CustomRoleDefinition }> {
+  const gate = await requireSuperAdminActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
+
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: "Enter a role name." };
+  if (name.length > 80) {
+    return { ok: false, error: "Role name is too long." };
+  }
+
+  const permissions = filterGrantablePermissions(input.permissions);
+  if (!permissions.length) {
+    return { ok: false, error: "Select at least one permission." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  if (await isRoleNameTaken(supabase, storeId, name)) {
+    return {
+      ok: false,
+      error: `A role named “${name}” already exists. Choose a different name.`,
+    };
+  }
+
+  let code = slugifyCustomRoleCode(name);
+  if (isSystemAdminRoleCode(code)) {
+    code = `${code}_custom`;
+  }
+
+  const existingCodes = await loadAssignableRoleCodes(supabase, storeId);
+  let attempt = code;
+  let suffix = 2;
+  while (existingCodes.has(attempt)) {
+    attempt = `${code}_${suffix}`.slice(0, 63);
+    suffix += 1;
+  }
+  code = attempt;
+
+  const description = input.description?.trim() || null;
+
+  const { data: inserted, error: insertError } = await supabase
+    .from("roles")
+    .insert({
+      code,
+      name,
+      description,
+      is_system: false,
+      store_id: storeId,
+    })
+    .select("id, code, name, description")
+    .single();
+
+  if (insertError || !inserted) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_CREATE_CUSTOM_ROLE",
+      feature: "USERS",
+      message: "Unable to create custom role",
+      error: insertError,
+      databaseCode: insertError?.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  const { error: permError } = await supabase.from("role_permissions").insert(
+    permissions.map((permission) => ({
+      role_id: inserted.id,
+      permission,
+    })),
+  );
+
+  if (permError) {
+    await supabase.from("roles").delete().eq("id", inserted.id);
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_CREATE_CUSTOM_ROLE_PERMS",
+      feature: "USERS",
+      message: "Unable to save role permissions",
+      error: permError,
+      databaseCode: permError.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: actor.user.id,
+    action: "CUSTOM_ROLE_CREATED",
+    entity_type: "roles",
+    entity_id: inserted.id,
+    metadata: { code, name, permissions },
+  });
+
+  return {
+    ok: true,
+    message: `Role “${name}” created.`,
+    role: {
+      id: inserted.id,
+      code: inserted.code as AdminRoleCode,
+      name: inserted.name,
+      description: inserted.description,
+      permissions,
+      isSystem: false,
+    },
+  };
+}
+
+export async function updateCustomRole(input: {
+  roleId: string;
+  name: string;
+  description?: string | null;
+  permissions: string[];
+}): Promise<TeamResult & { role?: CustomRoleDefinition }> {
+  const gate = await requireSuperAdminActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
+
+  const name = input.name.trim();
+  if (!name) return { ok: false, error: "Enter a role name." };
+  if (name.length > 80) {
+    return { ok: false, error: "Role name is too long." };
+  }
+
+  const permissions = filterGrantablePermissions(input.permissions);
+  if (!permissions.length) {
+    return { ok: false, error: "Select at least one permission." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const { data: existing } = await supabase
+    .from("roles")
+    .select("id, code, is_system, store_id")
+    .eq("id", input.roleId)
+    .maybeSingle();
+
+  if (!existing) {
+    return { ok: false, error: "Role not found." };
+  }
+  if (existing.code === "SUPER_ADMIN") {
+    return { ok: false, error: "Super Admin rights cannot be changed here." };
+  }
+  if (existing.is_system) {
+    // System roles: update permissions only (name/code stay fixed).
+  } else if (existing.store_id !== storeId) {
+    return { ok: false, error: "Custom role not found." };
+  }
+
+  if (
+    !existing.is_system &&
+    (await isRoleNameTaken(supabase, storeId, name, existing.id))
+  ) {
+    return {
+      ok: false,
+      error: `A role named “${name}” already exists. Choose a different name.`,
+    };
+  }
+
+  const description = input.description?.trim() || null;
+  const nextName = existing.is_system ? undefined : name;
+
+  if (!existing.is_system) {
+    const { error: updateError } = await supabase
+      .from("roles")
+      .update({ name: nextName, description })
+      .eq("id", existing.id);
+
+    if (updateError) {
+      return unexpectedFailure({
+        type: "DATABASE",
+        source: "DATABASE",
+        operation: "TEAM_UPDATE_CUSTOM_ROLE",
+        feature: "USERS",
+        message: "Unable to update custom role",
+        error: updateError,
+        databaseCode: updateError.code,
+        storeId,
+        route: TEAM_ROUTE,
+      });
+    }
+  } else if (description !== undefined) {
+    // Optional: allow description notes on system roles when column is writable.
+    // Name stays locked; skip roles row update when RLS blocks system updates.
+  }
+
+  const { error: deletePermsError } = await supabase
+    .from("role_permissions")
+    .delete()
+    .eq("role_id", existing.id);
+
+  if (deletePermsError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_UPDATE_CUSTOM_ROLE_PERMS",
+      feature: "USERS",
+      message: "Unable to replace role permissions",
+      error: deletePermsError,
+      databaseCode: deletePermsError.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  const { error: permError } = await supabase.from("role_permissions").insert(
+    permissions.map((permission) => ({
+      role_id: existing.id,
+      permission,
+    })),
+  );
+
+  if (permError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_UPDATE_CUSTOM_ROLE_PERMS",
+      feature: "USERS",
+      message: "Unable to save role permissions",
+      error: permError,
+      databaseCode: permError.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  const { data: roleRow } = await supabase
+    .from("roles")
+    .select("id, code, name, description, is_system")
+    .eq("id", existing.id)
+    .maybeSingle();
+
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: actor.user.id,
+    action: existing.is_system ? "SYSTEM_ROLE_UPDATED" : "CUSTOM_ROLE_UPDATED",
+    entity_type: "roles",
+    entity_id: existing.id,
+    metadata: {
+      code: existing.code,
+      name: roleRow?.name ?? name,
+      permissions,
+    },
+  });
+
+  return {
+    ok: true,
+    message: `Role “${roleRow?.name ?? name}” updated.`,
+    role: {
+      id: existing.id,
+      code: existing.code as AdminRoleCode,
+      name: roleRow?.name ?? name,
+      description: roleRow?.description ?? description,
+      permissions,
+      isSystem: Boolean(existing.is_system),
+    },
+  };
+}
+
+export async function deleteCustomRole(roleId: string): Promise<TeamResult> {
+  const gate = await requireSuperAdminActor();
+  if (!gate.ok) return gate;
+  const { actor } = gate;
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) return { ok: false, error: "No active store found." };
+
+  const { data: existing } = await supabase
+    .from("roles")
+    .select("id, code, name, is_system, store_id")
+    .eq("id", roleId)
+    .maybeSingle();
+
+  if (!existing || existing.is_system || existing.store_id !== storeId) {
+    return { ok: false, error: "Custom role not found." };
+  }
+
+  const { count } = await supabase
+    .from("admin_user_roles")
+    .select("user_id", { count: "exact", head: true })
+    .eq("role_id", existing.id);
+
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error:
+        "This role is still assigned to staff. Reassign them first, then delete.",
+    };
+  }
+
+  const { error: deleteError } = await supabase
+    .from("roles")
+    .delete()
+    .eq("id", existing.id);
+
+  if (deleteError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_DELETE_CUSTOM_ROLE",
+      feature: "USERS",
+      message: "Unable to delete custom role",
+      error: deleteError,
+      databaseCode: deleteError.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
+  }
+
+  await supabase.from("audit_logs").insert({
+    store_id: storeId,
+    user_id: actor.user.id,
+    action: "CUSTOM_ROLE_DELETED",
+    entity_type: "roles",
+    entity_id: existing.id,
+    metadata: { code: existing.code, name: existing.name },
+  });
+
+  return { ok: true, message: `Role “${existing.name}” deleted.` };
 }
