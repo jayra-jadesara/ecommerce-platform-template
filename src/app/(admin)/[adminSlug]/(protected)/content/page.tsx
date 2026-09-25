@@ -24,15 +24,15 @@ const SECTIONS = [
       "Banner, heading, and contact details for the storefront /contact page.",
   },
   {
+    href: "/content/career",
+    title: "Career",
+    description: "Careers page content and open roles for the storefront.",
+  },
+  {
     href: "/content/legal",
     title: "Legal pages",
     description:
       "Privacy Policy, Terms of Use, and Disclaimer — full markdown editor.",
-  },
-  {
-    href: "/content/pages",
-    title: "Pages",
-    description: "Other store pages (not Homepage, About, or Legal).",
   },
   {
     href: "/content/banners",
@@ -40,9 +40,20 @@ const SECTIONS = [
     description: "Promotional banners shown across your store.",
   },
   {
+    href: "/content/reels",
+    title: "Reels",
+    description: "Hosted vertical videos for homepage and product pages.",
+  },
+  {
     href: "/content/blog",
     title: "Blog",
     description: "Articles and journal posts for your store.",
+  },
+  {
+    href: "/content/brochures",
+    title: "Brochures",
+    description:
+      "Upload PDFs for customers to download on the storefront brochure page.",
   },
   {
     href: "/media",

@@ -26,6 +26,10 @@ import type {
   BlogProductOption,
 } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import {
+  buildSeoDescription,
+  buildSeoTitle,
+} from "@/features/seo/auto-seo";
 import { resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
@@ -162,6 +166,24 @@ function resolvePublishedAt(
     return publishedAt ?? previousPublishedAt ?? new Date().toISOString();
   }
   return publishedAt ?? previousPublishedAt;
+}
+
+/** Always derive Google SEO from title + excerpt/body (same idea as products). */
+function blogSeoColumns(values: {
+  title: string;
+  excerpt: string | null;
+  content: string;
+}): { seo_title: string | null; seo_description: string | null } {
+  const descriptionSource =
+    values.excerpt?.trim() ||
+    values.content.replace(/[#>*_`\[\]()!-]/g, " ").replace(/\s+/g, " ").trim() ||
+    values.title;
+  const seoTitle = buildSeoTitle(values.title);
+  const seoDescription = buildSeoDescription(descriptionSource);
+  return {
+    seo_title: seoTitle || null,
+    seo_description: seoDescription || null,
+  };
 }
 
 export async function listAdminBlogPosts(
@@ -329,6 +351,11 @@ export async function createAdminBlogPost(
 
   const values = parsed.data;
   const content = stripUnsafeContent(values.content);
+  const seo = blogSeoColumns({
+    title: values.title,
+    excerpt: values.excerpt,
+    content,
+  });
   const supabase = await createSupabaseServerClient();
   const user = await getCurrentUser();
   const readingTime = estimateReadingMinutes(content);
@@ -350,8 +377,8 @@ export async function createAdminBlogPost(
       author_name: values.authorName,
       status: values.status,
       is_featured: values.isFeatured,
-      seo_title: values.seoTitle,
-      seo_description: values.seoDescription,
+      seo_title: seo.seo_title,
+      seo_description: seo.seo_description,
       og_image_path: values.ogImagePath,
       published_at: publishedAt,
       reading_time_minutes: readingTime || null,
@@ -435,6 +462,11 @@ export async function updateAdminBlogPost(
 
   const values = parsed.data;
   const content = stripUnsafeContent(values.content);
+  const seo = blogSeoColumns({
+    title: values.title,
+    excerpt: values.excerpt,
+    content,
+  });
   const supabase = await createSupabaseServerClient();
   const user = await getCurrentUser();
   const { data: current } = await supabase
@@ -467,8 +499,8 @@ export async function updateAdminBlogPost(
       author_name: values.authorName,
       status: values.status,
       is_featured: values.isFeatured,
-      seo_title: values.seoTitle,
-      seo_description: values.seoDescription,
+      seo_title: seo.seo_title,
+      seo_description: seo.seo_description,
       og_image_path: values.ogImagePath,
       published_at: publishedAt,
       reading_time_minutes: readingTime || null,

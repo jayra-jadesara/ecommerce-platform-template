@@ -45,8 +45,31 @@ import {
   PRODUCT_SECTION_INGREDIENTS,
 } from "@/features/catalog/product-page-settings";
 import { parseStringRecord } from "@/features/catalog/product-page-settings-parse";
+import {
+  buildSeoDescription,
+  buildSeoTitle,
+} from "@/features/seo/auto-seo";
 
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
+
+/** Always mirror product name / short description into SEO columns (no separate SEO UI). */
+function resolveProductSeoColumns(values: ProductFormValues): {
+  seo_title: string | null;
+  seo_description: string | null;
+} {
+  const name = values.name.trim();
+  const sectionDescription =
+    values.sectionContent?.[PRODUCT_SECTION_DESCRIPTION]?.trim() || "";
+  const blurb =
+    values.shortDescription?.trim() ||
+    sectionDescription ||
+    String(values.description ?? "").trim() ||
+    name;
+  return {
+    seo_title: emptyToNull(buildSeoTitle(name)),
+    seo_description: emptyToNull(buildSeoDescription(blurb)),
+  };
+}
 
 function syncLegacyFromSectionContent(
   sectionContent: Record<string, string>,
@@ -718,6 +741,7 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
   const sectionContent = cleanStringRecord(values.sectionContent ?? {});
   const legacy = syncLegacyFromSectionContent(sectionContent);
   const faqAnswers = cleanStringRecord(values.faqAnswers ?? {});
+  const seoColumns = resolveProductSeoColumns(values);
 
   const { data: product, error } = await supabase
     .from("products")
@@ -735,8 +759,8 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
       featured: values.featured,
       return_policy: values.returnPolicy,
       returns_allowed: values.returnPolicy === "no_replace",
-      seo_title: emptyToNull(values.seoTitle),
-      seo_description: emptyToNull(values.seoDescription),
+      seo_title: seoColumns.seo_title,
+      seo_description: seoColumns.seo_description,
       model_path: modelPath,
       banner_enabled: Boolean(values.bannerEnabled),
       banner_image_path: values.bannerImagePath?.trim() || null,
@@ -852,6 +876,7 @@ export async function updateProduct(
   const sectionContent = cleanStringRecord(values.sectionContent ?? {});
   const legacy = syncLegacyFromSectionContent(sectionContent);
   const faqAnswers = cleanStringRecord(values.faqAnswers ?? {});
+  const seoColumns = resolveProductSeoColumns(values);
 
   const { error } = await supabase
     .from("products")
@@ -868,8 +893,8 @@ export async function updateProduct(
       featured: values.featured,
       return_policy: values.returnPolicy,
       returns_allowed: values.returnPolicy === "no_replace",
-      seo_title: emptyToNull(values.seoTitle),
-      seo_description: emptyToNull(values.seoDescription),
+      seo_title: seoColumns.seo_title,
+      seo_description: seoColumns.seo_description,
       model_path: modelPath,
       banner_enabled: Boolean(values.bannerEnabled),
       banner_image_path: values.bannerImagePath?.trim() || null,
@@ -923,8 +948,8 @@ export async function updateProduct(
   });
 
   const seoChanged =
-    (existing.seo_title ?? null) !== emptyToNull(values.seoTitle) ||
-    (existing.seo_description ?? null) !== emptyToNull(values.seoDescription);
+    (existing.seo_title ?? null) !== seoColumns.seo_title ||
+    (existing.seo_description ?? null) !== seoColumns.seo_description;
   if (seoChanged) {
     await supabase.from("audit_logs").insert({
       store_id: storeId,
@@ -933,8 +958,8 @@ export async function updateProduct(
       entity_type: "products",
       entity_id: id,
       metadata: {
-        seo_title: emptyToNull(values.seoTitle),
-        seo_description: emptyToNull(values.seoDescription),
+        seo_title: seoColumns.seo_title,
+        seo_description: seoColumns.seo_description,
       },
     });
   }

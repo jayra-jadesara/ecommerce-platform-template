@@ -321,7 +321,7 @@ export function AdminTeamManager({
       return false;
     }
     if (addPassword !== addConfirmPassword) {
-      setAddPasswordError("Passwords do not match.");
+      // Shown under Confirm password — keep Temporary password free of this message.
       return false;
     }
     return true;
@@ -947,7 +947,7 @@ export function AdminTeamManager({
                   })}
                 </div>
 
-                <div className="flex min-h-0 flex-1 flex-col space-y-3 rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-card))] p-3.5">
+                <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_55%,var(--color-card))] p-3.5">
                   {addMode === "existing" ? (
                     linkableOptions.length ? (
                       <AdminAutocomplete
@@ -979,7 +979,7 @@ export function AdminTeamManager({
                       </p>
                     )
                   ) : (
-                    <>
+                    <div className="admin-form-fields">
                       <TextField
                         size="small"
                         fullWidth
@@ -1030,16 +1030,23 @@ export function AdminTeamManager({
                         value={addConfirmPassword}
                         disabled={pending}
                         error={Boolean(
-                          addPasswordError &&
-                            addConfirmPassword.length > 0 &&
+                          addConfirmPassword.length > 0 &&
                             addPassword !== addConfirmPassword,
                         )}
+                        helperText={
+                          addPassword.length > 0 &&
+                          addPassword !== addConfirmPassword
+                            ? addConfirmPassword.length > 0
+                              ? "Passwords do not match."
+                              : "Confirm the temporary password."
+                            : "Re-enter the temporary password."
+                        }
                         onChange={(event) => {
                           setAddConfirmPassword(event.target.value);
                           if (addPasswordError) setAddPasswordError(null);
                         }}
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               </div>

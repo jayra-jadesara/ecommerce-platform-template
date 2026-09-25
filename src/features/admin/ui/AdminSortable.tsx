@@ -13,9 +13,11 @@ import {
 import {
   SortableContext,
   arrayMove,
+  rectSortingStrategy,
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  type SortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { CSSProperties, ReactNode } from "react";
@@ -46,6 +48,8 @@ type AdminSortableListProps = {
   children: ReactNode;
   className?: string;
   as?: "ul" | "div";
+  /** Default: vertical list. Use "grid" for card grids. */
+  layout?: "list" | "grid";
 };
 
 export function AdminSortableList({
@@ -55,6 +59,7 @@ export function AdminSortableList({
   children,
   className,
   as: Tag = "ul",
+  layout = "list",
 }: AdminSortableListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -69,17 +74,16 @@ export function AdminSortableList({
     onReorder(String(active.id), String(over.id));
   }
 
+  const strategy: SortingStrategy =
+    layout === "grid" ? rectSortingStrategy : verticalListSortingStrategy;
+
   return (
     <DndContext
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}
     >
-      <SortableContext
-        items={ids}
-        strategy={verticalListSortingStrategy}
-        disabled={disabled}
-      >
+      <SortableContext items={ids} strategy={strategy} disabled={disabled}>
         <Tag className={className}>{children}</Tag>
       </SortableContext>
     </DndContext>

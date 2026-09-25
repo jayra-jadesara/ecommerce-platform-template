@@ -168,7 +168,7 @@ export default async function AdminBlogPage({
       <div className="space-y-4">
         <AdminPageHeader
           title="Blog categories"
-          description="Organize articles by topic. Reorder with Up / Down."
+          description="Organize articles by topic. Drag cards to reorder."
           breadcrumbs={[
             { label: "Content", href: getAdminPath("/content") },
             { label: "Blog", href: listHref },
@@ -194,7 +194,7 @@ export default async function AdminBlogPage({
       <div className="space-y-4">
         <AdminPageHeader
           title="Blog settings"
-          description="Shape your branded journal — layout, sidebar, sharing, and article extras."
+          description="Layout, filters, and extras for the storefront blog."
           breadcrumbs={[
             { label: "Content", href: getAdminPath("/content") },
             { label: "Blog", href: listHref },
@@ -223,7 +223,7 @@ export default async function AdminBlogPage({
     <div className="space-y-4">
       <AdminPageHeader
         title="Blog"
-        description="Share stories, ideas and useful content with your customers."
+        description="Articles for your storefront journal."
         breadcrumbs={[
           { label: "Content", href: getAdminPath("/content") },
           { label: "Blog" },

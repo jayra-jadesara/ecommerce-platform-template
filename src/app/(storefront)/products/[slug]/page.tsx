@@ -33,6 +33,11 @@ import {
   getReelsShowcaseSettings,
   listStorefrontReelsForProduct,
 } from "@/features/reels/reels-service";
+import { ProductRelatedBlogPosts } from "@/features/blog/components/ProductRelatedBlogPosts";
+import {
+  getBlogSettingsCached,
+  listPublishedBlogPostsForProduct,
+} from "@/features/blog/storefront";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getProductPageSettings } from "@/features/catalog/product-page-settings-service";
 import { FaqAccordion } from "@/features/cms/components/FaqAccordion";
@@ -113,6 +118,8 @@ export default async function ProductDetailPage({
     approvedReviews,
     myReview,
     productReelsPayload,
+    relatedBlogPosts,
+    blogSettings,
   ] =
     await Promise.all([
       listSimilarStorefrontProducts({
@@ -145,6 +152,12 @@ export default async function ProductDetailPage({
         ]);
         return { reels, showcase };
       }),
+      pageSettings.blogEnabled
+        ? listPublishedBlogPostsForProduct(product.id, 4)
+        : Promise.resolve([]),
+      pageSettings.blogEnabled
+        ? getBlogSettingsCached()
+        : Promise.resolve(null),
     ]);
   const relatedIds = new Set(related.map((p) => p.id));
   const popular = popularRaw
@@ -283,6 +296,13 @@ export default async function ProductDetailPage({
         currency={config.store.currency}
         isAuthenticated={isAuthenticated}
       />
+      {pageSettings.blogEnabled ? (
+        <ProductRelatedBlogPosts
+          posts={relatedBlogPosts}
+          settings={blogSettings}
+          heading={pageSettings.blogHeading}
+        />
+      ) : null}
       {productReels.length > 0 ? (
         <div className="mt-10 md:mt-12">
           <ReelsShowcase

@@ -403,7 +403,23 @@
 
 .admin-form-dialog-paper .MuiFormHelperText-root {
   font-size: 0.75rem !important;
-  margin-top: 0.2rem !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.15rem !important;
+  line-height: 1.35 !important;
+}
+
+.admin-form-dialog-paper .admin-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.admin-form-dialog-paper .admin-form-fields > .MuiFormControl-root,
+.admin-form-dialog-paper .admin-form-fields > .MuiTextField-root {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  width: 100%;
 }
 
 .admin-form-dialog-paper .MuiInputAdornment-root .MuiSvgIcon-root {

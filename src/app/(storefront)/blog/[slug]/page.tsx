@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 import { Container, StorefrontBreadcrumb } from "@/components/layout";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import { BlogArticleCard } from "@/features/blog/components/BlogArticleCard";
 import { BlogArticleCta } from "@/features/blog/components/BlogArticleCta";
+import { BlogCategorySidebar } from "@/features/blog/components/BlogCategorySidebar";
+import { BlogPostAdjacentNav } from "@/features/blog/components/BlogPostAdjacentNav";
 import { BlogShareButtons } from "@/features/blog/components/BlogShareButtons";
 import { BlogShopProducts } from "@/features/blog/components/BlogShopProducts";
 import { MarkdownContent } from "@/features/editor";
 import {
+  getAdjacentBlogPosts,
   getBlogSettingsCached,
   getPublishedBlogPostBySlug,
   listRelatedBlogPosts,
@@ -24,6 +26,7 @@ import { resolveBlogPostSeo } from "@/features/seo/resolve";
 import { formatDateTime } from "@/lib/format-date";
 import { metadataFromResolved } from "@/lib/metadata";
 import { absoluteUrl } from "@/lib/site-url";
+import { getCurrentUser } from "@/features/auth/session";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 
 export const dynamic = "force-dynamic";
@@ -36,9 +39,16 @@ function isAbsoluteUrl(url: string): boolean {
   return /^https?:\/\//i.test(url.trim());
 }
 
+type LinkedProductRow = {
+  id: string;
+  name: string;
+  slug: string;
+  defaultVariantId: string | null;
+};
+
 async function loadLinkedProducts(
   productIds: string[],
-): Promise<Array<{ id: string; name: string; slug: string }>> {
+): Promise<LinkedProductRow[]> {
   if (!productIds.length) return [];
   const storeId = await resolveActiveStoreId();
   const supabase = createSupabasePublicClient();
@@ -46,18 +56,48 @@ async function loadLinkedProducts(
 
   const { data } = await supabase
     .from("products")
-    .select("id, name, slug")
+    .select(
+      `
+      id,
+      name,
+      slug,
+      product_variants (
+        id,
+        is_active,
+        sort_order
+      )
+    `,
+    )
     .eq("store_id", storeId)
     .eq("status", "active")
     .in("id", productIds);
 
   if (!data?.length) return [];
-  const byId = new Map(data.map((row) => [row.id, row]));
+
+  type VariantJoin = {
+    id: string;
+    is_active: boolean | null;
+    sort_order: number | null;
+  };
+
+  const mapped = data.map((row) => {
+    const variants = (
+      (row.product_variants as unknown as VariantJoin[] | null) ?? []
+    )
+      .filter((v) => v.is_active !== false)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      slug: row.slug as string,
+      defaultVariantId: variants[0]?.id ?? null,
+    };
+  });
+
+  const byId = new Map(mapped.map((row) => [row.id, row]));
   return productIds
     .map((id) => byId.get(id))
-    .filter((row): row is { id: string; name: string; slug: string } =>
-      Boolean(row),
-    );
+    .filter((row): row is LinkedProductRow => Boolean(row));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -104,24 +144,27 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params;
-  const [post, settings, config] = await Promise.all([
+  const [post, settings, config, user] = await Promise.all([
     getPublishedBlogPostBySlug(slug),
     getBlogSettingsCached(),
     getPlatformConfigAsync(),
+    getCurrentUser(),
   ]);
   if (!post) notFound();
 
+  const isAuthenticated = Boolean(user);
   const categoryIds = post.categories.map((c) => c.id);
   const showRelatedPosts = settings?.showRelatedPosts !== false;
   const showRelatedProducts = settings?.showRelatedProducts !== false;
 
-  const [related, linkedProducts] = await Promise.all([
+  const [related, linkedProducts, adjacent] = await Promise.all([
     showRelatedPosts
-      ? listRelatedBlogPosts(post.id, categoryIds, 3)
+      ? listRelatedBlogPosts(post.id, categoryIds, 6)
       : Promise.resolve([]),
     showRelatedProducts
       ? loadLinkedProducts(post.productIds)
       : Promise.resolve([]),
+    getAdjacentBlogPosts(post.id, post.publishedAt),
   ]);
 
   const showAuthor = settings?.showAuthor !== false;
@@ -130,8 +173,6 @@ export default async function BlogPostPage({ params }: Props) {
   const showCategories = settings?.showCategories !== false;
   const showReadingTime = settings?.showReadingTime !== false;
   const showShare = settings?.showShareButtons !== false;
-  const cardStyle = settings?.cardStyle ?? "STANDARD";
-  const coverCtaStyle = settings?.coverCtaStyle ?? "COOKIE";
 
   const primaryCategory = post.categories[0];
   const imageUrl = post.featuredImageUrl?.trim() || null;
@@ -171,6 +212,10 @@ export default async function BlogPostPage({ params }: Props) {
   ) {
     bylineParts.push(`${post.readingTimeMinutes} min read`);
   }
+
+  const relatedTitle = primaryCategory
+    ? `More in ${primaryCategory.name}`
+    : "Related articles";
 
   return (
     <main className="relative z-0 flex-1 pb-12 md:pb-16">
@@ -237,74 +282,78 @@ export default async function BlogPostPage({ params }: Props) {
         ) : null}
 
         <Container className="mt-6 md:mt-8">
-          <div className="mx-auto max-w-3xl">
-            {showShare ? (
-              <BlogShareButtons
-                url={shareUrl}
-                title={post.title}
-                profiles={{
-                  instagram: config.social.instagram,
-                  youtube: config.social.youtube,
-                }}
-                className="mb-6 justify-center border-b border-[var(--color-border)] pb-5"
-              />
-            ) : null}
-
-            {post.content?.trim() ? (
-              <div className="mx-auto max-w-[42rem] md:max-w-3xl">
-                <MarkdownContent content={post.content} />
+          <div
+            className={
+              related.length
+                ? "mx-auto grid max-w-6xl gap-8 md:grid-cols-[14rem_minmax(0,1fr)] lg:grid-cols-[15.5rem_minmax(0,1fr)] lg:gap-10"
+                : "mx-auto max-w-3xl"
+            }
+          >
+            {related.length ? (
+              <div className="min-w-0">
+                <div className="hidden md:block md:sticky md:top-24">
+                  <BlogCategorySidebar
+                    categories={[]}
+                    relatedPosts={related}
+                    relatedTitle={relatedTitle}
+                  />
+                </div>
               </div>
-            ) : (
-              <p className="text-[var(--color-muted)]">
-                This article has no content yet.
-              </p>
-            )}
-
-            {linkedProducts.length ? (
-              <BlogShopProducts products={linkedProducts} />
             ) : null}
 
-            <BlogArticleCta
-              title={settings?.ctaTitle ?? null}
-              description={settings?.ctaDescription ?? null}
-              buttonLabel={settings?.ctaButtonLabel ?? null}
-              buttonHref={settings?.ctaButtonHref ?? null}
-            />
-          </div>
+            <div className="min-w-0">
+              {showShare ? (
+                <BlogShareButtons
+                  url={shareUrl}
+                  title={post.title}
+                  profiles={{
+                    instagram: config.social.instagram,
+                    youtube: config.social.youtube,
+                  }}
+                  className="mb-6 border-b border-[var(--color-border)] pb-5"
+                />
+              ) : null}
 
-          {related.length ? (
-            <section
-              className="mt-14 border-t border-[var(--color-border)] pt-10 md:mt-16"
-              aria-labelledby="related-articles"
-            >
-              <h2
-                id="related-articles"
-                className="text-center font-[family-name:var(--font-display)] text-2xl font-semibold tracking-tight text-[var(--color-foreground)] md:text-[1.65rem]"
-              >
-                Related articles
-              </h2>
-              <p className="mt-1.5 text-center text-sm text-[var(--color-muted)]">
-                More stories you may enjoy
-              </p>
-              <ul className="mt-7 grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-3 lg:gap-x-6">
-                {related.map((item) => (
-                  <li key={item.id} className="min-w-0 pt-3">
-                    <BlogArticleCard
-                      post={item}
-                      showCategories={showCategories}
-                      showAuthor={showAuthor}
-                      showDate={showDate}
-                      showReadingTime={showReadingTime}
-                      showFeaturedImage={showFeaturedImage}
-                      cardStyle={cardStyle}
-                      coverCtaStyle={coverCtaStyle}
-                      listingLayout="grid"
-                    />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
+              {post.content?.trim() ? (
+                <div className="max-w-[42rem] md:max-w-none">
+                  <MarkdownContent content={post.content} />
+                </div>
+              ) : (
+                <p className="text-[var(--color-muted)]">
+                  This article has no content yet.
+                </p>
+              )}
+
+              {linkedProducts.length ? (
+                <BlogShopProducts
+                  products={linkedProducts}
+                  isAuthenticated={isAuthenticated}
+                />
+              ) : null}
+
+              <BlogArticleCta
+                title={settings?.ctaTitle ?? null}
+                description={settings?.ctaDescription ?? null}
+                buttonLabel={settings?.ctaButtonLabel ?? null}
+                buttonHref={settings?.ctaButtonHref ?? null}
+              />
+
+              <BlogPostAdjacentNav
+                previous={adjacent.previous}
+                next={adjacent.next}
+              />
+
+              {related.length ? (
+                <div className="mt-10 border-t border-[var(--color-border)] pt-6 md:hidden">
+                  <BlogCategorySidebar
+                    categories={[]}
+                    relatedPosts={related}
+                    relatedTitle={relatedTitle}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
         </Container>
       </article>
     </main>

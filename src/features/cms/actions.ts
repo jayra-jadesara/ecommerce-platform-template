@@ -7,7 +7,6 @@ import {
   updateAdminBanner,
 } from "@/features/cms/banners-service";
 import {
-  createAdminPage,
   setPageStatus,
   updateAdminPage,
 } from "@/features/cms/pages-service";
@@ -25,21 +24,6 @@ import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { z } from "zod";
 
-export async function createPageAction(raw: unknown) {
-  await requirePermission("content.create");
-  return runLoggedMutation(
-    {
-      type: "CMS",
-      source: "SERVER",
-      operation: "CREATE_PAGE",
-      feature: "CMS",
-      entityType: "page",
-      route: "/content/pages",
-    },
-    () => createAdminPage(raw),
-  );
-}
-
 export async function updatePageAction(id: string, raw: unknown) {
   await requirePermission("content.update");
   return runLoggedMutation(
@@ -50,7 +34,7 @@ export async function updatePageAction(id: string, raw: unknown) {
       feature: "CMS",
       entityType: "page",
       entityId: id,
-      route: "/content/pages",
+      route: "/content",
     },
     () => updateAdminPage(id, raw),
   );
@@ -66,7 +50,7 @@ export async function publishPageAction(id: string) {
       feature: "CMS",
       entityType: "page",
       entityId: id,
-      route: "/content/pages",
+      route: "/content",
     },
     () => setPageStatus(id, "published"),
   );
@@ -82,25 +66,9 @@ export async function unpublishPageAction(id: string) {
       feature: "CMS",
       entityType: "page",
       entityId: id,
-      route: "/content/pages",
+      route: "/content",
     },
     () => setPageStatus(id, "draft"),
-  );
-}
-
-export async function archivePageAction(id: string) {
-  await requirePermission("content.delete");
-  return runLoggedMutation(
-    {
-      type: "CMS",
-      source: "SERVER",
-      operation: "DELETE_PAGE",
-      feature: "CMS",
-      entityType: "page",
-      entityId: id,
-      route: "/content/pages",
-    },
-    () => setPageStatus(id, "archived"),
   );
 }
 
@@ -122,7 +90,7 @@ export async function createSectionAction(raw: unknown) {
       feature: "CMS",
       entityType: "page_section",
       entityId: parsed.data.pageId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () => createPageSection(parsed.data),
   );
@@ -151,7 +119,7 @@ export async function updateSectionAction(raw: unknown) {
       feature: "CMS",
       entityType: "page_section",
       entityId: parsed.data.sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () =>
       updatePageSection({
@@ -171,7 +139,7 @@ export async function duplicateSectionAction(sectionId: string) {
       feature: "CMS",
       entityType: "page_section",
       entityId: sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () => duplicatePageSection(sectionId),
   );
@@ -187,7 +155,7 @@ export async function deleteSectionAction(sectionId: string) {
       feature: "CMS",
       entityType: "page_section",
       entityId: sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () => deletePageSection(sectionId),
   );
@@ -210,7 +178,7 @@ export async function reorderSectionsAction(raw: unknown) {
       feature: "CMS",
       entityType: "page",
       entityId: parsed.data.pageId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () => reorderPageSections(parsed.data),
   );
@@ -233,7 +201,7 @@ export async function moveSectionAction(raw: unknown) {
       feature: "CMS",
       entityType: "page_section",
       entityId: parsed.data.sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     },
     () => moveSection(parsed.data),
   );

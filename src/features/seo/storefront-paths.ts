@@ -1,7 +1,6 @@
 /**
- * Storefront URL catalog — single source for admin dropdowns + sitemap.
- * Stored in store_seo_settings.schema_settings.storefrontPaths (DB).
- * Form seed defaults are written on first Save; runtime always reads from DB.
+ * Storefront URL catalog — paths/labels owned by Menu & Navigation.
+ * Google & SEO mirrors them (read-only); sitemap enabled/priority stay in SEO settings.
  */
 
 export type StorefrontPathDef = {
@@ -12,7 +11,7 @@ export type StorefrontPathDef = {
   cmsSlug: string;
 };
 
-/** Admin form seed only — not used by storefront/sitemap at runtime. */
+/** Admin form seed only — used when Menu & Navigation has no root links yet. */
 export const DEFAULT_STOREFRONT_PATHS: StorefrontPathDef[] = [
   { id: "home", path: "/", label: "Home", cmsSlug: "" },
   { id: "products", path: "/products", label: "Products", cmsSlug: "" },
@@ -20,6 +19,7 @@ export const DEFAULT_STOREFRONT_PATHS: StorefrontPathDef[] = [
   { id: "about", path: "/about", label: "About", cmsSlug: "about" },
   { id: "contact", path: "/contact", label: "Contact", cmsSlug: "contact" },
   { id: "career", path: "/career", label: "Career", cmsSlug: "career" },
+  { id: "brochure", path: "/brochure", label: "Brochure", cmsSlug: "" },
   { id: "privacy", path: "/privacy", label: "Privacy", cmsSlug: "privacy" },
   { id: "terms", path: "/terms", label: "Terms", cmsSlug: "terms" },
   { id: "disclaimer", path: "/disclaimer", label: "Disclaimer", cmsSlug: "disclaimer" },
@@ -31,6 +31,48 @@ export function normalizeStorefrontPath(raw: string): string {
   if (!trimmed || trimmed === "/") return "/";
   const withSlash = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
   return withSlash.replace(/\/{2,}/g, "/").replace(/\/$/, "") || "/";
+}
+
+export type NavHrefRow = {
+  id: string;
+  location?: string | null;
+  parent_id?: string | null;
+  label?: string | null;
+  href?: string | null;
+  is_active?: boolean | null;
+};
+
+/**
+ * Build the storefront path catalog from Menu & Navigation root links.
+ * Prefer header label over footer when the same path appears twice.
+ */
+export function buildStorefrontPathsFromNavRows(
+  rows: NavHrefRow[],
+): StorefrontPathDef[] {
+  const byPath = new Map<string, StorefrontPathDef & { rank: number }>();
+
+  for (const row of rows) {
+    if (row.parent_id) continue;
+    const href = String(row.href ?? "").trim();
+    if (!href.startsWith("/") || href.startsWith("//")) continue;
+    const path = normalizeStorefrontPath(href);
+    const label = String(row.label ?? "").trim() || path;
+    const rank =
+      (row.location === "header" ? 0 : 1) + (row.is_active === false ? 10 : 0);
+    const existing = byPath.get(path);
+    if (existing && existing.rank <= rank) continue;
+    byPath.set(path, {
+      id: String(row.id),
+      path,
+      label,
+      cmsSlug: cmsSlugFromPath(path),
+      rank,
+    });
+  }
+
+  return [...byPath.values()]
+    .sort((a, b) => a.path.localeCompare(b.path))
+    .map(({ rank: _rank, ...rest }) => rest);
 }
 
 export function parseStorefrontPaths(raw: unknown): StorefrontPathDef[] {
@@ -80,8 +122,8 @@ export function findStorefrontPath(
 }
 
 /**
- * Content page key derived from path — used so /pages/{slug} is not listed twice.
- * Home, products, blog, and cart are not CMS pretty-routes.
+ * Content page key derived from path — used so pretty CMS routes
+ * (e.g. /about) are not listed twice in the sitemap.
  */
 export function cmsSlugFromPath(path: string): string {
   const p = normalizeStorefrontPath(path);
@@ -89,6 +131,7 @@ export function cmsSlugFromPath(path: string): string {
     p === "/" ||
     p === "/products" ||
     p === "/blog" ||
+    p === "/brochure" ||
     p === "/cart" ||
     p === "/categories"
   ) {

@@ -385,4 +385,70 @@ export async function moveAdminBlogCategory(
   };
 }
 
+/** Persist a full drag-and-drop order in one write. */
+export async function reorderAdminBlogCategories(
+  orderedIds: string[],
+): Promise<BlogCategoryMutationResult> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return { ok: false, error: "Store not found." };
+  if (!orderedIds.length) return { ok: false, error: "Nothing to reorder." };
+
+  const categories = await listAdminBlogCategories();
+  if (!categories.length) return { ok: false, error: "No categories found." };
+
+  const byId = new Map(categories.map((c) => [c.id, c]));
+  if (
+    orderedIds.length !== categories.length ||
+    orderedIds.some((id) => !byId.has(id))
+  ) {
+    return { ok: false, error: "Category list is out of date. Refresh and try again." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const user = await getCurrentUser();
+  const first = byId.get(orderedIds[0]!)!;
+
+  for (let i = 0; i < orderedIds.length; i += 1) {
+    const id = orderedIds[i]!;
+    const row = byId.get(id)!;
+    if (row.sortOrder === i) continue;
+    const { error } = await supabase
+      .from("blog_categories")
+      .update({ sort_order: i })
+      .eq("id", id)
+      .eq("store_id", storeId);
+    if (error) {
+      return unexpectedFailure({
+        type: "CMS",
+        source: "DATABASE",
+        operation: "UPDATE_BLOG_CATEGORY",
+        feature: "BLOG",
+        message: error.message || "Unable to reorder categories",
+        error,
+        storeId,
+        entityType: "blog_category",
+        entityId: id,
+        route: "/blog/categories",
+      });
+    }
+  }
+
+  await writeBlogAudit({
+    storeId,
+    userId: user?.id ?? null,
+    action: "BLOG_CATEGORY_UPDATED",
+    entityType: "blog_category",
+    entityId: first.id,
+    metadata: { reorder: "dnd", ordered_ids: orderedIds },
+  });
+
+  revalidateBlogCategories();
+  return {
+    ok: true,
+    category: first,
+    message: "Category order updated.",
+    id: first.id,
+  };
+}
+
 export { DEFAULT_BLOG_CATEGORY_FORM };

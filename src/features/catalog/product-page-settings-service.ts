@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import {
+  DEFAULT_PRODUCT_BLOG_HEADING,
   DEFAULT_PRODUCT_DETAIL_SECTIONS,
   DEFAULT_PRODUCT_FAQ_HEADING,
   type ProductPageSettings,
@@ -38,6 +39,8 @@ export async function getProductPageSettings(): Promise<ProductPageSettings> {
       faqQuestions: [],
       listingBannerEnabled: false,
       listingBannerImagePath: null,
+      blogEnabled: true,
+      blogHeading: DEFAULT_PRODUCT_BLOG_HEADING,
     };
   }
 
@@ -46,7 +49,7 @@ export async function getProductPageSettings(): Promise<ProductPageSettings> {
   const { data } = await supabase
     .from("store_settings")
     .select(
-      "product_detail_sections, product_faq_heading, product_faq_questions, products_listing_banner_enabled, products_listing_banner_image_path",
+      "product_detail_sections, product_faq_heading, product_faq_questions, products_listing_banner_enabled, products_listing_banner_image_path, product_blog_enabled, product_blog_heading",
     )
     .eq("store_id", storeId)
     .maybeSingle();
@@ -58,6 +61,8 @@ export async function getProductPageSettings(): Promise<ProductPageSettings> {
     products_listing_banner_enabled: data?.products_listing_banner_enabled,
     products_listing_banner_image_path:
       data?.products_listing_banner_image_path,
+    product_blog_enabled: data?.product_blog_enabled,
+    product_blog_heading: data?.product_blog_heading,
   });
 }
 
@@ -101,6 +106,9 @@ export async function updateProductPageSettings(
       product_faq_questions: faqQuestions,
       products_listing_banner_enabled: parsed.data.listingBannerEnabled,
       products_listing_banner_image_path: listingBannerImagePath,
+      product_blog_enabled: parsed.data.blogEnabled,
+      product_blog_heading:
+        parsed.data.blogHeading.trim() || DEFAULT_PRODUCT_BLOG_HEADING,
     },
     { onConflict: "store_id" },
   );
@@ -121,5 +129,6 @@ export async function updateProductPageSettings(
 
   revalidatePath(SETTINGS_ROUTE);
   revalidatePath("/products");
+  revalidatePath("/products", "layout");
   return { ok: true, message: "Product page settings saved." };
 }

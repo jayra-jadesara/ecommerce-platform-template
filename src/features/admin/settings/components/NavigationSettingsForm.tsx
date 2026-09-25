@@ -24,7 +24,10 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { cn } from "@/lib/cn";
-import { DEFAULT_STOREFRONT_PATHS } from "@/features/seo/storefront-paths";
+import {
+  DEFAULT_STOREFRONT_PATHS,
+  normalizeStorefrontPath,
+} from "@/features/seo/storefront-paths";
 
 function createClientKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -34,7 +37,18 @@ function createClientKey() {
 }
 
 const pageRowSchema = z.object({
-  href: z.string().min(1),
+  href: z
+    .string()
+    .trim()
+    .min(1, "Page address is required")
+    .max(2048)
+    .refine(
+      (v) => {
+        const path = normalizeStorefrontPath(v);
+        return path.startsWith("/") && !v.trim().startsWith("//") && !v.includes("\\");
+      },
+      { message: "Use a page path like /about or /products" },
+    ),
   pageName: z.string().min(1),
   label: z.string().trim().min(1, "Menu name is required").max(80),
   showHeader: z.boolean(),
@@ -44,9 +58,24 @@ const pageRowSchema = z.object({
   sortOrder: z.number().int().min(0).max(10_000),
 });
 
-const menuPagesFormSchema = z.object({
-  pages: z.array(pageRowSchema).min(1).max(40),
-});
+const menuPagesFormSchema = z
+  .object({
+    pages: z.array(pageRowSchema).min(1).max(40),
+  })
+  .superRefine((data, ctx) => {
+    const seen = new Set<string>();
+    data.pages.forEach((page, index) => {
+      const path = normalizeStorefrontPath(page.href);
+      if (seen.has(path)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "This page address is already used above",
+          path: ["pages", index, "href"],
+        });
+      }
+      seen.add(path);
+    });
+  });
 
 type MenuPagesFormValues = z.infer<typeof menuPagesFormSchema>;
 type PageRow = z.infer<typeof pageRowSchema>;
@@ -97,7 +126,11 @@ function buildDefaults(
         page.href.includes("disclaimer");
       const isCart = page.href === "/cart";
       page.showHeader = !isLegal && !isCart;
-      page.showFooter = isLegal || page.href === "/contact" || page.href === "/career";
+      page.showFooter =
+        isLegal ||
+        page.href === "/contact" ||
+        page.href === "/career" ||
+        page.href === "/brochure";
     }
   }
 
@@ -107,16 +140,17 @@ function buildDefaults(
 function pagesToNavItems(
   pages: PageRow[],
   existingRows: AdminNavItemRow[],
-  catalog: CatalogPage[],
 ): NavigationItemFormValues[] {
-  const catalogHrefs = new Set(catalog.map((p) => p.value));
   const items: NavigationItemFormValues[] = [];
+  const claimedIds = new Set<string>();
+  for (const page of pages) {
+    if (page.headerId) claimedIds.add(page.headerId);
+    if (page.footerId) claimedIds.add(page.footerId);
+  }
 
-  // Remove nested / unknown catalog rows we no longer manage in this UI.
+  // Drop nested links and any root row no longer tied to a form page.
   for (const row of existingRows) {
-    const inCatalog = catalogHrefs.has(row.href);
-    const isRoot = !row.parent_id;
-    if (!inCatalog || !isRoot) {
+    if (row.parent_id || !claimedIds.has(row.id)) {
       items.push({
         id: row.id,
         clientKey: row.id,
@@ -137,6 +171,7 @@ function pagesToNavItems(
   let footerOrder = 1;
 
   for (const page of pages) {
+    const href = normalizeStorefrontPath(page.href);
     if (page.showHeader) {
       items.push({
         id: page.headerId,
@@ -145,7 +180,7 @@ function pagesToNavItems(
         parentId: null,
         parentClientKey: null,
         label: page.label.trim(),
-        href: page.href,
+        href,
         sortOrder: headerOrder++,
         isActive: true,
         openInNewTab: false,
@@ -159,7 +194,7 @@ function pagesToNavItems(
         parentId: null,
         parentClientKey: null,
         label: page.label.trim(),
-        href: page.href,
+        href,
         sortOrder: page.sortOrder,
         isActive: false,
         openInNewTab: false,
@@ -175,7 +210,7 @@ function pagesToNavItems(
         parentId: null,
         parentClientKey: null,
         label: page.label.trim(),
-        href: page.href,
+        href,
         sortOrder: footerOrder++,
         isActive: true,
         openInNewTab: false,
@@ -189,7 +224,7 @@ function pagesToNavItems(
         parentId: null,
         parentClientKey: null,
         label: page.label.trim(),
-        href: page.href,
+        href,
         sortOrder: page.sortOrder,
         isActive: false,
         openInNewTab: false,
@@ -262,7 +297,7 @@ export function NavigationSettingsForm({
     setError(null);
     setSuccess(null);
     startTransition(async () => {
-      const items = pagesToNavItems(values.pages, initialItems, catalog);
+      const items = pagesToNavItems(values.pages, initialItems);
       const result = await saveNavigationSettingsAction({ items });
       if (!result.ok) {
         const serverFieldErrors = resultFieldErrors(result);
@@ -309,15 +344,16 @@ export function NavigationSettingsForm({
         <div className={adminFieldGroup(true)}>
           <p className="admin-field-group__title">Store pages</p>
           <p className="admin-field-group__hint">
-            Every store page is listed below. Edit the{" "}
+            Edit the <strong>page address</strong> (URL path) and{" "}
             <strong>menu name</strong> shoppers see, then choose Top menu,
-            Bottom menu, or both.
+            Bottom menu, or both. Google &amp; SEO uses these same addresses.
           </p>
         </div>
 
         <div className="mt-3 overflow-hidden rounded-xl border border-[var(--color-border)]">
-          <div className="hidden grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_5.5rem_5.5rem] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)] sm:grid">
+          <div className="hidden grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_5.5rem_5.5rem] gap-2 border-b border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)] sm:grid">
             <span>Page</span>
+            <span>Page address</span>
             <span>Menu name</span>
             <span className="text-center">Top</span>
             <span className="text-center">Bottom</span>
@@ -326,17 +362,46 @@ export function NavigationSettingsForm({
           <ul className="divide-y divide-[var(--color-border)]">
             {pages.map((page, index) => (
               <li
-                key={page.href}
-                className="grid grid-cols-1 gap-2.5 px-3 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_5.5rem_5.5rem] sm:items-center sm:gap-2"
+                key={page.headerId || page.footerId || `${page.pageName}-${index}`}
+                className="grid grid-cols-1 gap-2.5 px-3 py-3 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_5.5rem_5.5rem] sm:items-center sm:gap-2"
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-[var(--color-foreground)]">
                     {page.pageName}
                   </p>
-                  <p className="truncate text-[11px] text-[var(--color-muted)]">
-                    {page.href}
-                  </p>
                 </div>
+
+                <Controller
+                  name={`pages.${index}.href`}
+                  control={control}
+                  render={({ field, fieldState }) => (
+                    <div className="min-w-0">
+                      <TextField
+                        {...field}
+                        label="Page address"
+                        fullWidth
+                        size="small"
+                        required
+                        disabled={!canUpdate || pending}
+                        error={Boolean(fieldState.error)}
+                        placeholder="/about"
+                        helperText={
+                          fieldState.error
+                            ? undefined
+                            : "URL path on your site (e.g. /products)"
+                        }
+                        onBlur={(event) => {
+                          field.onBlur();
+                          const next = normalizeStorefrontPath(
+                            event.target.value,
+                          );
+                          if (next !== field.value) field.onChange(next);
+                        }}
+                      />
+                      <FieldError message={fieldState.error?.message} />
+                    </div>
+                  )}
+                />
 
                 <Controller
                   name={`pages.${index}.label`}

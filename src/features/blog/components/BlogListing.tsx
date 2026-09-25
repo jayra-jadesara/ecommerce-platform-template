@@ -1,11 +1,8 @@
 import { BlogArticleCard } from "@/features/blog/components/BlogArticleCard";
+import { BlogCategoryFilter } from "@/features/blog/components/BlogCategoryFilter";
 import { BlogCategorySidebar } from "@/features/blog/components/BlogCategorySidebar";
 import { BlogPagination } from "@/features/blog/components/BlogPagination";
-import {
-  isListLayout,
-  normalizeSidebarPreset,
-  wantsFeaturedBlock,
-} from "@/features/blog/settings-normalize";
+import { isListLayout } from "@/features/blog/settings-normalize";
 import type {
   BlogSettings,
   StorefrontBlogCategory,
@@ -20,7 +17,7 @@ type BlogListingProps = {
   page: number;
   pageSize: number;
   categories: StorefrontBlogCategory[];
-  featured?: StorefrontBlogPostSummary | null;
+  relatedPosts?: StorefrontBlogPostSummary[];
   categorySlug?: string;
   q?: string;
 };
@@ -50,53 +47,20 @@ export function BlogListing({
   page,
   pageSize,
   categories,
-  featured = null,
+  relatedPosts = [],
   categorySlug,
   q,
 }: BlogListingProps) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const hasFilter = Boolean(categorySlug || q?.trim());
-  const sidebarPosition = normalizeSidebarPreset(settings.sidebarPreset);
   const isList = isListLayout(settings);
   const coverGrid = usesCoverGrid(settings, isList);
   const listingLayout = isList ? "list" : "grid";
 
-  const showFeaturedBlock =
-    !coverGrid &&
-    wantsFeaturedBlock(settings) &&
-    Boolean(featured) &&
-    page <= 1 &&
-    !hasFilter;
-
-  /** In cover grid, pin featured as the first card when present. */
-  const gridPosts = (() => {
-    if (coverGrid && featured && page <= 1 && !hasFilter) {
-      const rest = posts.filter((post) => post.id !== featured.id);
-      return [featured, ...rest];
-    }
-    if (showFeaturedBlock && featured) {
-      return posts.filter((post) => post.id !== featured.id);
-    }
-    return posts;
-  })();
-
-  const showCategoryUi =
-    settings.showCategories &&
-    categories.length > 0 &&
-    sidebarPosition !== "NONE";
-
-  const useDesktopSidebar =
-    showCategoryUi &&
-    settings.showSidebar &&
-    (sidebarPosition === "RIGHT" || sidebarPosition === "LEFT") &&
-    !coverGrid;
-
-  const useTopFilter =
-    showCategoryUi &&
-    (coverGrid ||
-      sidebarPosition === "TOP" ||
-      ((sidebarPosition === "RIGHT" || sidebarPosition === "LEFT") &&
-        !settings.showSidebar));
+  const showCategories = settings.showCategories && categories.length > 0;
+  const showSidebar = showCategories || relatedPosts.length > 0;
+  const activeCategoryName = categorySlug
+    ? categories.find((c) => c.slug === categorySlug)?.name
+    : null;
 
   const cardFlags = {
     showCategories: settings.showCategories,
@@ -109,150 +73,156 @@ export function BlogListing({
     listingLayout: listingLayout as "grid" | "list",
   };
 
-  const sidebarOnLeft = useDesktopSidebar && sidebarPosition === "LEFT";
-
-  const postsBlock = (
-    <div>
-      {isList ? (
-        <ul className="divide-y divide-[var(--color-border)]">
-          {gridPosts.map((post) => (
-            <li key={post.id} className="py-7 first:pt-0 last:pb-0">
-              <BlogArticleCard post={post} {...cardFlags} />
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <ul
-          className={cn(
-            "grid grid-cols-1 gap-x-5 gap-y-10 sm:grid-cols-2",
-            coverGrid
-              ? "lg:grid-cols-3 xl:grid-cols-4 xl:gap-x-6 xl:gap-y-12"
-              : "sm:gap-x-7 sm:gap-y-11 lg:grid-cols-2",
-          )}
-        >
-          {gridPosts.map((post, index) => (
-            <li key={post.id} className="min-w-0 pt-3">
-              <BlogArticleCard
-                post={post}
-                {...cardFlags}
-                featured={Boolean(
-                  featured && post.id === featured.id && index === 0,
-                )}
-              />
-            </li>
-          ))}
-        </ul>
+  const postsBlock = isList ? (
+    <ul className="divide-y divide-[var(--color-border)]">
+      {posts.map((post) => (
+        <li key={post.id} className="py-5 first:pt-0 last:pb-0">
+          <BlogArticleCard
+            post={post}
+            {...cardFlags}
+            featured={post.isFeatured}
+          />
+        </li>
+      ))}
+    </ul>
+  ) : (
+    <ul
+      className={cn(
+        "grid grid-cols-1 gap-x-4 gap-y-7 sm:grid-cols-2",
+        coverGrid
+          ? "lg:grid-cols-3 xl:gap-x-5 xl:gap-y-8"
+          : "lg:grid-cols-2",
       )}
-
-      <BlogPagination
-        page={page}
-        totalPages={totalPages}
-        hrefForPage={(p) => listingHref({ page: p, categorySlug, q })}
-      />
-    </div>
+    >
+      {posts.map((post) => (
+        <li key={post.id} className="min-w-0">
+          <BlogArticleCard
+            post={post}
+            {...cardFlags}
+            featured={post.isFeatured}
+          />
+        </li>
+      ))}
+    </ul>
   );
 
-  const sidebar = useDesktopSidebar ? (
-    <BlogCategorySidebar
-      categories={categories}
-      activeSlug={categorySlug}
-      q={q}
-      variant="sidebar"
-      className={
-        sidebarOnLeft
-          ? "sticky top-24 border-r border-[var(--color-border)] pr-6"
-          : "sticky top-24 border-l border-[var(--color-border)] pl-6"
-      }
-    />
-  ) : null;
-
   return (
-    <div className="space-y-8">
-      {settings.showSearch ? (
-        <form
-          method="get"
-          className={cn(
-            "flex flex-col gap-3 sm:flex-row sm:items-center",
-            coverGrid && "mx-auto max-w-xl",
-          )}
-        >
-          {categorySlug ? (
-            <input type="hidden" name="category" value={categorySlug} />
-          ) : null}
-          <label className="sr-only" htmlFor="blog-search">
-            Search articles
-          </label>
-          <input
-            id="blog-search"
-            name="q"
-            defaultValue={q ?? ""}
-            placeholder="Search articles"
-            className="w-full min-h-11 flex-1 rounded-full border border-[var(--color-border)] bg-[var(--color-background)] px-4 py-2 text-sm text-[var(--color-foreground)] shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-primary)]"
-          />
-          <button
-            type="submit"
-            className="min-h-11 rounded-full bg-[var(--color-primary)] px-6 py-2 text-sm font-semibold text-[var(--color-button-foreground)]"
-          >
-            Search
-          </button>
-        </form>
-      ) : null}
-
-      {useTopFilter || useDesktopSidebar ? (
-        <div className={useDesktopSidebar ? "md:hidden" : undefined}>
-          <BlogCategorySidebar
+    <div className="mx-auto w-full max-w-6xl space-y-3">
+      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 shadow-sm">
+        {showCategories || settings.showSearch ? (
+          <BlogCategoryFilter
             categories={categories}
             activeSlug={categorySlug}
             q={q}
-            variant="chips"
+            showSearch={settings.showSearch}
           />
-        </div>
-      ) : null}
+        ) : (
+          <span className="text-xs text-[var(--color-muted)]">Articles</span>
+        )}
 
-      {showFeaturedBlock && featured ? (
-        <section
-          aria-label="Featured article"
-          className="relative border-b border-[var(--color-border)] pb-10 pt-1"
-        >
-          <p className="mb-3 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">
-            Featured
-          </p>
-          <BlogArticleCard post={featured} {...cardFlags} featured />
-        </section>
-      ) : null}
-
-      {posts.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-4 py-16 text-center">
-          <p className="font-medium text-[var(--color-foreground)]">
-            No articles yet
-          </p>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
-            Articles will appear here when your team publishes them.
-          </p>
-        </div>
-      ) : useDesktopSidebar ? (
-        <div
-          className={
-            sidebarOnLeft
-              ? "grid gap-10 lg:grid-cols-[minmax(12rem,22%)_minmax(0,1fr)] lg:items-start lg:gap-12"
-              : "grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,26%)] lg:items-start lg:gap-12"
-          }
-        >
-          {sidebarOnLeft ? (
+        <p className="text-xs text-[var(--color-muted)]">
+          {activeCategoryName ? (
             <>
-              {sidebar}
-              {postsBlock}
+              Showing{" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {activeCategoryName}
+              </span>
             </>
+          ) : total === 0 ? (
+            "No articles"
           ) : (
             <>
-              {postsBlock}
-              {sidebar}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {total}
+              </span>{" "}
+              {total === 1 ? "article" : "articles"}
             </>
           )}
+        </p>
+      </div>
+
+      <div
+        className={cn(
+          "relative z-0 grid gap-8",
+          showSidebar
+            ? "md:grid-cols-[13.5rem_minmax(0,1fr)] lg:grid-cols-[15rem_minmax(0,1fr)]"
+            : null,
+        )}
+      >
+        {showSidebar ? (
+          <div className="min-w-0">
+            {showCategories ? (
+              <div className="mb-4 md:hidden">
+                <BlogCategorySidebar
+                  categories={categories}
+                  activeSlug={categorySlug}
+                  q={q}
+                  relatedPosts={[]}
+                  className="!space-y-0"
+                />
+              </div>
+            ) : null}
+            <div className="hidden md:block">
+              <BlogCategorySidebar
+                categories={showCategories ? categories : []}
+                activeSlug={categorySlug}
+                q={q}
+                relatedPosts={relatedPosts}
+                relatedTitle={
+                  activeCategoryName
+                    ? `More in ${activeCategoryName}`
+                    : "Latest articles"
+                }
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div className="min-w-0">
+          <p className="mb-2.5 text-xs text-[var(--color-muted)]">
+            {total === 0
+              ? "No articles match your filters."
+              : `${total} ${total === 1 ? "article" : "articles"}`}
+          </p>
+
+          {posts.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-12 text-center">
+              <p className="font-medium text-[var(--color-foreground)]">
+                No articles found
+              </p>
+              <p className="mt-2 text-sm text-[var(--color-muted)]">
+                {categorySlug || q
+                  ? "Try clearing filters, or pick another topic."
+                  : "Articles will appear here when your team publishes them."}
+              </p>
+            </div>
+          ) : (
+            postsBlock
+          )}
+
+          {total > 0 || posts.length > 0 ? (
+            <BlogPagination
+              page={page}
+              totalPages={totalPages}
+              hrefForPage={(p) => listingHref({ page: p, categorySlug, q })}
+            />
+          ) : null}
+
+          {relatedPosts.length ? (
+            <div className="mt-8 border-t border-[var(--color-border)] pt-6 md:hidden">
+              <BlogCategorySidebar
+                categories={[]}
+                relatedPosts={relatedPosts}
+                relatedTitle={
+                  activeCategoryName
+                    ? `More in ${activeCategoryName}`
+                    : "Latest articles"
+                }
+              />
+            </div>
+          ) : null}
         </div>
-      ) : (
-        postsBlock
-      )}
+      </div>
     </div>
   );
 }

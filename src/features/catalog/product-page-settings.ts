@@ -24,6 +24,9 @@ export type ProductPageSettings = {
   /** Hero banner on /products (listing), not on individual PDPs. */
   listingBannerEnabled: boolean;
   listingBannerImagePath: string | null;
+  /** Linked articles strip on product detail (from blog ↔ product links). */
+  blogEnabled: boolean;
+  blogHeading: string;
 };
 
 export const DEFAULT_PRODUCT_DETAIL_SECTIONS: ProductDetailSectionDef[] = [
@@ -48,3 +51,4 @@ export const DEFAULT_PRODUCT_DETAIL_SECTIONS: ProductDetailSectionDef[] = [
 ];
 
 export const DEFAULT_PRODUCT_FAQ_HEADING = "FAQs";
+export const DEFAULT_PRODUCT_BLOG_HEADING = "From our blog";

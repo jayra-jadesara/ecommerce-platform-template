@@ -7,9 +7,13 @@ import {
   shouldIncludeInSitemap,
 } from "@/features/seo/sitemap-rules";
 import {
+  buildStorefrontPathsFromNavRows,
+  type StorefrontPathDef,
+} from "@/features/seo/storefront-paths";
+import {
   enabledSitemapPaths,
   parseSitemapPaths,
-  prettyRouteCmsSlugs,
+  syncSitemapRowsFromCatalog,
   type SeoSitemapPath,
 } from "@/features/seo/sitemap-paths";
 
@@ -60,11 +64,20 @@ async function loadSeoForSitemap(storeId: string): Promise<{
   };
   const supabase = createSupabasePublicClient();
   if (!supabase) return empty;
-  const { data } = await supabase
-    .from("store_seo_settings")
-    .select("robots_index, canonical_url, schema_settings")
-    .eq("store_id", storeId)
-    .maybeSingle();
+
+  const [{ data }, { data: navRows }] = await Promise.all([
+    supabase
+      .from("store_seo_settings")
+      .select("robots_index, canonical_url, schema_settings")
+      .eq("store_id", storeId)
+      .maybeSingle(),
+    supabase
+      .from("navigation_items")
+      .select("id, location, parent_id, label, href, is_active")
+      .eq("store_id", storeId)
+      .order("sort_order", { ascending: true }),
+  ]);
+
   const raw = (data as { schema_settings?: unknown } | null)?.schema_settings;
   const o =
     raw && typeof raw === "object" && !Array.isArray(raw)
@@ -73,14 +86,22 @@ async function loadSeoForSitemap(storeId: string): Promise<{
   const bool = (key: string, fallback: boolean) =>
     typeof o[key] === "boolean" ? (o[key] as boolean) : fallback;
 
-  // Paths come from DB only — never fall back to a hardcoded URL list at runtime.
+  const navCatalog: StorefrontPathDef[] = navRows?.length
+    ? buildStorefrontPathsFromNavRows(navRows)
+    : [];
+  const storedPaths = parseSitemapPaths(o.sitemapPaths);
+  // Public sitemap always follows this store’s Menu & Navigation for path/label.
+  const sitemapPaths = navCatalog.length
+    ? syncSitemapRowsFromCatalog(storedPaths, navCatalog)
+    : storedPaths;
+
   return {
     robotsIndex: data?.robots_index !== false,
     siteOrigin: resolveSiteOrigin(data?.canonical_url),
     sitemapProducts: bool("sitemapProducts", true),
     sitemapCategories: bool("sitemapCategories", true),
     sitemapBlog: bool("sitemapBlog", true),
-    sitemapPaths: parseSitemapPaths(o.sitemapPaths),
+    sitemapPaths,
   };
 }
 
@@ -137,8 +158,8 @@ async function fetchAllSlugs(
 }
 
 /**
- * Public indexable URLs — core paths from Google & SEO schema_settings.sitemapPaths.
- * Product / category / blog item URLs follow the include toggles on that same page.
+ * Public indexable URLs — menu pages from this store’s Menu & Navigation
+ * (Include / Importance from Google & SEO). Product / category / blog follow toggles.
  */
 export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
   const storeId = await resolveStoreId();
@@ -148,21 +169,19 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
   if (!seo.robotsIndex) return [];
 
   const core = enabledSitemapPaths(seo.sitemapPaths);
-  const prettySlugs = prettyRouteCmsSlugs(seo.sitemapPaths);
   const entries: SitemapEntry[] = core.map(({ path, priority }) => ({
     url: absoluteUrl(path, seo.siteOrigin),
     changeFrequency: path === "/" || path === "/products" ? "daily" : "weekly",
     priority,
   }));
 
-  const [products, categories, pages, blogPosts] = await Promise.all([
+  const [products, categories, blogPosts] = await Promise.all([
     seo.sitemapProducts
       ? fetchAllSlugs("products", storeId, { status: "active" })
       : Promise.resolve([]),
     seo.sitemapCategories
       ? fetchAllSlugs("categories", storeId, { is_active: true })
       : Promise.resolve([]),
-    fetchAllSlugs("pages", storeId, { status: "published" }),
     seo.sitemapBlog
       ? fetchPublishedBlogPostSlugs(storeId)
       : Promise.resolve([]),
@@ -187,17 +206,8 @@ export async function collectSitemapEntries(): Promise<SitemapEntry[]> {
     });
   }
 
-  for (const page of pages) {
-    if (page.slug === "home") continue;
-    // Skip CMS pages that already have a pretty route listed in admin sitemap paths
-    if (prettySlugs.has(page.slug)) continue;
-    entries.push({
-      url: absoluteUrl(`/pages/${page.slug}`, seo.siteOrigin),
-      lastModified: page.updated_at ?? undefined,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    });
-  }
+  // System CMS pages (about, career, legal) are listed via Menu & Navigation
+  // sitemap paths — no separate /pages/{slug} URLs.
 
   for (const post of blogPosts) {
     entries.push({

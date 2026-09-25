@@ -24,8 +24,6 @@ import {
 import type { BlogCoverCtaStyle } from "@/features/blog/types";
 import {
   adminCard,
-  adminCardPadding,
-  adminFieldGroup,
   adminFieldsGrid,
   adminStackStyle,
 } from "@/features/admin/ui/admin-classes";
@@ -49,16 +47,13 @@ function SettingsSection({
   children: ReactNode;
 }) {
   return (
-    <section
-      className={`${adminCard()} ${adminCardPadding()}`}
-      style={adminStackStyle}
-    >
-      <div className={adminFieldGroup()} style={adminStackStyle}>
-        <div className="border-b border-[var(--color-border)] pb-3">
-          <p className="text-sm font-semibold text-[var(--color-foreground)]">
+    <section className={cn(adminCard(), "p-3.5 md:p-4")} style={adminStackStyle}>
+      <div className="space-y-3" style={adminStackStyle}>
+        <div className="border-b border-[var(--color-border)] pb-2">
+          <p className="text-[0.8125rem] font-semibold text-[var(--color-foreground)]">
             {title}
           </p>
-          <p className="mt-0.5 text-xs leading-relaxed text-[var(--color-muted)]">
+          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--color-muted)]">
             {hint}
           </p>
         </div>
@@ -68,65 +63,246 @@ function SettingsSection({
   );
 }
 
-function CoverCardLivePreview({
+/** Mini mock of what shoppers see on /blog — updates as settings change. */
+function ListingLivePreview({
   cardStyle,
   coverCtaStyle,
   layoutPreset,
   showFeaturedPost,
+  showCategories,
+  showSearch,
+  showAuthor,
+  showDate,
 }: {
   cardStyle: string;
   coverCtaStyle: BlogCoverCtaStyle;
   layoutPreset: string;
   showFeaturedPost: boolean;
+  showCategories: boolean;
+  showSearch: boolean;
+  showAuthor: boolean;
+  showDate: boolean;
 }) {
-  const isCover = cardStyle === "COVER";
+  const isList = layoutPreset === "LIST";
+  const isCover = !isList && cardStyle === "COVER";
+  const layoutLabel = isList ? "List" : "Grid";
+  const styleLabel = isList
+    ? "Compact rows"
+    : cardStyle === "COVER"
+      ? "Cover cards"
+      : cardStyle === "MINIMAL"
+        ? "Minimal"
+        : cardStyle === "EDITORIAL"
+          ? "Editorial"
+          : "Standard cards";
 
   return (
     <aside className="lg:sticky lg:top-4">
-      <div
-        className={`${adminCard()} ${adminCardPadding()} space-y-3`}
-        style={adminStackStyle}
-      >
-        <div>
-          <p className="text-sm font-semibold text-[var(--color-foreground)]">
-            Live preview
-          </p>
-          <p className="mt-0.5 text-xs text-[var(--color-muted)]">
-            Cover card · {layoutPreset === "LIST" ? "List" : "Grid"} layout
-            {showFeaturedPost ? " · Featured on" : ""}
-          </p>
+      <div className={cn(adminCard(), "space-y-3 p-3.5")}>
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-[0.8125rem] font-semibold text-[var(--color-foreground)]">
+              What shoppers see
+            </p>
+            <p className="mt-0.5 text-[11px] text-[var(--color-muted)]">
+              Updates as you change options below.
+            </p>
+          </div>
+          <Link
+            href="/blog"
+            target="_blank"
+            rel="noreferrer"
+            className="shrink-0 text-[11px] font-semibold text-[var(--color-primary)] hover:underline"
+          >
+            Open /blog →
+          </Link>
         </div>
 
-        <article className="blog-cover-card overflow-hidden rounded-[1.1rem]">
-          <div className="blog-cover-card__surface relative aspect-[4/5] overflow-hidden rounded-[1.1rem] bg-[linear-gradient(145deg,#5c2a2a_0%,#2a1518_45%,#1a1012_100%)]">
-            <div
-              className="absolute inset-0 opacity-40"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--color-accent) 55%, transparent), transparent 55%), radial-gradient(circle at 80% 70%, color-mix(in srgb, var(--color-primary) 40%, transparent), transparent 50%)",
-              }}
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 pt-16">
-              <p className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/70">
-                Sample topic
-              </p>
-              <h3 className="mt-1 text-base font-semibold leading-snug text-white">
-                Masala chai for monsoon evenings
-              </h3>
-              {isCover ? (
-                <div className="mt-5 flex justify-center pb-1">
-                  <CoverReadMoreBadge style={coverCtaStyle} compact />
-                </div>
-              ) : (
-                <p className="mt-3 text-[0.7rem] text-white/75">
-                  Badge shows when Card style is Cover.
-                </p>
-              )}
-            </div>
+        <div className="flex flex-wrap gap-1">
+          <span className="rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-foreground)] ring-1 ring-[var(--color-border)]">
+            {layoutLabel}
+          </span>
+          <span className="rounded-md bg-[var(--color-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-foreground)] ring-1 ring-[var(--color-border)]">
+            {styleLabel}
+          </span>
+          {showFeaturedPost ? (
+            <span className="rounded-md bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--color-primary)]">
+              Featured
+            </span>
+          ) : null}
+        </div>
+
+        {/* Mini listing chrome */}
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] p-2">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--color-primary)]">
+            Blog
+          </p>
+          <div className="mb-2 flex flex-wrap gap-1">
+            {showCategories ? (
+              <>
+                <span className="rounded-full bg-[var(--color-primary)] px-2 py-0.5 text-[8px] font-semibold text-[var(--color-button-foreground)]">
+                  All
+                </span>
+                <span className="rounded-full bg-[var(--color-surface)] px-2 py-0.5 text-[8px] font-medium text-[var(--color-foreground)] ring-1 ring-[var(--color-border)]">
+                  Spices
+                </span>
+              </>
+            ) : null}
           </div>
-        </article>
+          {showSearch ? (
+            <div className="mb-2 h-6 rounded-full border border-[var(--color-border)] bg-[var(--color-card)] px-2 text-[9px] leading-6 text-[var(--color-muted)]">
+              Search…
+            </div>
+          ) : null}
+
+          {showFeaturedPost && isList ? (
+            <div className="mb-2 border-b border-[var(--color-border)] pb-2">
+              <p className="mb-1 text-[8px] font-semibold uppercase tracking-wider text-[var(--color-primary)]">
+                Featured
+              </p>
+              <ListRowPreview
+                title="Masala chai for monsoon evenings"
+                showAuthor={showAuthor}
+                showDate={showDate}
+                showCategories={showCategories}
+                larger
+              />
+            </div>
+          ) : null}
+
+          {isCover ? (
+            <div className="blog-cover-card overflow-hidden rounded-lg">
+              <div className="relative aspect-[3/4] max-h-44 overflow-hidden rounded-lg bg-[linear-gradient(145deg,#5c2a2a_0%,#2a1518_45%,#1a1012_100%)]">
+                <div
+                  className="absolute inset-0 opacity-40"
+                  style={{
+                    backgroundImage:
+                      "radial-gradient(circle at 30% 25%, color-mix(in srgb, var(--color-accent) 55%, transparent), transparent 55%)",
+                  }}
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent p-3 pt-10">
+                  <p className="text-[0.55rem] font-semibold uppercase tracking-[0.14em] text-white/70">
+                    Sample
+                  </p>
+                  <h3 className="mt-0.5 text-xs font-semibold leading-snug text-white">
+                    Masala chai for monsoon evenings
+                  </h3>
+                  <div className="mt-3 flex justify-center">
+                    <CoverReadMoreBadge style={coverCtaStyle} compact />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : isList ? (
+            <div className="space-y-2 divide-y divide-[var(--color-border)]">
+              <ListRowPreview
+                title="The magic of Indian masala"
+                showAuthor={showAuthor}
+                showDate={showDate}
+                showCategories={showCategories}
+              />
+              <div className="pt-2">
+                <ListRowPreview
+                  title="Spice blends for everyday cooking"
+                  showAuthor={showAuthor}
+                  showDate={showDate}
+                  showCategories={showCategories}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {["Masala chai nights", "Everyday spice tips"].map((title) => (
+                <div
+                  key={title}
+                  className="overflow-hidden rounded-md border border-[var(--color-border)] bg-[var(--color-card)]"
+                >
+                  <div className="aspect-[16/10] bg-[linear-gradient(145deg,#5c2a2a,#1a1012)]" />
+                  <div className="p-1.5">
+                    <p className="line-clamp-2 text-[9px] font-semibold leading-snug text-[var(--color-foreground)]">
+                      {title}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <p className="text-[10px] leading-relaxed text-[var(--color-muted)]">
+          {isList
+            ? "List layout shows a small photo beside each article title — compact and easy to scan."
+            : isCover
+              ? "Cover cards use a tall image with the Read more badge. Switch layout to List for a tighter page."
+              : "Grid shows articles as cards in columns."}
+        </p>
+        {(showCategories || showSearch) && (
+          <p className="text-[10px] leading-relaxed text-[var(--color-muted)]">
+            {[
+              showCategories ? "Topic chips" : null,
+              showSearch ? "Search" : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}{" "}
+            appear above the list.
+          </p>
+        )}
       </div>
     </aside>
+  );
+}
+
+function ListRowPreview({
+  title,
+  showAuthor,
+  showDate,
+  showCategories,
+  larger,
+}: {
+  title: string;
+  showAuthor: boolean;
+  showDate: boolean;
+  showCategories: boolean;
+  larger?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex gap-2",
+        larger ? "items-start" : "items-center",
+      )}
+    >
+      <div
+        className={cn(
+          "shrink-0 rounded bg-[linear-gradient(145deg,#5c2a2a,#1a1012)]",
+          larger ? "h-12 w-16" : "h-9 w-12",
+        )}
+      />
+      <div className="min-w-0 flex-1">
+        {(showCategories || showDate || showAuthor) && (
+          <p className="mb-0.5 flex flex-wrap gap-x-1 text-[8px] text-[var(--color-muted)]">
+            {showCategories ? (
+              <span className="font-semibold uppercase text-[var(--color-primary)]">
+                Spices
+              </span>
+            ) : null}
+            {showDate ? <span>Mar 12</span> : null}
+            {showAuthor ? <span>Team</span> : null}
+          </p>
+        )}
+        <p
+          className={cn(
+            "font-semibold leading-snug text-[var(--color-foreground)]",
+            larger ? "text-[11px]" : "text-[10px]",
+          )}
+        >
+          {title}
+        </p>
+        <p className="mt-0.5 line-clamp-1 text-[8px] text-[var(--color-muted)]">
+          A short excerpt preview for the listing…
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -167,10 +343,13 @@ export function BlogSettingsForm({
   }, [initialValues, reset]);
 
   const showFeaturedPost = useWatch({ control, name: "showFeaturedPost" });
-  const sidebarPreset = useWatch({ control, name: "sidebarPreset" });
   const cardStyle = useWatch({ control, name: "cardStyle" });
   const coverCtaStyle = useWatch({ control, name: "coverCtaStyle" });
   const layoutPreset = useWatch({ control, name: "layoutPreset" });
+  const showCategories = useWatch({ control, name: "showCategories" });
+  const showSearch = useWatch({ control, name: "showSearch" });
+  const showAuthor = useWatch({ control, name: "showAuthor" });
+  const showDate = useWatch({ control, name: "showDate" });
   const ctaTitle = useWatch({ control, name: "ctaTitle" });
   const ctaDescription = useWatch({ control, name: "ctaDescription" });
   const ctaButtonLabel = useWatch({ control, name: "ctaButtonLabel" });
@@ -178,6 +357,8 @@ export function BlogSettingsForm({
   const showCtaPreview = Boolean(
     ctaTitle || ctaDescription || ctaButtonLabel || ctaButtonHref,
   );
+  const isList = layoutPreset === "LIST";
+  const showCoverBadgePicker = !isList && cardStyle === "COVER";
 
   const save = handleSubmit((values) => {
     if (!canUpdate) return;
@@ -207,16 +388,16 @@ export function BlogSettingsForm({
   });
 
   return (
-    <div className="w-full space-y-5 pb-4">
-      <div className="space-y-1">
+    <div className="w-full space-y-3 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Link
           href={listHref}
-          className="text-sm font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
+          className="text-xs font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
         >
-          ← Back to articles
+          ← Articles
         </Link>
-        <p className="text-sm text-[var(--color-muted)]">
-          Choose how shoppers see your blog listing and article pages.
+        <p className="text-[11px] text-[var(--color-muted)]">
+          Controls layout and extras on your store blog.
         </p>
       </div>
 
@@ -225,13 +406,13 @@ export function BlogSettingsForm({
           event.preventDefault();
           void save();
         }}
-        className="space-y-4"
+        className="space-y-3"
       >
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)] lg:items-start">
-          <div className="space-y-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:items-start">
+          <div className="space-y-3">
             <SettingsSection
               title="Listing page"
-              hint="Intro text under “Blog” and how many stories load at once."
+              hint="Intro under the Blog title, and how many articles load per page."
             >
               <div className={adminFieldsGrid(1)}>
                 <Controller
@@ -241,13 +422,13 @@ export function BlogSettingsForm({
                     <TextField
                       {...field}
                       value={field.value ?? ""}
-                      label="Intro under Blog"
+                      label="Intro text"
                       fullWidth
                       size="small"
                       multiline
                       minRows={2}
                       disabled={!canUpdate || pending}
-                      helperText="Optional. Shown on the store blog page."
+                      helperText="Optional."
                     />
                   )}
                 />
@@ -276,8 +457,8 @@ export function BlogSettingsForm({
             </SettingsSection>
 
             <SettingsSection
-              title="Card layout"
-              hint="How article cards appear on the blog home."
+              title="How articles look"
+              hint="Pick list for a compact scan, or grid for larger cards."
             >
               <div className={adminFieldsGrid(1)}>
                 <Controller
@@ -286,153 +467,157 @@ export function BlogSettingsForm({
                   render={({ field }) => (
                     <AdminSelect
                       label="Layout"
-                      value={field.value}
+                      value={field.value === "LIST" ? "LIST" : "GRID"}
                       onChange={field.onChange}
                       disabled={!canUpdate || pending}
                       options={[
-                        { value: "GRID", label: "Grid of cards" },
-                        { value: "LIST", label: "Simple list" },
+                        {
+                          value: "LIST",
+                          label: "List — compact rows (recommended)",
+                        },
+                        { value: "GRID", label: "Grid — card columns" },
                       ]}
                     />
                   )}
                 />
-                <Controller
-                  name="cardStyle"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminSelect
-                      label="Card style"
-                      value={field.value}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      options={[
-                        { value: "COVER", label: "Cover (large image)" },
-                        { value: "STANDARD", label: "Standard" },
-                        { value: "MINIMAL", label: "Minimal" },
-                        { value: "EDITORIAL", label: "Editorial" },
-                      ]}
-                    />
-                  )}
-                />
-
-                <Controller
-                  name="coverCtaStyle"
-                  control={control}
-                  render={({ field }) => (
-                    <div className="space-y-2">
-                      <p className="text-xs font-medium text-[var(--color-foreground)]">
-                        Read more badge
-                      </p>
-                      <p className="text-[0.6875rem] text-[var(--color-muted)]">
-                        Only for Cover cards.
-                      </p>
-                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                        {BLOG_COVER_CTA_STYLES.map((styleId) => {
-                          const meta = COVER_CTA_STYLE_META[styleId];
-                          const selected = field.value === styleId;
-                          return (
-                            <button
-                              key={styleId}
-                              type="button"
-                              disabled={!canUpdate || pending}
-                              onClick={() => field.onChange(styleId)}
-                              className={cn(
-                                "relative flex flex-col items-center gap-2 rounded-lg border p-2.5 text-left transition",
-                                selected
-                                  ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] ring-1 ring-[var(--color-primary)]"
-                                  : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[color-mix(in_srgb,var(--color-primary)_40%,var(--color-border))]",
-                                (!canUpdate || pending) &&
-                                  "cursor-not-allowed opacity-60",
-                              )}
-                            >
-                              {meta.premium ? (
-                                <span className="absolute right-1.5 top-1.5 rounded bg-[var(--color-primary)] px-1 py-px text-[0.55rem] font-semibold uppercase tracking-wide text-[var(--color-button-foreground)]">
-                                  Premium
-                                </span>
-                              ) : null}
-                              <div className="flex h-14 w-full items-center justify-center rounded-md bg-[linear-gradient(145deg,#3a1a1e,#1a1012)]">
-                                <CoverReadMoreBadge
-                                  style={styleId}
-                                  compact
-                                />
-                              </div>
-                              <span className="w-full text-[0.7rem] font-semibold text-[var(--color-foreground)]">
-                                {meta.title}
-                              </span>
-                              <span className="w-full text-[0.62rem] leading-snug text-[var(--color-muted)]">
-                                {meta.description}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                />
-
-                <Controller
-                  name="featuredPostId"
-                  control={control}
-                  render={({ field, fieldState }) => (
-                    <div>
+                {!isList ? (
+                  <Controller
+                    name="cardStyle"
+                    control={control}
+                    render={({ field }) => (
                       <AdminSelect
-                        label="Featured article"
-                        value={field.value ?? ""}
-                        onChange={(next) => field.onChange(next || null)}
-                        disabled={!canUpdate || pending || !showFeaturedPost}
-                        allowEmpty
-                        emptyLabel="Automatic"
-                        error={Boolean(fieldState.error)}
-                        helperText={
-                          fieldState.error
-                            ? undefined
-                            : showFeaturedPost
-                              ? "Automatic uses a marked Featured post or the latest one."
-                              : "Turn on the highlight below first."
-                        }
-                        options={featuredOptions.map((option) => ({
-                          value: option.id,
-                          label: option.title,
-                        }))}
+                        label="Card style"
+                        value={field.value}
+                        onChange={field.onChange}
+                        disabled={!canUpdate || pending}
+                        options={[
+                          { value: "STANDARD", label: "Standard" },
+                          { value: "COVER", label: "Cover (tall image)" },
+                          { value: "MINIMAL", label: "Minimal" },
+                          { value: "EDITORIAL", label: "Editorial" },
+                        ]}
                       />
-                      <FieldError message={fieldState.error?.message} />
-                    </div>
-                  )}
-                />
-              </div>
-              <Controller
-                name="showFeaturedPost"
-                control={control}
-                render={({ field }) => (
-                  <AdminToggle
-                    checked={Boolean(field.value)}
-                    onChange={field.onChange}
-                    disabled={!canUpdate || pending}
-                    label="Highlight a featured article"
-                    variant="row"
+                    )}
                   />
-                )}
-              />
-              {showFeaturedPost ? (
+                ) : null}
+
+                {showCoverBadgePicker ? (
+                  <Controller
+                    name="coverCtaStyle"
+                    control={control}
+                    render={({ field }) => (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-[var(--color-foreground)]">
+                          Read more badge
+                        </p>
+                        <p className="text-[10px] text-[var(--color-muted)]">
+                          Only on Cover cards.
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                          {BLOG_COVER_CTA_STYLES.map((styleId) => {
+                            const meta = COVER_CTA_STYLE_META[styleId];
+                            const selected = field.value === styleId;
+                            return (
+                              <button
+                                key={styleId}
+                                type="button"
+                                disabled={!canUpdate || pending}
+                                onClick={() => field.onChange(styleId)}
+                                className={cn(
+                                  "relative flex flex-col items-center gap-1.5 rounded-lg border p-2 text-left transition",
+                                  selected
+                                    ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_8%,var(--color-card))] ring-1 ring-[var(--color-primary)]"
+                                    : "border-[var(--color-border)] bg-[var(--color-card)] hover:border-[color-mix(in_srgb,var(--color-primary)_40%,var(--color-border))]",
+                                  (!canUpdate || pending) &&
+                                    "cursor-not-allowed opacity-60",
+                                )}
+                              >
+                                {meta.premium ? (
+                                  <span className="absolute right-1 top-1 rounded bg-[var(--color-primary)] px-1 py-px text-[0.5rem] font-semibold uppercase tracking-wide text-[var(--color-button-foreground)]">
+                                    Pro
+                                  </span>
+                                ) : null}
+                                <div className="flex h-11 w-full items-center justify-center rounded-md bg-[linear-gradient(145deg,#3a1a1e,#1a1012)]">
+                                  <CoverReadMoreBadge
+                                    style={styleId}
+                                    compact
+                                  />
+                                </div>
+                                <span className="w-full text-[0.65rem] font-semibold text-[var(--color-foreground)]">
+                                  {meta.title}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  />
+                ) : null}
+
                 <Controller
-                  name="autoFeaturedFallback"
+                  name="showFeaturedPost"
                   control={control}
                   render={({ field }) => (
                     <AdminToggle
                       checked={Boolean(field.value)}
                       onChange={field.onChange}
                       disabled={!canUpdate || pending}
-                      label="Use latest article if none is featured"
+                      label="Highlight a featured article at the top"
                       variant="row"
                     />
                   )}
                 />
-              ) : null}
+                {showFeaturedPost ? (
+                  <>
+                    <Controller
+                      name="featuredPostId"
+                      control={control}
+                      render={({ field, fieldState }) => (
+                        <div>
+                          <AdminSelect
+                            label="Which article"
+                            value={field.value ?? ""}
+                            onChange={(next) => field.onChange(next || null)}
+                            disabled={!canUpdate || pending}
+                            allowEmpty
+                            emptyLabel="Automatic"
+                            error={Boolean(fieldState.error)}
+                            helperText={
+                              fieldState.error
+                                ? undefined
+                                : "Automatic picks a marked Featured post, or the latest."
+                            }
+                            options={featuredOptions.map((option) => ({
+                              value: option.id,
+                              label: option.title,
+                            }))}
+                          />
+                          <FieldError message={fieldState.error?.message} />
+                        </div>
+                      )}
+                    />
+                    <Controller
+                      name="autoFeaturedFallback"
+                      control={control}
+                      render={({ field }) => (
+                        <AdminToggle
+                          checked={Boolean(field.value)}
+                          onChange={field.onChange}
+                          disabled={!canUpdate || pending}
+                          label="Fall back to latest if none is featured"
+                          variant="row"
+                        />
+                      )}
+                    />
+                  </>
+                ) : null}
+              </div>
             </SettingsSection>
 
             <SettingsSection
-              title="Search & topics"
-              hint="Help shoppers find articles."
+              title="Find & filter"
+              hint="Product-style Show filter on /blog, plus a left category rail."
             >
               <Controller
                 name="showCategories"
@@ -442,7 +627,7 @@ export function BlogSettingsForm({
                     checked={Boolean(field.value)}
                     onChange={field.onChange}
                     disabled={!canUpdate || pending}
-                    label="Show topics"
+                    label="Show filter (product-style)"
                     variant="row"
                   />
                 )}
@@ -455,148 +640,50 @@ export function BlogSettingsForm({
                     checked={Boolean(field.value)}
                     onChange={field.onChange}
                     disabled={!canUpdate || pending}
-                    label="Show search"
+                    label="Search box"
                     variant="row"
                   />
                 )}
               />
-              <Controller
-                name="sidebarPreset"
-                control={control}
-                render={({ field }) => (
-                  <AdminSelect
-                    label="Topics placement (desktop)"
-                    value={field.value}
-                    onChange={field.onChange}
-                    disabled={!canUpdate || pending}
-                    options={[
-                      { value: "RIGHT", label: "Right side" },
-                      { value: "LEFT", label: "Left side" },
-                      { value: "TOP", label: "Above the list" },
-                      { value: "NONE", label: "Hidden" },
-                    ]}
-                  />
-                )}
-              />
-              {sidebarPreset !== "NONE" && sidebarPreset !== "TOP" ? (
-                <Controller
-                  name="showSidebar"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Show side panel on desktop"
-                      variant="row"
-                    />
-                  )}
-                />
-              ) : null}
             </SettingsSection>
 
             <SettingsSection
               title="On each article"
-              hint="Details and extras shoppers see on cards and full articles."
+              hint="Details on cards and full article pages."
             >
-              <div className="space-y-2">
-                <Controller
-                  name="showAuthor"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Author name"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showDate"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Publish date"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showReadingTime"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Reading time"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showFeaturedImage"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Cover photo"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showShareButtons"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Share buttons"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showRelatedPosts"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Related articles"
-                      variant="row"
-                    />
-                  )}
-                />
-                <Controller
-                  name="showRelatedProducts"
-                  control={control}
-                  render={({ field }) => (
-                    <AdminToggle
-                      checked={Boolean(field.value)}
-                      onChange={field.onChange}
-                      disabled={!canUpdate || pending}
-                      label="Linked products"
-                      variant="row"
-                    />
-                  )}
-                />
+              <div className="grid gap-1 sm:grid-cols-2">
+                {(
+                  [
+                    ["showAuthor", "Author name"],
+                    ["showDate", "Publish date"],
+                    ["showReadingTime", "Reading time"],
+                    ["showFeaturedImage", "Cover photo"],
+                    ["showShareButtons", "Share buttons"],
+                    ["showRelatedPosts", "Related articles"],
+                    ["showRelatedProducts", "Linked products"],
+                  ] as const
+                ).map(([name, label]) => (
+                  <Controller
+                    key={name}
+                    name={name}
+                    control={control}
+                    render={({ field }) => (
+                      <AdminToggle
+                        checked={Boolean(field.value)}
+                        onChange={field.onChange}
+                        disabled={!canUpdate || pending}
+                        label={label}
+                        variant="row"
+                      />
+                    )}
+                  />
+                ))}
               </div>
             </SettingsSection>
 
             <SettingsSection
               title="End-of-article button"
-              hint="Optional invite after every story (for example: Shop products). Leave empty to hide."
+              hint="Optional CTA after every story. Leave empty to hide."
             >
               <div className={adminFieldsGrid(2)}>
                 <Controller
@@ -637,7 +724,7 @@ export function BlogSettingsForm({
                       {...field}
                       value={field.value ?? ""}
                       label="Short message"
-                      placeholder="Browse our spice range and cook along."
+                      placeholder="Browse our spice range."
                       fullWidth
                       size="small"
                       multiline
@@ -670,19 +757,23 @@ export function BlogSettingsForm({
                   />
                 </div>
               </div>
-              <p className="text-xs text-[var(--color-muted)]">
+              <p className="text-[11px] text-[var(--color-muted)]">
                 {showCtaPreview
-                  ? "This button block will show at the bottom of every article."
+                  ? "This block will show at the bottom of every article."
                   : "Hidden until you add a headline or button text."}
               </p>
             </SettingsSection>
           </div>
 
-          <CoverCardLivePreview
-            cardStyle={cardStyle ?? "COVER"}
+          <ListingLivePreview
+            cardStyle={cardStyle ?? "STANDARD"}
             coverCtaStyle={(coverCtaStyle as BlogCoverCtaStyle) ?? "COOKIE"}
-            layoutPreset={layoutPreset ?? "GRID"}
+            layoutPreset={layoutPreset ?? "LIST"}
             showFeaturedPost={Boolean(showFeaturedPost)}
+            showCategories={Boolean(showCategories)}
+            showSearch={Boolean(showSearch)}
+            showAuthor={Boolean(showAuthor)}
+            showDate={Boolean(showDate)}
           />
         </div>
 
@@ -702,17 +793,6 @@ export function BlogSettingsForm({
           }}
         />
       </form>
-
-      <div className="flex justify-end pb-2">
-        <Link
-          href="/blog"
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
-        >
-          Preview blog →
-        </Link>
-      </div>
     </div>
   );
 }

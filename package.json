@@ -8,6 +8,7 @@
     "dev:webpack": "node scripts/prepare-next-dev.mjs && next dev --webpack",
     "dev:clean": "node scripts/clean-next-cache.mjs && node scripts/prepare-next-dev.mjs && next dev",
     "dev:tips": "node scripts/dev-fs-tips.mjs",
+    "stop:next": "node scripts/stop-project-next.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",

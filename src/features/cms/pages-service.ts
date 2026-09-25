@@ -58,18 +58,6 @@ function revalidatePages(slug?: string) {
   if (slug) revalidateTag(pageCacheTag(slug), "max");
 }
 
-export async function listAdminPages(): Promise<ContentPage[]> {
-  const storeId = await resolveActiveStoreId();
-  if (!storeId) return [];
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("store_id", storeId)
-    .order("updated_at", { ascending: false });
-  return (data ?? []).map(mapPage);
-}
-
 export async function getAdminPage(id: string): Promise<ContentPage | null> {
   const storeId = await resolveActiveStoreId();
   if (!storeId) return null;
@@ -348,116 +336,6 @@ export type PageMutationResult =
   | { ok: true; page: ContentPage; message?: string }
   | { ok: false; error: string; fieldErrors?: FieldErrors };
 
-export async function createAdminPage(raw: unknown): Promise<PageMutationResult> {
-  const storeId = await resolveActiveStoreId();
-  if (!storeId) return { ok: false, error: "Store not found." };
-
-  const parsed = pageFormSchema.safeParse(raw);
-  if (!parsed.success) {
-    return zodValidationFailure(parsed.error, "Invalid page.");
-  }
-  if (parsed.data.slug === HOMEPAGE_SLUG) {
-    return {
-      ok: false,
-      error: "The homepage is managed under Content → Homepage.",
-      fieldErrors: {
-        slug: "The homepage is managed under Content → Homepage.",
-      },
-    };
-  }
-  if (parsed.data.slug === ABOUT_PAGE_SLUG) {
-    return {
-      ok: false,
-      error: "The about page is managed under Content → About.",
-      fieldErrors: {
-        slug: "The about page is managed under Content → About.",
-      },
-    };
-  }
-  if (parsed.data.slug === CAREER_PAGE_SLUG) {
-    return {
-      ok: false,
-      error: "The career page is managed under Content → Career.",
-      fieldErrors: {
-        slug: "The career page is managed under Content → Career.",
-      },
-    };
-  }
-  if (isLegalPageSlug(parsed.data.slug)) {
-    return {
-      ok: false,
-      error: "Legal pages are managed under Content → Legal pages.",
-      fieldErrors: {
-        slug: "Legal pages are managed under Content → Legal pages.",
-      },
-    };
-  }
-
-  const values = parsed.data;
-  const supabase = await createSupabaseServerClient();
-  const user = await getCurrentUser();
-
-  const { data, error } = await supabase
-    .from("pages")
-    .insert({
-      store_id: storeId,
-      title: values.title,
-      slug: values.slug,
-      content: values.content,
-      status: values.status,
-      seo_title: values.seoTitle,
-      seo_description: values.seoDescription,
-      featured_image_path: values.featuredImagePath,
-      og_image_path: values.ogImagePath,
-      published_at:
-        values.status === "published" ? new Date().toISOString() : null,
-    })
-    .select("*")
-    .single();
-
-  if (error || !data) {
-    if (error?.code === "23505") {
-      return {
-        ok: false,
-        error: "A page with this URL already exists.",
-        fieldErrors: { slug: "A page with this URL already exists." },
-      };
-    }
-    return unexpectedFailure({
-      type: "CMS",
-      source: "DATABASE",
-      operation: "CREATE_PAGE",
-      feature: "CMS",
-      message: error?.message || "Unable to create page",
-      error,
-      storeId,
-      entityType: "page",
-      route: "/content/pages",
-    });
-  }
-
-  await writeContentAudit({
-    storeId,
-    userId: user?.id ?? null,
-    action: "PAGE_CREATED",
-    entityType: "page",
-    entityId: data.id,
-    metadata: { slug: values.slug },
-  });
-  if (values.status === "published") {
-    await writeContentAudit({
-      storeId,
-      userId: user?.id ?? null,
-      action: "PAGE_PUBLISHED",
-      entityType: "page",
-      entityId: data.id,
-    });
-  }
-
-  revalidatePages(values.slug);
-  return { ok: true, page: mapPage(data), message: "Page created." };
-}
-
 export async function updateAdminPage(
   id: string,
   raw: unknown,
@@ -482,6 +360,18 @@ export async function updateAdminPage(
     .maybeSingle();
 
   if (!current) return { ok: false, error: "Page not found." };
+
+  const isSystemSlug =
+    current.slug === HOMEPAGE_SLUG ||
+    current.slug === ABOUT_PAGE_SLUG ||
+    current.slug === CAREER_PAGE_SLUG ||
+    isLegalPageSlug(current.slug);
+  if (!isSystemSlug) {
+    return {
+      ok: false,
+      error: "Custom pages are no longer supported. Use Content → About, Career, or Legal.",
+    };
+  }
 
   if (current.slug === HOMEPAGE_SLUG && values.slug !== HOMEPAGE_SLUG) {
     return {
@@ -596,7 +486,7 @@ export async function updateAdminPage(
       storeId,
       entityType: "page",
       entityId: id,
-      route: "/content/pages",
+      route: "/content",
     });
   }
 

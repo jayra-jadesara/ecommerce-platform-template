@@ -43,6 +43,43 @@ const ACTION_LABELS: Record<string, string> = {
   COUPON_CREATED: "Created a coupon",
   COUPON_UPDATED: "Updated a coupon",
   COUPON_DELETED: "Deleted a coupon",
+  // Content / CMS
+  PAGE_CREATED: "Created a page",
+  PAGE_UPDATED: "Updated a page",
+  PAGE_SEO_UPDATED: "Updated page SEO",
+  PAGE_PUBLISHED: "Published a page",
+  PAGE_UNPUBLISHED: "Unpublished a page",
+  PAGE_ARCHIVED: "Archived a page",
+  HOMEPAGE_UPDATED: "Updated the homepage",
+  HOMEPAGE_PUBLISHED: "Published the homepage",
+  SECTION_CREATED: "Added a page section",
+  SECTION_UPDATED: "Updated a page section",
+  SECTION_REORDERED: "Reordered page sections",
+  SECTION_DELETED: "Deleted a page section",
+  BANNER_CREATED: "Created a banner",
+  BANNER_UPDATED: "Updated a banner",
+  BANNER_DELETED: "Deleted a banner",
+  JOB_POST_CREATED: "Created a job post",
+  JOB_POST_UPDATED: "Updated a job post",
+  JOB_POST_DELETED: "Deleted a job post",
+  // Blog
+  BLOG_POST_CREATED: "Created a blog post",
+  BLOG_POST_UPDATED: "Updated a blog post",
+  BLOG_POST_PUBLISHED: "Published a blog post",
+  BLOG_POST_UNPUBLISHED: "Unpublished a blog post",
+  BLOG_POST_ARCHIVED: "Archived a blog post",
+  BLOG_POST_DELETED: "Deleted a blog post",
+  BLOG_CATEGORY_CREATED: "Created a blog category",
+  BLOG_CATEGORY_UPDATED: "Updated a blog category",
+  BLOG_CATEGORY_DELETED: "Deleted a blog category",
+  BLOG_SETTINGS_UPDATED: "Updated blog settings",
+  // Brochures
+  BROCHURE_CREATED: "Created a brochure",
+  BROCHURE_UPDATED: "Updated a brochure",
+  BROCHURE_DELETED: "Deleted a brochure",
+  BROCHURE_PDF_UPLOADED: "Uploaded a brochure PDF",
+  BROCHURE_PAGE_DESCRIPTION_UPDATED: "Updated brochure page intro",
+  BROCHURE_PDF_MAX_MB_UPDATED: "Updated brochure PDF size limit",
 };
 
 const ENTITY_LABELS: Record<string, string> = {
@@ -64,15 +101,31 @@ const ENTITY_LABELS: Record<string, string> = {
   store_theme_settings: "Appearance",
   store_header: "Header",
   store_footer: "Footer",
+  store_seo: "SEO",
   store_seo_settings: "SEO",
+  store_navigation: "Navigation",
   navigation_items: "Navigation",
   shipping_settings: "Shipping",
   payment_settings: "Payments",
   error_log: "Error",
   error_logs: "Error",
   cms: "Content",
-  blog_posts: "Blog",
+  blog_post: "Blog post",
+  blog_posts: "Blog post",
+  blog_category: "Blog category",
+  blog_settings: "Blog settings",
+  page: "Page",
   pages: "Page",
+  page_section: "Page section",
+  homepage: "Homepage",
+  store_brochure: "Brochure",
+  store_brochures: "Brochure",
+  store_reel: "Reel",
+  store_reels: "Reel",
+  job_post: "Job",
+  job_posts: "Job",
+  banner: "Banner",
+  banners: "Banner",
 };
 
 export function staffActionLabel(action: string): string {
@@ -120,6 +173,21 @@ export function staffEntityTone(entityType: string): {
   if (key.includes("admin") || key.includes("user") || key.includes("team")) {
     return {
       chip: "bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-card))] text-[var(--color-primary)] border-[color-mix(in_srgb,var(--color-primary)_30%,var(--color-border))]",
+      dot: "bg-[var(--color-primary)]",
+    };
+  }
+  if (
+    key.includes("blog") ||
+    key.includes("page") ||
+    key.includes("brochure") ||
+    key.includes("reel") ||
+    key.includes("banner") ||
+    key.includes("job") ||
+    key.includes("cms") ||
+    key.includes("homepage")
+  ) {
+    return {
+      chip: "bg-[color-mix(in_srgb,var(--color-primary)_10%,var(--color-card))] text-[var(--color-primary)] border-[color-mix(in_srgb,var(--color-primary)_26%,var(--color-border))]",
       dot: "bg-[var(--color-primary)]",
     };
   }

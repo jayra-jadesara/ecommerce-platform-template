@@ -27,8 +27,10 @@ describe("admin navigation structure", () => {
       "Dashboard",
       "Products",
       "Orders",
-      "Error Logs",
+      "Reports",
       "Customers",
+      "Error Logs",
+      "Hosting & storage",
       "Content",
       "Store Settings",
     ]);
@@ -40,8 +42,9 @@ describe("admin navigation structure", () => {
     if (products?.kind !== "group") return;
     expect(products.children.map((child) => child.label)).toEqual([
       "Categories",
-      "Size / pack",
+      "Product settings",
       "All Products",
+      "Inventory alerts",
       "Reviews",
     ]);
   });
@@ -53,15 +56,20 @@ describe("admin navigation structure", () => {
     expect(content.children.map((child) => child.label)).toEqual([
       "Homepage",
       "About",
+      "Contact",
       "Career",
       "Legal pages",
-      "Pages",
       "Banners",
+      "Reels",
       "Blog",
+      "Brochures",
       "Images & Files",
     ]);
     expect(content.children.map((child) => child.href)).toContain(
       getAdminPath("/media"),
+    );
+    expect(content.children.map((child) => child.href)).toContain(
+      getAdminPath("/content/brochures"),
     );
   });
 
@@ -91,13 +99,16 @@ describe("permission-based admin nav visibility", () => {
       "Dashboard",
       "Products",
       "Orders",
-      "Error Logs",
+      "Reports",
       "Customers",
+      "Error Logs",
+      "Hosting & storage",
       "Content",
       "Store Settings",
     ]);
     expect(links).toContain("All Products");
     expect(links).toContain("Images & Files");
+    expect(links).toContain("Brochures");
     expect(links).toContain("Shipping");
     expect(links).toContain("Payments");
     expect(links).toContain("Coupons");
@@ -121,18 +132,22 @@ describe("permission-based admin nav visibility", () => {
     );
     expect(top).toEqual([
       "Dashboard",
+      "Products",
       "Orders",
-      "Error Logs",
+      "Reports",
       "Customers",
+      "Error Logs",
       "Store Settings",
     ]);
     expect(links).toContain("Dashboard");
     expect(links).toContain("Orders");
+    expect(links).toContain("Inventory alerts");
     expect(links).toContain("Error Logs");
     expect(links).toContain("Customers");
     expect(links).toContain("Payments");
     expect(links).not.toContain("All Products");
     expect(links).not.toContain("Images & Files");
+    expect(links).not.toContain("Brochures");
   });
 
   it("limits MARKETING to content and growth tools", () => {
@@ -144,6 +159,7 @@ describe("permission-based admin nav visibility", () => {
     expect(top).not.toContain("Customers");
     expect(links).toContain("Homepage");
     expect(links).toContain("Blog");
+    expect(links).toContain("Brochures");
     expect(links).toContain("Coupons");
     expect(links.some((label) => label === "Orders")).toBe(false);
   });
@@ -202,6 +218,8 @@ describe("admin breadcrumb labels", () => {
     expect(ADMIN_BREADCRUMB_LABELS.navigation).toBe("Menu & Navigation");
     expect(ADMIN_BREADCRUMB_LABELS.seo).toBe("Google & SEO");
     expect(ADMIN_BREADCRUMB_LABELS.general).toBe("Store Information");
+    expect(ADMIN_BREADCRUMB_LABELS.brochures).toBe("Brochures");
+    expect(ADMIN_BREADCRUMB_LABELS.legal).toBe("Legal pages");
     expect(ADMIN_BREADCRUMB_LABELS.new).toBe("Add Product");
   });
 });

@@ -13,7 +13,7 @@ import {
 } from "@/features/admin/settings/schemas";
 import { loadStorefrontPathsFromNavigation } from "@/features/seo/storefront-paths.server";
 import { cmsSlugFromPath } from "@/features/seo/storefront-paths";
-import { hydrateSitemapFromCatalog } from "@/features/seo/sitemap-paths";
+import { syncSitemapRowsFromCatalog } from "@/features/seo/sitemap-paths";
 import {
   resolveActiveStoreId,
   type SettingsUpdateResult,
@@ -61,7 +61,7 @@ export async function updateSeoSettings(
       label: p.label,
       cmsSlug: p.cmsSlug || cmsSlugFromPath(p.path),
     }));
-    values.sitemapPaths = hydrateSitemapFromCatalog(
+    values.sitemapPaths = syncSitemapRowsFromCatalog(
       values.sitemapPaths,
       values.storefrontPaths,
     );

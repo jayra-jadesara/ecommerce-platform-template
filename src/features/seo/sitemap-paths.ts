@@ -1,10 +1,10 @@
 /**
  * Sitemap rows stored in schema_settings.sitemapPaths.
- * Paths must come from schema_settings.storefrontPaths (admin catalog).
+ * Path + label always come from Menu & Navigation (storefront catalog).
+ * Only enabled / priority are SEO-owned.
  */
 
 import {
-  findStorefrontPath,
   normalizeStorefrontPath,
   type StorefrontPathDef,
   DEFAULT_STOREFRONT_PATHS,
@@ -27,6 +27,7 @@ export function buildDefaultSitemapPaths(
     "/": 1,
     "/products": 0.9,
     "/blog": 0.8,
+    "/brochure": 0.6,
     "/about": 0.7,
     "/contact": 0.7,
     "/career": 0.6,
@@ -91,21 +92,36 @@ export function parseSitemapPaths(raw: unknown): SeoSitemapPath[] {
   return out;
 }
 
-/** Sync label/cmsSlug from catalog when path is known. */
+/**
+ * Keep sitemap rows in lockstep with Menu & Navigation:
+ * path/label/cmsSlug from catalog; preserve enabled + priority when path still exists;
+ * drop pages removed from nav; add new nav pages with defaults.
+ */
+export function syncSitemapRowsFromCatalog(
+  existing: SeoSitemapPath[],
+  catalog: StorefrontPathDef[],
+): SeoSitemapPath[] {
+  const byPath = new Map(
+    existing.map((row) => [normalizeSitemapPath(row.path), row] as const),
+  );
+  return buildDefaultSitemapPaths(catalog).map((def) => {
+    const prev = byPath.get(normalizeSitemapPath(def.path));
+    if (!prev) return def;
+    return {
+      ...def,
+      id: prev.id || def.id,
+      priority: prev.priority,
+      enabled: prev.enabled,
+    };
+  });
+}
+
+/** @deprecated Prefer syncSitemapRowsFromCatalog — same behavior. */
 export function hydrateSitemapFromCatalog(
   rows: SeoSitemapPath[],
   catalog: StorefrontPathDef[],
 ): SeoSitemapPath[] {
-  return rows.map((row) => {
-    const match = findStorefrontPath(catalog, row.path);
-    if (!match) return row;
-    return {
-      ...row,
-      path: match.path,
-      label: match.label,
-      cmsSlug: match.cmsSlug,
-    };
-  });
+  return syncSitemapRowsFromCatalog(rows, catalog);
 }
 
 export function enabledSitemapPaths(paths: SeoSitemapPath[]): SeoSitemapPath[] {

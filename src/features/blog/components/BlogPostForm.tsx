@@ -1,7 +1,6 @@
 "use client";
 
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import EditNoteOutlinedIcon from "@mui/icons-material/EditNoteOutlined";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
@@ -10,9 +9,6 @@ import PublishOutlinedIcon from "@mui/icons-material/PublishOutlined";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
 import TravelExploreOutlinedIcon from "@mui/icons-material/TravelExploreOutlined";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Checkbox from "@mui/material/Checkbox";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import FormGroup from "@mui/material/FormGroup";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
@@ -154,6 +150,10 @@ export function BlogPostForm({
   const productSelectOptions = useMemo(
     () => productOptions.map((p) => ({ id: p.id, label: p.name })),
     [productOptions],
+  );
+  const categorySelectOptions = useMemo(
+    () => categories.map((c) => ({ id: c.id, label: c.name })),
+    [categories],
   );
 
   useEffect(() => {
@@ -370,20 +370,25 @@ export function BlogPostForm({
               </div>
             </section>
 
-            {productOptions.length > 0 ? (
-              <section
-                className={`${adminCard()} ${adminCardPadding()}`}
-                style={adminStackStyle}
-              >
-                <div className={adminFieldGroup()} style={adminStackStyle}>
-                  <FormSectionTitle
-                    icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 16 }} />}
-                  >
-                    4. Products to show with this article
-                  </FormSectionTitle>
-                  <p className="admin-field-group__hint">
-                    Shoppers can open these from “Shop this article”. Optional.
+            <section
+              className={`${adminCard()} ${adminCardPadding()}`}
+              style={adminStackStyle}
+            >
+              <div className={adminFieldGroup()} style={adminStackStyle}>
+                <FormSectionTitle
+                  icon={<ShoppingBagOutlinedIcon sx={{ fontSize: 16 }} />}
+                >
+                  4. Products to show with this article
+                </FormSectionTitle>
+                <p className="admin-field-group__hint">
+                  Shoppers can open these from “Shop this article”. Optional.
+                </p>
+                {productSelectOptions.length === 0 ? (
+                  <p className="text-sm text-[var(--color-muted)]">
+                    No products yet. Publish products in Catalog to link them
+                    here.
                   </p>
+                ) : (
                   <Controller
                     name="productIds"
                     control={control}
@@ -410,9 +415,9 @@ export function BlogPostForm({
                       );
                     }}
                   />
-                </div>
-              </section>
-            ) : null}
+                )}
+              </div>
+            </section>
 
             <details className={`${adminCard()} ${adminCardPadding()}`}>
               <summary className="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold text-[var(--color-foreground)] [&::-webkit-details-marker]:hidden">
@@ -438,10 +443,11 @@ export function BlogPostForm({
                   }
                   disabled={!canSubmit || pending}
                   resetKey={postId ?? "new"}
+                  forceAutomatic
                 />
                 <p className="text-xs text-[var(--color-muted)]">
-                  Social and Google images use the cover photo above — no
-                  separate upload needed.
+                  Google title and description are filled from the article title
+                  and summary when you save. Social images use the cover photo.
                 </p>
               </div>
             </details>
@@ -504,56 +510,39 @@ export function BlogPostForm({
                   />
                 )}
               />
-              <div>
-                <p className="mb-1 flex items-center gap-1.5 text-sm font-medium text-[var(--color-foreground)]">
-                  <CategoryOutlinedIcon
-                    sx={{ fontSize: 16 }}
-                    className="text-[var(--color-muted)]"
-                  />
-                  Topics
-                </p>
-                <Controller
-                  name="categoryIds"
-                  control={control}
-                  render={({ field }) => (
-                    <FormGroup>
-                      {categories.length === 0 ? (
-                        <p className="text-sm text-[var(--color-muted)]">
-                          No topics yet. Add some under Blog → Categories.
-                        </p>
-                      ) : (
-                        categories.map((category) => {
-                          const checked = (field.value ?? []).includes(
-                            category.id,
-                          );
-                          return (
-                            <FormControlLabel
-                              key={category.id}
-                              control={
-                                <Checkbox
-                                  checked={checked}
-                                  disabled={!canSubmit || pending}
-                                  onChange={(_, next) => {
-                                    const current = field.value ?? [];
-                                    field.onChange(
-                                      next
-                                        ? [...current, category.id]
-                                        : current.filter(
-                                            (id) => id !== category.id,
-                                          ),
-                                    );
-                                  }}
-                                />
-                              }
-                              label={category.name}
-                            />
-                          );
-                        })
-                      )}
-                    </FormGroup>
-                  )}
-                />
-              </div>
+              <Controller
+                name="categoryIds"
+                control={control}
+                render={({ field }) => {
+                  const selectedCount = (field.value ?? []).length;
+                  if (categorySelectOptions.length === 0) {
+                    return (
+                      <p className="text-sm text-[var(--color-muted)]">
+                        No topics yet. Add some under Blog → Categories.
+                      </p>
+                    );
+                  }
+                  return (
+                    <AdminMultiSelect
+                      options={categorySelectOptions}
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      disabled={!canSubmit || pending}
+                      label="Topics"
+                      placeholder={
+                        selectedCount
+                          ? "Add another topic…"
+                          : "Search topics…"
+                      }
+                      helperText={
+                        selectedCount
+                          ? `${selectedCount} topic${selectedCount === 1 ? "" : "s"} selected`
+                          : "Optional — helps shoppers filter on the blog."
+                      }
+                    />
+                  );
+                }}
+              />
               <TextField
                 label="Author name"
                 fullWidth

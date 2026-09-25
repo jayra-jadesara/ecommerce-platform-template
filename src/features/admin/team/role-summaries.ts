@@ -26,7 +26,7 @@ export const ROLE_QUICK: Record<
     cannot: "Orders, payments, team",
   },
   MARKETING: {
-    can: "Coupons, blog, and homepage content",
+    can: "Coupons, blog, brochures, reels, and homepage content",
     cannot: "Orders, catalog edits, team",
   },
   ORDER_MANAGER: {

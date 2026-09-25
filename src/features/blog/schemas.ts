@@ -77,7 +77,7 @@ export const blogCategoryFormSchema = z
   })
   .transform((data) => ({
     ...data,
-    slug: slugify(data.slug?.trim() ? data.slug : data.name),
+    slug: slugify(data.name),
   }))
   .superRefine((data, ctx) => {
     if (!isValidSlug(data.slug)) {
@@ -214,7 +214,7 @@ export const blogListQuerySchema = z.object({
       return v;
     }),
   page: z.coerce.number().int().min(1).optional().default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).optional().default(20),
+  pageSize: z.coerce.number().int().min(1).max(100).optional().default(10),
 });
 
 export type BlogListQuery = z.infer<typeof blogListQuerySchema>;
@@ -266,9 +266,9 @@ export const DEFAULT_BLOG_SETTINGS: BlogSettingsFormValues = {
   autoFeaturedFallback: true,
   showSidebar: true,
   showSearch: true,
-  layoutPreset: "GRID",
+  layoutPreset: "LIST",
   sidebarPreset: "RIGHT",
-  cardStyle: "COVER",
+  cardStyle: "STANDARD",
   coverCtaStyle: "COOKIE",
   featuredPostId: null,
   ctaTitle: null,

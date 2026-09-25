@@ -25,7 +25,7 @@ import {
 } from "@/features/seo/storefront-paths.server";
 import {
   buildDefaultSitemapPaths,
-  hydrateSitemapFromCatalog,
+  syncSitemapRowsFromCatalog,
 } from "@/features/seo/sitemap-paths";
 
 export type { PageSeoSourceInfo };
@@ -307,7 +307,7 @@ export async function loadSeoSettingsForm(): Promise<{
   // Pages + labels come from Menu & Navigation — not edited on this form.
   const navPaths = await resolveAdminStorefrontPaths();
   values.storefrontPaths = navPaths.map((p) => ({ ...p }));
-  values.sitemapPaths = hydrateSitemapFromCatalog(
+  values.sitemapPaths = syncSitemapRowsFromCatalog(
     values.sitemapPaths.length
       ? values.sitemapPaths
       : buildDefaultSitemapPaths(navPaths),
@@ -337,7 +337,9 @@ export async function loadSeoSettingsForm(): Promise<{
         ]),
       supabase
         .from("store_settings")
-        .select("contact_page_heading, contact_page_support")
+        .select(
+          "contact_page_heading, contact_page_support, brochure_page_description",
+        )
         .eq("store_id", store.id)
         .maybeSingle(),
     ]);
@@ -363,6 +365,9 @@ export async function loadSeoSettingsForm(): Promise<{
   const contactSupport =
     (settingsRow as { contact_page_support?: string | null } | null)
       ?.contact_page_support?.trim() || "";
+  const brochureIntro =
+    (settingsRow as { brochure_page_description?: string | null } | null)
+      ?.brochure_page_description?.trim() || "";
 
   const pageSources: PageSeoSourceInfo[] = [
     {
@@ -404,6 +409,14 @@ export async function loadSeoSettingsForm(): Promise<{
       sourceTitle: pageTitle("blog", "Blog"),
       sourceDescription: pageDesc("blog") || values.metaDescription,
       sourceHint: "From Blog settings / store description",
+    },
+    {
+      key: "brochure",
+      label: "Brochure",
+      path: "/brochure",
+      sourceTitle: "Brochure",
+      sourceDescription: brochureIntro || values.metaDescription,
+      sourceHint: "From Content → Brochures (page description)",
     },
     {
       key: "privacy",

@@ -6,7 +6,7 @@ import { metadataFromResolved } from "@/lib/metadata";
 import { resolveManagedPageSeo } from "@/features/seo/resolve";
 import type { SeoManagedPageKey } from "@/types";
 
-/** Metadata for About / Contact / Career / legal — titles from Google & SEO DB. */
+/** Metadata for About / Contact / Career / Brochure / legal — titles from Google & SEO DB. */
 export async function metadataForManagedStorePage(input: {
   pageKey: SeoManagedPageKey;
   path: string;

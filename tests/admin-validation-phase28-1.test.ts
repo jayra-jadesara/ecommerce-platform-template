@@ -106,7 +106,6 @@ describe("Phase 28.1 — ConfirmDeleteDialog coverage", () => {
     "src/features/media/components/SortableImageList.tsx",
     "src/features/cms/components/BannersManager.tsx",
     "src/features/cms/components/HomepageBuilder.tsx",
-    "src/features/cms/components/PagesListClient.tsx",
     "src/features/orders/components/AdminOrderDetailClient.tsx",
     "src/features/admin/ui/AdminSaveBar.tsx",
     "src/features/admin/theme/components/AppearanceStudio.tsx",
@@ -121,8 +120,10 @@ describe("Phase 28.1 — ConfirmDeleteDialog coverage", () => {
   it("supports confirmTone for discard flows", () => {
     const dialog = read("src/features/admin/ui/ConfirmDeleteDialog.tsx");
     expect(dialog).toContain('confirmTone?: "danger" | "default"');
-    expect(dialog).toContain("aria-labelledby");
-    expect(dialog).toContain("aria-describedby");
+    expect(dialog).toContain("AdminDialog");
+    const shell = read("src/features/admin/ui/AdminDialog.tsx");
+    expect(shell).toContain("aria-labelledby");
+    expect(shell).toContain("aria-describedby");
     expect(read("src/features/admin/ui/AdminSaveBar.tsx")).toContain(
       'confirmTone="default"',
     );
@@ -135,7 +136,7 @@ describe("Phase 28.1 — FieldError / fieldErrors wiring", () => {
     "src/features/catalog/components/CategoryManager.tsx",
     "src/features/coupons/components/CouponForm.tsx",
     "src/features/blog/components/BlogPostForm.tsx",
-    "src/features/cms/components/PageForm.tsx",
+    "src/features/cms/components/LegalPageForm.tsx",
     "src/features/admin/settings/components/BrandingSettingsForm.tsx",
     "src/features/admin/settings/components/ShippingSettingsForm.tsx",
     "src/features/admin/settings/components/PaymentSettingsForm.tsx",

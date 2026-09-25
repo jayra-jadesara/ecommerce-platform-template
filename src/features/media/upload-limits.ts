@@ -16,6 +16,10 @@ export const ADMIN_REEL_VIDEO_MAX_MB_DEFAULT = 25;
 export const ADMIN_REEL_VIDEO_MAX_MB_MIN = 2;
 export const ADMIN_REEL_VIDEO_MAX_MB_MAX = 50;
 
+export const ADMIN_BROCHURE_PDF_MAX_MB_DEFAULT = 10;
+export const ADMIN_BROCHURE_PDF_MAX_MB_MIN = 1;
+export const ADMIN_BROCHURE_PDF_MAX_MB_MAX = 20;
+
 /** Target reel aspect ~9:16 (width/height). Allow slight camera variance. */
 export const REEL_ASPECT_RATIO_TARGET = 9 / 16;
 export const REEL_ASPECT_RATIO_MIN = REEL_ASPECT_RATIO_TARGET - 0.08;
@@ -53,6 +57,15 @@ export function coerceAdminReelVideoMaxMb(value: unknown): number {
   return Math.min(
     ADMIN_REEL_VIDEO_MAX_MB_MAX,
     Math.max(ADMIN_REEL_VIDEO_MAX_MB_MIN, Math.round(n)),
+  );
+}
+
+export function coerceAdminBrochurePdfMaxMb(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return ADMIN_BROCHURE_PDF_MAX_MB_DEFAULT;
+  return Math.min(
+    ADMIN_BROCHURE_PDF_MAX_MB_MAX,
+    Math.max(ADMIN_BROCHURE_PDF_MAX_MB_MIN, Math.round(n)),
   );
 }
 
@@ -116,6 +129,25 @@ export function adminReelVideoMaxMbOptions(): Array<{
   );
 }
 
+export function adminBrochurePdfMaxMbOptions(): Array<{
+  value: string;
+  label: string;
+}> {
+  return Array.from(
+    {
+      length:
+        ADMIN_BROCHURE_PDF_MAX_MB_MAX - ADMIN_BROCHURE_PDF_MAX_MB_MIN + 1,
+    },
+    (_, i) => {
+      const mb = ADMIN_BROCHURE_PDF_MAX_MB_MIN + i;
+      return {
+        value: String(mb),
+        label: mb === 1 ? "1 MB" : `${mb} MB`,
+      };
+    },
+  );
+}
+
 export function formatMaxMbHint(mb: number): string {
   return `JPEG, PNG, or WebP · max ${mb} MB`;
 }
@@ -126,4 +158,8 @@ export function formatReplacePhotoHint(mb: number): string {
 
 export function formatReelVideoMaxMbHint(mb: number): string {
   return `MP4 or WebM · vertical ~9:16 · max ${mb} MB`;
+}
+
+export function formatBrochurePdfMaxMbHint(mb: number): string {
+  return `PDF only · max ${mb} MB`;
 }

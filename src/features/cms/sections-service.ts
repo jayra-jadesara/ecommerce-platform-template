@@ -137,7 +137,7 @@ export async function createPageSection(input: {
       storeId: scope.storeId,
       entityType: "page_section",
       entityId: input.pageId,
-      route: "/content/pages",
+      route: "/content/homepage",
     });
   }
 
@@ -226,7 +226,7 @@ export async function updatePageSection(input: {
       storeId,
       entityType: "page_section",
       entityId: input.sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     });
   }
 
@@ -298,7 +298,7 @@ export async function duplicatePageSection(
       storeId,
       entityType: "page_section",
       entityId: sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     });
   }
 
@@ -351,7 +351,7 @@ export async function deletePageSection(
       storeId,
       entityType: "page_section",
       entityId: sectionId,
-      route: "/content/pages",
+      route: "/content/homepage",
     });
   }
 
@@ -404,7 +404,7 @@ export async function reorderPageSections(input: {
         storeId: scope.storeId,
         entityType: "page",
         entityId: input.pageId,
-        route: "/content/pages",
+        route: "/content/homepage",
       });
     }
   }

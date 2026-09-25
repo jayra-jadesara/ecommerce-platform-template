@@ -126,6 +126,7 @@ export type SeoManagedPageKey =
   | "career"
   | "products"
   | "blog"
+  | "brochure"
   | "privacy"
   | "terms"
   | "disclaimer";

@@ -5,6 +5,7 @@ import {
   createAdminBlogCategory,
   deleteAdminBlogCategory,
   moveAdminBlogCategory,
+  reorderAdminBlogCategories,
   updateAdminBlogCategory,
 } from "@/features/blog/categories-service";
 import {
@@ -264,6 +265,29 @@ export async function moveBlogCategoryAction(
         ok: true as const,
         message: result.message,
         id: result.id ?? id,
+      };
+    },
+  );
+}
+
+export async function reorderBlogCategoriesAction(orderedIds: string[]) {
+  await requirePermission("blog.update");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "UPDATE_BLOG_CATEGORY",
+      feature: "BLOG",
+      entityType: "blog_category",
+      route: "/blog/categories",
+    },
+    async () => {
+      const result = await reorderAdminBlogCategories(orderedIds);
+      if (!result.ok) return { ok: false as const, error: result.error };
+      return {
+        ok: true as const,
+        message: result.message,
+        id: result.id,
       };
     },
   );

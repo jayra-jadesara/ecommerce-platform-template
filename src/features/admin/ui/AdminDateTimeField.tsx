@@ -69,11 +69,9 @@ export function AdminDateTimeField({
       value={parseAdminDateTime(value)}
       onChange={(next) => onChange(formatAdminDateTime(next))}
       disabled={disabled}
-      ampm
-      minutesStep={1}
-      closeOnSelect={false}
       slotProps={{
         textField: {
+          size: "small",
           fullWidth,
           error,
           helperText,
@@ -140,6 +138,9 @@ export function AdminDateTimeField({
           },
         },
       }}
+      ampm
+      minutesStep={5}
+      closeOnSelect={false}
       sx={{
         width: fullWidth ? "100%" : undefined,
       }}

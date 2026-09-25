@@ -2,9 +2,11 @@ import "server-only";
 
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import {
+  ADMIN_BROCHURE_PDF_MAX_MB_DEFAULT,
   ADMIN_IMAGE_MAX_MB_DEFAULT,
   ADMIN_REEL_VIDEO_MAX_MB_DEFAULT,
   REPLACE_PHOTO_MAX_MB_DEFAULT,
+  coerceAdminBrochurePdfMaxMb,
   coerceAdminImageMaxMb,
   coerceAdminReelVideoMaxMb,
   coerceReplacePhotoMaxMb,
@@ -19,6 +21,8 @@ export type ImageUploadLimits = {
   replacePhotoMaxBytes: number;
   adminReelVideoMaxMb: number;
   adminReelVideoMaxBytes: number;
+  adminBrochurePdfMaxMb: number;
+  adminBrochurePdfMaxBytes: number;
 };
 
 const FALLBACK: ImageUploadLimits = {
@@ -28,6 +32,8 @@ const FALLBACK: ImageUploadLimits = {
   replacePhotoMaxBytes: mbToBytes(REPLACE_PHOTO_MAX_MB_DEFAULT),
   adminReelVideoMaxMb: ADMIN_REEL_VIDEO_MAX_MB_DEFAULT,
   adminReelVideoMaxBytes: mbToBytes(ADMIN_REEL_VIDEO_MAX_MB_DEFAULT),
+  adminBrochurePdfMaxMb: ADMIN_BROCHURE_PDF_MAX_MB_DEFAULT,
+  adminBrochurePdfMaxBytes: mbToBytes(ADMIN_BROCHURE_PDF_MAX_MB_DEFAULT),
 };
 
 /** Read configured upload limits for the active store (service role). */
@@ -42,7 +48,9 @@ export async function getImageUploadLimits(
     const [{ data: storeRow }, { data: shippingRow }] = await Promise.all([
       supabase
         .from("store_settings")
-        .select("admin_image_max_mb, admin_reel_video_max_mb")
+        .select(
+          "admin_image_max_mb, admin_reel_video_max_mb, admin_brochure_pdf_max_mb",
+        )
         .eq("store_id", id)
         .maybeSingle(),
       supabase
@@ -59,6 +67,10 @@ export async function getImageUploadLimits(
       (storeRow as { admin_reel_video_max_mb?: number } | null)
         ?.admin_reel_video_max_mb,
     );
+    const brochureMb = coerceAdminBrochurePdfMaxMb(
+      (storeRow as { admin_brochure_pdf_max_mb?: number } | null)
+        ?.admin_brochure_pdf_max_mb,
+    );
     const replaceMb = coerceReplacePhotoMaxMb(
       (shippingRow as { replace_photo_max_mb?: number } | null)
         ?.replace_photo_max_mb,
@@ -71,6 +83,8 @@ export async function getImageUploadLimits(
       replacePhotoMaxBytes: mbToBytes(replaceMb),
       adminReelVideoMaxMb: reelMb,
       adminReelVideoMaxBytes: mbToBytes(reelMb),
+      adminBrochurePdfMaxMb: brochureMb,
+      adminBrochurePdfMaxBytes: mbToBytes(brochureMb),
     };
   } catch {
     return FALLBACK;
@@ -93,4 +107,10 @@ export async function getAdminReelVideoMaxBytes(
   storeId?: string | null,
 ): Promise<number> {
   return (await getImageUploadLimits(storeId)).adminReelVideoMaxBytes;
+}
+
+export async function getAdminBrochurePdfMaxBytes(
+  storeId?: string | null,
+): Promise<number> {
+  return (await getImageUploadLimits(storeId)).adminBrochurePdfMaxBytes;
 }

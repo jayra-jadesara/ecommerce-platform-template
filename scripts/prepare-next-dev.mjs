@@ -3,6 +3,9 @@
  *
  * - Keeps `.next` on the same drive as the repo (no cross-drive junctions —
  *   those break `react/jsx-runtime` resolution).
+ * - Stops leftover Next/Turbopack processes that lock cache files on Windows
+ *   (os error 1224 / "Unable to commit snapshot").
+ * - Clears Turbopack disk cache when recovering from those locks.
  * - Removes empty / truncated webpack vendor-chunks that cause:
  *     TypeError: Cannot read properties of undefined (reading 'call')
  *   on Windows HDDs when a chunk is read mid-write.
@@ -14,6 +17,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { stopOtherNextDev } from "./stop-project-next.mjs";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const nextDir = path.join(root, ".next");
@@ -121,6 +125,31 @@ function healCorruptDevChunks() {
   removePath(path.join(nextDir, "dev"));
 }
 
+/**
+ * Windows error 1224: Turbopack cannot rewrite *.meta while another process
+ * still has the file memory-mapped. Clearing the cache after stopping leftover
+ * Next processes lets the next session persist again.
+ */
+function healTurbopackLocks(force = false) {
+  const turboDir = path.join(nextDir, "dev", "cache", "turbopack");
+  if (!fs.existsSync(turboDir)) return;
+  if (!force && process.platform !== "win32") return;
+
+  console.warn(
+    "[next-cache] Clearing Turbopack disk cache to avoid Windows file-lock errors (1224).",
+  );
+  removePath(turboDir);
+}
+
+const killed = stopOtherNextDev();
+if (killed.length) {
+  console.log(
+    `[next-cache] Stopped ${killed.length} leftover Next process(es): ${killed.join(", ")}`,
+  );
+  // Give Windows a moment to release memory-mapped sections.
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 800);
+}
+
 try {
   const st = fs.lstatSync(nextDir);
   if (st.isSymbolicLink()) {
@@ -135,4 +164,7 @@ try {
 
 fs.mkdirSync(nextDir, { recursive: true });
 healCorruptDevChunks();
+healTurbopackLocks(
+  killed.length > 0 || process.env.NEXT_RESET_TURBO === "1",
+);
 console.log(`[next-cache] Using in-repo .next at ${nextDir}`);

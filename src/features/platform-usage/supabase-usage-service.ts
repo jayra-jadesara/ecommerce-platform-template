@@ -10,6 +10,8 @@ import {
 
 const VIDEO_BUCKETS = new Set<string>([STORAGE_BUCKETS.reels]);
 
+const DOCUMENT_BUCKETS = new Set<string>([STORAGE_BUCKETS.brochures]);
+
 const IMAGE_BUCKETS = new Set<string>([
   STORAGE_BUCKETS.branding,
   STORAGE_BUCKETS.products,
@@ -27,6 +29,7 @@ const BUCKET_LABELS: Record<string, string> = {
   [STORAGE_BUCKETS.media]: "Media library",
   [STORAGE_BUCKETS.replacements]: "Replacements",
   [STORAGE_BUCKETS.reels]: "Reels (video)",
+  [STORAGE_BUCKETS.brochures]: "Brochures (PDF)",
 };
 
 export type StorageBucketUsage = {
@@ -80,6 +83,7 @@ export type SupabaseUsageResult =
 
 function bucketKind(bucketId: string): "image" | "video" | "other" {
   if (VIDEO_BUCKETS.has(bucketId)) return "video";
+  if (DOCUMENT_BUCKETS.has(bucketId)) return "other";
   if (IMAGE_BUCKETS.has(bucketId)) return "image";
   return "other";
 }

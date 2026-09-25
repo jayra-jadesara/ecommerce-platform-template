@@ -37,6 +37,7 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import ViewCarouselOutlinedIcon from "@mui/icons-material/ViewCarouselOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
+import PictureAsPdfOutlinedIcon from "@mui/icons-material/PictureAsPdfOutlined";
 import PhotoLibraryOutlinedIcon from "@mui/icons-material/PhotoLibraryOutlined";
 import ManageAccountsOutlinedIcon from "@mui/icons-material/ManageAccountsOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
@@ -97,6 +98,7 @@ const ICONS: Record<
   banners: ViewCarouselOutlinedIcon,
   reels: MovieOutlinedIcon,
   blog: MenuBookOutlinedIcon,
+  brochure: PictureAsPdfOutlinedIcon,
   media: PhotoLibraryOutlinedIcon,
   team: ManageAccountsOutlinedIcon,
   settings: SettingsOutlinedIcon,

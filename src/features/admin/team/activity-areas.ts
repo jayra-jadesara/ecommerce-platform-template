@@ -9,7 +9,8 @@ const AREA_MATCHERS: Record<string, AreaMatcher> = {
   settings: (entityType) =>
     /setting|brand|theme|header|footer|seo|nav/i.test(entityType),
   team: (entityType) => /admin_user|user/i.test(entityType),
-  content: (entityType) => /cms|blog|page/i.test(entityType),
+  content: (entityType) =>
+    /cms|blog|page|brochure|reel|job_post|banner/i.test(entityType),
   errors: (entityType) => /error/i.test(entityType),
 };
 
@@ -103,7 +104,26 @@ export function entityTypesForArea(area: ActivityAreaId): string[] | null {
       "store_visual_effects_settings",
     ],
     team: ["admin_users"],
-    content: ["cms", "blog_posts", "pages"],
+    content: [
+      // Prefer singular ids used by write*Audit helpers; keep plurals for older rows.
+      "cms",
+      "blog_post",
+      "blog_posts",
+      "blog_category",
+      "blog_settings",
+      "page",
+      "pages",
+      "page_section",
+      "homepage",
+      "store_brochure",
+      "store_brochures",
+      "store_reel",
+      "store_reels",
+      "job_post",
+      "job_posts",
+      "banner",
+      "banners",
+    ],
     errors: ["error_log", "error_logs"],
   };
   return known[area] ?? null;

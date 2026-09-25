@@ -3,12 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type DragEvent, type ReactNode } from "react";
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
 import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
+import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
 import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
 import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
@@ -79,11 +76,13 @@ import {
   pageOptionLabel,
   StorePageLinkField,
 } from "@/features/admin/ui/StorePageLinkField";
+import { AdminDialog } from "@/features/admin/ui/AdminDialog";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
 import { focusFirstFieldError } from "@/features/admin/validation/form-errors";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import {
+  adminBtn,
   adminFieldGroup,
   adminFieldsGrid,
   adminFormStack,
@@ -628,215 +627,224 @@ export function HomepageBuilder({
         </ul>
       )}
 
-      <Dialog open={addOpen} onClose={() => setAddOpen(false)} fullWidth maxWidth="xs">
-        <DialogTitle>Add section</DialogTitle>
-        <DialogContent dividers>
-          {addableSectionTypes.length === 0 ? (
-            <p className="py-4 text-center text-sm text-[var(--color-muted)]">
-              Every available section type is already on this page.
-            </p>
-          ) : (
-            <ul className="grid grid-cols-2 gap-2">
-              {addableSectionTypes.map((type) => (
-                <li key={type}>
-                  <button
-                    type="button"
-                    className="flex h-full w-full flex-col items-start gap-1.5 rounded-lg border border-[var(--color-border)] p-2.5 text-left transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
-                    onClick={() => {
-                      startTransition(async () => {
-                        const result = await createSectionAction({
-                          pageId: page.id,
-                          sectionType: type,
-                          title: SECTION_TYPE_LABELS[type],
-                        });
-                        if (!result.ok) {
-                          setError(result.error);
-                          return;
-                        }
-                        if (result.section) {
-                          setSections((prev) => [...prev, result.section!]);
-                        }
-                        setAddOpen(false);
-                        refresh();
-                      });
-                    }}
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
-                      {sectionIcon(type)}
-                    </span>
-                    <span className="flex flex-wrap items-center gap-1">
-                      <span className="text-sm font-medium leading-tight">
-                        {SECTION_TYPE_LABELS[type]}
-                      </span>
-                      {type === "about" &&
-                      allowedSectionTypes?.includes("about") ? (
-                        <span className="rounded bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                          Rec
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="line-clamp-2 text-[0.7rem] leading-snug text-[var(--color-muted)]">
-                      {SECTION_TYPE_DESCRIPTIONS[type]}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <button type="button" onClick={() => setAddOpen(false)} className="px-3 py-2 text-sm">
+      <AdminDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        title="Add section"
+        description="Pick a section type to add to this page."
+        maxWidth="xs"
+        pending={pending}
+        icon={<AddOutlinedIcon sx={{ fontSize: 22 }} />}
+        actions={
+          <button
+            type="button"
+            onClick={() => setAddOpen(false)}
+            className={adminBtn("secondary")}
+          >
             Cancel
           </button>
-        </DialogActions>
-      </Dialog>
+        }
+      >
+        {addableSectionTypes.length === 0 ? (
+          <p className="py-4 text-center text-sm text-[var(--color-muted)]">
+            Every available section type is already on this page.
+          </p>
+        ) : (
+          <ul className="grid grid-cols-2 gap-2">
+            {addableSectionTypes.map((type) => (
+              <li key={type}>
+                <button
+                  type="button"
+                  className="flex h-full w-full flex-col items-start gap-1.5 rounded-lg border border-[var(--color-border)] p-2.5 text-left transition hover:border-[var(--color-primary)] hover:bg-[color-mix(in_srgb,var(--color-primary)_6%,transparent)]"
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await createSectionAction({
+                        pageId: page.id,
+                        sectionType: type,
+                        title: SECTION_TYPE_LABELS[type],
+                      });
+                      if (!result.ok) {
+                        setError(result.error);
+                        return;
+                      }
+                      if (result.section) {
+                        setSections((prev) => [...prev, result.section!]);
+                      }
+                      setAddOpen(false);
+                      refresh();
+                    });
+                  }}
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]">
+                    {sectionIcon(type)}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-1">
+                    <span className="text-sm font-medium leading-tight">
+                      {SECTION_TYPE_LABELS[type]}
+                    </span>
+                    {type === "about" &&
+                    allowedSectionTypes?.includes("about") ? (
+                      <span className="rounded bg-[color-mix(in_srgb,var(--color-primary)_14%,transparent)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                        Rec
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="line-clamp-2 text-[0.7rem] leading-snug text-[var(--color-muted)]">
+                    {SECTION_TYPE_DESCRIPTIONS[type]}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </AdminDialog>
 
-      <Dialog
+      <AdminDialog
         open={Boolean(editing)}
         onClose={() => {
           setEditId(null);
           setSectionFieldErrors({});
         }}
-        fullWidth
-        maxWidth={
-          togglesOnlyEditor ? "xs" : compactEditor ? "md" : "lg"
-        }
-      >
-        <DialogTitle>
-          Edit{" "}
-          {editingType
+        title={`Edit ${
+          editingType
             ? SECTION_TYPE_LABELS[editingType] ?? "section"
-            : "section"}
-        </DialogTitle>
-        <DialogContent dividers className="!pt-4">
-          {editing && editingType ? (
-            togglesOnlyEditor ? (
-              <SectionConfigFields
-                sectionType="other_information"
-                config={editConfig}
-                title={editTitle}
-                onTitleChange={setEditTitle}
-                onChange={setEditConfig}
-                onPickMedia={(field) => setMediaField(field)}
-                fieldErrors={sectionFieldErrors}
-                categoryOptions={categoryOptions}
-                productOptions={productOptions}
-              />
-            ) : (
-              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
-                <div className="order-1 lg:order-2 lg:sticky lg:top-0">
-                  <SectionEditorPreview
-                    sectionType={editingType}
-                    config={editConfig}
-                  />
-                </div>
-                <div className="order-2 lg:order-1">
-                  <SectionConfigFields
-                    sectionType={editingType}
-                    config={editConfig}
-                    title={editTitle}
-                    onTitleChange={setEditTitle}
-                    onChange={setEditConfig}
-                    onPickMedia={(field) => setMediaField(field)}
-                    fieldErrors={sectionFieldErrors}
-                    categoryOptions={categoryOptions}
-                    productOptions={productOptions}
-                  />
-                </div>
-              </div>
-            )
-          ) : null}
-        </DialogContent>
-        <DialogActions>
-          <button
-            type="button"
-            className="px-3 py-2 text-sm"
-            onClick={() => {
-              setEditId(null);
-              setSectionFieldErrors({});
-            }}
-          >
-            Cancel
-          </button>
-          {canUpdate ? (
+            : "section"
+        }`}
+        description="Configure content and layout for this section."
+        maxWidth={togglesOnlyEditor ? "xs" : compactEditor ? "md" : "lg"}
+        pending={pending}
+        icon={<EditOutlinedIcon sx={{ fontSize: 22 }} />}
+        contentClassName="!pt-4"
+        actions={
+          <>
             <button
               type="button"
-              disabled={pending}
-              className="rounded-md bg-[var(--color-button-background)] px-3 py-2 text-sm font-medium text-[var(--color-button-foreground)] disabled:opacity-50"
+              className={adminBtn("secondary")}
               onClick={() => {
-                if (!editing || !editingType) return;
-                const convertingAbout =
-                  isHomepage && editing.sectionType === "about";
-                startTransition(async () => {
-                  const result = await updateSectionAction({
-                    sectionId: editing.id,
-                    title:
-                      editTitle.trim() ||
-                      SECTION_TYPE_LABELS[editingType] ||
-                      null,
-                    ...(convertingAbout
-                      ? { sectionType: "other_information" as const }
-                      : {}),
-                    config: {
-                      ...editConfig,
-                      // Motion & 3D are store-wide (Appearance only).
-                      motionSource: "global",
-                      threeSource: "global",
-                      enable3d: false,
-                      scene3dPreset: "NONE",
-                    },
-                  });
-                  if (!result.ok) {
-                    const fieldErrors =
-                      "fieldErrors" in result && result.fieldErrors
-                        ? result.fieldErrors
-                        : undefined;
-                    setSectionFieldErrors(fieldErrors ?? {});
-                    setError(
-                      fieldErrors
-                        ? "Please check the section settings."
-                        : result.error,
-                    );
-                    if (fieldErrors) {
-                      focusFirstFieldError({ fieldErrors });
-                    }
-                    return;
-                  }
-                  setSectionFieldErrors({});
-                  setSections((prev) =>
-                    prev.map((s) =>
-                      s.id === editing.id
-                        ? {
-                            ...s,
-                            sectionType: convertingAbout
-                              ? "other_information"
-                              : s.sectionType,
-                            title:
-                              editTitle.trim() ||
-                              SECTION_TYPE_LABELS[editingType] ||
-                              null,
-                            config: {
-                              ...editConfig,
-                              motionSource: "global",
-                              threeSource: "global",
-                              enable3d: false,
-                              scene3dPreset: "NONE",
-                            },
-                          }
-                        : s,
-                    ),
-                  );
-                  setEditId(null);
-                  setMessage("Section saved.");
-                  refresh();
-                });
+                setEditId(null);
+                setSectionFieldErrors({});
               }}
             >
-              Save section
+              Cancel
             </button>
-          ) : null}
-        </DialogActions>
-      </Dialog>
+            {canUpdate ? (
+              <button
+                type="button"
+                disabled={pending}
+                className={adminBtn("primary")}
+                onClick={() => {
+                  if (!editing || !editingType) return;
+                  const convertingAbout =
+                    isHomepage && editing.sectionType === "about";
+                  startTransition(async () => {
+                    const result = await updateSectionAction({
+                      sectionId: editing.id,
+                      title:
+                        editTitle.trim() ||
+                        SECTION_TYPE_LABELS[editingType] ||
+                        null,
+                      ...(convertingAbout
+                        ? { sectionType: "other_information" as const }
+                        : {}),
+                      config: {
+                        ...editConfig,
+                        // Motion & 3D are store-wide (Appearance only).
+                        motionSource: "global",
+                        threeSource: "global",
+                        enable3d: false,
+                        scene3dPreset: "NONE",
+                      },
+                    });
+                    if (!result.ok) {
+                      const fieldErrors =
+                        "fieldErrors" in result && result.fieldErrors
+                          ? result.fieldErrors
+                          : undefined;
+                      setSectionFieldErrors(fieldErrors ?? {});
+                      setError(
+                        fieldErrors
+                          ? "Please check the section settings."
+                          : result.error,
+                      );
+                      if (fieldErrors) {
+                        focusFirstFieldError({ fieldErrors });
+                      }
+                      return;
+                    }
+                    setSectionFieldErrors({});
+                    setSections((prev) =>
+                      prev.map((s) =>
+                        s.id === editing.id
+                          ? {
+                              ...s,
+                              sectionType: convertingAbout
+                                ? "other_information"
+                                : s.sectionType,
+                              title:
+                                editTitle.trim() ||
+                                SECTION_TYPE_LABELS[editingType] ||
+                                null,
+                              config: {
+                                ...editConfig,
+                                motionSource: "global",
+                                threeSource: "global",
+                                enable3d: false,
+                                scene3dPreset: "NONE",
+                              },
+                            }
+                          : s,
+                      ),
+                    );
+                    setEditId(null);
+                    setMessage("Section saved.");
+                    refresh();
+                  });
+                }}
+              >
+                Save section
+              </button>
+            ) : null}
+          </>
+        }
+      >
+        {editing && editingType ? (
+          togglesOnlyEditor ? (
+            <SectionConfigFields
+              sectionType="other_information"
+              config={editConfig}
+              title={editTitle}
+              onTitleChange={setEditTitle}
+              onChange={setEditConfig}
+              onPickMedia={(field) => setMediaField(field)}
+              fieldErrors={sectionFieldErrors}
+              categoryOptions={categoryOptions}
+              productOptions={productOptions}
+            />
+          ) : (
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(280px,22rem)] lg:items-start">
+              <div className="order-1 lg:order-2 lg:sticky lg:top-0">
+                <SectionEditorPreview
+                  sectionType={editingType}
+                  config={editConfig}
+                />
+              </div>
+              <div className="order-2 lg:order-1">
+                <SectionConfigFields
+                  sectionType={editingType}
+                  config={editConfig}
+                  title={editTitle}
+                  onTitleChange={setEditTitle}
+                  onChange={setEditConfig}
+                  onPickMedia={(field) => setMediaField(field)}
+                  fieldErrors={sectionFieldErrors}
+                  categoryOptions={categoryOptions}
+                  productOptions={productOptions}
+                />
+              </div>
+            </div>
+          )
+        ) : null}
+      </AdminDialog>
 
       <MediaPicker
         open={Boolean(mediaField)}

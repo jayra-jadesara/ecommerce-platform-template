@@ -4,10 +4,8 @@ import { StorefrontHeading } from "@/components/ui/StorefrontHeading";
 import { getPlatformConfigAsync } from "@/config/site.server";
 import { BlogListing } from "@/features/blog/components/BlogListing";
 import { DEFAULT_BLOG_SETTINGS } from "@/features/blog/schemas";
-import { wantsFeaturedBlock } from "@/features/blog/settings-normalize";
 import {
   getBlogSettingsCached,
-  getFeaturedBlogPost,
   listActiveBlogCategoriesWithCounts,
   listPublishedBlogPosts,
 } from "@/features/blog/storefront";
@@ -71,10 +69,8 @@ export default async function BlogListingPage({
 
   const settings = (await getBlogSettingsCached()) ?? fallbackSettings();
   const pageSize = settings.postsPerPage;
-  const loadFeatured =
-    wantsFeaturedBlock(settings) && page <= 1 && !categorySlug && !q;
 
-  const [postsResult, categories, featured] = await Promise.all([
+  const [postsResult, categories, relatedResult] = await Promise.all([
     listPublishedBlogPosts({
       page,
       pageSize,
@@ -84,8 +80,24 @@ export default async function BlogListingPage({
     settings.showCategories
       ? listActiveBlogCategoriesWithCounts()
       : Promise.resolve([]),
-    loadFeatured ? getFeaturedBlogPost(settings) : Promise.resolve(null),
+    listPublishedBlogPosts({
+      page: 1,
+      pageSize: 6,
+      categorySlug,
+    }),
   ]);
+
+  const mainIds = new Set(postsResult.items.map((p) => p.id));
+  let relatedPosts = relatedResult.items
+    .filter((p) => !mainIds.has(p.id))
+    .slice(0, 5);
+
+  if (relatedPosts.length === 0 && categorySlug) {
+    const fallback = await listPublishedBlogPosts({ page: 1, pageSize: 6 });
+    relatedPosts = fallback.items
+      .filter((p) => !mainIds.has(p.id))
+      .slice(0, 5);
+  }
 
   const categoryLabel = categorySlug
     ? categories.find((c) => c.slug === categorySlug)?.name ?? categorySlug
@@ -124,7 +136,7 @@ export default async function BlogListingPage({
         page={postsResult.page}
         pageSize={postsResult.pageSize}
         categories={categories}
-        featured={featured}
+        relatedPosts={relatedPosts}
         categorySlug={categorySlug}
         q={q}
       />

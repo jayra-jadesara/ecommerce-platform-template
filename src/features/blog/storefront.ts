@@ -603,3 +603,138 @@ export async function listRelatedBlogPosts(
   );
   return cached();
 }
+
+async function listPublishedBlogPostsForProductUncached(
+  storeId: string,
+  productId: string,
+  limit: number,
+): Promise<StorefrontBlogPostSummary[]> {
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return [];
+
+  const { data: links } = await supabase
+    .from("blog_post_products")
+    .select("post_id, sort_order")
+    .eq("store_id", storeId)
+    .eq("product_id", productId)
+    .order("sort_order", { ascending: true });
+
+  const orderedIds = [...new Set((links ?? []).map((l) => l.post_id))];
+  if (!orderedIds.length) return [];
+
+  const now = publishedFilterNow();
+  const { data } = await supabase
+    .from("blog_posts")
+    .select(POST_SELECT)
+    .eq("store_id", storeId)
+    .eq("status", "published")
+    .or(`published_at.is.null,published_at.lte.${now}`)
+    .in("id", orderedIds);
+
+  const byId = new Map(
+    (data ?? []).map((row) => [
+      (row as { id: string }).id,
+      mapSummary(asPostWithCategories(row)),
+    ]),
+  );
+
+  const out: StorefrontBlogPostSummary[] = [];
+  for (const id of orderedIds) {
+    const post = byId.get(id);
+    if (!post) continue;
+    out.push(post);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+/** Published articles linked to a product via “Products to show with this article”. */
+export async function listPublishedBlogPostsForProduct(
+  productId: string,
+  limit = 4,
+): Promise<StorefrontBlogPostSummary[]> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId || !productId) return [];
+
+  const safeLimit = Math.min(12, Math.max(1, limit));
+  const cached = unstable_cache(
+    () =>
+      listPublishedBlogPostsForProductUncached(storeId, productId, safeLimit),
+    ["storefront-blog-for-product", storeId, productId, String(safeLimit)],
+    { revalidate: 60, tags: [STOREFRONT_BLOG_CACHE_TAG] },
+  );
+  return cached();
+}
+
+export type AdjacentBlogPosts = {
+  previous: StorefrontBlogPostSummary | null;
+  next: StorefrontBlogPostSummary | null;
+};
+
+async function getAdjacentBlogPostsUncached(
+  storeId: string,
+  postId: string,
+  publishedAt: string | null,
+): Promise<AdjacentBlogPosts> {
+  const empty: AdjacentBlogPosts = { previous: null, next: null };
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return empty;
+
+  const now = publishedFilterNow();
+  const anchor = publishedAt ?? now;
+
+  // Previous = older article; Next = newer article
+  const [{ data: older }, { data: newer }] = await Promise.all([
+    supabase
+      .from("blog_posts")
+      .select(POST_SELECT)
+      .eq("store_id", storeId)
+      .eq("status", "published")
+      .neq("id", postId)
+      .or(`published_at.is.null,published_at.lte.${now}`)
+      .lt("published_at", anchor)
+      .order("published_at", { ascending: false, nullsFirst: false })
+      .limit(1),
+    supabase
+      .from("blog_posts")
+      .select(POST_SELECT)
+      .eq("store_id", storeId)
+      .eq("status", "published")
+      .neq("id", postId)
+      .or(`published_at.is.null,published_at.lte.${now}`)
+      .gt("published_at", anchor)
+      .order("published_at", { ascending: true, nullsFirst: false })
+      .limit(1),
+  ]);
+
+  const previousRow = older?.[0];
+  const nextRow = newer?.[0];
+
+  return {
+    previous: previousRow
+      ? mapSummary(asPostWithCategories(previousRow))
+      : null,
+    next: nextRow ? mapSummary(asPostWithCategories(nextRow)) : null,
+  };
+}
+
+/** Older / newer published posts for Prev → Next article navigation. */
+export async function getAdjacentBlogPosts(
+  postId: string,
+  publishedAt: string | null,
+): Promise<AdjacentBlogPosts> {
+  const storeId = await resolveActiveStoreId();
+  if (!storeId || !postId) return { previous: null, next: null };
+
+  const cached = unstable_cache(
+    () => getAdjacentBlogPostsUncached(storeId, postId, publishedAt),
+    [
+      "storefront-blog-adjacent",
+      storeId,
+      postId,
+      publishedAt ?? "",
+    ],
+    { revalidate: 60, tags: [STOREFRONT_BLOG_CACHE_TAG] },
+  );
+  return cached();
+}

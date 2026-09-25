@@ -32,7 +32,6 @@ import {
   adminCardSpanFull,
   adminFieldsGrid,
 } from "@/features/admin/ui/admin-classes";
-import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
 import { FieldError } from "@/features/admin/ui/FieldError";
 import {
@@ -47,10 +46,6 @@ import {
 } from "@/features/seo/auto-seo";
 import { GoogleSeoPreview } from "@/features/seo/components/GoogleSeoPreview";
 import { buildDefaultSitemapPaths } from "@/features/seo/sitemap-paths";
-import {
-  findStorefrontPath,
-  storefrontPathOptions,
-} from "@/features/seo/storefront-paths";
 import { MediaPicker } from "@/features/media/components/MediaPicker";
 import {
   ADMIN_IMAGE_MAX_MB_DEFAULT,
@@ -116,6 +111,13 @@ const PAGE_SEO_FIELDS: Array<{
     descName: "pageBlogDescription",
     label: "Blog",
     path: "/blog",
+  },
+  {
+    key: "brochure",
+    titleName: "pageBrochureTitle",
+    descName: "pageBrochureDescription",
+    label: "Brochure",
+    path: "/brochure",
   },
   {
     key: "privacy",
@@ -277,8 +279,6 @@ export function SeoSettingsForm({
 
   const {
     fields: sitemapPathFields,
-    append: appendSitemapPath,
-    remove: removeSitemapPath,
   } = useFieldArray({
     control,
     name: "sitemapPaths",
@@ -297,10 +297,6 @@ export function SeoSettingsForm({
     useWatch({ control, name: "googleSiteVerification" }) ?? "";
   const watchedPages = useWatch({ control });
   const catalogPaths = useWatch({ control, name: "storefrontPaths" }) ?? [];
-  const pathSelectOptions = useMemo(
-    () => storefrontPathOptions(catalogPaths),
-    [catalogPaths],
-  );
 
   const previewOgUrl = useMemo(
     () => ogPreviewUrl(ogImagePath, ogImageUrl),
@@ -488,11 +484,11 @@ export function SeoSettingsForm({
             />
             <HealthRow
               ok={missingProductSeoCount === 0}
-              label="Product SEO titles"
+              label="Product titles for Google"
               detail={
                 missingProductSeoCount === 0
-                  ? "All active products have SEO titles"
-                  : `${missingProductSeoCount} product(s) missing seo_title`
+                  ? "Filled from each product’s name (and short description) when you save"
+                  : `${missingProductSeoCount} product(s) still need a save so the name can fill the Google title`
               }
               action={
                 missingProductSeoCount > 0 ? (
@@ -500,7 +496,7 @@ export function SeoSettingsForm({
                     href={productsAdminHref}
                     className="text-[10px] font-medium text-[var(--color-primary)]"
                   >
-                    Fix in Products →
+                    Open Products →
                   </Link>
                 ) : null
               }
@@ -884,8 +880,8 @@ export function SeoSettingsForm({
         </Section>
 
         <Section
-          title="Structured data"
-          hint="JSON-LD on the homepage. Address/phone from Store Information; socials become sameAs."
+          title="Help Google show your store"
+          hint="These options tell Google what your business is (name, address, phone). Address and phone come from Store Information — you do not type them again here. Social links from Branding are included automatically."
           className={adminCardSpanFull()}
         >
           <div className={adminFieldsGrid(3)}>
@@ -897,7 +893,7 @@ export function SeoSettingsForm({
                   checked={Boolean(field.value)}
                   onChange={field.onChange}
                   disabled={!canUpdate}
-                  label="LocalBusiness"
+                  label="Show as a local shop (address & phone)"
                   variant="row"
                 />
               )}
@@ -910,7 +906,7 @@ export function SeoSettingsForm({
                   checked={Boolean(field.value)}
                   onChange={field.onChange}
                   disabled={!canUpdate}
-                  label="Organization (if no LocalBusiness)"
+                  label="Show as a company (when local shop is off)"
                   variant="row"
                 />
               )}
@@ -923,7 +919,7 @@ export function SeoSettingsForm({
                   checked={Boolean(field.value)}
                   onChange={field.onChange}
                   disabled={!canUpdate}
-                  label="Site search box (WebSite)"
+                  label="Offer a search box in Google results"
                   variant="row"
                 />
               )}
@@ -937,7 +933,7 @@ export function SeoSettingsForm({
                 <div>
                   <TextField
                     {...field}
-                    label="Business type"
+                    label="What kind of store is this?"
                     fullWidth
                     size="small"
                     disabled={!canUpdate}
@@ -946,7 +942,7 @@ export function SeoSettingsForm({
                     helperText={
                       fieldState.error
                         ? undefined
-                        : "schema.org type, e.g. Store, ClothingStore"
+                        : "Examples: Store, GroceryStore, ClothingStore"
                     }
                   />
                   <FieldError message={fieldState.error?.message} />
@@ -960,12 +956,15 @@ export function SeoSettingsForm({
                 <div>
                   <TextField
                     {...field}
-                    label="Price range"
+                    label="Typical price level"
                     fullWidth
                     size="small"
                     disabled={!canUpdate}
                     error={Boolean(fieldState.error)}
-                    placeholder="₹₹ or $$"
+                    placeholder="₹ or $$"
+                    helperText={
+                      fieldState.error ? undefined : "Optional — how pricey most items feel"
+                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -978,12 +977,17 @@ export function SeoSettingsForm({
                 <div>
                   <TextField
                     {...field}
-                    label="Latitude"
+                    label="Map pin — latitude"
                     fullWidth
                     size="small"
                     disabled={!canUpdate}
                     error={Boolean(fieldState.error)}
                     placeholder="28.6139"
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : "Optional. Copy from Google Maps if you want a map pin"
+                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -996,12 +1000,17 @@ export function SeoSettingsForm({
                 <div>
                   <TextField
                     {...field}
-                    label="Longitude"
+                    label="Map pin — longitude"
                     fullWidth
                     size="small"
                     disabled={!canUpdate}
                     error={Boolean(fieldState.error)}
                     placeholder="77.2090"
+                    helperText={
+                      fieldState.error
+                        ? undefined
+                        : "Optional. Pair with latitude above"
+                    }
                   />
                   <FieldError message={fieldState.error?.message} />
                 </div>
@@ -1012,7 +1021,7 @@ export function SeoSettingsForm({
 
         <Section
           title="Your website pages"
-          hint="These come from Menu & Navigation (names and addresses). Edit them there — shown here so the sitemap can use the same list."
+          hint="These names and addresses come from Menu & Navigation for this store. Change them there — Google & SEO only shows them."
           className={adminCardSpanFull()}
         >
           {catalogPaths.length === 0 ? (
@@ -1033,21 +1042,21 @@ export function SeoSettingsForm({
                   key={row.id || row.path}
                   className="grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 sm:grid-cols-2 sm:items-end"
                 >
-                  <AdminSelect
+                  <TextField
                     label="Page address"
                     value={row.path}
-                    options={[{ value: row.path, label: row.path }]}
+                    fullWidth
+                    size="small"
                     disabled
-                    helperText="From Menu & Navigation"
-                    onChange={() => {}}
+                    helperText="From Menu & Navigation (read-only)"
                   />
                   <TextField
-                    label="Display name"
+                    label="Page name"
                     value={row.label || row.path}
                     fullWidth
                     size="small"
                     disabled
-                    helperText="From Menu & Navigation"
+                    helperText="From Menu & Navigation (read-only)"
                   />
                 </div>
               ))}
@@ -1063,7 +1072,7 @@ export function SeoSettingsForm({
 
         <Section
           title="What Google can list (sitemap)"
-          hint="Choose which of those pages (and product / category / blog links) go in your sitemap."
+          hint="Page address and name always match Menu & Navigation for this store (read-only). Use Include and Importance here. Add or rename pages only in Menu & Navigation."
           className={adminCardSpanFull()}
         >
           <div className={adminFieldsGrid(3)}>
@@ -1112,7 +1121,7 @@ export function SeoSettingsForm({
             {sitemapPathFields.map((row, index) => (
               <div
                 key={row.fieldKey}
-                className="grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 sm:grid-cols-[auto_minmax(10rem,1.4fr)_5rem_auto] sm:items-end"
+                className="grid gap-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] p-2 sm:grid-cols-[auto_minmax(8rem,1fr)_minmax(8rem,1fr)_5.5rem] sm:items-end"
               >
                 <Controller
                   name={`sitemapPaths.${index}.enabled`}
@@ -1131,30 +1140,27 @@ export function SeoSettingsForm({
                   name={`sitemapPaths.${index}.path`}
                   control={control}
                   render={({ field }) => (
-                    <AdminSelect
-                      label="Page"
+                    <TextField
+                      label="Page address"
                       value={field.value || ""}
-                      disabled={!canUpdate || pathSelectOptions.length === 0}
-                      options={pathSelectOptions}
-                      helperText={
-                        pathSelectOptions.length
-                          ? "From Menu & Navigation"
-                          : "Add pages in Menu & Navigation first"
-                      }
-                      onChange={(next) => {
-                        field.onChange(next);
-                        const match = findStorefrontPath(catalogPaths, next);
-                        if (match) {
-                          setValue(`sitemapPaths.${index}.label`, match.label, {
-                            shouldDirty: true,
-                          });
-                          setValue(
-                            `sitemapPaths.${index}.cmsSlug`,
-                            match.cmsSlug,
-                            { shouldDirty: true },
-                          );
-                        }
-                      }}
+                      fullWidth
+                      size="small"
+                      disabled
+                      helperText="From Menu & Navigation (read-only)"
+                    />
+                  )}
+                />
+                <Controller
+                  name={`sitemapPaths.${index}.label`}
+                  control={control}
+                  render={({ field }) => (
+                    <TextField
+                      label="Page name"
+                      value={field.value || row.path || ""}
+                      fullWidth
+                      size="small"
+                      disabled
+                      helperText="From Menu & Navigation (read-only)"
                     />
                   )}
                 />
@@ -1177,14 +1183,6 @@ export function SeoSettingsForm({
                     />
                   )}
                 />
-                <button
-                  type="button"
-                  className={cn(adminBtn("outline"), "!px-2 !py-1 !text-xs")}
-                  disabled={!canUpdate || pending}
-                  onClick={() => removeSitemapPath(index)}
-                >
-                  Remove
-                </button>
               </div>
             ))}
           </div>
@@ -1192,34 +1190,8 @@ export function SeoSettingsForm({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className={cn(adminBtn("primary"), "!px-2.5 !py-1 !text-xs")}
-              disabled={!canUpdate || pending || catalogPaths.length === 0}
-              onClick={() => {
-                const used = new Set(
-                  (watchedPages?.sitemapPaths ?? []).map(
-                    (p: { path?: string }) => p.path,
-                  ),
-                );
-                const next =
-                  catalogPaths.find((p) => p.path && !used.has(p.path)) ||
-                  catalogPaths[0];
-                if (!next) return;
-                appendSitemapPath({
-                  id: `sm-${Date.now()}`,
-                  path: next.path,
-                  label: next.label,
-                  cmsSlug: next.cmsSlug,
-                  priority: 0.5,
-                  enabled: true,
-                });
-              }}
-            >
-              Add page to sitemap
-            </button>
-            <button
-              type="button"
               className={cn(adminBtn("outline"), "!px-2.5 !py-1 !text-xs")}
-              disabled={!canUpdate || pending}
+              disabled={!canUpdate || pending || catalogPaths.length === 0}
               onClick={() =>
                 setValue(
                   "sitemapPaths",
@@ -1228,8 +1200,14 @@ export function SeoSettingsForm({
                 )
               }
             >
-              Restore suggested sitemap
+              Reset Include &amp; Importance
             </button>
+            <Link
+              href={getAdminPath("/settings/navigation")}
+              className="inline-flex items-center text-[11px] font-medium text-[var(--color-primary)]"
+            >
+              Edit pages in Menu & Navigation →
+            </Link>
           </div>
         </Section>
 

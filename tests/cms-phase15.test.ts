@@ -142,9 +142,13 @@ describe("content permissions and nav", () => {
     expect(content.children.map((c) => c.label)).toEqual([
       "Homepage",
       "About",
-      "Pages",
+      "Contact",
+      "Career",
+      "Legal pages",
       "Banners",
+      "Reels",
       "Blog",
+      "Brochures",
       "Images & Files",
     ]);
     expect(content.children.map((c) => c.href)).toContain(

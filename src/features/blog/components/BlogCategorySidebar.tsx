@@ -1,14 +1,17 @@
 import Link from "next/link";
-import type { StorefrontBlogCategory } from "@/features/blog/types";
+import type {
+  StorefrontBlogCategory,
+  StorefrontBlogPostSummary,
+} from "@/features/blog/types";
 import { cn } from "@/lib/cn";
 
 type BlogCategorySidebarProps = {
   categories: StorefrontBlogCategory[];
   activeSlug?: string;
-  /** Preserve search query when switching categories. */
   q?: string;
-  /** Desktop sidebar vs mobile/top chips. */
-  variant?: "sidebar" | "chips";
+  /** Related / latest posts for the left rail. */
+  relatedPosts?: StorefrontBlogPostSummary[];
+  relatedTitle?: string;
   className?: string;
 };
 
@@ -20,100 +23,131 @@ function categoryHref(slug: string | null, q?: string): string {
   return qs ? `/blog?${qs}` : "/blog";
 }
 
+/**
+ * Left rail: categories (with images) + related posts in the active topic.
+ */
 export function BlogCategorySidebar({
   categories,
   activeSlug,
   q,
-  variant = "sidebar",
+  relatedPosts = [],
+  relatedTitle = "Related articles",
   className,
 }: BlogCategorySidebarProps) {
-  if (!categories.length) return null;
-
-  if (variant === "chips") {
-    return (
-      <nav className={cn(className)} aria-label="Blog categories">
-        <ul className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <li className="shrink-0">
-            <Link
-              href={categoryHref(null, q)}
-              className={linkClass(!activeSlug, "chips")}
-              aria-current={!activeSlug ? "page" : undefined}
-            >
-              All
-            </Link>
-          </li>
-          {categories.map((category) => {
-            const active = activeSlug === category.slug;
-            return (
-              <li key={category.id} className="shrink-0">
-                <Link
-                  href={categoryHref(category.slug, q)}
-                  className={linkClass(active, "chips")}
-                  aria-current={active ? "page" : undefined}
-                >
-                  <span>{category.name}</span>
-                  <span className="ml-1.5 text-[0.7rem] opacity-70">
-                    {category.postCount}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
-    );
-  }
+  if (!categories.length && !relatedPosts.length) return null;
 
   return (
-    <aside className={cn("hidden md:block", className)} aria-label="Blog categories">
-      <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
-        Blog Categories
-      </h2>
-      <ul className="mt-3 space-y-1">
-        <li>
-          <Link
-            href={categoryHref(null, q)}
-            className={linkClass(!activeSlug, "sidebar")}
-            aria-current={!activeSlug ? "page" : undefined}
-          >
-            All
-          </Link>
-        </li>
-        {categories.map((category) => {
-          const active = activeSlug === category.slug;
-          return (
-            <li key={category.id}>
+    <aside
+      className={cn("space-y-8", className)}
+      aria-label="Blog topics and related articles"
+    >
+      {categories.length ? (
+        <div>
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+            Categories
+          </h2>
+          <ul className="mt-3 space-y-0.5">
+            <li>
               <Link
-                href={categoryHref(category.slug, q)}
-                className={linkClass(active, "sidebar")}
-                aria-current={active ? "page" : undefined}
+                href={categoryHref(null, q)}
+                className={catLinkClass(!activeSlug)}
+                aria-current={!activeSlug ? "page" : undefined}
               >
-                <span>{category.name}</span>
-                <span className="ml-auto tabular-nums text-[var(--color-muted)]">
-                  {category.postCount}
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[var(--color-surface)] text-[10px] font-semibold text-[var(--color-muted)] ring-1 ring-[var(--color-border)]">
+                  All
                 </span>
+                <span className="min-w-0 flex-1 truncate">All articles</span>
               </Link>
             </li>
-          );
-        })}
-      </ul>
+            {categories.map((category) => {
+              const active = activeSlug === category.slug;
+              const thumb = category.imageUrl?.trim() || null;
+              return (
+                <li key={category.id}>
+                  <Link
+                    href={categoryHref(category.slug, q)}
+                    className={catLinkClass(active)}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-8 w-8 shrink-0 rounded-md object-cover ring-1 ring-[var(--color-border)]"
+                      />
+                    ) : (
+                      <span
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--color-primary)_12%,var(--color-surface))] text-[10px] font-semibold text-[var(--color-primary)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_20%,var(--color-border))]"
+                        aria-hidden
+                      >
+                        {category.name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate">
+                      {category.name}
+                    </span>
+                    <span className="tabular-nums text-[11px] text-[var(--color-muted)]">
+                      {category.postCount}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      {relatedPosts.length ? (
+        <div>
+          <h2 className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-muted)]">
+            {relatedTitle}
+          </h2>
+          <ul className="mt-3 space-y-3">
+            {relatedPosts.map((post) => {
+              const thumb = post.featuredImageUrl?.trim() || null;
+              return (
+                <li key={post.id}>
+                  <Link
+                    href={`/blog/${post.slug}`}
+                    className="group flex gap-2.5 rounded-lg p-1 transition-colors hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]"
+                  >
+                    {thumb ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={thumb}
+                        alt=""
+                        className="h-12 w-14 shrink-0 rounded-md object-cover ring-1 ring-[var(--color-border)]"
+                      />
+                    ) : (
+                      <div className="h-12 w-14 shrink-0 rounded-md bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-primary)_55%,#1a1012),#1a1012)] ring-1 ring-[var(--color-border)]" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-[0.8125rem] font-semibold leading-snug text-[var(--color-foreground)] group-hover:text-[var(--color-primary)]">
+                        {post.title}
+                      </p>
+                      {post.categories[0]?.name ? (
+                        <p className="mt-0.5 truncate text-[10px] font-medium uppercase tracking-wide text-[var(--color-primary)]">
+                          {post.categories[0].name}
+                        </p>
+                      ) : null}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
     </aside>
   );
 }
 
-function linkClass(active: boolean, variant: "sidebar" | "chips"): string {
-  if (variant === "chips") {
-    return cn(
-      "inline-flex min-h-11 items-center rounded-full border px-3.5 py-2 text-sm transition-colors",
-      active
-        ? "border-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] font-semibold text-[var(--color-foreground)]"
-        : "border-[var(--color-border)] text-[var(--color-muted)] hover:border-[color-mix(in_srgb,var(--color-primary)_40%,var(--color-border))] hover:text-[var(--color-foreground)]",
-    );
-  }
+function catLinkClass(active: boolean): string {
   return cn(
-    "flex min-h-10 items-center gap-2 border-l-2 px-2.5 py-1.5 text-sm transition-colors",
+    "flex min-h-11 items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-sm transition-colors",
     active
-      ? "border-l-[var(--color-primary)] bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] font-semibold text-[var(--color-foreground)]"
-      : "border-l-transparent text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)] hover:text-[var(--color-foreground)]",
+      ? "bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)] font-semibold text-[var(--color-foreground)]"
+      : "text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)] hover:text-[var(--color-foreground)]",
   );
 }

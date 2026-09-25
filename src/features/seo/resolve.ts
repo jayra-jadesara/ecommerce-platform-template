@@ -195,7 +195,10 @@ export function resolveCmsPageSeo(input: {
     input.page.seoDescription,
     input.seo.description,
   );
-  const path = `/pages/${input.page.slug}`;
+  const path =
+    input.page.slug === "home"
+      ? "/"
+      : `/${input.page.slug.replace(/^\/+/, "")}`;
   const ogImage = isSafePublicAssetUrl(input.page.ogImageUrl)
     ? input.page.ogImageUrl!
     : isSafePublicAssetUrl(input.seo.ogImage)

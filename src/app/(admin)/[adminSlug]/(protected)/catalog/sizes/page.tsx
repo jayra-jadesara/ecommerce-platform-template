@@ -9,12 +9,13 @@ import { AdminSettingsTabs } from "@/features/admin/ui/AdminSettingsTabs";
 
 export const dynamic = "force-dynamic";
 
-type SettingsTab = "sizes" | "sections" | "faqs" | "banner";
+type SettingsTab = "sizes" | "sections" | "faqs" | "banner" | "blog";
 
 function parseTab(value: string | undefined): SettingsTab {
   if (value === "sections" || value === "page") return "sections";
   if (value === "faqs") return "faqs";
   if (value === "banner") return "banner";
+  if (value === "blog") return "blog";
   return "sizes";
 }
 
@@ -39,7 +40,7 @@ export default async function AdminProductSettingsPage({
     <div className="w-full min-w-0 space-y-3">
       <AdminPageHeader
         title="Product settings"
-        description="Size / pack, listing banner, detail sections, and FAQs — all in one place."
+        description="Size / pack, listing banner, detail sections, FAQs, and blog on product — all in one place."
         breadcrumbs={[
           { label: "Products", href: getAdminPath("/catalog/products") },
           { label: "Product settings" },
@@ -64,6 +65,11 @@ export default async function AdminProductSettingsPage({
             label: "FAQs",
             href: `${base}?tab=faqs`,
           },
+          {
+            id: "blog",
+            label: "Blog",
+            href: `${base}?tab=blog`,
+          },
         ]}
       />
       {tab === "sizes" ? (
@@ -78,7 +84,13 @@ export default async function AdminProductSettingsPage({
           initial={pageSettings}
           canUpdate={canUpdate}
           panel={
-            tab === "faqs" ? "faqs" : tab === "banner" ? "banner" : "sections"
+            tab === "faqs"
+              ? "faqs"
+              : tab === "banner"
+                ? "banner"
+                : tab === "blog"
+                  ? "blog"
+                  : "sections"
           }
         />
       )}

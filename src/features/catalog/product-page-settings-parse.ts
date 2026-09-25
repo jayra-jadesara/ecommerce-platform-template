@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  DEFAULT_PRODUCT_BLOG_HEADING,
   DEFAULT_PRODUCT_DETAIL_SECTIONS,
   DEFAULT_PRODUCT_FAQ_HEADING,
   type ProductDetailSectionDef,
@@ -40,6 +41,13 @@ export const productPageSettingsSchema = z.object({
     .nullable()
     .optional()
     .transform((v) => (v && v.length > 0 ? v : null)),
+  blogEnabled: z.boolean().default(true),
+  blogHeading: z
+    .string()
+    .trim()
+    .min(1, "Enter a blog section heading.")
+    .max(80)
+    .default(DEFAULT_PRODUCT_BLOG_HEADING),
 });
 
 export type ProductPageSettingsFormValues = z.infer<
@@ -122,18 +130,25 @@ export function normalizeProductPageSettings(input: {
   product_faq_questions?: unknown;
   products_listing_banner_enabled?: boolean | null;
   products_listing_banner_image_path?: string | null;
+  product_blog_enabled?: boolean | null;
+  product_blog_heading?: string | null;
 }): ProductPageSettings {
   const faqHeading =
     String(input.product_faq_heading ?? "").trim() ||
     DEFAULT_PRODUCT_FAQ_HEADING;
   const listingBannerImagePath =
     String(input.products_listing_banner_image_path ?? "").trim() || null;
+  const blogHeading =
+    String(input.product_blog_heading ?? "").trim() ||
+    DEFAULT_PRODUCT_BLOG_HEADING;
   return {
     sections: normalizeProductDetailSections(input.product_detail_sections),
     faqHeading,
     faqQuestions: normalizeProductFaqQuestions(input.product_faq_questions),
     listingBannerEnabled: Boolean(input.products_listing_banner_enabled),
     listingBannerImagePath,
+    blogEnabled: input.product_blog_enabled !== false,
+    blogHeading,
   };
 }
 

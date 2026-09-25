@@ -136,7 +136,7 @@ describe("store / product / category / page metadata", () => {
       seo: baseSeo,
     });
     expect(published.robotsIndex).toBe(true);
-    expect(published.canonicalPath).toBe("/pages/about");
+    expect(published.canonicalPath).toBe("/about");
   });
 
   it("canonicalizes product listing and noindexes deep pages", () => {

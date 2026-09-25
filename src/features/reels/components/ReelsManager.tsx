@@ -1,20 +1,16 @@
 "use client";
 
-import CloseIcon from "@mui/icons-material/Close";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import MovieOutlinedIcon from "@mui/icons-material/MovieOutlined";
 import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import { useRouter } from "next/navigation";
 import {
-  useId,
   useRef,
   useState,
   useTransition,
@@ -22,9 +18,24 @@ import {
 } from "react";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { AdminDialog, adminDialogIconBtnSx } from "@/features/admin/ui/AdminDialog";
 import { AdminMultiSelect } from "@/features/admin/ui/AdminMultiSelect";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { FieldError } from "@/features/admin/ui/FieldError";
+import {
+  adminBtn,
+  adminCard,
+  adminCardPadding,
+  adminFormStack,
+  adminStackStyle,
+} from "@/features/admin/ui/admin-classes";
+import {
+  applyServerFieldErrors,
+  focusFirstFieldError,
+  resultFieldErrors,
+} from "@/features/admin/validation/form-errors";
 import {
   createReelAction,
   deleteReelAction,
@@ -63,55 +74,11 @@ import {
   isValidReelAspectRatio,
   mbToBytes,
 } from "@/features/media/upload-limits";
-import {
-  adminBtn,
-  adminCard,
-  adminCardPadding,
-  adminFormStack,
-  adminStackStyle,
-} from "@/features/admin/ui/admin-classes";
-import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
-import { FieldError } from "@/features/admin/ui/FieldError";
-import {
-  applyServerFieldErrors,
-  focusFirstFieldError,
-  resultFieldErrors,
-} from "@/features/admin/validation/form-errors";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { cn } from "@/lib/cn";
 
 type ProductOption = { id: string; label: string };
-
-const iconBtnSx = {
-  color: "var(--color-muted)",
-  borderRadius: "10px",
-  border: "1px solid transparent",
-  "&:hover": {
-    color: "var(--color-foreground)",
-    backgroundColor:
-      "color-mix(in srgb, var(--color-primary) 8%, var(--color-card))",
-    borderColor:
-      "color-mix(in srgb, var(--color-primary) 22%, var(--color-border))",
-  },
-} as const;
-
-const dialogPaperSx = {
-  margin: 2,
-  overflow: "hidden",
-  borderRadius: "16px",
-  border: "1px solid var(--color-border)",
-  backgroundColor: "var(--color-card)",
-  backgroundImage: "none",
-  boxShadow:
-    "0 24px 64px color-mix(in srgb, var(--color-foreground) 18%, transparent)",
-} as const;
-
-const dialogBackdropSx = {
-  backgroundColor:
-    "color-mix(in srgb, var(--color-foreground) 28%, transparent)",
-  backdropFilter: "blur(6px)",
-} as const;
 
 function resolveVideoPreview(path: string | null | undefined) {
   if (!path) return undefined;
@@ -226,8 +193,6 @@ export function ReelsManager({
   adminReelVideoMaxMb?: number;
 }) {
   const router = useRouter();
-  const settingsTitleId = useId();
-  const formTitleId = useId();
   const [reels, setReels] = useState(() => sortReels(initialReels));
   const [ctaLabel, setCtaLabel] = useState(initialCtaLabel);
   const [showcaseLimit, setShowcaseLimit] = useState(
@@ -507,7 +472,7 @@ export function ReelsManager({
                               setCreating(false);
                               setError(null);
                             }}
-                            sx={iconBtnSx}
+                            sx={adminDialogIconBtnSx}
                           >
                             <EditOutlinedIcon sx={{ fontSize: 18 }} />
                           </IconButton>
@@ -521,7 +486,7 @@ export function ReelsManager({
                             disabled={pending}
                             onClick={() => setDeleteTarget(reel)}
                             sx={{
-                              ...iconBtnSx,
+                              ...adminDialogIconBtnSx,
                               "&:hover": {
                                 color: "var(--color-error)",
                                 backgroundColor:
@@ -544,297 +509,201 @@ export function ReelsManager({
         )}
       </div>
 
-      <Dialog
+      <AdminDialog
         open={formOpen}
-        onClose={pending ? undefined : closeForm}
-        fullWidth
+        onClose={closeForm}
+        title={creating ? "Add reel" : "Edit reel"}
+        description="Vertical video, title, and product links for the storefront."
         maxWidth="sm"
-        aria-labelledby={formTitleId}
-        slotProps={{
-          backdrop: { sx: dialogBackdropSx },
-          paper: {
-            className: "admin-form-dialog-paper",
-            sx: {
-              ...dialogPaperSx,
-              maxHeight: "calc(100vh - 2rem)",
-              display: "flex",
-              flexDirection: "column",
-            },
-          },
-        }}
+        pending={pending}
+        icon={<MovieOutlinedIcon sx={{ fontSize: 22 }} />}
       >
-        <div className="relative shrink-0 overflow-hidden border-b border-[var(--color-border)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-primary)_12%,var(--color-card)),var(--color-card)_62%)] px-4 pb-3.5 pt-4">
-          <div
-            className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-            aria-hidden
-          />
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-card)] text-[var(--color-primary)] shadow-[0_1px_3px_color-mix(in_srgb,var(--color-foreground)_10%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]">
-                <MovieOutlinedIcon sx={{ fontSize: 22 }} />
-              </div>
-              <div className="min-w-0 pt-0.5">
-                <h2
-                  id={formTitleId}
-                  className="text-[1rem] font-semibold tracking-tight text-[var(--color-foreground)]"
-                >
-                  {creating ? "Add reel" : "Edit reel"}
-                </h2>
-                <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-muted)]">
-                  Vertical video, title, and product links for the storefront.
-                </p>
-              </div>
-            </div>
-            <IconButton
-              size="small"
-              aria-label="Close"
-              disabled={pending}
-              onClick={closeForm}
-              sx={iconBtnSx}
-            >
-              <CloseIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </div>
-        </div>
-        <DialogContent
-          className="!px-4 !pb-4 !pt-4"
-          sx={{ overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}
-        >
-          {error ? (
-            <p className="mb-3 rounded-xl border border-[color-mix(in_srgb,var(--color-error)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-3 py-2 text-[13px] text-[var(--color-error)]">
-              {error}
-            </p>
-          ) : null}
-          <ReelForm
-            mode={creating ? "create" : "edit"}
-            reelId={editing?.id}
-            productOptions={productOptions}
-            adminReelVideoMaxMb={videoMaxMb}
-            initialValues={{
-              title: editing?.title ?? "",
-              instagramUrl: editing?.instagramUrl ?? null,
-              videoPath: editing?.videoPath ?? "",
-              productIds: editing?.productIds ?? [],
-            }}
-            canSubmit={creating ? canCreate : canUpdate}
-            onCancel={closeForm}
-            onSaved={(reel) => {
-              applyReel(reel);
-              closeForm();
-              router.refresh();
-            }}
-            onError={setError}
-          />
-        </DialogContent>
-      </Dialog>
+        {error ? (
+          <p className="rounded-xl border border-[color-mix(in_srgb,var(--color-error)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-3 py-2 text-[13px] text-[var(--color-error)]">
+            {error}
+          </p>
+        ) : null}
+        <ReelForm
+          mode={creating ? "create" : "edit"}
+          reelId={editing?.id}
+          productOptions={productOptions}
+          adminReelVideoMaxMb={videoMaxMb}
+          initialValues={{
+            title: editing?.title ?? "",
+            instagramUrl: editing?.instagramUrl ?? null,
+            videoPath: editing?.videoPath ?? "",
+            productIds: editing?.productIds ?? [],
+          }}
+          canSubmit={creating ? canCreate : canUpdate}
+          onCancel={closeForm}
+          onSaved={(reel) => {
+            applyReel(reel);
+            closeForm();
+            router.refresh();
+          }}
+          onError={setError}
+        />
+      </AdminDialog>
 
-      <Dialog
+      <AdminDialog
         open={settingsOpen}
-        onClose={pending ? undefined : () => setSettingsOpen(false)}
-        fullWidth
+        onClose={() => setSettingsOpen(false)}
+        title="Reel settings"
+        description="Storefront headings, showcase limits, and uploads."
         maxWidth="xs"
-        aria-labelledby={settingsTitleId}
-        slotProps={{
-          backdrop: { sx: dialogBackdropSx },
-          paper: {
-            className: "admin-form-dialog-paper",
-            sx: {
-              ...dialogPaperSx,
-              maxHeight: "calc(100vh - 2rem)",
-              display: "flex",
-              flexDirection: "column",
-            },
-          },
-        }}
+        pending={pending}
+        icon={<SettingsOutlinedIcon sx={{ fontSize: 22 }} />}
       >
-        <div className="relative shrink-0 overflow-hidden border-b border-[var(--color-border)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--color-primary)_12%,var(--color-card)),var(--color-card)_62%)] px-4 pb-3.5 pt-4">
-          <div
-            className="pointer-events-none absolute -right-6 -top-8 h-24 w-24 rounded-full bg-[color-mix(in_srgb,var(--color-primary)_10%,transparent)]"
-            aria-hidden
-          />
-          <div className="relative flex items-start justify-between gap-3">
-            <div className="flex min-w-0 items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--color-card)] text-[var(--color-primary)] shadow-[0_1px_3px_color-mix(in_srgb,var(--color-foreground)_10%,transparent)] ring-1 ring-[color-mix(in_srgb,var(--color-primary)_22%,var(--color-border))]">
-                <SettingsOutlinedIcon sx={{ fontSize: 22 }} />
-              </div>
-              <div className="min-w-0 pt-0.5">
-                <h2
-                  id={settingsTitleId}
-                  className="text-[1rem] font-semibold tracking-tight text-[var(--color-foreground)]"
-                >
-                  Reel settings
-                </h2>
-                <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-muted)]">
-                  Storefront headings, showcase limits, and uploads.
-                </p>
-              </div>
-            </div>
-            <IconButton
-              size="small"
-              aria-label="Close settings"
-              disabled={pending}
-              onClick={() => setSettingsOpen(false)}
-              sx={iconBtnSx}
-            >
-              <CloseIcon sx={{ fontSize: 18 }} />
-            </IconButton>
-          </div>
-        </div>
-        <DialogContent
-          className={cn(adminFormStack(), "!px-4 !pb-4 !pt-4")}
-          sx={{ overflowY: "auto", flex: "1 1 auto", minHeight: 0 }}
-        >
-          {error ? (
-            <p className="rounded-xl border border-[color-mix(in_srgb,var(--color-error)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-3 py-2 text-[13px] text-[var(--color-error)]">
-              {error}
-            </p>
-          ) : null}
-          <TextField
-            label="Product page heading"
-            size="small"
-            fullWidth
-            value={productPageHeading}
-            disabled={!canUpdate || pending}
-            slotProps={{
-              htmlInput: { maxLength: REEL_PRODUCT_PAGE_HEADING_MAX },
-            }}
-            helperText="Shown above reels on product detail pages."
-            onChange={(e) => setProductPageHeading(e.target.value)}
-            onBlur={() => {
-              if (!canUpdate || pending) return;
-              const next = normalizeReelProductPageHeading(productPageHeading);
-              setProductPageHeading(next);
-              if (next === savedProductPageHeadingRef.current) return;
-              const previous = savedProductPageHeadingRef.current;
-              setError(null);
-              startTransition(async () => {
-                const result = await updateReelsProductPageHeadingAction(next);
-                if (!result.ok) {
-                  setProductPageHeading(previous);
-                  setError(result.error);
-                  return;
-                }
-                savedProductPageHeadingRef.current = result.heading;
-                setProductPageHeading(result.heading);
-                router.refresh();
-              });
-            }}
-          />
-          <AdminSelect
-            label="Showcase count"
-            value={String(showcaseLimit)}
-            disabled={!canUpdate || pending}
-            options={reelShowcaseLimitOptions()}
-            helperText="Max reels loaded on the homepage (by drag order)."
-            onChange={(value) => {
-              const previous = showcaseLimit;
-              const next = clampReelShowcaseLimit(value);
-              setShowcaseLimit(next);
-              setError(null);
-              startTransition(async () => {
-                const result = await updateReelsShowcaseLimitAction(next);
-                if (!result.ok) {
-                  setShowcaseLimit(previous);
-                  setError(result.error);
-                  return;
-                }
-                setShowcaseLimit(result.limit);
-                router.refresh();
-              });
-            }}
-          />
-          <AdminSelect
-            label="Visible slides"
-            value={String(visibleSlides)}
-            disabled={!canUpdate || pending}
-            options={reelVisibleSlidesOptions()}
-            helperText="How many reels peek in the carousel at once (home & product)."
-            onChange={(value) => {
-              const previous = visibleSlides;
-              const next = clampReelVisibleSlides(value);
-              setVisibleSlides(next);
-              setError(null);
-              startTransition(async () => {
-                const result = await updateReelsVisibleSlidesAction(next);
-                if (!result.ok) {
-                  setVisibleSlides(previous);
-                  setError(result.error);
-                  return;
-                }
-                setVisibleSlides(result.visibleSlides);
-                router.refresh();
-              });
-            }}
-          />
-          <AdminToggle
-            variant="row"
-            label="Autoplay reels"
-            description="Muted autoplay on home and product showcase."
-            checked={autoplayMuted}
-            disabled={!canUpdate || pending}
-            onChange={(next) => {
-              const previous = autoplayMuted;
-              setAutoplayMuted(next);
-              setError(null);
-              startTransition(async () => {
-                const result = await updateReelsAutoplayMutedAction(next);
-                if (!result.ok) {
-                  setAutoplayMuted(previous);
-                  setError(result.error);
-                  return;
-                }
-                setAutoplayMuted(result.autoplayMuted);
-                router.refresh();
-              });
-            }}
-          />
-          <AdminSelect
-            label="Product button text"
-            value={ctaLabel}
-            disabled={!canUpdate || pending}
-            options={reelProductCtaOptions()}
-            helperText="Label on product CTAs in the reel showcase."
-            onChange={(value) => {
-              const previous = ctaLabel;
-              setCtaLabel(value as ReelProductCtaLabel);
-              setError(null);
-              startTransition(async () => {
-                const result = await updateReelsProductCtaLabelAction(value);
-                if (!result.ok) {
-                  setCtaLabel(previous);
-                  setError(result.error);
-                  return;
-                }
-                setCtaLabel(result.label);
-                router.refresh();
-              });
-            }}
-          />
-          <AdminSelect
-            label="Reel video max size"
-            value={String(videoMaxMb)}
-            disabled={!canUpdate || pending}
-            options={adminReelVideoMaxMbOptions()}
-            helperText="Upload limit for MP4 / WebM reels (2–50 MB)."
-            onChange={(value) => {
-              const previous = videoMaxMb;
-              const next = coerceAdminReelVideoMaxMb(value);
-              setVideoMaxMb(next);
-              setError(null);
-              startTransition(async () => {
-                const result = await updateAdminReelVideoMaxMbAction(next);
-                if (!result.ok) {
-                  setVideoMaxMb(previous);
-                  setError(result.error);
-                  return;
-                }
-                setVideoMaxMb(result.mb);
-                router.refresh();
-              });
-            }}
-          />
-        </DialogContent>
-      </Dialog>
+        {error ? (
+          <p className="rounded-xl border border-[color-mix(in_srgb,var(--color-error)_30%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_8%,var(--color-card))] px-3 py-2 text-[13px] text-[var(--color-error)]">
+            {error}
+          </p>
+        ) : null}
+        <TextField
+          label="Product page heading"
+          size="small"
+          fullWidth
+          value={productPageHeading}
+          disabled={!canUpdate || pending}
+          slotProps={{
+            htmlInput: { maxLength: REEL_PRODUCT_PAGE_HEADING_MAX },
+          }}
+          helperText="Shown above reels on product detail pages."
+          onChange={(e) => setProductPageHeading(e.target.value)}
+          onBlur={() => {
+            if (!canUpdate || pending) return;
+            const next = normalizeReelProductPageHeading(productPageHeading);
+            setProductPageHeading(next);
+            if (next === savedProductPageHeadingRef.current) return;
+            const previous = savedProductPageHeadingRef.current;
+            setError(null);
+            startTransition(async () => {
+              const result = await updateReelsProductPageHeadingAction(next);
+              if (!result.ok) {
+                setProductPageHeading(previous);
+                setError(result.error);
+                return;
+              }
+              savedProductPageHeadingRef.current = result.heading;
+              setProductPageHeading(result.heading);
+              router.refresh();
+            });
+          }}
+        />
+        <AdminSelect
+          label="Showcase count"
+          value={String(showcaseLimit)}
+          disabled={!canUpdate || pending}
+          options={reelShowcaseLimitOptions()}
+          helperText="Max reels loaded on the homepage (by drag order)."
+          onChange={(value) => {
+            const previous = showcaseLimit;
+            const next = clampReelShowcaseLimit(value);
+            setShowcaseLimit(next);
+            setError(null);
+            startTransition(async () => {
+              const result = await updateReelsShowcaseLimitAction(next);
+              if (!result.ok) {
+                setShowcaseLimit(previous);
+                setError(result.error);
+                return;
+              }
+              setShowcaseLimit(result.limit);
+              router.refresh();
+            });
+          }}
+        />
+        <AdminSelect
+          label="Visible slides"
+          value={String(visibleSlides)}
+          disabled={!canUpdate || pending}
+          options={reelVisibleSlidesOptions()}
+          helperText="How many reels peek in the carousel at once (home & product)."
+          onChange={(value) => {
+            const previous = visibleSlides;
+            const next = clampReelVisibleSlides(value);
+            setVisibleSlides(next);
+            setError(null);
+            startTransition(async () => {
+              const result = await updateReelsVisibleSlidesAction(next);
+              if (!result.ok) {
+                setVisibleSlides(previous);
+                setError(result.error);
+                return;
+              }
+              setVisibleSlides(result.visibleSlides);
+              router.refresh();
+            });
+          }}
+        />
+        <AdminToggle
+          variant="row"
+          label="Autoplay reels"
+          description="Muted autoplay on home and product showcase."
+          checked={autoplayMuted}
+          disabled={!canUpdate || pending}
+          onChange={(next) => {
+            const previous = autoplayMuted;
+            setAutoplayMuted(next);
+            setError(null);
+            startTransition(async () => {
+              const result = await updateReelsAutoplayMutedAction(next);
+              if (!result.ok) {
+                setAutoplayMuted(previous);
+                setError(result.error);
+                return;
+              }
+              setAutoplayMuted(result.autoplayMuted);
+              router.refresh();
+            });
+          }}
+        />
+        <AdminSelect
+          label="Product button text"
+          value={ctaLabel}
+          disabled={!canUpdate || pending}
+          options={reelProductCtaOptions()}
+          helperText="Label on product CTAs in the reel showcase."
+          onChange={(value) => {
+            const previous = ctaLabel;
+            setCtaLabel(value as ReelProductCtaLabel);
+            setError(null);
+            startTransition(async () => {
+              const result = await updateReelsProductCtaLabelAction(value);
+              if (!result.ok) {
+                setCtaLabel(previous);
+                setError(result.error);
+                return;
+              }
+              setCtaLabel(result.label);
+              router.refresh();
+            });
+          }}
+        />
+        <AdminSelect
+          label="Reel video max size"
+          value={String(videoMaxMb)}
+          disabled={!canUpdate || pending}
+          options={adminReelVideoMaxMbOptions()}
+          helperText="Upload limit for MP4 / WebM reels (2–50 MB)."
+          onChange={(value) => {
+            const previous = videoMaxMb;
+            const next = coerceAdminReelVideoMaxMb(value);
+            setVideoMaxMb(next);
+            setError(null);
+            startTransition(async () => {
+              const result = await updateAdminReelVideoMaxMbAction(next);
+              if (!result.ok) {
+                setVideoMaxMb(previous);
+                setError(result.error);
+                return;
+              }
+              setVideoMaxMb(result.mb);
+              router.refresh();
+            });
+          }}
+        />
+      </AdminDialog>
 
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}

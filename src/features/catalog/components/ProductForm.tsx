@@ -39,7 +39,6 @@ import {
   type ProductFormValues,
 } from "@/features/catalog/validation";
 import { getAdminPath } from "@/config/admin-route";
-import { AdminSeoFields } from "@/features/seo/components/AdminSeoFields";
 import {
   resolveReturnPolicy,
   returnPolicyLabel,
@@ -191,21 +190,10 @@ export function ProductForm({
 
   const variants = useWatch({ control, name: "variants" }) ?? [];
   const productName = useWatch({ control, name: "name" }) ?? "";
-  const shortDescriptionWatch =
-    useWatch({ control, name: "shortDescription" }) ?? "";
-  const descriptionWatch = useWatch({ control, name: "description" }) ?? "";
   const sectionContentWatch =
     useWatch({ control, name: "sectionContent" }) ?? {};
   const faqAnswersWatch = useWatch({ control, name: "faqAnswers" }) ?? {};
   const faqEnabledWatch = useWatch({ control, name: "faqEnabled" });
-  const seoTitleWatch = useWatch({ control, name: "seoTitle" }) ?? "";
-  const seoDescriptionWatch = useWatch({ control, name: "seoDescription" }) ?? "";
-  const slugWatch = useWatch({ control, name: "slug" }) ?? "";
-  const sectionDescription =
-    String(sectionContentWatch.description ?? "").trim() ||
-    String(descriptionWatch).trim();
-  const seoSourceDescription =
-    String(shortDescriptionWatch).trim() || sectionDescription;
 
   function syncAutoCodesFromName(name: string) {
     if (mode !== "create") return;
@@ -914,7 +902,7 @@ export function ProductForm({
         <summary className="cursor-pointer border-b border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] px-3.5 py-2.5 text-sm font-semibold text-[var(--color-foreground)]">
           Extra details
           <span className="ml-1.5 text-[11px] font-normal text-[var(--color-muted)]">
-            Brand &amp; SEO
+            Brand
           </span>
         </summary>
         <div className={`p-3.5 ${adminFieldsGrid(2)}`}>
@@ -929,30 +917,10 @@ export function ProductForm({
                 placeholder="e.g. Nestlé, local mill name"
                 fullWidth
                 disabled={!fieldsEditable}
-                helperText="Only if this product is from a named maker — leave blank for your own store brand"
+                helperText="Only if this product is from a named maker — leave blank for your own store brand. Google title and description are filled automatically from the product name and short description when you save."
               />
             )}
           />
-          <div className="md:col-span-2">
-            <p className="mb-2 text-sm font-semibold text-[var(--color-foreground)]">
-              Google &amp; SEO
-            </p>
-            <AdminSeoFields
-              sourceTitle={productName}
-              sourceDescription={seoSourceDescription}
-              seoTitle={seoTitleWatch}
-              seoDescription={seoDescriptionWatch}
-              onSeoTitleChange={(value) =>
-                setValue("seoTitle", value, { shouldDirty: true })
-              }
-              onSeoDescriptionChange={(value) =>
-                setValue("seoDescription", value, { shouldDirty: true })
-              }
-              previewUrl={`/products/${slugWatch || "product-slug"}`}
-              disabled={!fieldsEditable}
-              forceAutomatic
-            />
-          </div>
         </div>
       </details>
 

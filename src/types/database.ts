@@ -213,6 +213,10 @@ export type Database = {
           product_faq_questions: Json;
           products_listing_banner_enabled: boolean;
           products_listing_banner_image_path: string | null;
+          product_blog_enabled: boolean;
+          product_blog_heading: string;
+          admin_brochure_pdf_max_mb: number;
+          brochure_page_description: string | null;
           contact_banner_enabled: boolean;
           contact_banner_image_path: string | null;
           contact_spotlight_enabled: boolean;
@@ -292,6 +296,10 @@ export type Database = {
           product_faq_questions?: Json;
           products_listing_banner_enabled?: boolean;
           products_listing_banner_image_path?: string | null;
+          product_blog_enabled?: boolean;
+          product_blog_heading?: string;
+          admin_brochure_pdf_max_mb?: number;
+          brochure_page_description?: string | null;
           contact_banner_enabled?: boolean;
           contact_banner_image_path?: string | null;
           contact_spotlight_enabled?: boolean;
@@ -1412,6 +1420,32 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["store_reel_products"]["Insert"]>;
         Relationships: [];
       };
+      store_brochures: {
+        Row: {
+          id: string;
+          store_id: string;
+          title: string;
+          pdf_path: string;
+          file_size_bytes: number;
+          sort_order: number;
+          is_active: boolean;
+          download_count: number;
+        } & Timestamps;
+        Insert: {
+          id?: string;
+          store_id: string;
+          title: string;
+          pdf_path: string;
+          file_size_bytes?: number;
+          sort_order?: number;
+          is_active?: boolean;
+          download_count?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["store_brochures"]["Insert"]>;
+        Relationships: [];
+      };
       blog_categories: {
         Row: {
           id: string;
@@ -2158,6 +2192,10 @@ export type Database = {
       };
       increment_product_view: {
         Args: { p_product_id: string };
+        Returns: undefined;
+      };
+      increment_brochure_download: {
+        Args: { p_brochure_id: string };
         Returns: undefined;
       };
     };

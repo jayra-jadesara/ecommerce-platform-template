@@ -1,97 +1,23 @@
 "use client";
 
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useMemo } from "react";
-import {
-  getWishlistMembershipKeysAction,
-  toggleWishlistAction,
-} from "@/features/wishlist/actions";
-import {
-  wishlistMembershipKey,
-  wishlistMembershipQueryKey,
-} from "@/features/wishlist/query-keys";
-import { syncWishlistQueryCaches } from "@/features/wishlist/sync-wishlist-query";
-import { useHasHydrated } from "@/lib/use-has-hydrated";
+import { ProductWishlistButton } from "@/features/catalog/components/ProductWishlistButton";
 
 export type BlogShopProduct = {
   id: string;
   name: string;
   slug: string;
+  /** First active variant — required for wishlist (same as product cards). */
+  defaultVariantId: string | null;
 };
-
-function ProductWishlistButton({
-  productId,
-  productName,
-}: {
-  productId: string;
-  productName: string;
-}) {
-  const queryClient = useQueryClient();
-  const hydrated = useHasHydrated();
-
-  const membershipQuery = useQuery({
-    queryKey: wishlistMembershipQueryKey,
-    queryFn: () => getWishlistMembershipKeysAction(),
-    enabled: hydrated,
-    staleTime: 30_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
-
-  const membershipSet = useMemo(
-    () => new Set(membershipQuery.data ?? []),
-    [membershipQuery.data],
-  );
-
-  const mutation = useMutation({
-    mutationFn: () => toggleWishlistAction({ productId }),
-    onSuccess: (result) => {
-      if (!result.ok || !result.wishlist) return;
-      syncWishlistQueryCaches(queryClient, result.wishlist);
-    },
-  });
-
-  const inWishlist =
-    hydrated && membershipSet.has(wishlistMembershipKey(productId, null));
-
-  return (
-    <button
-      type="button"
-      disabled={mutation.isPending}
-      aria-label={
-        inWishlist
-          ? `Remove ${productName} from wishlist`
-          : `Save ${productName} to wishlist`
-      }
-      title={inWishlist ? "Saved" : "Save to wishlist"}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        mutation.mutate();
-      }}
-      className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]"
-    >
-      {inWishlist ? (
-        <FavoriteIcon
-          fontSize="small"
-          className="!text-[var(--color-primary)]"
-          aria-hidden
-        />
-      ) : (
-        <FavoriteBorderIcon fontSize="small" aria-hidden />
-      )}
-    </button>
-  );
-}
 
 export function BlogShopProducts({
   products,
+  isAuthenticated,
 }: {
   products: BlogShopProduct[];
+  isAuthenticated: boolean;
 }) {
   if (products.length === 0) return null;
 
@@ -107,10 +33,15 @@ export function BlogShopProducts({
               <ShoppingBagOutlinedIcon fontSize="small" aria-hidden />
               <span className="truncate">{product.name}</span>
             </Link>
-            <ProductWishlistButton
-              productId={product.id}
-              productName={product.name}
-            />
+            {product.defaultVariantId ? (
+              <ProductWishlistButton
+                productId={product.id}
+                productSlug={product.slug}
+                variantId={product.defaultVariantId}
+                isAuthenticated={isAuthenticated}
+                className="!h-9 !w-9 shrink-0 border border-[var(--color-border)] shadow-none"
+              />
+            ) : null}
           </div>
         </li>
       ))}

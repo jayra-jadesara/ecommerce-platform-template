@@ -25,6 +25,7 @@ export type AdminNavIcon =
   | "banners"
   | "reels"
   | "blog"
+  | "brochure"
   | "media"
   | "team";
 
@@ -235,15 +236,6 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
       },
       {
         kind: "link",
-        id: "content-pages",
-        label: "Pages",
-        href: p("/content/pages"),
-        permissions: ["content.view", "cms.view"],
-        icon: "pages",
-        section: "content",
-      },
-      {
-        kind: "link",
         id: "content-banners",
         label: "Banners",
         href: p("/content/banners"),
@@ -267,6 +259,15 @@ export const ADMIN_NAV_TREE: AdminNavEntry[] = [
         href: p("/content/blog"),
         permissions: ["blog.view"],
         icon: "blog",
+        section: "content",
+      },
+      {
+        kind: "link",
+        id: "content-brochures",
+        label: "Brochures",
+        href: p("/content/brochures"),
+        permissions: ["content.view", "cms.view"],
+        icon: "brochure",
         section: "content",
       },
       {
@@ -428,10 +429,10 @@ export const ADMIN_SIDEBAR_PRIMARY_LINK_IDS = new Set([
   "content-contact",
   "content-career",
   "content-legal",
-  "content-pages",
   "content-banners",
   "content-reels",
   "content-blog",
+  "content-brochures",
   "content-media",
   "settings-hub",
   "team",
@@ -564,10 +565,12 @@ export const ADMIN_BREADCRUMB_LABELS: Record<string, string> = {
   about: "About",
   contact: "Contact",
   career: "Career",
-  pages: "Pages",
   banners: "Banners",
   reels: "Reels",
   blog: "Blog",
+  brochure: "Brochures",
+  brochures: "Brochures",
+  legal: "Legal pages",
   media: "Images & Files",
   settings: "Store Settings",
   general: "Store Information",

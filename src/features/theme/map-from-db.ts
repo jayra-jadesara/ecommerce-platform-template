@@ -420,6 +420,7 @@ function parsePageSeo(raw: unknown): SeoConfig["pages"] {
     "career",
     "products",
     "blog",
+    "brochure",
     "privacy",
     "terms",
     "disclaimer",

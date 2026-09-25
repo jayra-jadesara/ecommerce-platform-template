@@ -1,9 +1,8 @@
 "use client";
 
-import Dialog from "@mui/material/Dialog";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
+import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
+import { AdminDialog } from "@/features/admin/ui/AdminDialog";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
@@ -46,68 +45,84 @@ export function ConfirmDeleteDialog({
   onConfirm,
   onSafeAction,
 }: ConfirmDeleteDialogProps) {
-  const titleId = "admin-confirm-dialog-title";
-  const descId = "admin-confirm-dialog-desc";
   const busyLabel =
     pendingLabel ??
     (confirmTone === "danger" ? "Deleting…" : "Working…");
+  const showWarning = warningTone || blocked || confirmTone === "danger";
 
   return (
-    <Dialog
+    <AdminDialog
       open={open}
-      onClose={pending ? undefined : onClose}
+      onClose={onClose}
+      title={title}
+      description={
+        showWarning
+          ? "This action needs your confirmation."
+          : "Please confirm to continue."
+      }
       maxWidth="sm"
-      fullWidth
-      aria-labelledby={titleId}
-      aria-describedby={descId}
+      pending={pending}
+      icon={
+        showWarning ? (
+          <WarningAmberOutlinedIcon
+            sx={{
+              fontSize: 22,
+              color:
+                confirmTone === "danger"
+                  ? "var(--color-error)"
+                  : "var(--color-warning, var(--color-primary))",
+            }}
+          />
+        ) : (
+          <DeleteOutlineOutlinedIcon sx={{ fontSize: 22 }} />
+        )
+      }
+      actions={
+        <>
+          <button
+            type="button"
+            className={adminBtn("outline")}
+            disabled={pending}
+            onClick={onClose}
+          >
+            {cancelLabel}
+          </button>
+          {blocked && onSafeAction ? (
+            <button
+              type="button"
+              className={adminBtn("primary")}
+              disabled={pending}
+              onClick={onSafeAction}
+            >
+              {pending ? "Working…" : safeActionLabel}
+            </button>
+          ) : null}
+          {!blocked && onConfirm ? (
+            <button
+              type="button"
+              className={cn(
+                adminBtn("primary"),
+                confirmTone === "danger" && "!bg-[var(--color-error)]",
+              )}
+              disabled={pending}
+              onClick={onConfirm}
+            >
+              {pending ? busyLabel : confirmLabel}
+            </button>
+          ) : null}
+        </>
+      }
     >
-      <DialogTitle id={titleId}>{title}</DialogTitle>
-      <DialogContent>
-        <p
-          id={descId}
-          className={cn(
-            "text-sm",
-            warningTone || blocked
-              ? "text-[var(--color-warning)]"
-              : "text-[var(--color-muted)]",
-          )}
-        >
-          {message}
-        </p>
-      </DialogContent>
-      <DialogActions className="gap-2 px-4 pb-4">
-        <button
-          type="button"
-          className={adminBtn("outline")}
-          disabled={pending}
-          onClick={onClose}
-        >
-          {cancelLabel}
-        </button>
-        {blocked && onSafeAction ? (
-          <button
-            type="button"
-            className={adminBtn("primary")}
-            disabled={pending}
-            onClick={onSafeAction}
-          >
-            {pending ? "Working…" : safeActionLabel}
-          </button>
-        ) : null}
-        {!blocked && onConfirm ? (
-          <button
-            type="button"
-            className={cn(
-              adminBtn("primary"),
-              confirmTone === "danger" && "!bg-[var(--color-error)]",
-            )}
-            disabled={pending}
-            onClick={onConfirm}
-          >
-            {pending ? busyLabel : confirmLabel}
-          </button>
-        ) : null}
-      </DialogActions>
-    </Dialog>
+      <p
+        className={cn(
+          "text-[13px] leading-relaxed",
+          warningTone || blocked
+            ? "text-[var(--color-warning,var(--color-foreground))]"
+            : "text-[var(--color-muted)]",
+        )}
+      >
+        {message}
+      </p>
+    </AdminDialog>
   );
 }

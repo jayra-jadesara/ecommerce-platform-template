@@ -22,10 +22,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { updateProductPageSettingsAction } from "@/features/catalog/product-page-settings-actions";
-import type {
-  ProductDetailSectionDef,
-  ProductFaqQuestionDef,
-  ProductPageSettings,
+import {
+  DEFAULT_PRODUCT_BLOG_HEADING,
+  type ProductDetailSectionDef,
+  type ProductFaqQuestionDef,
+  type ProductPageSettings,
 } from "@/features/catalog/product-page-settings";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { MediaPicker } from "@/features/media";
@@ -38,7 +39,7 @@ import {
 } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
-export type ProductSettingsPanel = "sections" | "faqs" | "banner";
+export type ProductSettingsPanel = "sections" | "faqs" | "banner" | "blog";
 
 type AdminProductPageSettingsProps = {
   initial: ProductPageSettings;
@@ -121,6 +122,8 @@ export function AdminProductPageSettings({
   const [listingBannerImagePath, setListingBannerImagePath] = useState<
     string | null
   >(initial.listingBannerImagePath);
+  const [blogEnabled, setBlogEnabled] = useState(initial.blogEnabled);
+  const [blogHeading, setBlogHeading] = useState(initial.blogHeading);
   const [bannerMediaOpen, setBannerMediaOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -129,6 +132,7 @@ export function AdminProductPageSettings({
     {},
   );
   const [faqHeadingError, setFaqHeadingError] = useState<string | null>(null);
+  const [blogHeadingError, setBlogHeadingError] = useState<string | null>(null);
   const [questionErrors, setQuestionErrors] = useState<Record<string, string>>(
     {},
   );
@@ -148,6 +152,8 @@ export function AdminProductPageSettings({
         faqQuestions: initial.faqQuestions,
         listingBannerEnabled: initial.listingBannerEnabled,
         listingBannerImagePath: initial.listingBannerImagePath,
+        blogEnabled: initial.blogEnabled,
+        blogHeading: initial.blogHeading,
       }),
     [initial],
   );
@@ -157,6 +163,8 @@ export function AdminProductPageSettings({
     faqQuestions,
     listingBannerEnabled,
     listingBannerImagePath,
+    blogEnabled,
+    blogHeading,
   });
   const isDirty = current !== baseline;
   const dragDisabled = !canUpdate || pending;
@@ -264,6 +272,22 @@ export function AdminProductPageSettings({
     return true;
   }
 
+  function validateBlog(): boolean {
+    const trimmed = blogHeading.trim();
+    if (!trimmed) {
+      setBlogHeadingError("Blog section heading is required.");
+      setError("Fix the highlighted blog fields before saving.");
+      return false;
+    }
+    if (trimmed.length > 80) {
+      setBlogHeadingError("Blog section heading is too long.");
+      setError("Fix the highlighted blog fields before saving.");
+      return false;
+    }
+    setBlogHeadingError(null);
+    return true;
+  }
+
   function save() {
     if (!canUpdate) return;
     setError(null);
@@ -271,6 +295,7 @@ export function AdminProductPageSettings({
     if (panel === "sections" && !validateSections()) return;
     if (panel === "faqs" && !validateFaqs()) return;
     if (panel === "banner" && !validateBanner()) return;
+    if (panel === "blog" && !validateBlog()) return;
 
     // Drop incomplete FAQ drafts when saving from another tab.
     const questionsToSave =
@@ -293,6 +318,11 @@ export function AdminProductPageSettings({
         })),
         listingBannerEnabled,
         listingBannerImagePath,
+        blogEnabled,
+        blogHeading:
+          blogHeading.trim() ||
+          initial.blogHeading ||
+          DEFAULT_PRODUCT_BLOG_HEADING,
       });
       if (!result.ok) {
         setError(result.error);
@@ -300,6 +330,7 @@ export function AdminProductPageSettings({
       }
       setHeadingErrors({});
       setFaqHeadingError(null);
+      setBlogHeadingError(null);
       setQuestionErrors({});
       setMessage(result.message);
       router.refresh();
@@ -312,8 +343,11 @@ export function AdminProductPageSettings({
     setFaqQuestions(initial.faqQuestions);
     setListingBannerEnabled(initial.listingBannerEnabled);
     setListingBannerImagePath(initial.listingBannerImagePath);
+    setBlogEnabled(initial.blogEnabled);
+    setBlogHeading(initial.blogHeading);
     setHeadingErrors({});
     setFaqHeadingError(null);
+    setBlogHeadingError(null);
     setQuestionErrors({});
     setError(null);
     setMessage(null);
@@ -648,6 +682,48 @@ export function AdminProductPageSettings({
           >
             Add question
           </button>
+        </section>
+      ) : null}
+
+      {panel === "blog" ? (
+        <section className={cn(adminCard(), adminCardPadding())}>
+          <h2 className="text-[15px] font-semibold text-[var(--color-foreground)]">
+            Blog on product page
+          </h2>
+          <p className="mt-1 text-[12px] text-[var(--color-muted)]">
+            Show articles linked to a product (from Content → Blog) above reels
+            on the product detail page.
+          </p>
+          <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_70%,var(--color-card))] p-3">
+            <AdminToggle
+              checked={blogEnabled}
+              disabled={!canUpdate || pending}
+              onChange={setBlogEnabled}
+              label="Show blog posts on product pages"
+              description="Off hides the section even when articles are linked"
+              variant="row"
+            />
+          </div>
+          <div className="mt-4 max-w-md">
+            <TextField
+              size="small"
+              label="Section heading"
+              placeholder={DEFAULT_PRODUCT_BLOG_HEADING}
+              value={blogHeading}
+              required
+              disabled={!canUpdate || pending || !blogEnabled}
+              fullWidth
+              error={Boolean(blogHeadingError)}
+              helperText={
+                blogHeadingError ??
+                "Shown above the linked articles (default: From our blog)."
+              }
+              onChange={(e) => {
+                setBlogHeadingError(null);
+                setBlogHeading(e.target.value);
+              }}
+            />
+          </div>
         </section>
       ) : null}
 

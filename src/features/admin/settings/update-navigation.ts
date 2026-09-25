@@ -15,6 +15,8 @@ import {
 import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
+import { buildStorefrontPathsFromNavRows } from "@/features/seo/storefront-paths";
+import { syncSeoPathsFromNavigationCatalog } from "@/features/seo/sync-seo-paths-from-nav";
 
 const NAVIGATION_ROUTE = getAdminPath("/settings/navigation");
 
@@ -212,6 +214,20 @@ export async function updateNavigationSettings(
       created_count: createdCount,
     },
   });
+
+  // Keep Google & SEO page list in lockstep with this store’s Menu & Navigation.
+  const { data: navRows } = await supabase
+    .from("navigation_items")
+    .select("id, location, parent_id, label, href, is_active")
+    .eq("store_id", storeId)
+    .order("sort_order", { ascending: true });
+  if (navRows?.length) {
+    await syncSeoPathsFromNavigationCatalog(
+      supabase,
+      storeId,
+      buildStorefrontPathsFromNavRows(navRows),
+    );
+  }
 
   revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
   return { ok: true, message: "Navigation saved." };

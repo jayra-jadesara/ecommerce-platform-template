@@ -70,8 +70,10 @@ describe("phase 21.2 — admin shell & IA", () => {
       "Dashboard",
       "Products",
       "Orders",
-      "Error Logs",
+      "Reports",
       "Customers",
+      "Error Logs",
+      "Hosting & storage",
       "Content",
       "Store Settings",
     ]);

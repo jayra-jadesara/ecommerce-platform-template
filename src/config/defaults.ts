@@ -114,6 +114,7 @@ export const defaultPlatformConfig: PlatformConfig = {
       { label: "About", href: "/about" },
       { label: "Career", href: "/career" },
       { label: "Blog", href: "/blog" },
+      { label: "Brochure", href: "/brochure" },
       { label: "Contact", href: "/contact" },
     ],
     footer: [
@@ -121,6 +122,7 @@ export const defaultPlatformConfig: PlatformConfig = {
       { label: "Terms", href: "/terms" },
       { label: "Disclaimer", href: "/disclaimer" },
       { label: "Career", href: "/career" },
+      { label: "Brochure", href: "/brochure" },
       { label: "Contact", href: "/contact" },
     ],
   },

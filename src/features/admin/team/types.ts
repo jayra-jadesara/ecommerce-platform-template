@@ -60,7 +60,7 @@ export const STAFF_ROLE_OPTIONS: StaffRoleOption[] = [
   {
     value: "MARKETING",
     label: "Marketing",
-    description: "Promotions, blog, coupons, and homepage content",
+    description: "Promotions, blog, brochures, coupons, and homepage content",
     level: "Growth",
     isSystem: true,
   },

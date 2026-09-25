@@ -174,17 +174,23 @@ function CoverArticleCard({
   return (
     <article className="blog-cover-card group relative h-full">
       <div
-        className="pointer-events-none absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2"
+        className="pointer-events-none absolute left-1/2 top-0 z-20 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-1"
         aria-hidden="true"
       >
-        <span className="blog-cover-card__tab inline-block max-w-[11rem] truncate rounded-md px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--color-button-foreground)] shadow-sm">
-          {tabLabel}
-        </span>
+        {featured ? (
+          <span className="blog-cover-card__tab inline-block max-w-[11rem] truncate rounded-md bg-[var(--color-primary)] px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--color-button-foreground)] shadow-sm">
+            Featured
+          </span>
+        ) : (
+          <span className="blog-cover-card__tab inline-block max-w-[11rem] truncate rounded-md px-3 py-1 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[var(--color-button-foreground)] shadow-sm">
+            {tabLabel}
+          </span>
+        )}
       </div>
 
       <Link
         href={href}
-        className="blog-cover-card__surface relative flex aspect-[3/4] h-full min-h-[22rem] flex-col overflow-hidden rounded-[1.35rem] outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] sm:min-h-[24rem]"
+        className="blog-cover-card__surface relative flex aspect-[3/4] h-full min-h-[16rem] flex-col overflow-hidden rounded-[1.15rem] outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-primary)] sm:min-h-[18rem]"
       >
         <div className="absolute inset-0">
           {imageUrl ? (
@@ -262,27 +268,30 @@ export function BlogArticleCard({
   const showImage = showFeaturedImage && Boolean(imageUrl);
   const minimal = cardStyle === "MINIMAL";
   const editorial = cardStyle === "EDITORIAL";
+  const showFeaturedLabel = featured || post.isFeatured;
 
   if (usesCoverCard(cardStyle, listingLayout)) {
     return (
       <CoverArticleCard
         post={post}
         showCategories={showCategories}
-        featured={featured}
+        featured={showFeaturedLabel}
         showFeaturedImage={showFeaturedImage}
         coverCtaStyle={coverCtaStyle}
-        priority={featured}
+        priority={showFeaturedLabel}
       />
     );
   }
 
+  const horizontal = listingLayout === "list";
+
   return (
     <article
       className={cn(
-        featured
-          ? "group grid gap-4 md:grid-cols-[minmax(0,280px)_minmax(0,1fr)] md:items-center md:gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)] lg:gap-8"
+        horizontal
+          ? "group grid gap-3 sm:grid-cols-[minmax(0,8.5rem)_minmax(0,1fr)] sm:items-center sm:gap-3.5 md:grid-cols-[minmax(0,9.5rem)_minmax(0,1fr)] md:gap-4"
           : "group flex h-full flex-col",
-        editorial && !featured ? "gap-1" : null,
+        editorial && !horizontal ? "gap-1" : null,
       )}
     >
       {showImage && imageUrl ? (
@@ -290,25 +299,27 @@ export function BlogArticleCard({
           href={href}
           className={cn(
             "blog-card-image group/image relative block overflow-hidden bg-[color-mix(in_srgb,var(--color-surface)_80%,var(--color-border))]",
-            featured ? "aspect-[4/3] max-h-[14rem] w-full" : "aspect-[16/10]",
+            horizontal
+              ? "aspect-[4/3] max-h-[6.5rem] w-full sm:max-h-none"
+              : "aspect-[16/10]",
             minimal
               ? "rounded-none"
               : "rounded-[var(--radius-default,0.75rem)]",
             !minimal &&
               "shadow-sm ring-1 ring-[var(--color-border)] transition-shadow duration-300 motion-safe:hover:shadow-md",
           )}
-          aria-hidden={featured ? undefined : true}
-          tabIndex={featured ? undefined : -1}
+          aria-hidden={horizontal ? undefined : true}
+          tabIndex={horizontal ? undefined : -1}
         >
           <CoverImage
             src={imageUrl}
-            alt={featured ? post.title : ""}
+            alt={horizontal ? post.title : ""}
             sizes={
-              featured
-                ? "(max-width: 768px) 100vw, 320px"
+              horizontal
+                ? "(max-width: 640px) 100vw, 152px"
                 : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             }
-            priority={featured}
+            priority={showFeaturedLabel}
             className="transition-transform duration-500 ease-out motion-reduce:transform-none motion-safe:group-hover/image:scale-[1.03]"
           />
         </Link>
@@ -316,9 +327,14 @@ export function BlogArticleCard({
 
       <div
         className={
-          featured ? "min-w-0" : "mt-4 flex min-w-0 flex-1 flex-col"
+          horizontal ? "min-w-0" : "mt-4 flex min-w-0 flex-1 flex-col"
         }
       >
+        {showFeaturedLabel ? (
+          <p className="mb-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">
+            Featured
+          </p>
+        ) : null}
         {metaLine({
           showCategories,
           categoryName: category?.name,
@@ -330,8 +346,8 @@ export function BlogArticleCard({
         <h2
           className={cn(
             "font-[family-name:var(--font-display)] font-semibold tracking-tight text-[var(--color-foreground)]",
-            featured
-              ? "mt-1.5 text-lg leading-snug md:text-xl lg:text-[1.35rem]"
+            horizontal
+              ? "mt-0.5 text-[0.95rem] leading-snug md:text-base"
               : editorial
                 ? "mt-3 text-[1.45rem] leading-snug md:text-[1.6rem]"
                 : "mt-2 text-xl md:text-[1.35rem]",
@@ -348,9 +364,9 @@ export function BlogArticleCard({
         {post.excerpt?.trim() ? (
           <p
             className={cn(
-              "mt-2 leading-relaxed text-[var(--color-muted)]",
-              featured
-                ? "line-clamp-2 text-sm md:text-[0.9rem]"
+              "mt-1 leading-relaxed text-[var(--color-muted)]",
+              horizontal
+                ? "line-clamp-2 text-[0.75rem] md:text-[0.8125rem]"
                 : editorial
                   ? "line-clamp-4 text-[0.95rem] md:text-base"
                   : "line-clamp-3 text-sm md:text-[0.95rem]",
@@ -360,12 +376,12 @@ export function BlogArticleCard({
           </p>
         ) : null}
 
-        <p className={featured ? "mt-3" : "mt-auto pt-4"}>
+        <p className={horizontal ? "mt-1.5" : "mt-auto pt-4"}>
           <Link
             href={href}
             className={cn(
-              "inline-flex min-h-11 items-center gap-1.5 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline",
-              featured ? "text-[0.8125rem]" : "text-sm",
+              "inline-flex items-center gap-1 font-semibold text-[var(--color-primary)] underline-offset-4 hover:underline",
+              horizontal ? "min-h-7 text-[0.7rem]" : "min-h-11 text-sm",
             )}
           >
             Continue Reading

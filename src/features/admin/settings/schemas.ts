@@ -236,6 +236,8 @@ export const seoSettingsSchema = z.object({
   pageProductsDescription: optionalText(320),
   pageBlogTitle: optionalText(120),
   pageBlogDescription: optionalText(320),
+  pageBrochureTitle: optionalText(120),
+  pageBrochureDescription: optionalText(320),
   pagePrivacyTitle: optionalText(120),
   pagePrivacyDescription: optionalText(320),
   pageTermsTitle: optionalText(120),
@@ -267,6 +269,7 @@ export function buildPageSeoPayload(values: SeoSettingsFormValues): Record<
     ["career", values.pageCareerTitle, values.pageCareerDescription],
     ["products", values.pageProductsTitle, values.pageProductsDescription],
     ["blog", values.pageBlogTitle, values.pageBlogDescription],
+    ["brochure", values.pageBrochureTitle, values.pageBrochureDescription],
     ["privacy", values.pagePrivacyTitle, values.pagePrivacyDescription],
     ["terms", values.pageTermsTitle, values.pageTermsDescription],
     ["disclaimer", values.pageDisclaimerTitle, values.pageDisclaimerDescription],
@@ -414,6 +417,8 @@ export function flattenPageSeo(
   | "pageProductsDescription"
   | "pageBlogTitle"
   | "pageBlogDescription"
+  | "pageBrochureTitle"
+  | "pageBrochureDescription"
   | "pagePrivacyTitle"
   | "pagePrivacyDescription"
   | "pageTermsTitle"
@@ -438,6 +443,8 @@ export function flattenPageSeo(
     pageProductsDescription: read("products", "description"),
     pageBlogTitle: read("blog", "title"),
     pageBlogDescription: read("blog", "description"),
+    pageBrochureTitle: read("brochure", "title"),
+    pageBrochureDescription: read("brochure", "description"),
     pagePrivacyTitle: read("privacy", "title"),
     pagePrivacyDescription: read("privacy", "description"),
     pageTermsTitle: read("terms", "title"),
@@ -585,6 +592,8 @@ export const DEFAULT_SEO_SETTINGS: SeoSettingsFormValues = {
   pageProductsDescription: "",
   pageBlogTitle: "",
   pageBlogDescription: "",
+  pageBrochureTitle: "",
+  pageBrochureDescription: "",
   pagePrivacyTitle: "",
   pagePrivacyDescription: "",
   pageTermsTitle: "",
