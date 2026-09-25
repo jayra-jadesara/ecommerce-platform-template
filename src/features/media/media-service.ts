@@ -334,7 +334,11 @@ export async function deleteMedia(id: string): Promise<MediaResult> {
 
   const deps = await checkMediaDependencies(row.storage_path as string);
   if (deps && !deps.canDelete) {
-    return { ok: false, error: deps.message };
+    return {
+      ok: false,
+      kind: "dependency" as const,
+      error: deps.message,
+    };
   }
 
   const folder = normalizeFolder(row.folder);

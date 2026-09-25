@@ -111,7 +111,8 @@ describe("page and banner schemas", () => {
   it("validates banners and date order", () => {
     expect(
       bannerFormSchema.safeParse({
-        title: "Sale",
+        title: "FLAT ₹300 OFF",
+        backgroundColor: "#E85D04",
         isActive: true,
         sortOrder: 0,
       }).success,
@@ -119,8 +120,25 @@ describe("page and banner schemas", () => {
     expect(
       bannerFormSchema.safeParse({
         title: "Sale",
+        backgroundColor: "not-a-color",
+        isActive: true,
+        sortOrder: 0,
+      }).success,
+    ).toBe(false);
+    expect(
+      bannerFormSchema.safeParse({
+        title: "Sale",
+        backgroundColor: "#E85D04",
         startsAt: "2026-12-01T00:00:00.000Z",
         endsAt: "2026-01-01T00:00:00.000Z",
+      }).success,
+    ).toBe(false);
+    expect(
+      bannerFormSchema.safeParse({
+        title: "Sale",
+        backgroundColor: "#2563EB",
+        buttonText: "Shop",
+        linkUrl: null,
       }).success,
     ).toBe(false);
   });

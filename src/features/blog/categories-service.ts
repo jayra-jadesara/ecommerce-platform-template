@@ -1,6 +1,7 @@
 import "server-only";
 
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { checkBlogCategoryDependencies } from "@/features/admin/validation/dependencies";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeBlogAudit } from "@/features/blog/audit";
 import { blogCategoryCacheTag } from "@/features/blog/cache";
@@ -54,7 +55,13 @@ export function toBlogCategoryFormValues(
 
 export type BlogCategoryMutationResult =
   | { ok: true; category: BlogCategory; message?: string; id?: string }
-  | { ok: false; error: string; fieldErrors?: FieldErrors };
+  | {
+      ok: false;
+      error: string;
+      fieldErrors?: FieldErrors;
+      kind?: "dependency" | "validation";
+      suggestion?: "deactivate";
+    };
 
 export async function listAdminBlogCategories(): Promise<BlogCategory[]> {
   const storeId = await resolveActiveStoreId();
@@ -272,6 +279,16 @@ export async function deleteAdminBlogCategory(
 
   const existing = await getAdminBlogCategory(id);
   if (!existing) return { ok: false, error: "Category not found." };
+
+  const deps = await checkBlogCategoryDependencies(id);
+  if (deps && !deps.canDelete) {
+    return {
+      ok: false,
+      kind: "dependency",
+      error: deps.message,
+      suggestion: "deactivate",
+    };
+  }
 
   const supabase = await createSupabaseServerClient();
   const user = await getCurrentUser();

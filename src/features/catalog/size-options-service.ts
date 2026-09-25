@@ -4,6 +4,7 @@ import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
+import { checkSizeOptionDependencies } from "@/features/admin/validation/dependencies";
 import { publishStorefrontSync } from "@/features/sync/server";
 import { PRODUCT_SIZE_OPTIONS } from "@/features/catalog/validation";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
@@ -17,7 +18,8 @@ export type CatalogSizeResult =
       ok: false;
       error: string;
       referenceId?: string;
-      kind?: "validation" | "error";
+      kind?: "validation" | "error" | "dependency";
+      suggestion?: "deactivate";
       fieldErrors?: Record<string, string>;
     };
 
@@ -214,6 +216,16 @@ export async function deleteSizeOption(id: string): Promise<CatalogSizeResult> {
     return { ok: false, error: "No active store found." };
   }
 
+  const deps = await checkSizeOptionDependencies(id);
+  if (deps && !deps.canDelete) {
+    return {
+      ok: false,
+      kind: "dependency",
+      error: deps.message,
+      suggestion: "deactivate",
+    };
+  }
+
   const { error } = await supabase
     .from("product_size_options")
     .delete()
@@ -235,6 +247,49 @@ export async function deleteSizeOption(id: string): Promise<CatalogSizeResult> {
 
   await revalidateSizeOptions(storeId);
   return { ok: true, message: "Size removed." };
+}
+
+export async function deactivateSizeOption(
+  id: string,
+): Promise<CatalogSizeResult> {
+  const admin = await getCurrentAdmin();
+  if (
+    !admin ||
+    !(
+      hasPermission(admin, "products.update") ||
+      hasPermission(admin, "products.delete")
+    )
+  ) {
+    return { ok: false, error: "You don't have permission to update sizes." };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const storeId = await resolveActiveStoreId(supabase);
+  if (!storeId) {
+    return { ok: false, error: "No active store found." };
+  }
+
+  const { error } = await supabase
+    .from("product_size_options")
+    .update({ is_active: false })
+    .eq("id", id)
+    .eq("store_id", storeId);
+
+  if (error) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      operation: "DEACTIVATE_SIZE_OPTION",
+      feature: "CATALOG",
+      entityType: "product_size_options",
+      entityId: id,
+      route: SIZES_ROUTE,
+      error,
+      storeId,
+    });
+  }
+
+  await revalidateSizeOptions(storeId);
+  return { ok: true, message: "Size deactivated." };
 }
 
 export async function deleteSizeOptions(
@@ -260,6 +315,18 @@ export async function deleteSizeOptions(
   const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) {
     return { ok: false, error: "No active store found." };
+  }
+
+  for (const id of uniqueIds) {
+    const deps = await checkSizeOptionDependencies(id);
+    if (deps && !deps.canDelete) {
+      return {
+        ok: false,
+        kind: "dependency",
+        error: deps.message,
+        suggestion: "deactivate",
+      };
+    }
   }
 
   const { error } = await supabase

@@ -8,6 +8,7 @@ import {
   getCompactOpenPickerButtonSx,
   getCompactPickerFieldSx,
 } from "@/features/admin/ui/picker-field-sx";
+import { ADMIN_PICKER_POPPER_PROPS } from "@/features/admin/ui/admin-picker-popper";
 
 /** Local wall-clock string used by existing admin forms (no seconds). */
 export const ADMIN_DATETIME_LOCAL_FORMAT = "YYYY-MM-DDTHH:mm";
@@ -97,8 +98,7 @@ export function AdminDateTimeField({
           actions: ["clear", "today", "accept"],
         },
         popper: {
-          className: "admin-datetime-popper",
-          placement: "bottom-start",
+          ...ADMIN_PICKER_POPPER_PROPS,
         },
         desktopPaper: {
           className: "admin-datetime-paper",

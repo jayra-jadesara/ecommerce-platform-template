@@ -9,7 +9,13 @@ import {
   updateCategory,
 } from "@/features/catalog/categories-service";
 import {
+  checkCategoryDependencies,
+  checkProductDependencies,
+  checkSizeOptionDependencies,
+} from "@/features/admin/validation/dependencies";
+import {
   createSizeOption,
+  deactivateSizeOption,
   deleteSizeOption,
   deleteSizeOptions,
   seedDefaultSizeOptions,
@@ -31,10 +37,6 @@ import {
   updateStoreInventoryAlert,
 } from "@/features/catalog/inventory-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
-import {
-  checkCategoryDependencies,
-  checkProductDependencies,
-} from "@/features/admin/validation/dependencies";
 
 const PRODUCTS_ROUTE = getAdminPath("/catalog/products");
 const CATEGORIES_ROUTE = getAdminPath("/catalog/categories");
@@ -54,6 +56,29 @@ export async function checkProductDependenciesAction(id: string) {
     return { ok: false as const, error: "Unable to check product usage." };
   }
   return { ok: true as const, deps };
+}
+
+export async function checkSizeOptionDependenciesAction(id: string) {
+  const deps = await checkSizeOptionDependencies(id);
+  if (!deps) {
+    return { ok: false as const, error: "Unable to check size usage." };
+  }
+  return { ok: true as const, deps };
+}
+
+export async function deactivateSizeOptionAction(id: string) {
+  return runLoggedMutation(
+    {
+      type: "SERVER",
+      source: "SERVER",
+      operation: "DEACTIVATE_SIZE_OPTION",
+      feature: "PRODUCTS",
+      entityType: "product_size_options",
+      entityId: id,
+      route: SIZES_ROUTE,
+    },
+    () => deactivateSizeOption(id),
+  );
 }
 
 export async function createCategoryAction(input: unknown) {

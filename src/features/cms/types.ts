@@ -48,6 +48,8 @@ export type BannerRow = {
   title: string;
   description: string | null;
   imagePath: string | null;
+  /** Hex fill for the coupon-style storefront strip. */
+  backgroundColor: string;
   linkUrl: string | null;
   buttonText: string | null;
   isActive: boolean;
@@ -56,4 +58,10 @@ export type BannerRow = {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+};
+
+export type BannerProductOption = {
+  id: string;
+  name: string;
+  slug: string;
 };

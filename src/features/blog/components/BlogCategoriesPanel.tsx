@@ -16,6 +16,7 @@ import {
   arrayMove,
 } from "@/features/admin/ui/AdminSortable";
 import {
+  checkBlogCategoryDependenciesAction,
   createBlogCategoryAction,
   deleteBlogCategoryAction,
   reorderBlogCategoriesAction,
@@ -66,6 +67,8 @@ export function BlogCategoriesPanel({
   const [pending, startTransition] = useTransition();
   const [mediaOpen, setMediaOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CategoryRow | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
   const [ordered, setOrdered] = useState(categories);
   const listHref = getAdminPath("/content/blog");
 
@@ -542,6 +545,25 @@ export function BlogCategoriesPanel({
                                 onClick={() => {
                                   setError(null);
                                   setDeleteTarget(category);
+                                  setDeleteBlocked(false);
+                                  setDeleteMessage(
+                                    `Delete “${category.name}”? This cannot be undone.`,
+                                  );
+                                  startTransition(async () => {
+                                    const check =
+                                      await checkBlogCategoryDependenciesAction(
+                                        category.id,
+                                      );
+                                    if (!check.ok) {
+                                      setError(check.error);
+                                      setDeleteTarget(null);
+                                      return;
+                                    }
+                                    if (!check.deps.canDelete) {
+                                      setDeleteBlocked(true);
+                                      setDeleteMessage(check.deps.message);
+                                    }
+                                  });
                                 }}
                               >
                                 Delete
@@ -572,11 +594,37 @@ export function BlogCategoriesPanel({
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
         title="Delete category?"
-        message={`Delete “${deleteTarget?.name ?? "this category"}”? Articles keep their other categories.`}
+        message={deleteMessage}
+        blocked={deleteBlocked}
+        safeActionLabel="Hide on store"
         pending={pending}
         onClose={() => {
           if (pending) return;
           setDeleteTarget(null);
+          setDeleteBlocked(false);
+        }}
+        onSafeAction={() => {
+          if (!deleteTarget) return;
+          setError(null);
+          startTransition(async () => {
+            const result = await updateBlogCategoryAction(deleteTarget.id, {
+              name: deleteTarget.name,
+              slug: deleteTarget.slug,
+              description: deleteTarget.description,
+              imagePath: deleteTarget.imagePath,
+              isActive: false,
+              sortOrder: deleteTarget.sortOrder,
+            });
+            if (!result.ok) {
+              setError(result.error);
+              setDeleteTarget(null);
+              return;
+            }
+            setSuccess("Hidden on store.");
+            setDeleteTarget(null);
+            setDeleteBlocked(false);
+            router.refresh();
+          });
         }}
         onConfirm={() => {
           if (!deleteTarget) return;
@@ -597,6 +645,7 @@ export function BlogCategoriesPanel({
             }
             setSuccess(result.message ?? "Deleted.");
             setDeleteTarget(null);
+            setDeleteBlocked(false);
             router.refresh();
           });
         }}

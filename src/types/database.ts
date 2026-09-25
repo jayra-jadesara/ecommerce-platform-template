@@ -1351,6 +1351,7 @@ export type Database = {
           title: string;
           description: string | null;
           image_path: string | null;
+          background_color: string;
           link_url: string | null;
           button_text: string | null;
           is_active: boolean;
@@ -1364,6 +1365,7 @@ export type Database = {
           title: string;
           description?: string | null;
           image_path?: string | null;
+          background_color?: string;
           link_url?: string | null;
           button_text?: string | null;
           is_active?: boolean;

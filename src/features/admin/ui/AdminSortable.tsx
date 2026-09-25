@@ -20,7 +20,7 @@ import {
   type SortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import type { CSSProperties, ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 export { arrayMove };
@@ -50,6 +50,12 @@ type AdminSortableListProps = {
   as?: "ul" | "div";
   /** Default: vertical list. Use "grid" for card grids. */
   layout?: "list" | "grid";
+  /**
+   * Stable DndContext id — required for SSR. Defaults to React useId so
+   * aria-describedby matches between server and client (avoids dnd-kit’s
+   * module counter, which causes hydration mismatches).
+   */
+  id?: string;
 };
 
 export function AdminSortableList({
@@ -60,7 +66,12 @@ export function AdminSortableList({
   className,
   as: Tag = "ul",
   layout = "list",
+  id,
 }: AdminSortableListProps) {
+  const reactId = useId();
+  // Colon from useId is invalid in some a11y id refs — normalize.
+  const dndId = id ?? `admin-sortable-${reactId.replace(/:/g, "")}`;
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
@@ -79,6 +90,7 @@ export function AdminSortableList({
 
   return (
     <DndContext
+      id={dndId}
       sensors={sensors}
       collisionDetection={closestCenter}
       onDragEnd={onDragEnd}

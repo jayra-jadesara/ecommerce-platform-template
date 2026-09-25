@@ -1,6 +1,7 @@
 "use server";
 
 import { requirePermission } from "@/features/auth/session";
+import { checkBlogCategoryDependencies } from "@/features/admin/validation/dependencies";
 import {
   createAdminBlogCategory,
   deleteAdminBlogCategory,
@@ -21,12 +22,24 @@ import type { FieldErrors } from "@/lib/validation";
 function failureWithFieldErrors(result: {
   error: string;
   fieldErrors?: FieldErrors;
+  kind?: "dependency" | "validation";
+  suggestion?: "deactivate";
 }) {
   return {
     ok: false as const,
     error: result.error,
     ...(result.fieldErrors ? { fieldErrors: result.fieldErrors } : {}),
+    ...(result.kind ? { kind: result.kind } : {}),
+    ...(result.suggestion ? { suggestion: result.suggestion } : {}),
   };
+}
+
+export async function checkBlogCategoryDependenciesAction(id: string) {
+  const deps = await checkBlogCategoryDependencies(id);
+  if (!deps) {
+    return { ok: false as const, error: "Unable to check blog category usage." };
+  }
+  return { ok: true as const, deps };
 }
 
 export async function createBlogPostAction(raw: unknown) {
@@ -225,7 +238,7 @@ export async function deleteBlogCategoryAction(id: string) {
     {
       type: "CMS",
       source: "SERVER",
-      operation: "UPDATE_BLOG_CATEGORY",
+      operation: "DELETE_BLOG_CATEGORY",
       feature: "BLOG",
       entityType: "blog_category",
       entityId: id,
@@ -233,7 +246,7 @@ export async function deleteBlogCategoryAction(id: string) {
     },
     async () => {
       const result = await deleteAdminBlogCategory(id);
-      if (!result.ok) return { ok: false as const, error: result.error };
+      if (!result.ok) return failureWithFieldErrors(result);
       return {
         ok: true as const,
         message: result.message,

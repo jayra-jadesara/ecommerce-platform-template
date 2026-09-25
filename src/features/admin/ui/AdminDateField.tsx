@@ -8,6 +8,7 @@ import {
   getCompactOpenPickerButtonSx,
   getCompactPickerFieldSx,
 } from "@/features/admin/ui/picker-field-sx";
+import { ADMIN_PICKER_POPPER_PROPS } from "@/features/admin/ui/admin-picker-popper";
 
 const DATE_FORMAT = "YYYY-MM-DD";
 
@@ -86,8 +87,7 @@ export function AdminDateField({
           actions: ["clear", "today", "accept"],
         },
         popper: {
-          className: "admin-datetime-popper",
-          placement: "bottom-start",
+          ...ADMIN_PICKER_POPPER_PROPS,
         },
         desktopPaper: {
           className: "admin-datetime-paper",

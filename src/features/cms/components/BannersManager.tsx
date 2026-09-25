@@ -1,28 +1,41 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import TextField from "@mui/material/TextField";
 import { Controller, useForm, useWatch, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AdminToggle } from "@/features/admin/ui/AdminToggle";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import {
+  AdminDragHandle,
+  AdminSortableItem,
+  AdminSortableList,
+  arrayMove,
+} from "@/features/admin/ui/AdminSortable";
 import {
   createBannerAction,
   deleteBannerAction,
+  reorderBannersAction,
   updateBannerAction,
 } from "@/features/cms/actions";
 import {
+  productPathFromSlug,
+  productSlugFromPath,
+} from "@/features/cms/banner-strip-style";
+import { TicketStrip } from "@/features/cms/components/StorefrontPromoBanners";
+import {
+  BANNER_BUTTON_CHIP_OPTIONS,
+  BANNER_COLOR_SWATCHES,
+  BANNER_DEFAULT_BACKGROUND,
   bannerFormSchema,
   type BannerFormValues,
 } from "@/features/cms/schemas";
-import type { BannerRow } from "@/features/cms/types";
-import { resolveCmsImageUrl } from "@/features/cms/section-styles";
-import { MediaPicker } from "@/features/media";
+import type { BannerProductOption, BannerRow } from "@/features/cms/types";
 import {
   adminBtn,
   adminCard,
   adminCardPadding,
-  adminFieldGroup,
   adminFieldsGrid,
   adminFormStack,
   adminStackStyle,
@@ -37,12 +50,14 @@ import {
 } from "@/features/admin/ui/StorePageLinkField";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
+import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
 import {
   applyServerFieldErrors,
   focusFirstFieldError,
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { formatDateTime } from "@/lib/format-date";
+import { cn } from "@/lib/cn";
 import dayjs from "dayjs";
 
 function fromDatetimeLocal(value: string | null | undefined): string | null {
@@ -51,13 +66,91 @@ function fromDatetimeLocal(value: string | null | undefined): string | null {
   return d.isValid() ? d.toISOString() : null;
 }
 
+function bannerLiveStatus(banner: BannerRow): {
+  label: string;
+  tone: "success" | "neutral" | "warning";
+} {
+  if (!banner.isActive) return { label: "Hidden", tone: "neutral" };
+  const now = Date.now();
+  if (banner.startsAt && new Date(banner.startsAt).getTime() > now) {
+    return { label: "Scheduled", tone: "warning" };
+  }
+  if (banner.endsAt && new Date(banner.endsAt).getTime() < now) {
+    return { label: "Ended", tone: "neutral" };
+  }
+  return { label: "Live on store", tone: "success" };
+}
+
+type StatusFilter = "all" | "live" | "hidden" | "scheduled";
+type LinkMode = "page" | "product";
+
+const STATUS_CHIPS: Array<{ value: StatusFilter; label: string }> = [
+  { value: "all", label: "All" },
+  { value: "live", label: "Live" },
+  { value: "scheduled", label: "Scheduled" },
+  { value: "hidden", label: "Hidden" },
+];
+
+const EMPTY_FORM: BannerFormValues = {
+  title: "",
+  description: null,
+  imagePath: null,
+  backgroundColor: BANNER_DEFAULT_BACKGROUND,
+  linkUrl: null,
+  buttonText: null,
+  isActive: true,
+  startsAt: null,
+  endsAt: null,
+  sortOrder: 0,
+};
+
+function linkTargetLabel(
+  linkUrl: string | null,
+  products: BannerProductOption[],
+): string {
+  if (!linkUrl) return "No link";
+  const slug = productSlugFromPath(linkUrl);
+  if (slug) {
+    const product = products.find((p) => p.slug === slug);
+    return product ? `Product · ${product.name}` : `Product · ${slug}`;
+  }
+  return `Page · ${pageOptionLabel(linkUrl)}`;
+}
+
+function BannerStripPreview({
+  title,
+  description,
+  buttonText,
+  backgroundColor,
+  compact,
+}: {
+  title: string;
+  description?: string | null;
+  buttonText?: string | null;
+  backgroundColor: string;
+  compact?: boolean;
+}) {
+  return (
+    <TicketStrip
+      title={title}
+      description={description}
+      buttonText={buttonText}
+      backgroundColor={backgroundColor}
+      compact={compact}
+      notchColor="var(--color-card)"
+    />
+  );
+}
+
 export function BannersManager({
   initialBanners,
+  productOptions,
   canCreate,
   canUpdate,
   canDelete,
 }: {
   initialBanners: BannerRow[];
+  productOptions: BannerProductOption[];
   canCreate: boolean;
   canUpdate: boolean;
   canDelete: boolean;
@@ -67,38 +160,102 @@ export function BannersManager({
   const [editing, setEditing] = useState<BannerRow | null>(null);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [deleteTarget, setDeleteTarget] = useState<BannerRow | null>(null);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  useEffect(() => {
+    setBanners(initialBanners);
+  }, [initialBanners]);
 
   const formOpen = creating || Boolean(editing);
 
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return banners.filter((b) => {
+      const status = bannerLiveStatus(b);
+      if (statusFilter === "live" && status.tone !== "success") return false;
+      if (statusFilter === "hidden" && b.isActive) return false;
+      if (statusFilter === "scheduled" && status.label !== "Scheduled") {
+        return false;
+      }
+      if (q && !b.title.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [banners, search, statusFilter]);
+
+  const sortableIds = useMemo(
+    () => filtered.map((b) => b.id),
+    [filtered],
+  );
+
+  function refresh() {
+    router.refresh();
+  }
+
+  function onReorder(activeId: string, overId: string) {
+    if (!canUpdate) return;
+    const oldIndex = banners.findIndex((b) => b.id === activeId);
+    const newIndex = banners.findIndex((b) => b.id === overId);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+
+    const next = arrayMove(banners, oldIndex, newIndex).map((b, i) => ({
+      ...b,
+      sortOrder: i,
+    }));
+    setBanners(next);
+    startTransition(async () => {
+      const result = await reorderBannersAction(next.map((b) => b.id));
+      if (!result.ok) {
+        setError(result.error);
+        setBanners(initialBanners);
+        return;
+      }
+      setSuccess("Order saved.");
+      refresh();
+    });
+  }
+
   return (
-    <div style={adminStackStyle}>
+    <div style={adminStackStyle} className="!gap-3">
       {!formOpen ? (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-[var(--color-muted)]">
-            Promo strips shoppers see on the storefront. Add an image, optional
-            button, and when it should show.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-sm text-[var(--color-muted)]">
+              Slim offer bars on the homepage. Color + text — multiple banners
+              auto-rotate. Drag to set order.
+            </p>
+          </div>
           {canCreate ? (
             <button
               type="button"
-              className={adminBtn("primary")}
+              className={cn(adminBtn("primary"), "!min-h-9 !px-3 !text-xs")}
               onClick={() => {
                 setCreating(true);
                 setEditing(null);
                 setError(null);
+                setSuccess(null);
               }}
             >
-              Create banner
+              + New banner
             </button>
           ) : null}
         </div>
       ) : null}
 
       {error ? (
-        <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p
+          className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+          role="alert"
+        >
           {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm text-[var(--color-foreground)]">
+          {success}
         </p>
       ) : null}
 
@@ -106,16 +263,19 @@ export function BannersManager({
         <BannerForm
           mode={creating ? "create" : "edit"}
           bannerId={editing?.id}
+          productOptions={productOptions}
           initialValues={{
             title: editing?.title ?? "",
             description: editing?.description ?? null,
             imagePath: editing?.imagePath ?? null,
+            backgroundColor:
+              editing?.backgroundColor ?? BANNER_DEFAULT_BACKGROUND,
             linkUrl: editing?.linkUrl ?? null,
             buttonText: editing?.buttonText ?? null,
             isActive: editing?.isActive ?? true,
             startsAt: editing?.startsAt ?? null,
             endsAt: editing?.endsAt ?? null,
-            sortOrder: editing?.sortOrder ?? 0,
+            sortOrder: editing?.sortOrder ?? banners.length,
           }}
           canSubmit={creating ? canCreate : canUpdate}
           onCancel={() => {
@@ -132,101 +292,175 @@ export function BannersManager({
             setCreating(false);
             setEditing(null);
             setError(null);
-            router.refresh();
+            setSuccess(creating ? "Banner created." : "Banner saved.");
+            refresh();
           }}
           onError={setError}
         />
       ) : null}
 
-      <ul style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-        {banners.length === 0 ? (
-          <li className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
-            <p className="text-sm font-medium text-[var(--color-foreground)]">
-              No banners yet
+      {!formOpen ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2">
+            <TextField
+              size="small"
+              label="Search"
+              placeholder="Offer text"
+              value={search}
+              disabled={pending}
+              onChange={(e) => setSearch(e.target.value)}
+              className="min-w-[12rem] flex-1"
+            />
+            <AdminSelect
+              label="Status"
+              value={statusFilter}
+              disabled={pending}
+              onChange={(value) => setStatusFilter(value as StatusFilter)}
+              options={STATUS_CHIPS.map((c) => ({
+                value: c.value,
+                label: c.label,
+              }))}
+              className="!min-w-[9rem] !max-w-[11rem]"
+            />
+          </div>
+
+          {filtered.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[var(--color-border)] bg-[var(--color-card)] px-4 py-12 text-center">
+              <p className="text-sm font-medium text-[var(--color-foreground)]">
+                {banners.length === 0 ? "No banners yet" : "No matches"}
+              </p>
+              <p className="mt-1 text-sm text-[var(--color-muted)]">
+                {banners.length === 0
+                  ? "Add a short offer line and a color for the homepage strip."
+                  : "Try another search or status filter."}
+              </p>
+            </div>
+          ) : (
+            <AdminSortableList
+              ids={sortableIds}
+              disabled={
+                !canUpdate ||
+                pending ||
+                Boolean(search.trim()) ||
+                statusFilter !== "all"
+              }
+              layout="grid"
+              as="div"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3"
+              onReorder={onReorder}
+            >
+              {filtered.map((banner) => {
+                const status = bannerLiveStatus(banner);
+                return (
+                  <AdminSortableItem
+                    key={banner.id}
+                    id={banner.id}
+                    disabled={!canUpdate || pending}
+                  >
+                    {({
+                      setNodeRef,
+                      style,
+                      isDragging,
+                      attributes,
+                      listeners,
+                    }) => (
+                      <article
+                        ref={setNodeRef}
+                        style={style}
+                        className={cn(
+                          adminCard(),
+                          "overflow-hidden !p-0 !shadow-none",
+                          isDragging &&
+                            "opacity-80 ring-2 ring-[var(--color-primary)]",
+                        )}
+                      >
+                        <div className="relative p-3 pb-2">
+                          <BannerStripPreview
+                            title={banner.title}
+                            description={banner.description}
+                            buttonText={banner.buttonText}
+                            backgroundColor={banner.backgroundColor}
+                            compact
+                          />
+                          <div className="absolute left-4 top-4 flex items-center gap-1">
+                            {canUpdate &&
+                            !search.trim() &&
+                            statusFilter === "all" ? (
+                              <AdminDragHandle
+                                attributes={attributes}
+                                listeners={listeners}
+                                className="!rounded-md !bg-[color-mix(in_srgb,var(--color-card)_88%,transparent)] !p-1"
+                              />
+                            ) : null}
+                          </div>
+                          <div className="absolute right-4 top-4">
+                            <AdminStatusBadge tone={status.tone}>
+                              {status.label}
+                            </AdminStatusBadge>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2 px-3 pb-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[var(--color-foreground)]">
+                              {banner.title}
+                            </p>
+                            <p className="mt-0.5 truncate text-[11px] text-[var(--color-muted)]">
+                              {linkTargetLabel(banner.linkUrl, productOptions)}
+                              {banner.startsAt || banner.endsAt
+                                ? ` · ${banner.startsAt ? formatDateTime(banner.startsAt) : "Anytime"} → ${banner.endsAt ? formatDateTime(banner.endsAt) : "No end"}`
+                                : ""}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-1.5">
+                            {canUpdate ? (
+                              <button
+                                type="button"
+                                className={cn(
+                                  adminBtn("outline"),
+                                  "!min-h-8 !px-2.5 !text-[11px]",
+                                )}
+                                onClick={() => {
+                                  setEditing(banner);
+                                  setCreating(false);
+                                  setError(null);
+                                  setSuccess(null);
+                                }}
+                              >
+                                Edit
+                              </button>
+                            ) : null}
+                            {canDelete ? (
+                              <button
+                                type="button"
+                                disabled={pending}
+                                className={cn(
+                                  adminBtn("danger"),
+                                  "!min-h-8 !px-2.5 !text-[11px]",
+                                )}
+                                onClick={() => setDeleteTarget(banner)}
+                              >
+                                Delete
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </article>
+                    )}
+                  </AdminSortableItem>
+                );
+              })}
+            </AdminSortableList>
+          )}
+          {canUpdate &&
+          banners.length > 1 &&
+          !search.trim() &&
+          statusFilter === "all" ? (
+            <p className="text-[11px] text-[var(--color-muted)]">
+              Drag the handle to change homepage rotate order.
             </p>
-            <p className="mt-1 text-sm text-[var(--color-muted)]">
-              Create a promotional banner for sales, announcements, or seasonal
-              offers.
-            </p>
-            {canCreate && !formOpen ? (
-              <button
-                type="button"
-                className={`${adminBtn("primary")} mt-4`}
-                onClick={() => {
-                  setCreating(true);
-                  setEditing(null);
-                }}
-              >
-                Create banner
-              </button>
-            ) : null}
-          </li>
-        ) : (
-          banners.map((banner) => {
-            const preview = resolveCmsImageUrl(banner.imagePath);
-            return (
-              <li
-                key={banner.id}
-                className={`${adminCard()} flex flex-wrap items-center gap-4 p-4`}
-              >
-                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-                  {preview ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={preview}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-[10px] text-[var(--color-muted)]">
-                      No image
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-[var(--color-foreground)]">
-                    {banner.title}
-                  </p>
-                  <p className="mt-0.5 text-sm text-[var(--color-muted)]">
-                    {banner.isActive ? "Showing on store" : "Hidden"}
-                    {banner.linkUrl
-                      ? ` · Opens ${pageOptionLabel(banner.linkUrl)}`
-                      : ""}
-                    {banner.startsAt || banner.endsAt
-                      ? ` · ${banner.startsAt ? formatDateTime(banner.startsAt) : "Anytime"} → ${banner.endsAt ? formatDateTime(banner.endsAt) : "No end"}`
-                      : ""}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {canUpdate ? (
-                    <button
-                      type="button"
-                      className={adminBtn("outline")}
-                      onClick={() => {
-                        setEditing(banner);
-                        setCreating(false);
-                        setError(null);
-                      }}
-                    >
-                      Edit
-                    </button>
-                  ) : null}
-                  {canDelete ? (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      className={adminBtn("danger")}
-                      onClick={() => setDeleteTarget(banner)}
-                    >
-                      Delete
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            );
-          })
-        )}
-      </ul>
+          ) : null}
+        </>
+      ) : null}
 
       <ConfirmDeleteDialog
         open={Boolean(deleteTarget)}
@@ -250,7 +484,8 @@ export function BannersManager({
               prev.filter((b) => b.id !== deleteTarget.id),
             );
             setDeleteTarget(null);
-            router.refresh();
+            setSuccess("Banner deleted.");
+            refresh();
           });
         }}
       />
@@ -262,6 +497,7 @@ function BannerForm({
   mode,
   bannerId,
   initialValues,
+  productOptions,
   canSubmit,
   onCancel,
   onSaved,
@@ -270,13 +506,17 @@ function BannerForm({
   mode: "create" | "edit";
   bannerId?: string;
   initialValues: BannerFormValues;
+  productOptions: BannerProductOption[];
   canSubmit: boolean;
   onCancel: () => void;
   onSaved: (banner: BannerRow) => void;
   onError: (message: string) => void;
 }) {
   const [pending, startTransition] = useTransition();
-  const [mediaOpen, setMediaOpen] = useState(false);
+  const initialSlug = productSlugFromPath(initialValues.linkUrl);
+  const [linkMode, setLinkMode] = useState<LinkMode>(
+    initialSlug ? "product" : "page",
+  );
 
   const {
     register,
@@ -289,7 +529,10 @@ function BannerForm({
   } = useForm<BannerFormValues>({
     resolver: zodResolver(bannerFormSchema) as Resolver<BannerFormValues>,
     defaultValues: {
+      ...EMPTY_FORM,
       ...initialValues,
+      backgroundColor:
+        initialValues.backgroundColor ?? BANNER_DEFAULT_BACKGROUND,
       startsAt: initialValues.startsAt
         ? isoToAdminDateTimeLocal(initialValues.startsAt)
         : null,
@@ -299,264 +542,360 @@ function BannerForm({
     },
   });
 
-  const imagePath = useWatch({ control, name: "imagePath" });
+  const title = useWatch({ control, name: "title" });
+  const description = useWatch({ control, name: "description" });
   const buttonText = useWatch({ control, name: "buttonText" });
   const linkUrl = useWatch({ control, name: "linkUrl" });
-  const imagePreview = resolveCmsImageUrl(imagePath);
+  const backgroundColor = useWatch({ control, name: "backgroundColor" });
+  const isActive = useWatch({ control, name: "isActive" });
+
+  const productOptionsForSelect = productOptions.map((p) => ({
+    value: productPathFromSlug(p.slug),
+    label: p.name,
+  }));
+
+  const selectedProductPath = productSlugFromPath(linkUrl)
+    ? String(linkUrl)
+    : "";
 
   return (
-    <>
-      <form
-        onSubmit={handleSubmit((values) => {
-          if (!canSubmit) return;
-          const payload = {
-            ...values,
-            startsAt: fromDatetimeLocal(String(values.startsAt ?? "")),
-            endsAt: fromDatetimeLocal(String(values.endsAt ?? "")),
-          };
-          startTransition(async () => {
-            const result =
-              mode === "create"
-                ? await createBannerAction(payload)
-                : await updateBannerAction(bannerId!, payload);
-            if (!result.ok) {
-              const serverFieldErrors = resultFieldErrors(result);
-              if (serverFieldErrors) {
-                applyServerFieldErrors(setFieldError as never, serverFieldErrors);
-                focusFirstFieldError({
-                  fieldErrors: serverFieldErrors,
-                  setFocus: setFocus as (name: string) => void,
-                });
-              }
-              onError(result.error);
-              return;
+    <form
+      onSubmit={handleSubmit((values) => {
+        if (!canSubmit) return;
+        const payload = {
+          ...values,
+          imagePath: values.imagePath ?? null,
+          startsAt: fromDatetimeLocal(String(values.startsAt ?? "")),
+          endsAt: fromDatetimeLocal(String(values.endsAt ?? "")),
+        };
+        startTransition(async () => {
+          const result =
+            mode === "create"
+              ? await createBannerAction(payload)
+              : await updateBannerAction(bannerId!, payload);
+          if (!result.ok) {
+            const serverFieldErrors = resultFieldErrors(result);
+            if (serverFieldErrors) {
+              applyServerFieldErrors(setFieldError as never, serverFieldErrors);
+              focusFirstFieldError({
+                fieldErrors: serverFieldErrors,
+                setFocus: setFocus as (name: string) => void,
+              });
             }
-            onSaved(result.banner);
-          });
-        })}
-        className={`${adminCard()} ${adminCardPadding()} ${adminFormStack()}`}
-        style={adminStackStyle}
-      >
+            onError(result.error);
+            return;
+          }
+          onSaved(result.banner);
+        });
+      })}
+      className={cn(adminCard(), adminCardPadding(), adminFormStack(), "!gap-3")}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-foreground)]">
-            {mode === "create" ? "Create banner" : "Edit banner"}
+          <h2 className="text-base font-semibold text-[var(--color-foreground)]">
+            {mode === "create" ? "New banner" : "Edit banner"}
           </h2>
-          <p className="mt-1 text-sm text-[var(--color-muted)]">
-            Shoppers see this as a promo strip — keep the title short and pick a
-            clear image.
+          <p className="mt-0.5 text-xs text-[var(--color-muted)]">
+            Coupon-style strip: offer text on a colored bar. Opens a page or
+            product when shoppers tap it.
           </p>
         </div>
+        <AdminToggle
+          checked={Boolean(isActive)}
+          disabled={!canSubmit || pending}
+          label="Show on store"
+          onChange={(checked) =>
+            setValue("isActive", checked, { shouldDirty: true })
+          }
+        />
+      </div>
 
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">1. Banner text</p>
-          <div>
-            <TextField
-              label="Title shoppers see"
-              fullWidth
-              required
-              disabled={!canSubmit || pending}
-              error={Boolean(errors.title)}
-              helperText={
-                errors.title ? undefined : "Short headline on the banner."
-              }
-              {...register("title")}
-            />
-            <FieldError message={errors.title?.message} />
-          </div>
+      <BannerStripPreview
+        title={title ?? ""}
+        description={description}
+        buttonText={buttonText}
+        backgroundColor={backgroundColor || BANNER_DEFAULT_BACKGROUND}
+      />
+
+      <div className="grid gap-2.5">
+        <div>
           <TextField
-            label="Supporting text (optional)"
+            label="Offer text"
             fullWidth
-            multiline
-            minRows={2}
+            required
+            size="small"
             disabled={!canSubmit || pending}
-            helperText="One short line under the title."
+            error={Boolean(errors.title)}
+            placeholder="FLAT ₹300 OFF"
+            helperText="Shows in the ticket stub (right)."
+            {...register("title")}
+          />
+          <FieldError message={errors.title?.message} />
+        </div>
+        <div>
+          <TextField
+            label="Supporting line"
+            fullWidth
+            size="small"
+            disabled={!canSubmit || pending}
+            placeholder="On your 1st purchase"
+            helperText="Shows in the wide left section. Add this for the full ticket look."
             {...register("description")}
           />
         </div>
+        <Controller
+          name="buttonText"
+          control={control}
+          render={({ field }) => {
+            const raw = String(field.value ?? "").trim();
+            const known = BANNER_BUTTON_CHIP_OPTIONS.some(
+              (o) => o.value === raw,
+            );
+            const options = [
+              ...(raw && !known
+                ? [{ value: raw, label: `${raw} (custom)` }]
+                : []),
+              ...BANNER_BUTTON_CHIP_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              })),
+            ];
+            return (
+              <div>
+                <AdminSelect
+                  label="Button chip"
+                  value={raw}
+                  allowEmpty
+                  emptyLabel="No chip"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.buttonText)}
+                  options={options}
+                  helperText="Optional label on the stub. Pick a preset or keep a custom value."
+                  onChange={(next) => field.onChange(next || null)}
+                />
+                <FieldError message={errors.buttonText?.message} />
+              </div>
+            );
+          }}
+        />
+      </div>
 
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">2. Image</p>
-          <p className="admin-field-group__hint">
-            Wide images work best (roughly 1600×600 or similar).
-          </p>
-          <div
-            className="rounded-xl border border-dashed border-[var(--color-border)] bg-[var(--color-surface)] p-4"
-            style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-          >
-            {imagePreview ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={imagePreview}
-                alt=""
-                className="h-40 w-full rounded-lg object-cover"
-              />
-            ) : (
-              <p className="text-sm text-[var(--color-muted)]">
-                No image selected yet
-              </p>
-            )}
-            <div className="flex flex-wrap gap-2">
+      <div>
+        <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+          Bar color
+        </p>
+        <p className="mb-2 text-xs text-[var(--color-muted)]">
+          Swatches for quick picks. Hex / color picker work for any custom brand
+          color (#RRGGBB) — saved and shown on the store.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {BANNER_COLOR_SWATCHES.map((swatch) => {
+            const active =
+              (backgroundColor || "").toUpperCase() === swatch.toUpperCase();
+            return (
               <button
+                key={swatch}
                 type="button"
                 disabled={!canSubmit || pending}
-                className={adminBtn("outline")}
-                onClick={() => setMediaOpen(true)}
-              >
-                Choose image
-              </button>
-              {imagePath ? (
-                <button
-                  type="button"
-                  disabled={!canSubmit || pending}
-                  className={adminBtn("ghost")}
-                  onClick={() =>
-                    setValue("imagePath", null, { shouldDirty: true })
-                  }
-                >
-                  Remove
-                </button>
-              ) : null}
-            </div>
-          </div>
-        </div>
-
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">3. Button (optional)</p>
-          <p className="admin-field-group__hint">
-            Add a button so shoppers can jump to a store page.
-          </p>
-          <div
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-          >
-            <TextField
-              label="Button text shoppers see"
-              fullWidth
+                aria-label={`Color ${swatch}`}
+                title={swatch}
+                className={cn(
+                  "h-7 w-7 rounded-full border-2 transition sm:h-8 sm:w-8",
+                  active
+                    ? "scale-105 border-[var(--color-foreground)]"
+                    : "border-transparent",
+                )}
+                style={{ backgroundColor: swatch }}
+                onClick={() =>
+                  setValue("backgroundColor", swatch, {
+                    shouldDirty: true,
+                    shouldValidate: true,
+                  })
+                }
+              />
+            );
+          })}
+          <label className="relative inline-flex h-7 w-7 cursor-pointer overflow-hidden rounded-full border border-[var(--color-border)] sm:h-8 sm:w-8">
+            <span
+              className="absolute inset-0"
+              style={{
+                backgroundColor: backgroundColor || BANNER_DEFAULT_BACKGROUND,
+              }}
+            />
+            <input
+              type="color"
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               disabled={!canSubmit || pending}
-              helperText="Leave blank to hide the button"
-              {...register("buttonText")}
+              value={
+                /^#[0-9A-Fa-f]{6}$/.test(backgroundColor || "")
+                  ? backgroundColor!
+                  : BANNER_DEFAULT_BACKGROUND
+              }
+              onChange={(e) =>
+                setValue("backgroundColor", e.target.value.toUpperCase(), {
+                  shouldDirty: true,
+                  shouldValidate: true,
+                })
+              }
             />
-            <Controller
-              name="linkUrl"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <StorePageLinkField
-                    value={field.value}
-                    fallback="/products"
-                    allowEmpty
-                    emptyLabel="No page (banner not clickable)"
-                    disabled={!canSubmit || pending}
-                    error={Boolean(errors.linkUrl)}
-                    onChange={field.onChange}
-                    helperText={
-                      errors.linkUrl
-                        ? undefined
-                        : buttonText
-                          ? `“${buttonText}” opens ${pageOptionLabel(String(linkUrl ?? "/products"))}`
-                          : "Pick where the button should send shoppers"
-                    }
-                  />
-                  <FieldError message={errors.linkUrl?.message} />
-                </div>
-              )}
-            />
-          </div>
-        </div>
-
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">4. Schedule &amp; visibility</p>
-          <p className="admin-field-group__hint">
-            Leave dates empty to show whenever the banner is active.
-          </p>
-          <div className={adminFieldsGrid(2)}>
-            <Controller
-              name="startsAt"
-              control={control}
-              render={({ field }) => (
-                <AdminDateTimeField
-                  label="Show from (optional)"
-                  disabled={!canSubmit || pending}
-                  value={field.value ?? ""}
-                  onChange={field.onChange}
-                  onBlur={field.onBlur}
-                  name={field.name}
-                />
-              )}
-            />
-            <Controller
-              name="endsAt"
-              control={control}
-              render={({ field }) => (
-                <div>
-                  <AdminDateTimeField
-                    label="Show until (optional)"
-                    disabled={!canSubmit || pending}
-                    error={Boolean(errors.endsAt)}
-                    helperText={undefined}
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    onBlur={field.onBlur}
-                    name={field.name}
-                  />
-                  <FieldError message={errors.endsAt?.message} />
-                </div>
-              )}
-            />
-          </div>
+          </label>
           <TextField
-            label="Display order"
-            type="number"
-            fullWidth
+            size="small"
+            label="Custom hex"
             disabled={!canSubmit || pending}
-            helperText="Lower numbers appear first when several banners are active."
-            {...register("sortOrder", { valueAsNumber: true })}
+            error={Boolean(errors.backgroundColor)}
+            value={backgroundColor || ""}
+            onChange={(e) =>
+              setValue("backgroundColor", e.target.value, {
+                shouldDirty: true,
+                shouldValidate: true,
+              })
+            }
+            helperText="e.g. #E85D04"
+            className="!w-[8.5rem]"
           />
+        </div>
+        <FieldError message={errors.backgroundColor?.message} />
+      </div>
+
+      <div className="grid gap-2.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+        <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+          Opens when tapped
+        </p>
+        <AdminSelect
+          label="Link type"
+          value={linkMode}
+          disabled={!canSubmit || pending}
+          options={[
+            { value: "page", label: "Store page" },
+            { value: "product", label: "Product detail" },
+          ]}
+          onChange={(value) => {
+            const next = value as LinkMode;
+            setLinkMode(next);
+            setValue("linkUrl", null, { shouldDirty: true, shouldValidate: true });
+          }}
+        />
+        {linkMode === "page" ? (
           <Controller
-            name="isActive"
+            name="linkUrl"
             control={control}
             render={({ field }) => (
-              <AdminToggle
-                checked={Boolean(field.value)}
-                onChange={field.onChange}
-                disabled={!canSubmit || pending}
-                label="Show on store now"
-                variant="row"
-              />
+              <div>
+                <StorePageLinkField
+                  value={field.value}
+                  fallback="/products"
+                  allowEmpty
+                  emptyLabel="No page"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.linkUrl)}
+                  onChange={field.onChange}
+                  helperText={
+                    errors.linkUrl
+                      ? undefined
+                      : "Optional — pages from Menu & Navigation"
+                  }
+                />
+                <FieldError message={errors.linkUrl?.message} />
+              </div>
+            )}
+          />
+        ) : (
+          <Controller
+            name="linkUrl"
+            control={control}
+            render={({ field }) => (
+              <div>
+                <AdminSelect
+                  label="Product"
+                  value={selectedProductPath}
+                  allowEmpty
+                  emptyLabel="No product"
+                  disabled={!canSubmit || pending}
+                  error={Boolean(errors.linkUrl)}
+                  options={productOptionsForSelect}
+                  helperText={
+                    productOptions.length
+                      ? "Opens that product’s detail page"
+                      : "Publish a product first"
+                  }
+                  onChange={(next) => field.onChange(next || null)}
+                />
+                <FieldError message={errors.linkUrl?.message} />
+              </div>
+            )}
+          />
+        )}
+      </div>
+
+      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-[var(--color-muted)]">
+          Schedule
+        </p>
+        <p className="mb-2.5 text-xs text-[var(--color-muted)]">
+          Leave empty to show whenever the banner is active.
+        </p>
+        <div className={cn(adminFieldsGrid(2), "!gap-2.5")}>
+          <Controller
+            name="startsAt"
+            control={control}
+            render={({ field }) => (
+              <div className="min-w-0">
+                <AdminDateTimeField
+                  label="Show from"
+                  disabled={!canSubmit || pending}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={Boolean(errors.startsAt)}
+                  helperText=" "
+                />
+                <FieldError message={errors.startsAt?.message} />
+              </div>
+            )}
+          />
+          <Controller
+            name="endsAt"
+            control={control}
+            render={({ field }) => (
+              <div className="min-w-0">
+                <AdminDateTimeField
+                  label="Show until"
+                  disabled={!canSubmit || pending}
+                  value={field.value}
+                  onChange={field.onChange}
+                  onBlur={field.onBlur}
+                  error={Boolean(errors.endsAt)}
+                  helperText=" "
+                />
+                <FieldError message={errors.endsAt?.message} />
+              </div>
             )}
           />
         </div>
+      </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="submit"
-            disabled={!canSubmit || pending}
-            className={adminBtn("primary")}
-          >
-            {pending
-              ? "Saving…"
-              : mode === "create"
-                ? "Create banner"
-                : "Save banner"}
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className={adminBtn("outline")}
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
-      <MediaPicker
-        open={mediaOpen}
-        folder="banners"
-        onClose={() => setMediaOpen(false)}
-        onSelect={(selection) => {
-          setValue("imagePath", selection.storagePath, { shouldDirty: true });
-          setMediaOpen(false);
-        }}
-      />
-    </>
+      <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--color-border)] pt-3">
+        <button
+          type="button"
+          className={cn(adminBtn("outline"), "!min-h-9 !text-xs")}
+          disabled={pending}
+          onClick={onCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className={cn(adminBtn("primary"), "!min-h-9 !text-xs")}
+          disabled={!canSubmit || pending}
+        >
+          {pending
+            ? "Saving…"
+            : mode === "create"
+              ? "Create banner"
+              : "Save changes"}
+        </button>
+      </div>
+    </form>
   );
 }

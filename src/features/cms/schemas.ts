@@ -662,13 +662,84 @@ export const pageFormSchema = z.object({
 
 export type PageFormValues = z.infer<typeof pageFormSchema>;
 
+export const BANNER_DEFAULT_BACKGROUND = "#E85D04";
+
+/** Curated bar fills — hex field still accepts any custom #RRGGBB. */
+export const BANNER_COLOR_SWATCHES = [
+  "#E85D04",
+  "#F97316",
+  "#EA580C",
+  "#DC2626",
+  "#B91C1C",
+  "#DB2777",
+  "#C026D3",
+  "#7C3AED",
+  "#4F46E5",
+  "#2563EB",
+  "#0284C7",
+  "#0D9488",
+  "#059669",
+  "#16A34A",
+  "#CA8A04",
+  "#78716C",
+  "#334155",
+  "#111827",
+] as const;
+
+/** Theme-aligned CTA chip presets (AdminSelect). */
+export const BANNER_BUTTON_CHIP_OPTIONS = [
+  { value: "Shop now", label: "Shop now" },
+  { value: "Shop products", label: "Shop products" },
+  { value: "Buy now", label: "Buy now" },
+  { value: "Grab offer", label: "Grab offer" },
+  { value: "Claim deal", label: "Claim deal" },
+  { value: "View deal", label: "View deal" },
+  { value: "Explore", label: "Explore" },
+  { value: "Learn more", label: "Learn more" },
+  { value: "Get started", label: "Get started" },
+] as const;
+
+const bannerHexColorSchema = z
+  .string()
+  .trim()
+  .transform((v) => (v.startsWith("#") ? v : `#${v}`))
+  .pipe(
+    z
+      .string()
+      .regex(/^#[0-9A-Fa-f]{6}$/, "Pick a valid hex color.")
+      .transform((v) => v.toUpperCase()),
+  );
+
 export const bannerFormSchema = z
   .object({
-    title: z.string().trim().min(1, "Enter a title.").max(200),
-    description: z.string().max(1000).optional().nullable().default(null),
-    imagePath: z.string().max(500).nullable().optional().default(null),
+    title: z.string().trim().min(1, "Enter the offer text.").max(120),
+    description: z
+      .string()
+      .trim()
+      .max(200)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length > 0 ? v : null))
+      .default(null),
+    /** Kept for legacy rows; unused on the coupon-style storefront strip. */
+    imagePath: z
+      .string()
+      .trim()
+      .max(500)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length > 0 ? v : null))
+      .default(null),
+    backgroundColor: bannerHexColorSchema.default(BANNER_DEFAULT_BACKGROUND),
     linkUrl: optionalSafeUrlSchema.optional().default(null),
-    buttonText: z.string().max(80).optional().nullable().default(null),
+    buttonText: z
+      .string()
+      .trim()
+      .max(40)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length > 0 ? v : null))
+      .default(null),
     isActive: z.boolean().default(true),
     startsAt: z
       .union([z.string(), z.null(), z.undefined(), z.literal("")])
@@ -695,6 +766,13 @@ export const bannerFormSchema = z
           message: "End date must be on or after the start date.",
         });
       }
+    }
+    if (data.buttonText && !data.linkUrl?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["linkUrl"],
+        message: "Pick where the button should open.",
+      });
     }
   });
 

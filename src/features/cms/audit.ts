@@ -19,6 +19,7 @@ export type ContentAuditAction =
   | "BANNER_CREATED"
   | "BANNER_UPDATED"
   | "BANNER_DELETED"
+  | "BANNERS_REORDERED"
   | "JOB_POST_CREATED"
   | "JOB_POST_UPDATED"
   | "JOB_POST_DELETED";

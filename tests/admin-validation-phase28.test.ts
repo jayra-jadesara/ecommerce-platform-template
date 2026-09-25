@@ -234,6 +234,12 @@ describe("Phase 28 — wiring contracts", () => {
     expect(
       read("src/features/admin/validation/dependencies.ts"),
     ).toContain("checkCategoryDependencies");
+    expect(
+      read("src/features/admin/validation/dependencies.ts"),
+    ).toContain("checkBlogCategoryDependencies");
+    expect(
+      read("src/features/admin/validation/dependencies.ts"),
+    ).toContain("checkSizeOptionDependencies");
     expect(read("src/features/catalog/categories-service.ts")).toContain(
       "checkCategoryDependencies",
     );

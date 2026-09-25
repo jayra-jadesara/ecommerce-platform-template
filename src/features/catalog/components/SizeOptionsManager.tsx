@@ -11,7 +11,9 @@ import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import {
+  checkSizeOptionDependenciesAction,
   createSizeOptionAction,
+  deactivateSizeOptionAction,
   deleteSizeOptionsAction,
   seedDefaultSizeOptionsAction,
   updateSizeOptionAction,
@@ -68,6 +70,8 @@ export function SizeOptionsManager({
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteIds, setDeleteIds] = useState<string[] | null>(null);
+  const [deleteBlocked, setDeleteBlocked] = useState(false);
+  const [deleteMessage, setDeleteMessage] = useState("");
 
   useEffect(() => {
     setSelected((prev) => {
@@ -108,6 +112,32 @@ export function SizeOptionsManager({
 
   function refresh() {
     router.refresh();
+  }
+
+  function openDelete(ids: string[]) {
+    setError(null);
+    setDeleteIds(ids);
+    setDeleteBlocked(false);
+    setDeleteMessage(
+      ids.length > 1
+        ? `Remove ${ids.length} sizes from the list?`
+        : `Remove “${initialSizes.find((r) => r.id === ids[0])?.label ?? "this size"}”?`,
+    );
+    startTransition(async () => {
+      for (const id of ids) {
+        const check = await checkSizeOptionDependenciesAction(id);
+        if (!check.ok) {
+          setError(check.error);
+          setDeleteIds(null);
+          return;
+        }
+        if (!check.deps.canDelete) {
+          setDeleteBlocked(true);
+          setDeleteMessage(check.deps.message);
+          return;
+        }
+      }
+    });
   }
 
   function openCreate() {
@@ -306,7 +336,7 @@ export function SizeOptionsManager({
               type="button"
               className={cn(adminBtn("outline"), "!min-h-9 !px-3 !text-xs")}
               disabled={pending}
-              onClick={() => setDeleteIds([...selected])}
+              onClick={() => openDelete([...selected])}
             >
               Delete selected ({selected.size})
             </button>
@@ -414,7 +444,7 @@ export function SizeOptionsManager({
                         color="error"
                         disabled={pending}
                         aria-label={`Remove ${row.label}`}
-                        onClick={() => setDeleteIds([row.id])}
+                        onClick={() => openDelete([row.id])}
                       >
                         <DeleteOutlineOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -506,7 +536,7 @@ export function SizeOptionsManager({
                                 "!min-h-9 !px-2.5 !text-xs text-[var(--color-error)]",
                               )}
                               disabled={pending}
-                              onClick={() => setDeleteIds([row.id])}
+                              onClick={() => openDelete([row.id])}
                             >
                               Delete
                             </button>
@@ -577,16 +607,47 @@ export function SizeOptionsManager({
             : "Delete size?"
         }
         message={
-          deleteIds && deleteIds.length > 1
-            ? `Remove ${deleteIds.length} sizes from the list? Products already using them keep their text.`
-            : `Remove “${deleteLabels[0] ?? "this size"}”? Products already using it keep their text.`
+          deleteMessage ||
+          (deleteIds && deleteIds.length > 1
+            ? `Remove ${deleteIds.length} sizes from the list?`
+            : `Remove “${deleteLabels[0] ?? "this size"}”?`)
         }
+        blocked={deleteBlocked}
+        safeActionLabel="Deactivate"
         confirmLabel={
           deleteIds && deleteIds.length > 1 ? "Delete all" : "Delete"
         }
         pending={pending}
         onClose={() => {
-          if (!pending) setDeleteIds(null);
+          if (!pending) {
+            setDeleteIds(null);
+            setDeleteBlocked(false);
+          }
+        }}
+        onSafeAction={() => {
+          if (!deleteIds?.length) return;
+          const ids = deleteIds;
+          setError(null);
+          startTransition(async () => {
+            for (const id of ids) {
+              const result = await deactivateSizeOptionAction(id);
+              if (!result.ok) {
+                setError(result.error);
+                setDeleteIds(null);
+                setDeleteBlocked(false);
+                return;
+              }
+            }
+            setSelected(new Set());
+            setDeleteIds(null);
+            setDeleteBlocked(false);
+            setSuccess(
+              ids.length > 1
+                ? `${ids.length} sizes deactivated.`
+                : "Size deactivated.",
+            );
+            refresh();
+          });
         }}
         onConfirm={() => {
           if (!deleteIds?.length) return;
@@ -597,10 +658,12 @@ export function SizeOptionsManager({
             if (!result.ok) {
               setError(result.error);
               setDeleteIds(null);
+              setDeleteBlocked(false);
               return;
             }
             setSelected(new Set());
             setDeleteIds(null);
+            setDeleteBlocked(false);
             setSuccess(result.message);
             refresh();
           });

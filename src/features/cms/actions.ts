@@ -4,6 +4,7 @@ import { requirePermission } from "@/features/auth/session";
 import {
   createAdminBanner,
   deleteAdminBanner,
+  reorderAdminBanners,
   updateAdminBanner,
 } from "@/features/cms/banners-service";
 import {
@@ -251,6 +252,21 @@ export async function deleteBannerAction(id: string) {
       route: "/content/banners",
     },
     () => deleteAdminBanner(id),
+  );
+}
+
+export async function reorderBannersAction(orderedIds: string[]) {
+  await requirePermission("content.update");
+  return runLoggedMutation(
+    {
+      type: "CMS",
+      source: "SERVER",
+      operation: "REORDER_BANNERS",
+      feature: "CMS",
+      entityType: "banner",
+      route: "/content/banners",
+    },
+    () => reorderAdminBanners(orderedIds),
   );
 }
 

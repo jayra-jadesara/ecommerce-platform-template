@@ -11,6 +11,7 @@ import {
 } from "@/features/cms/cache";
 import {
   ABOUT_PAGE_SLUG,
+  BANNER_DEFAULT_BACKGROUND,
   CAREER_PAGE_SLUG,
   HOMEPAGE_SLUG,
   isLegalPageSlug,
@@ -47,6 +48,12 @@ function mapPage(row: Tables<"pages">): ContentPage {
   };
 }
 
+function normalizeBannerColor(value: string | null | undefined): string {
+  const raw = (value ?? "").trim();
+  if (/^#[0-9A-Fa-f]{6}$/.test(raw)) return raw.toUpperCase();
+  return BANNER_DEFAULT_BACKGROUND;
+}
+
 function mapBanner(row: Tables<"banners">): BannerRow {
   return {
     id: row.id,
@@ -54,6 +61,9 @@ function mapBanner(row: Tables<"banners">): BannerRow {
     title: row.title,
     description: row.description,
     imagePath: row.image_path,
+    backgroundColor: normalizeBannerColor(
+      (row as { background_color?: string | null }).background_color,
+    ),
     linkUrl: row.link_url,
     buttonText: row.button_text,
     isActive: row.is_active,
@@ -382,7 +392,7 @@ export async function getActiveStorefrontBanners(): Promise<BannerRow[]> {
 
   const cached = unstable_cache(
     () => loadActiveBannersUncached(storeId),
-    ["storefront-banners", storeId],
+    ["storefront-banners-v2", storeId],
     { revalidate: 60, tags: [STOREFRONT_BANNERS_CACHE_TAG] },
   );
   return cached();

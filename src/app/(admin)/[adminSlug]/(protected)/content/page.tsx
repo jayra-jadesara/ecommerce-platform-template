@@ -37,7 +37,8 @@ const SECTIONS = [
   {
     href: "/content/banners",
     title: "Banners",
-    description: "Promotional banners shown across your store.",
+    description:
+      "Coupon-style offer strips on the homepage — color, copy, and auto-rotate.",
   },
   {
     href: "/content/reels",

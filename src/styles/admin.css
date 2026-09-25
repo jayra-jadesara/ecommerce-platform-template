@@ -1012,13 +1012,20 @@ html.dark .admin-chrome-footer__line--end {
   border-color: var(--color-border);
 }
 
-.admin-datetime-popper .MuiMultiSectionDigitalClockSection-root::after,
-.admin-datetime-paper .MuiMultiSectionDigitalClockSection-root::after {
-  background: linear-gradient(
-    to bottom,
-    color-mix(in srgb, var(--color-surface) 0%, transparent),
-    var(--color-surface)
-  );
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-root,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-root {
+  max-height: 220px;
+  border-left: 1px solid var(--color-border);
+}
+
+.admin-datetime-popper .MuiMultiSectionDigitalClockSection-root:first-of-type,
+.admin-datetime-paper .MuiMultiSectionDigitalClockSection-root:first-of-type {
+  border-left: none;
+}
+
+.admin-datetime-popper .MuiPickersLayout-root,
+.admin-datetime-paper .MuiPickersLayout-root {
+  max-height: min(420px, calc(100vh - 24px));
 }
 
 @media (prefers-reduced-motion: reduce) {
