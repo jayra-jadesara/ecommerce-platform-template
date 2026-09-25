@@ -18,13 +18,13 @@ describe("admin required field markers", () => {
   it("marks core product fields as required", () => {
     const source = read("features/catalog/components/ProductForm.tsx");
     expect(source).toMatch(/label="Product name"[\s\S]*?required/);
-    expect(source).toMatch(/label="Price"[\s\S]*?required/);
+    expect(source).toMatch(/label="Sell price"[\s\S]*?required/);
     expect(source).toMatch(/label="Status"[\s\S]*?required/);
   });
 
   it("marks store settings required fields", () => {
     expect(read("features/admin/settings/components/GeneralSettingsForm.tsx")).toMatch(
-      /label="Store name shoppers see"[\s\S]*?required/,
+      /label="Store name"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/BrandingSettingsForm.tsx")).toMatch(
       /label="Brand name"[\s\S]*?required/,
@@ -36,7 +36,7 @@ describe("admin required field markers", () => {
       /label="Menu name"[\s\S]*?required/,
     );
     expect(read("features/admin/settings/components/ShippingSettingsForm.tsx")).toMatch(
-      /label=\{\`Delivery fee[\s\S]*?required/,
+      /label=\{`Fee \(\$\{currency\}\)`\}[\s\S]*?required/,
     );
   });
 

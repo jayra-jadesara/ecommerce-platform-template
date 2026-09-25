@@ -1,18 +1,14 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublicStorageUrl, resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import {
-  CATALOG_CACHE_TAG,
-  CATALOG_PRODUCTS_TAG,
-  productCacheTag,
-} from "@/features/catalog/cache";
+import { productCacheTag } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import {
   assertSafeStoragePath,
   buildProductImagePath,
@@ -55,11 +51,16 @@ async function getProductScope(productId: string) {
   return { supabase, storeId, product: data };
 }
 
-function revalidateProduct(productId: string, slug: string) {
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_PRODUCTS_TAG, "max");
-  revalidateTag(productCacheTag(productId), "max");
-  revalidateTag(productCacheTag(slug), "max");
+async function revalidateProduct(
+  storeId: string,
+  productId: string,
+  slug: string,
+) {
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.products"],
+    extraTags: [productCacheTag(productId), productCacheTag(slug)],
+  });
 }
 
 export async function listProductImages(
@@ -256,7 +257,7 @@ export async function createProductImage(
     },
   });
 
-  revalidateProduct(productId, scope.product.slug);
+  await revalidateProduct(scope.storeId, productId, scope.product.slug);
   return {
     ok: true,
     message: "Product image uploaded.",
@@ -378,7 +379,7 @@ export async function attachProductImageFromMedia(
     },
   });
 
-  revalidateProduct(productId, scope.product.slug);
+  await revalidateProduct(scope.storeId, productId, scope.product.slug);
   return {
     ok: true,
     message: "Image added to product.",
@@ -484,7 +485,7 @@ export async function deleteProductImage(
     metadata: { product_id: productId, path },
   });
 
-  revalidateProduct(productId, productRow.slug);
+  await revalidateProduct(storeId, productId, productRow.slug);
   return { ok: true, message: "Product image deleted." };
 }
 
@@ -558,7 +559,7 @@ export async function setPrimaryProductImage(
     metadata: { product_id: productId },
   });
 
-  revalidateProduct(productId, productRow.slug);
+  await revalidateProduct(storeId, productId, productRow.slug);
   return { ok: true, message: "Primary image updated." };
 }
 
@@ -624,7 +625,7 @@ export async function reorderProductImages(
     metadata: { ordered_ids: unique },
   });
 
-  revalidateProduct(productId, scope.product.slug);
+  await revalidateProduct(scope.storeId, productId, scope.product.slug);
   return { ok: true, message: "Image order saved." };
 }
 
@@ -691,6 +692,6 @@ export async function updateProductImageAlt(
     metadata: { product_id: image.product_id },
   });
 
-  revalidateProduct(image.product_id as string, productRow.slug);
+  await revalidateProduct(storeId, image.product_id as string, productRow.slug);
   return { ok: true, message: "Image updated." };
 }

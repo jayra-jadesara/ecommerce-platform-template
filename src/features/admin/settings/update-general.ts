@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -13,7 +12,7 @@ import {
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
 import { diffChangedKeys, normalizeWhatsappForStorage } from "@/features/admin/settings/validation";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
 import { DEFAULT_PHONE_COUNTRY_CODE } from "@/lib/phone";
@@ -170,6 +169,9 @@ export async function updateGeneralStoreSettings(
     metadata: { changed_fields: changed },
   });
 
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId: store.id,
+    topics: ["store.config"],
+  });
   return { ok: true, message: "Store settings saved." };
 }

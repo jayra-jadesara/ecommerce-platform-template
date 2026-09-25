@@ -1,0 +1,66 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will error in a future major version of npm. See `npm help 
+npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\HP\AppData\Roaming\npm ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run ecommerce-platform-template@1.0.0 typecheck
+npm notice run tsc --noEmit
+src/app/(storefront)/blog/[slug]/page.tsx(98,3): error TS2322: Type '({ id: string; name: string; slug: string; defaultVariantId: string; } | undefined)[]' is not assignable to type 'LinkedProductRow[]'.
+  Type '{ id: string; name: string; slug: string; defaultVariantId: string; } | undefined' is not assignable to type 'LinkedProductRow'.
+    Type 'undefined' is not assignable to type 'LinkedProductRow'.
+src/app/(storefront)/blog/[slug]/page.tsx(100,27): error TS2677: A type predicate's type must be assignable to its parameter's type.
+  Type 'LinkedProductRow' is not assignable to type '{ id: string; name: string; slug: string; defaultVariantId: string; }'.
+    Types of property 'defaultVariantId' are incompatible.
+      Type 'string | null' is not assignable to type 'string'.
+        Type 'null' is not assignable to type 'string'.
+src/features/admin/settings/components/FooterSettingsForm.tsx(100,5): error TS2322: Type 'Resolver<{ description: string; enabled: boolean; navVisible: boolean; showContact: boolean; showSocial: boolean; showNewsletter: boolean; showLogo: boolean; copyrightText: string; showFeaturedProduct: boolean; featuredProductId?: string | ... 1 more ... | undefined; }, any, { ...; }>' is not assignable to type 'Resolver<{ description: string; enabled: boolean; navVisible: boolean; showContact: boolean; showSocial: boolean; showNewsletter: boolean; showLogo: boolean; copyrightText: string; showFeaturedProduct: boolean; featuredProductId: string | null; }, any, { ...; }>'.
+  Types of parameters 'options' and 'options' are incompatible.
+    Type 'ResolverOptions<{ description: string; enabled: boolean; navVisible: boolean; showContact: boolean; showSocial: boolean; showNewsletter: boolean; showLogo: boolean; copyrightText: string; showFeaturedProduct: boolean; featuredProductId: string | null; }>' is not assignable to type 'ResolverOptions<{ description: string; enabled: boolean; navVisible: boolean; showContact: boolean; showSocial: boolean; showNewsletter: boolean; showLogo: boolean; copyrightText: string; showFeaturedProduct: boolean; featuredProductId?: string | ... 1 more ... | undefined; }>'.
+      Type 'string | null | undefined' is not assignable to type 'string | null'.
+        Type 'undefined' is not assignable to type 'string | null'.
+src/features/admin/team/service.ts(1255,53): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1261,24): error TS2339: Property 'type' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1262,15): error TS2339: Property 'message' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1262,42): error TS2339: Property 'message' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1263,24): error TS2339: Property 'route' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1264,24): error TS2339: Property 'reference_id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1272,24): error TS2339: Property 'type' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1272,45): error TS2339: Property 'type' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1273,15): error TS2339: Property 'message' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1273,41): error TS2339: Property 'message' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1274,24): error TS2339: Property 'route' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1274,47): error TS2339: Property 'route' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1275,24): error TS2339: Property 'reference_id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/team/service.ts(1276,33): error TS2339: Property 'reference_id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/admin/ui/charts/AdminDonutChart.tsx(107,9): error TS2322: Type 'true' is not assignable to type 'false'.
+src/features/brochure/service.ts(280,13): error TS2345: Argument of type 'Record<string, unknown>' is not assignable to parameter of type 'RejectExcessProperties<Partial<{ id?: string | undefined; store_id: string; title: string; pdf_path: string; file_size_bytes?: number | undefined; sort_order?: number | undefined; is_active?: boolean | undefined; download_count?: number | undefined; created_at?: string | undefined; updated_at?: string | undefined; }...'.
+  Type 'Record<string, unknown>' is not assignable to type '{ [x: string]: never; }'.
+    'string' index signatures are incompatible.
+      Type 'unknown' is not assignable to type 'never'.
+src/features/brochure/service.ts(307,5): error TS2322: Type 'Record<string, unknown>' is not assignable to type 'Json | undefined'.
+  Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+src/features/error-monitoring/actions.ts(88,28): error TS2339: Property 'id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/error-monitoring/actions.ts(89,31): error TS2339: Property 'reference_id' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/error-monitoring/actions.ts(90,27): error TS2339: Property 'message' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/error-monitoring/actions.ts(91,24): error TS2339: Property 'type' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/error-monitoring/actions.ts(92,25): error TS2339: Property 'route' does not exist on type 'SelectQueryError<"column 'type' does not exist on 'error_logs'.">'.
+src/features/orders/queries.ts(296,32): error TS2345: Argument of type 'string' is not assignable to parameter of type 'NonNullable<OrderStatus>'.
+src/features/orders/queries.ts(373,7): error TS2322: Type 'string | null' is not assignable to type 'PaymentStatus | null'.
+  Type 'string' is not assignable to type 'PaymentStatus | null'.
+src/features/payments/cod-capture.ts(50,5): error TS2322: Type '"COD_PAYMENT_CAPTURED"' is not assignable to type 'PaymentAuditAction'.
+src/features/payments/cod-checkout.ts(327,5): error TS2322: Type '"COD_ORDER_PLACED"' is not assignable to type 'PaymentAuditAction'.
+src/features/payments/fulfillment.ts(130,7): error TS2322: Type 'Record<string, unknown>' is not assignable to type 'Json | undefined'.
+  Type 'Record<string, unknown>' is missing the following properties from type 'Json[]': length, pop, push, concat, and 35 more.
+src/features/payments/list-customer-payments.ts(121,34): error TS2345: Argument of type 'string' is not assignable to parameter of type 'NonNullable<PaymentStatus>'.
+src/features/payments/state-machine.ts(7,7): error TS2741: Property 'CANCELLED' is missing in type '{ CREATED: Set<"PENDING" | "AUTHORIZED" | "CAPTURED" | "FAILED">; PENDING: Set<"AUTHORIZED" | "CAPTURED" | "FAILED">; AUTHORIZED: Set<"REFUNDED" | "CAPTURED" | "FAILED">; CAPTURED: Set<...>; FAILED: Set<...>; REFUNDED: Set<...>; }' but required in type 'Record<PaymentStatus, ReadonlySet<PaymentStatus>>'.
+src/features/reels/reels-service.ts(342,13): error TS2345: Argument of type 'Record<string, number | boolean>' is not assignable to parameter of type 'RejectExcessProperties<Partial<{ id?: string | undefined; store_id: string; title?: string | undefined; instagram_url?: string | null | undefined; video_path?: string | null | undefined; product_cta_label?: string | undefined; ... 5 more ...; updated_at?: string | undefined; }>, Record<...>>'.
+  Type 'Record<string, number | boolean>' is not assignable to type '{ [x: string]: never; }'.
+    'string' index signatures are incompatible.
+      Type 'number | boolean' is not assignable to type 'never'.
+        Type 'number' is not assignable to type 'never'.
+tests/blog-phase24.test.ts(6,10): error TS2305: Module '"@/features/admin/ui/StorePageLinkField"' has no exported member 'STORE_PAGE_OPTIONS'.
+tests/blog-phase24.test.ts(30,10): error TS2305: Module '"@/features/blog/components/BlogPagination"' has no exported member 'paginationWindow'.
+tests/blog-phase24.test.ts(69,37): error TS7006: Parameter 'o' implicitly has an 'any' type.

@@ -1,16 +1,15 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeContentAudit } from "@/features/cms/audit";
-import { STOREFRONT_BANNERS_CACHE_TAG } from "@/features/cms/cache";
 import {
   bannerFormSchema,
   type BannerFormValues,
 } from "@/features/cms/schemas";
 import type { BannerRow } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
@@ -33,8 +32,13 @@ function mapBanner(row: Tables<"banners">): BannerRow {
   };
 }
 
-function revalidateBanners() {
-  revalidateTag(STOREFRONT_BANNERS_CACHE_TAG, "max");
+async function revalidateBanners(storeId?: string) {
+  const id = storeId ?? (await resolveActiveStoreId());
+  if (!id) return;
+  await publishStorefrontSync({
+    storeId: id,
+    topics: ["cms.banners"],
+  });
 }
 
 export async function listAdminBanners(): Promise<BannerRow[]> {
@@ -120,7 +124,7 @@ export async function createAdminBanner(
     entityType: "banner",
     entityId: data.id,
   });
-  revalidateBanners();
+  await revalidateBanners(storeId);
 
   return { ok: true, banner: mapBanner(data), message: "Banner created." };
 }
@@ -181,7 +185,7 @@ export async function updateAdminBanner(
     entityType: "banner",
     entityId: data.id,
   });
-  revalidateBanners();
+  await revalidateBanners(storeId);
 
   return { ok: true, banner: mapBanner(data), message: "Banner updated." };
 }
@@ -222,7 +226,7 @@ export async function deleteAdminBanner(
     entityType: "banner",
     entityId: id,
   });
-  revalidateBanners();
+  await revalidateBanners(storeId);
 
   return { ok: true, message: "Banner deleted." };
 }

@@ -35,8 +35,11 @@ describe("phase 22 commerce experience", () => {
     const appearance = readSrc(
       "src/features/admin/theme/components/AppearanceStudio.tsx",
     );
+    const suggest = readSrc(
+      "src/features/admin/theme/components/LogoThemeSuggest.tsx",
+    );
     expect(branding).toContain("LogoThemeSuggest");
-    expect(branding).toContain("suggestThemeFromLogoFile");
+    expect(suggest).toContain("suggestThemeFromLogoFile");
     expect(appearance).toContain("LogoThemeSuggest");
     expect(appearance).toContain("Create from Logo");
   });
@@ -58,8 +61,8 @@ describe("phase 22 commerce experience", () => {
     const products = readSrc("src/app/(storefront)/products/page.tsx");
     const catalog = readSrc("src/features/catalog/components/ProductsCatalog.tsx");
     const home = readSrc("src/app/(storefront)/home-view.tsx");
-    expect(header).toContain("Search products");
-    expect(header).toContain("searchOpen");
+    expect(header).toContain("HeaderSearch");
+    expect(header).toContain("showSearch");
     expect(products).toContain("ProductsCatalog");
     expect(catalog).toContain('id="catalog-sort"');
     expect(catalog).toContain('name="sort"');

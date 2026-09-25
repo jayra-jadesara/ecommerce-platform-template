@@ -10,7 +10,9 @@ export type PaymentAuditAction =
   | "PAYMENT_REFUNDED"
   | "RAZORPAY_WEBHOOK_PROCESSED"
   | "RAZORPAY_WEBHOOK_REJECTED"
-  | "PAYMENT_RETRY_STARTED";
+  | "PAYMENT_RETRY_STARTED"
+  | "COD_ORDER_PLACED"
+  | "COD_PAYMENT_CAPTURED";
 
 /**
  * Payment pipeline audits use the service role so non-admin customers

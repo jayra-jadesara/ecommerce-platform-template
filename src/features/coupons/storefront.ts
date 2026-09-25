@@ -1,9 +1,11 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { formatMoney } from "@/features/catalog/money";
 import { mapCouponRow } from "@/features/coupons/map";
 import type { StorefrontFeaturedCoupon } from "@/features/coupons/types";
+import { STOREFRONT_COUPONS_CACHE_TAG } from "@/features/sync";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 
@@ -34,15 +36,10 @@ async function resolveStoreId(): Promise<string | null> {
   return data?.id ?? null;
 }
 
-/**
- * Public featured coupon for homepage modal + checkout suggestion.
- * Uses service role (coupons are not customer-readable via RLS).
- */
-export async function getStorefrontFeaturedCoupon(): Promise<StorefrontFeaturedCoupon | null> {
+async function getStorefrontFeaturedCouponUncached(
+  storeId: string,
+): Promise<StorefrontFeaturedCoupon | null> {
   try {
-    const storeId = await resolveStoreId();
-    if (!storeId) return null;
-
     const supabase = createSupabaseServiceClient();
 
     const { data: row, error } = await supabase
@@ -91,4 +88,20 @@ export async function getStorefrontFeaturedCoupon(): Promise<StorefrontFeaturedC
   } catch {
     return null;
   }
+}
+
+/**
+ * Public featured coupon for homepage modal + checkout suggestion.
+ * Uses service role (coupons are not customer-readable via RLS).
+ */
+export async function getStorefrontFeaturedCoupon(): Promise<StorefrontFeaturedCoupon | null> {
+  const storeId = await resolveStoreId();
+  if (!storeId) return null;
+
+  const cached = unstable_cache(
+    () => getStorefrontFeaturedCouponUncached(storeId),
+    ["storefront-featured-coupon", storeId],
+    { revalidate: 60, tags: [STOREFRONT_COUPONS_CACHE_TAG] },
+  );
+  return cached();
 }

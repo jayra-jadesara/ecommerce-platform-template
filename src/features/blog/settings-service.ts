@@ -1,10 +1,8 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeBlogAudit } from "@/features/blog/audit";
-import { STOREFRONT_BLOG_CACHE_TAG } from "@/features/blog/cache";
 import {
   blogSettingsFormSchema,
   DEFAULT_BLOG_SETTINGS,
@@ -17,6 +15,7 @@ import {
 import { normalizeSidebarPreset } from "@/features/blog/settings-normalize";
 import type { BlogSettings } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 
@@ -157,7 +156,10 @@ export async function upsertAdminBlogSettings(
     },
   });
 
-  revalidateTag(STOREFRONT_BLOG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["content.blog"],
+  });
 
   return {
     ok: true,

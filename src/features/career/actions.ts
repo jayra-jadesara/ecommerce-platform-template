@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { requirePermission } from "@/features/auth/session";
 import {
   createAdminJobPost,
@@ -13,6 +13,16 @@ import { careerApplicationFormSchema } from "@/features/career/schemas";
 import { formatAddressPhoneForStorage } from "@/features/addresses/validation";
 import { getStorePhoneCountryCode } from "@/lib/store-location";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
+
+async function publishCareerSync(storeId?: string | null) {
+  const id = storeId ?? (await resolveActiveStoreId());
+  if (!id) return;
+  await publishStorefrontSync({
+    storeId: id,
+    topics: ["content.career"],
+  });
+}
 
 export async function createJobPostAction(raw: unknown) {
   await requirePermission("content.update");
@@ -27,7 +37,7 @@ export async function createJobPostAction(raw: unknown) {
     },
     async () => {
       const result = await createAdminJobPost(raw);
-      if (result.ok) revalidatePath("/career");
+      if (result.ok) await publishCareerSync(result.job.storeId);
       return result;
     },
   );
@@ -47,7 +57,7 @@ export async function updateJobPostAction(id: string, raw: unknown) {
     },
     async () => {
       const result = await updateAdminJobPost(id, raw);
-      if (result.ok) revalidatePath("/career");
+      if (result.ok) await publishCareerSync(result.job.storeId);
       return result;
     },
   );
@@ -67,7 +77,7 @@ export async function deleteJobPostAction(id: string) {
     },
     async () => {
       const result = await deleteAdminJobPost(id);
-      if (result.ok) revalidatePath("/career");
+      if (result.ok) await publishCareerSync();
       return result;
     },
   );

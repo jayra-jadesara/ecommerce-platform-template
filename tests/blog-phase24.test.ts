@@ -3,7 +3,10 @@ import { slugify } from "@/features/catalog/slug";
 import { hasPermission, ROLE_PERMISSIONS } from "@/features/auth/permissions";
 import { ADMIN_NAV_TREE } from "@/features/admin/nav";
 import { getAdminPath } from "@/config/admin-route";
-import { STORE_PAGE_OPTIONS } from "@/features/admin/ui/StorePageLinkField";
+import {
+  DEFAULT_STOREFRONT_PATHS,
+  storefrontPathOptions,
+} from "@/features/seo/storefront-paths";
 import { defaultPlatformConfig } from "@/config/defaults";
 import {
   blogCategoryFormSchema,
@@ -27,7 +30,7 @@ import {
   buildBreadcrumbJsonLd,
 } from "@/features/seo/json-ld";
 import { shouldIncludeInSitemap } from "@/features/seo/sitemap-rules";
-import { paginationWindow } from "@/features/blog/components/BlogPagination";
+import { buildPageItems } from "@/features/blog/components/BlogPagination";
 describe("blog permissions", () => {
   it("grants ADMIN all blog permissions including delete", () => {
     expect(hasPermission(["ADMIN"], "blog.view")).toBe(true);
@@ -66,7 +69,11 @@ describe("blog navigation", () => {
   });
 
   it("exposes /blog in store page link options", () => {
-    expect(STORE_PAGE_OPTIONS.some((o) => o.value === "/blog")).toBe(true);
+    expect(
+      storefrontPathOptions(DEFAULT_STOREFRONT_PATHS).some(
+        (o) => o.value === "/blog",
+      ),
+    ).toBe(true);
   });
 
   it("includes Blog in default storefront navigation", () => {
@@ -318,17 +325,25 @@ describe("blog sitemap rules", () => {
 });
 
 describe("blog pagination window", () => {
-  it("returns empty when only one page", () => {
-    expect(paginationWindow(1, 1)).toEqual([]);
+  it("returns a single page when there is only one", () => {
+    expect(buildPageItems(1, 1)).toEqual([1]);
   });
 
-  it("clamps a five-page window around the current page", () => {
-    expect(paginationWindow(1, 10)).toEqual([1, 2, 3, 4, 5]);
-    expect(paginationWindow(5, 10)).toEqual([3, 4, 5, 6, 7]);
-    expect(paginationWindow(10, 10)).toEqual([6, 7, 8, 9, 10]);
+  it("keeps first and last page with ellipses around the current page", () => {
+    expect(buildPageItems(1, 10)).toEqual([1, 2, "ellipsis", 10]);
+    expect(buildPageItems(5, 10)).toEqual([
+      1,
+      "ellipsis",
+      4,
+      5,
+      6,
+      "ellipsis",
+      10,
+    ]);
+    expect(buildPageItems(10, 10)).toEqual([1, "ellipsis", 9, 10]);
   });
 
-  it("shrinks when total pages are fewer than the window", () => {
-    expect(paginationWindow(2, 3)).toEqual([1, 2, 3]);
+  it("lists every page when total pages fit the window", () => {
+    expect(buildPageItems(2, 3)).toEqual([1, 2, 3]);
   });
 });

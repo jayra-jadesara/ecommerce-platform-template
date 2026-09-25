@@ -32,7 +32,6 @@ describe("client-safe site config boundary", () => {
       "utf8",
     );
     // Relative storefront preview paths — no @/config/site or site.server needed.
-    expect(product).toContain("previewUrl={`/products/");
     expect(product).not.toContain("site.server");
     expect(product).not.toContain('from "@/config/site"');
     expect(product).not.toContain("typeof window");

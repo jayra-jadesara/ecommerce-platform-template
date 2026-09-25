@@ -1,15 +1,11 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import {
-  CATALOG_CACHE_TAG,
-  CATALOG_CATEGORIES_TAG,
-  categoryCacheTag,
-} from "@/features/catalog/cache";
+import { categoryCacheTag } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import {
   categoryFormSchema,
   type CategoryFormValues,
@@ -56,10 +52,12 @@ function emptyToNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function revalidateCatalogCategories(id?: string) {
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_CATEGORIES_TAG, "max");
-  if (id) revalidateTag(categoryCacheTag(id), "max");
+async function revalidateCatalogCategories(storeId: string, id?: string) {
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.categories"],
+    extraTags: id ? [categoryCacheTag(id)] : undefined,
+  });
 }
 
 export async function listAdminCategories(): Promise<CategoryRow[]> {
@@ -189,7 +187,7 @@ export async function createCategory(
     metadata: { slug: values.slug, name: values.name },
   });
 
-  revalidateCatalogCategories(data.id);
+  await revalidateCatalogCategories(storeId, data.id);
   return { ok: true, message: "Category created.", id: data.id };
 }
 
@@ -306,7 +304,7 @@ export async function updateCategory(
     });
   }
 
-  revalidateCatalogCategories(id);
+  await revalidateCatalogCategories(storeId, id);
   return { ok: true, message: "Category updated.", id };
 }
 
@@ -351,7 +349,7 @@ export async function archiveCategory(id: string): Promise<CatalogResult> {
     metadata: {},
   });
 
-  revalidateCatalogCategories(id);
+  await revalidateCatalogCategories(storeId, id);
   return { ok: true, message: "Category deactivated.", id };
 }
 
@@ -419,7 +417,7 @@ export async function deleteCategory(id: string): Promise<CatalogResult> {
     metadata: {},
   });
 
-  revalidateCatalogCategories(id);
+  await revalidateCatalogCategories(storeId, id);
   return { ok: true, message: "Category deleted." };
 }
 
@@ -486,7 +484,7 @@ export async function moveCategory(
     metadata: { reorder: direction, swapped_with: b.id },
   });
 
-  revalidateCatalogCategories(id);
+  await revalidateCatalogCategories(storeId, id);
   return { ok: true, message: "Order updated.", id };
 }
 

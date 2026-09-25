@@ -34,8 +34,9 @@ describe("theme boot script", () => {
     expect(boot).toContain("dangerouslySetInnerHTML");
     expect(providers).toContain("ThemeBootScript");
     expect(providers).toContain("buildThemeBootScript");
+    // Root layout delegates boot injection to AppProviders.
     expect(layout).toContain("AppProviders");
-    expect(layout).toContain("ThemeBootScript");
+    expect(layout).not.toContain("ThemeBootScript");
     expect(layout).not.toContain('from "next/script"');
     // Boot markup is owned by ThemeBootScript, not the root layout tree.
     expect(layout).not.toMatch(/dangerouslySetInnerHTML[\s\S]*platform-theme-boot/);

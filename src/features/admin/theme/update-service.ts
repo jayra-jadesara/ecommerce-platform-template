@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -14,7 +13,7 @@ import {
   formValuesToThemeDbRow,
   formValuesToVisualEffectsDbRow,
 } from "@/features/admin/theme/map-to-db";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import type { FieldErrors } from "@/lib/validation";
 
@@ -266,7 +265,10 @@ export async function updateStoreThemeSettings(
     });
   }
 
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["store.theme"],
+  });
 
   return { ok: true, message: "Theme settings saved." };
 }

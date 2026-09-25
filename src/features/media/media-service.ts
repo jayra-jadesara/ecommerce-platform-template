@@ -1,14 +1,13 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import {
   assertSafeStoragePath,
   bucketForFolder,
@@ -262,7 +261,10 @@ export async function uploadMedia(
   });
 
   if (folder === "branding") {
-    revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+    await publishStorefrontSync({
+      storeId,
+      topics: ["media.assets", "store.branding"],
+    });
   }
 
   return {
@@ -390,7 +392,10 @@ export async function deleteMedia(id: string): Promise<MediaResult> {
   });
 
   if (folder === "branding") {
-    revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+    await publishStorefrontSync({
+      storeId,
+      topics: ["media.assets", "store.branding"],
+    });
   }
 
   return { ok: true, message: "Media deleted." };

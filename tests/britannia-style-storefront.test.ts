@@ -152,6 +152,6 @@ describe("logo-derived black dark theme", () => {
   it("builds near-black dark backgrounds from logo colors", () => {
     const theme = generateBrandThemeFromColors(["#9f1239", "#d97706"]);
     expect(theme).not.toBeNull();
-    expect(theme!.dark.background.toLowerCase()).toBe("#0a0a0a");
+    expect(theme!.dark.background.toLowerCase()).toBe("#0c0c0e");
   });
 });

@@ -1,0 +1,26 @@
+﻿node.exe : npm warn Unknown env config "devdir". This will error in a future major version of npm. See `npm help 
+npmrc` for supported config options.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\HP\AppData\Roaming\npm ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (npm warn Unknow...config options.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+npm notice run ecommerce-platform-template@1.0.0 npx
+npm notice run vitest run tests/ui-ux-phase21.test.ts tests/admin-shell-layout.test.ts tests/full-width-layout.test.ts 
+tests/theme-boot.test.ts --reporter=basic
+[33mThe CJS build of Vite's Node API is deprecated. See 
+https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+
+ RUN  v2.1.9 F:/JD Proj/ecommerce-platform-template
+
+ Γ£ô tests/full-width-layout.test.ts (3 tests) 12ms
+ Γ£ô tests/theme-boot.test.ts (3 tests) 27ms
+ Γ£ô tests/ui-ux-phase21.test.ts (17 tests) 47ms
+ Γ£ô tests/admin-shell-layout.test.ts (3 tests) 8ms
+
+ Test Files  4 passed (4)
+      Tests  26 passed (26)
+   Start at  17:07:07
+   Duration  1.69s (transform 517ms, setup 0ms, collect 915ms, tests 94ms, environment 2ms, prepare 1.10s)
+

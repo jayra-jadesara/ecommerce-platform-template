@@ -10,13 +10,9 @@ import {
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { revalidatePath, revalidateTag } from "next/cache";
-import {
-  CATALOG_CACHE_TAG,
-  CATALOG_PRODUCTS_TAG,
-  productCacheTag,
-} from "@/features/catalog/cache";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { revalidatePath } from "next/cache";
+import { productCacheTag } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import type {
   AdminInventoryProductGroup,
   AdminInventoryRow,
@@ -160,17 +156,22 @@ function groupRows(mapped: AdminInventoryRow[]): AdminInventoryProductGroup[] {
   return groupOrder.map((id) => groupMap.get(id)!);
 }
 
-function revalidateInventoryTouched(
+async function revalidateInventoryTouched(
+  storeId: string,
   touchedProducts: Map<string, string>,
 ) {
   revalidatePath(INVENTORY_ROUTE);
   revalidatePath(PRODUCTS_ROUTE);
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_PRODUCTS_TAG, "max");
+  const extraTags: string[] = [];
   for (const [productId, slug] of touchedProducts) {
-    revalidateTag(productCacheTag(productId), "max");
-    if (slug) revalidateTag(productCacheTag(slug), "max");
+    extraTags.push(productCacheTag(productId));
+    if (slug) extraTags.push(productCacheTag(slug));
   }
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.products"],
+    extraTags,
+  });
 }
 
 export async function listAdminInventory(input: {
@@ -474,7 +475,7 @@ export async function bulkUpdateInventory(
     },
   });
 
-  revalidateInventoryTouched(touchedProducts);
+  await revalidateInventoryTouched(storeId, touchedProducts);
 
   return {
     ok: true,
@@ -613,7 +614,8 @@ export async function adjustInventory(input: unknown): Promise<CatalogResult> {
     });
   }
 
-  revalidateInventoryTouched(
+  await revalidateInventoryTouched(
+    storeId,
     new Map([[variant.product_id, product.slug]]),
   );
 
@@ -1126,9 +1128,10 @@ export async function updateStoreInventoryAlert(
   });
 
   revalidatePath(INVENTORY_ROUTE);
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_PRODUCTS_TAG, "max");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.products"],
+  });
 
   return {
     ok: true,

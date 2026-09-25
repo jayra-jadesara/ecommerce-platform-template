@@ -28,6 +28,10 @@ function withChrome(
  * Hex values here are intentional safe fallbacks — not client branding.
  */
 export const defaultPlatformConfig: PlatformConfig = {
+  identity: {
+    id: null,
+    slug: null,
+  },
   brand: {
     name: "Brand Name",
     tagline: "Authentic flavours for every kitchen.",

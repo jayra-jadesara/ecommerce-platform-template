@@ -76,6 +76,7 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
 
   const store = stores[0];
   const storeId = store.id;
+  const storeSlug = store.slug ?? null;
 
   const [
     brandingResult,
@@ -172,6 +173,10 @@ async function loadStorefrontConfigUncached(): Promise<PlatformConfig> {
       containerPadding: "1.25rem",
       stickyHeader: header.sticky,
       footerVariant: footer.description ? "detailed" : "simple",
+    },
+    identity: {
+      id: storeId,
+      slug: storeSlug,
     },
     store: storeConfig,
     contact,

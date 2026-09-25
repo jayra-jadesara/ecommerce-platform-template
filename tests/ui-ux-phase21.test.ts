@@ -74,7 +74,8 @@ describe("phase 21 — hero layout presets", () => {
 describe("phase 21 — storefront chrome", () => {
   it("header includes search, wishlist, cart, and scroll affordance", () => {
     const src = readSrc("src/components/layout/Header.tsx");
-    expect(src).toContain("Search products");
+    expect(src).toContain("HeaderSearch");
+    expect(src).toContain("showSearch");
     expect(src).toContain("/account/wishlist");
     expect(src).toContain("HeaderCartControl");
     expect(src).toContain("scrolled");

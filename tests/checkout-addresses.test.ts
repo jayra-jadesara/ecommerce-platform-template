@@ -95,11 +95,23 @@ describe("address validation", () => {
     }
   });
 
-  it("requires a valid 10-digit Indian mobile (national digits)", () => {
+  it("requires a valid 10-digit national mobile", () => {
     expect(
       addressFormSchema.safeParse({
         fullName: "Alex",
         phone: "123",
+        addressLine1: "12 Garden Road",
+        city: "Pune",
+        state: "Maharashtra",
+        postalCode: "411001",
+        country: "India",
+      }).success,
+    ).toBe(false);
+
+    expect(
+      addressFormSchema.safeParse({
+        fullName: "Alex",
+        phone: "555123456",
         addressLine1: "12 Garden Road",
         city: "Pune",
         state: "Maharashtra",
@@ -118,7 +130,7 @@ describe("address validation", () => {
         postalCode: "411001",
         country: "India",
       }).success,
-    ).toBe(false);
+    ).toBe(true);
 
     expect(
       addressFormSchema.safeParse({

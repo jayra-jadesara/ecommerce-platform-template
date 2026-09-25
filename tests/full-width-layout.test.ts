@@ -9,7 +9,9 @@ describe("storefront container layout", () => {
       "utf8",
     );
     expect(container).toContain("max-w-[var(--layout-content-max,1520px)]");
-    expect(container).toContain("px-[var(--layout-container-padding)]");
+    expect(container).toContain(
+      "px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]",
+    );
     expect(container).toContain("flush");
   });
 

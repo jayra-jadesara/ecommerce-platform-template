@@ -293,7 +293,7 @@ export async function listCustomerOrders(input: {
     query = query.lte("created_at", input.createdToIso);
   }
   if (statusFilter && statusFilter !== "ALL") {
-    query = query.eq("status", statusFilter);
+    query = query.eq("status", statusFilter as OrderStatus);
   }
 
   const { data, count, error } = await query.range(from, to);
@@ -371,10 +371,10 @@ export async function listCustomerOrders(input: {
       createdAt: row.created_at,
       itemCount: itemCountByOrder.get(row.id) ?? 0,
       paymentStatus: payment
-        ? effectivePaymentStatus({
+        ? (effectivePaymentStatus({
             paymentStatus: payment.status,
             orderStatus: row.status,
-          })
+          }) as PaymentStatus)
         : null,
       paymentProvider: payment?.provider ?? null,
       paymentMethod: payment?.paymentMethod ?? null,

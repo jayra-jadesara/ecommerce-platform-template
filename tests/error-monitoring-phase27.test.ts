@@ -249,12 +249,12 @@ describe("Phase 27 — architecture contracts", () => {
     const nav = read("src/features/admin/nav.ts");
     expect(page).toContain("Error Logs");
     expect(page).toContain("error_logs.view");
-    expect(client).toContain("Page & Browser Errors");
-    expect(client).toContain("Database & Server Errors");
+    expect(client).toContain('(["browser", "server"] as const)');
     expect(client).toContain("Payment");
-    expect(detail).toContain("Technical Details");
-    expect(detail).toContain("Payment Details");
-    expect(detail).toContain("Mark Resolved");
+    expect(detail).toContain("What happened");
+    expect(detail).toContain("Stack trace");
+    expect(detail).toContain('title="Payment"');
+    expect(detail).toContain("Copy all");
     expect(nav).toContain("error-logs");
     expect(nav).toContain("error_logs.view");
   });

@@ -1,11 +1,10 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import { CATALOG_CACHE_TAG } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { PRODUCT_SIZE_OPTIONS } from "@/features/catalog/validation";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
@@ -42,9 +41,12 @@ export const sizeOptionFormSchema = z.object({
 
 export type SizeOptionFormValues = z.infer<typeof sizeOptionFormSchema>;
 
-function revalidateSizeOptions() {
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(SIZE_OPTIONS_TAG, "max");
+async function revalidateSizeOptions(storeId: string) {
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.products"],
+    extraTags: [SIZE_OPTIONS_TAG],
+  });
 }
 
 export async function listAdminSizeOptions(opts?: {
@@ -131,7 +133,7 @@ export async function createSizeOption(
     });
   }
 
-  revalidateSizeOptions();
+  await revalidateSizeOptions(storeId);
   return { ok: true, message: "Size added.", id: data.id };
 }
 
@@ -190,7 +192,7 @@ export async function updateSizeOption(
     });
   }
 
-  revalidateSizeOptions();
+  await revalidateSizeOptions(storeId);
   return { ok: true, message: "Size updated." };
 }
 
@@ -231,7 +233,7 @@ export async function deleteSizeOption(id: string): Promise<CatalogSizeResult> {
     });
   }
 
-  revalidateSizeOptions();
+  await revalidateSizeOptions(storeId);
   return { ok: true, message: "Size removed." };
 }
 
@@ -279,7 +281,7 @@ export async function deleteSizeOptions(
     });
   }
 
-  revalidateSizeOptions();
+  await revalidateSizeOptions(storeId);
   return {
     ok: true,
     message:
@@ -326,7 +328,7 @@ export async function seedDefaultSizeOptions(): Promise<CatalogSizeResult> {
     });
   }
 
-  revalidateSizeOptions();
+  await revalidateSizeOptions(storeId);
   return {
     ok: true,
     message: `Added ${rows.length} common sizes.`,

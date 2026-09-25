@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -19,7 +18,7 @@ import {
   validateBrandingImageFile,
 } from "@/features/admin/settings/validation";
 import { getAdminImageMaxBytes } from "@/features/media/upload-limits.server";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
@@ -107,7 +106,10 @@ export async function updateBrandingSettings(
     },
   });
 
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["store.branding"],
+  });
   return { ok: true, message: "Branding saved." };
 }
 

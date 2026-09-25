@@ -16,8 +16,8 @@ describe("auto-generated catalog codes", () => {
       "utf8",
     );
     expect(source).toContain("syncAutoCodesFromName");
-    expect(source).toContain("PRODUCT_SIZE_OPTIONS");
-    expect(source).toContain("Extra details (optional)");
+    expect(source).toContain("sizeOptions");
+    expect(source).toContain("Extra details");
     expect(source).not.toContain("Product page link (auto)");
     expect(source).not.toContain("Generated automatically — not editable.");
   });
@@ -61,8 +61,9 @@ describe("products single-page workspace", () => {
     expect(list).toContain('panelHref("view"');
     expect(list).toContain('panelHref("edit"');
     expect(list).toContain("deleteProductAction");
-    expect(list).toMatch(/>\s*View\s*</);
-    expect(list).toMatch(/>\s*Edit\s*</);
-    expect(list).toMatch(/>\s*Delete\s*</);
+    // Row actions are icon buttons — identified by their accessible labels.
+    expect(list).toContain("aria-label={`View ${item.name}`}");
+    expect(list).toContain("aria-label={`Edit ${item.name}`}");
+    expect(list).toContain("aria-label={`Delete ${item.name}`}");
   });
 });

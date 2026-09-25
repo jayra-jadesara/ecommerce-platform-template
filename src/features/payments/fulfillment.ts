@@ -8,7 +8,7 @@ import {
 import type { PaymentInstrument } from "@/features/payments/razorpay-instrument";
 import { finalizePaidOrder } from "@/features/orders/finalize";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
-import type { PaymentStatus } from "@/types/database";
+import type { Json, PaymentStatus } from "@/types/database";
 
 function asMetadataRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
@@ -127,7 +127,7 @@ export async function fulfillVerifiedPayment(input: {
       payment_method: input.paymentMethod ?? null,
       paid_at: paidAt,
       failure_reason: null,
-      metadata: nextMeta,
+      metadata: nextMeta as Json,
     })
     .eq("id", input.paymentId)
     .in("status", ["CREATED", "PENDING", "AUTHORIZED"]);

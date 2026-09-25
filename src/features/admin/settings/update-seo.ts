@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -19,7 +18,7 @@ import {
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
 import { diffChangedKeys } from "@/features/admin/settings/validation";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
 import type { Json } from "@/types/database";
@@ -143,6 +142,9 @@ export async function updateSeoSettings(
     },
   });
 
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["store.seo"],
+  });
   return { ok: true, message: "SEO settings saved." };
 }

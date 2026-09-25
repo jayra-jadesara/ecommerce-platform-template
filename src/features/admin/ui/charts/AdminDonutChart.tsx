@@ -78,7 +78,7 @@ export function AdminDonutChart({
           name: row.name,
           value: Math.max(0, Number(row.value) || 0),
           color: row.color,
-          isRemaining: false as const,
+          isRemaining: false as boolean,
         }))
         .filter((row) => row.value > 0),
     [data],
@@ -104,7 +104,7 @@ export function AdminDonutChart({
         name: remainingLabel,
         value: remaining,
         color: SPACE_LEFT_COLOR,
-        isRemaining: true as const,
+        isRemaining: true,
       });
     }
     return rows;

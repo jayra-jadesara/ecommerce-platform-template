@@ -35,7 +35,7 @@ export async function updateErrorLogStatusAction(input: {
     const supabase = await createSupabaseServerClient();
     const { data: existing, error: loadError } = await supabase
       .from("error_logs")
-      .select("id, reference_id, status, message, type, route")
+      .select("id, reference_id, status, message, error_type, route")
       .eq("id", input.id)
       .eq("store_id", storeId)
       .maybeSingle();
@@ -88,7 +88,7 @@ export async function updateErrorLogStatusAction(input: {
         entityId: existing.id,
         referenceId: existing.reference_id,
         message: existing.message,
-        type: existing.type,
+        type: existing.error_type,
         route: existing.route,
       });
     }

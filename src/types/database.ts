@@ -1446,6 +1446,22 @@ export type Database = {
         Update: Partial<Database["public"]["Tables"]["store_brochures"]["Insert"]>;
         Relationships: [];
       };
+      storefront_sync_events: {
+        Row: {
+          id: string;
+          store_id: string;
+          topics: string[];
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id: string;
+          topics?: string[];
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["storefront_sync_events"]["Insert"]>;
+        Relationships: [];
+      };
       blog_categories: {
         Row: {
           id: string;

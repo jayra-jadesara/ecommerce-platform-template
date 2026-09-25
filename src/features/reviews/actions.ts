@@ -1,13 +1,11 @@
 "use server";
 
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
+import { getAdminPath } from "@/config/admin-route";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { requirePermission } from "@/features/auth/session";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
-import {
-  CATALOG_CACHE_TAG,
-  CATALOG_PRODUCTS_TAG,
-  productCacheTag,
-} from "@/features/catalog/cache";
+import { productCacheTag } from "@/features/catalog/cache";
 import {
   listAdminProductReviews,
   setReviewsAutoApprove,
@@ -17,14 +15,20 @@ import {
   updateAdminProductReviewStatus,
 } from "@/features/reviews/service";
 import type { ProductReviewStatus } from "@/types/database";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 
-function revalidateReviewsStorefront() {
-  revalidatePath("/catalog/reviews");
-  revalidatePath("/products");
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_PRODUCTS_TAG, "max");
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+const ADMIN_REVIEWS_ROUTE = getAdminPath("/catalog/reviews");
+
+async function revalidateReviewsStorefront(productSlug?: string | null) {
+  revalidatePath(ADMIN_REVIEWS_ROUTE);
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return;
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.reviews"],
+    extraTags: productSlug ? [productCacheTag(productSlug)] : undefined,
+    extraPaths: productSlug ? [`/products/${productSlug}`] : undefined,
+  });
 }
 
 export async function submitProductReviewAction(
@@ -53,15 +57,7 @@ export async function submitProductReviewAction(
     },
     async () => {
       const result = await submitProductReview(raw);
-      if (result.ok) {
-        revalidatePath("/products");
-        revalidateTag(CATALOG_CACHE_TAG, "max");
-        revalidateTag(CATALOG_PRODUCTS_TAG, "max");
-        if (productSlug) {
-          revalidateTag(productCacheTag(productSlug), "max");
-          revalidatePath(`/products/${productSlug}`);
-        }
-      }
+      if (result.ok) await revalidateReviewsStorefront(productSlug);
       return result;
     },
   );
@@ -80,7 +76,7 @@ export async function updateReviewsEnabledAction(enabled: boolean) {
     },
     async () => {
       const result = await setReviewsEnabled(Boolean(enabled));
-      if (result.ok) revalidateReviewsStorefront();
+      if (result.ok) await revalidateReviewsStorefront();
       return result;
     },
   );
@@ -99,7 +95,7 @@ export async function updateReviewsAutoApproveAction(autoApprove: boolean) {
     },
     async () => {
       const result = await setReviewsAutoApprove(Boolean(autoApprove));
-      if (result.ok) revalidateReviewsStorefront();
+      if (result.ok) await revalidateReviewsStorefront();
       return result;
     },
   );
@@ -118,7 +114,7 @@ export async function updateReviewsPreviewLimitAction(previewLimit: number) {
     },
     async () => {
       const result = await setReviewsPreviewLimit(Number(previewLimit));
-      if (result.ok) revalidateReviewsStorefront();
+      if (result.ok) await revalidateReviewsStorefront();
       return result;
     },
   );
@@ -152,16 +148,7 @@ export async function updateProductReviewStatusAction(
     },
     async () => {
       const result = await updateAdminProductReviewStatus(id, status);
-      if (result.ok) {
-        revalidatePath("/catalog/reviews");
-        revalidatePath("/products");
-        revalidateTag(CATALOG_CACHE_TAG, "max");
-        revalidateTag(CATALOG_PRODUCTS_TAG, "max");
-        if (productSlug) {
-          revalidateTag(productCacheTag(productSlug), "max");
-          revalidatePath(`/products/${productSlug}`);
-        }
-      }
+      if (result.ok) await revalidateReviewsStorefront(productSlug);
       return result;
     },
   );

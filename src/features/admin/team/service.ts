@@ -1249,7 +1249,7 @@ export async function listStaffActivity(
   if (errorIds.length) {
     const { data: errors } = await supabase
       .from("error_logs")
-      .select("id, message, reference_id, type, route")
+      .select("id, message, reference_id, error_type, route")
       .in("id", errorIds);
     if (errors?.length) {
       const byId = new Map(errors.map((row) => [row.id, row]));
@@ -1258,7 +1258,7 @@ export async function listStaffActivity(
         const err = byId.get(item.entityId);
         if (!err) continue;
         const shortBits = [
-          asString(err.type),
+          asString(err.error_type),
           err.message ? truncateText(err.message, 64) : null,
           asString(err.route),
           asString(err.reference_id),
@@ -1269,7 +1269,7 @@ export async function listStaffActivity(
           item.actionLabel,
           `${item.entityLabel} · ${formatDateTime(item.createdAt)}`,
           item.entityId ? `Record ID: ${item.entityId}` : null,
-          asString(err.type) ? `Type: ${err.type}` : null,
+          asString(err.error_type) ? `Type: ${err.error_type}` : null,
           err.message ? `Message: ${err.message}` : null,
           asString(err.route) ? `Route: ${err.route}` : null,
           asString(err.reference_id)

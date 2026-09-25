@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
+import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { requirePermission } from "@/features/auth/session";
 import {
   createAdminCoupon,
@@ -10,10 +11,17 @@ import {
   type CouponMutationResult,
 } from "@/features/coupons/admin-service";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 
-function revalidateCouponPaths() {
+async function revalidateCouponPaths() {
   revalidatePath(getAdminPath("/settings/coupons"));
   revalidatePath(getAdminPath("/settings"));
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return;
+  await publishStorefrontSync({
+    storeId,
+    topics: ["commerce.coupons"],
+  });
 }
 
 export async function createCouponAction(
@@ -31,7 +39,7 @@ export async function createCouponAction(
     },
     () => createAdminCoupon(raw),
   );
-  if (result.ok) revalidateCouponPaths();
+  if (result.ok) await revalidateCouponPaths();
   return result;
 }
 
@@ -52,7 +60,7 @@ export async function updateCouponAction(
     },
     () => updateAdminCoupon(id, raw),
   );
-  if (result.ok) revalidateCouponPaths();
+  if (result.ok) await revalidateCouponPaths();
   return result;
 }
 
@@ -72,6 +80,6 @@ export async function deleteCouponAction(
     },
     () => deleteAdminCoupon(id),
   );
-  if (result.ok) revalidateCouponPaths();
+  if (result.ok) await revalidateCouponPaths();
   return result;
 }

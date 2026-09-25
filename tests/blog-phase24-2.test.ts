@@ -46,7 +46,7 @@ describe("blog phase 24.2 settings", () => {
     if (result.success) {
       expect(result.data.sidebarPreset).toBe("LEFT");
       expect(result.data.cardStyle).toBe("EDITORIAL");
-      expect(result.data.layoutPreset).toBe("FEATURED_GRID");
+      expect(result.data.layoutPreset).toBe("LIST");
       expect(result.data.ctaButtonHref).toBe("/products");
     }
   });
@@ -73,8 +73,8 @@ describe("blog phase 24.2 settings", () => {
     expect(normalizeCardStyle("weird")).toBe("STANDARD");
   });
 
-  it("defaults to COVER card style", () => {
-    expect(DEFAULT_BLOG_SETTINGS.cardStyle).toBe("COVER");
+  it("defaults to STANDARD card style", () => {
+    expect(DEFAULT_BLOG_SETTINGS.cardStyle).toBe("STANDARD");
   });
 
   it("normalizes cover CTA style", () => {

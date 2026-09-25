@@ -1,13 +1,9 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeBlogAudit } from "@/features/blog/audit";
-import {
-  blogPostCacheTag,
-  STOREFRONT_BLOG_CACHE_TAG,
-} from "@/features/blog/cache";
+import { blogPostCacheTag } from "@/features/blog/cache";
 import {
   blogListQuerySchema,
   DEFAULT_BLOG_POST_FORM,
@@ -30,6 +26,7 @@ import {
   buildSeoDescription,
   buildSeoTitle,
 } from "@/features/seo/auto-seo";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { resolveStoragePathUrl } from "@/lib/supabase/storage-url";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
@@ -63,9 +60,12 @@ function mapPostRow(
   };
 }
 
-function revalidateBlogPosts(slug?: string) {
-  revalidateTag(STOREFRONT_BLOG_CACHE_TAG, "max");
-  if (slug) revalidateTag(blogPostCacheTag(slug), "max");
+async function revalidateBlogPosts(storeId: string, slug?: string) {
+  await publishStorefrontSync({
+    storeId,
+    topics: ["content.blog"],
+    extraTags: slug ? [blogPostCacheTag(slug)] : undefined,
+  });
 }
 
 export function toBlogPostFormValues(post: BlogPost): BlogPostFormValues {
@@ -439,7 +439,7 @@ export async function createAdminBlogPost(
     });
   }
 
-  revalidateBlogPosts(values.slug);
+  await revalidateBlogPosts(storeId, values.slug);
   return {
     ok: true,
     post: mapPostRow(data, values.categoryIds, values.productIds),
@@ -580,8 +580,10 @@ export async function updateAdminBlogPost(
     });
   }
 
-  revalidateBlogPosts(current.slug);
-  if (data.slug !== current.slug) revalidateBlogPosts(data.slug);
+  await revalidateBlogPosts(storeId, current.slug);
+  if (data.slug !== current.slug) {
+    await revalidateBlogPosts(storeId, data.slug);
+  }
 
   return {
     ok: true,
@@ -644,7 +646,7 @@ export async function deleteAdminBlogPost(
     metadata: { slug: existing.slug, title: existing.title },
   });
 
-  revalidateBlogPosts(existing.slug);
+  await revalidateBlogPosts(storeId, existing.slug);
   return {
     ok: true,
     post: existing,

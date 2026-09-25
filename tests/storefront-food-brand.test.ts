@@ -38,7 +38,7 @@ describe("food-brand storefront redesign", () => {
     const footer = readSrc("src/components/layout/Footer.tsx");
     expect(btn).toContain("bg-[var(--color-primary)]");
     expect(footer).not.toContain("Bring authentic flavour home");
-    expect(footer).toContain("ctaLine");
-    expect(footer).toContain("Shop now");
+    expect(footer).toContain("showFeaturedProduct");
+    expect(footer).toContain("featuredProduct");
   });
 });

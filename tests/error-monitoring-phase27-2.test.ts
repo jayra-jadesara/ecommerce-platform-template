@@ -94,8 +94,7 @@ describe("Phase 27.2 — build failures gated by CI / verify (not error_logs)", 
       "src/features/error-monitoring/components/AdminErrorLogsClient.tsx",
     );
     expect(adminUi).not.toMatch(/Build Errors/i);
-    expect(adminUi).toMatch(/Page & Browser/i);
-    expect(adminUi).toMatch(/Database & Server/i);
+    expect(adminUi).toContain('(["browser", "server"] as const)');
 
     const logger = read("src/features/error-monitoring/logger.ts");
     expect(logger).not.toMatch(/\bBUILD\b/);

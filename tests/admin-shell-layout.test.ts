@@ -19,7 +19,7 @@ describe("admin shell responsive layout", () => {
   it("pins logout in the sidebar footer without scrolling the whole sidebar", () => {
     expect(source).toContain("LogoutControl");
     expect(source).toContain('label="Log out"');
-    expect(source).toContain("shrink-0 space-y-2 border-t");
+    expect(source).toContain("shrink-0 border-t border-[var(--color-border)]");
   });
 
   it("uses layered admin surfaces and View Store action", () => {

@@ -206,6 +206,12 @@ export interface StoreConfig {
   phoneCountryCode?: string;
 }
 
+/** Active store identity for Realtime sync isolation (not display settings). */
+export type StoreIdentity = {
+  id: string | null;
+  slug: string | null;
+};
+
 export interface ContactConfig {
   email?: string;
   phone?: string;
@@ -296,6 +302,8 @@ export type StorefrontUiConfig = {
 
 /** Aggregate config — populated from Supabase when available. */
 export interface PlatformConfig {
+  /** Store-scoped id/slug for Admin→Storefront live sync. */
+  identity: StoreIdentity;
   brand: BrandConfig;
   theme: ThemeConfig;
   typography: TypographyConfig;

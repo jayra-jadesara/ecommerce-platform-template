@@ -1,15 +1,11 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
-import {
-  CATALOG_CACHE_TAG,
-  CATALOG_PRODUCTS_TAG,
-  productCacheTag,
-} from "@/features/catalog/cache";
+import { productCacheTag } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import {
   aggregateProductStockStatus,
   availableQuantity,
@@ -203,11 +199,19 @@ function emptyToNull(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-function revalidateProducts(productId?: string, slug?: string) {
-  revalidateTag(CATALOG_CACHE_TAG, "max");
-  revalidateTag(CATALOG_PRODUCTS_TAG, "max");
-  if (productId) revalidateTag(productCacheTag(productId), "max");
-  if (slug) revalidateTag(productCacheTag(slug), "max");
+async function revalidateProducts(
+  storeId: string,
+  productId?: string,
+  slug?: string,
+) {
+  const extraTags: string[] = [];
+  if (productId) extraTags.push(productCacheTag(productId));
+  if (slug) extraTags.push(productCacheTag(slug));
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.products"],
+    extraTags,
+  });
 }
 
 async function assertUniqueProductSlug(
@@ -805,7 +809,7 @@ export async function createProduct(input: unknown): Promise<CatalogResult> {
     metadata: { slug: product.slug, status: values.status },
   });
 
-  revalidateProducts(product.id, product.slug);
+  await revalidateProducts(storeId, product.id, product.slug);
   return { ok: true, message: "Product created.", id: product.id };
 }
 
@@ -964,8 +968,10 @@ export async function updateProduct(
     });
   }
 
-  revalidateProducts(id, values.slug);
-  if (existing.slug !== values.slug) revalidateProducts(undefined, existing.slug);
+  await revalidateProducts(storeId, id, values.slug);
+  if (existing.slug !== values.slug) {
+    await revalidateProducts(storeId, undefined, existing.slug);
+  }
   return { ok: true, message: "Product updated.", id };
 }
 
@@ -1019,7 +1025,7 @@ export async function archiveProduct(id: string): Promise<CatalogResult> {
     metadata: {},
   });
 
-  revalidateProducts(id, data.slug);
+  await revalidateProducts(storeId, id, data.slug);
   return { ok: true, message: "Product archived.", id };
 }
 
@@ -1101,7 +1107,7 @@ export async function deleteProduct(id: string): Promise<CatalogResult> {
     metadata: { slug: existing.slug },
   });
 
-  revalidateProducts(id, existing.slug);
+  await revalidateProducts(storeId, id, existing.slug);
   return { ok: true, message: "Product deleted." };
 }
 
@@ -1182,7 +1188,7 @@ export async function updateInventory(
     },
   });
 
-  revalidateProducts(variant.product_id, productRow.slug);
+  await revalidateProducts(storeId, variant.product_id, productRow.slug);
   return { ok: true, message: "Inventory updated." };
 }
 

@@ -105,7 +105,7 @@ describe("phase 30 wishlist setQueryData sync", () => {
     const files = [
       "src/features/catalog/components/ProductCard.tsx",
       "src/features/cart/components/ProductPurchaseActions.tsx",
-      "src/features/blog/components/BlogShopProducts.tsx",
+      "src/features/catalog/components/ProductWishlistButton.tsx",
     ];
     for (const file of files) {
       const source = readSrc(file);

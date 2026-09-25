@@ -1,6 +1,6 @@
 import "server-only";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
@@ -17,12 +17,14 @@ import type {
 } from "@/features/brochure/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { coerceAdminBrochurePdfMaxMb } from "@/features/media/upload-limits";
+import { publishStorefrontSync } from "@/features/sync/server";
+import { STOREFRONT_BROCHURE_CACHE_TAG } from "@/features/sync";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { zodValidationFailure } from "@/lib/validation";
-import type { Tables } from "@/types/database";
+import type { Json, Tables, TablesUpdate } from "@/types/database";
 
 type BrochureRow = Tables<"store_brochures">;
 
@@ -45,9 +47,37 @@ function pdfPublicUrl(path: string): string {
   return resolvePublicStorageUrl(STORAGE_BUCKETS.brochures, path) ?? "";
 }
 
-function revalidateBrochurePaths() {
-  revalidatePath("/brochure");
+async function revalidateBrochurePaths(storeId: string) {
   revalidatePath(getAdminPath("/content/brochures"));
+  await publishStorefrontSync({
+    storeId,
+    topics: ["cms.brochure"],
+  });
+}
+
+function getConfiguredStoreSlug(): string | null {
+  const slug =
+    process.env.STORE_SLUG?.trim() ||
+    process.env.NEXT_PUBLIC_STORE_SLUG?.trim() ||
+    "";
+  return slug || null;
+}
+
+async function resolveStorefrontStoreId(): Promise<string | null> {
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return null;
+  const slug = getConfiguredStoreSlug();
+  let query = supabase.from("stores").select("id").eq("status", "active").limit(1);
+  if (slug) {
+    query = supabase
+      .from("stores")
+      .select("id")
+      .eq("status", "active")
+      .eq("slug", slug)
+      .limit(1);
+  }
+  const { data } = await query.maybeSingle();
+  return data?.id ?? null;
 }
 
 export async function listAdminBrochures(): Promise<StoreBrochure[]> {
@@ -71,12 +101,11 @@ export async function listAdminBrochures(): Promise<StoreBrochure[]> {
   return data.map(mapBrochure);
 }
 
-export async function listStorefrontBrochures(): Promise<StorefrontBrochure[]> {
-  const publicClient = createSupabasePublicClient();
-  const supabase = publicClient ?? (await createSupabaseServerClient());
-
-  const storeId = await resolveActiveStoreId();
-  if (!storeId) return [];
+async function listStorefrontBrochuresUncached(
+  storeId: string,
+): Promise<StorefrontBrochure[]> {
+  const supabase = createSupabasePublicClient();
+  if (!supabase) return [];
 
   const { data, error } = await supabase
     .from("store_brochures")
@@ -100,6 +129,18 @@ export async function listStorefrontBrochures(): Promise<StorefrontBrochure[]> {
       };
     })
     .filter((item): item is StorefrontBrochure => Boolean(item));
+}
+
+export async function listStorefrontBrochures(): Promise<StorefrontBrochure[]> {
+  const storeId = await resolveStorefrontStoreId();
+  if (!storeId) return [];
+
+  const cached = unstable_cache(
+    () => listStorefrontBrochuresUncached(storeId),
+    ["storefront-brochures", storeId],
+    { revalidate: 60, tags: [STOREFRONT_BROCHURE_CACHE_TAG] },
+  );
+  return cached();
 }
 
 export async function getStorefrontBrochureForDownload(
@@ -203,7 +244,7 @@ export async function createBrochure(input: unknown): Promise<
     metadata: { title: parsed.data.title },
   });
 
-  revalidateBrochurePaths();
+  await revalidateBrochurePaths(storeId);
   return {
     ok: true,
     brochure: mapBrochure(data),
@@ -225,7 +266,7 @@ export async function updateBrochure(
     return zodValidationFailure(parsed.error, "Invalid brochure.");
   }
 
-  const patch: Record<string, unknown> = {};
+  const patch: TablesUpdate<"store_brochures"> = {};
   if (parsed.data.title !== undefined) patch.title = parsed.data.title;
   if (parsed.data.isActive !== undefined) patch.is_active = parsed.data.isActive;
   if (!Object.keys(patch).length) {
@@ -263,10 +304,10 @@ export async function updateBrochure(
     action: "BROCHURE_UPDATED",
     entityType: "store_brochure",
     entityId: data.id,
-    metadata: patch,
+    metadata: patch as Json,
   });
 
-  revalidateBrochurePaths();
+  await revalidateBrochurePaths(storeId);
   return {
     ok: true,
     brochure: mapBrochure(data),
@@ -342,7 +383,7 @@ export async function deleteBrochure(
     entityId: id,
   });
 
-  revalidateBrochurePaths();
+  await revalidateBrochurePaths(storeId);
   return { ok: true, message: "Brochure deleted." };
 }
 
@@ -423,7 +464,7 @@ export async function setBrochurePageDescription(
     metadata: { kind: "page_description", description: next },
   });
 
-  revalidateBrochurePaths();
+  await revalidateBrochurePaths(storeId);
   return { ok: true, description: next };
 }
 

@@ -201,7 +201,7 @@ describe("Phase 27.1 — service coverage contracts", () => {
     },
     {
       file: "src/features/cms/pages-service.ts",
-      ops: ["CREATE_PAGE", "UPDATE_PAGE", "DELETE_PAGE"],
+      ops: ["PUBLISH_PAGE", "UPDATE_PAGE", "DELETE_PAGE"],
     },
     {
       file: "src/features/cms/sections-service.ts",

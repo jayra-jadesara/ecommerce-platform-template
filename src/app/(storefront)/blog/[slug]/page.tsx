@@ -80,7 +80,7 @@ async function loadLinkedProducts(
     sort_order: number | null;
   };
 
-  const mapped = data.map((row) => {
+  const mapped: LinkedProductRow[] = data.map((row) => {
     const variants = (
       (row.product_variants as unknown as VariantJoin[] | null) ?? []
     )

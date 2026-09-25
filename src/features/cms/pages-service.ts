@@ -1,14 +1,9 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeContentAudit } from "@/features/cms/audit";
-import {
-  pageCacheTag,
-  STOREFRONT_HOMEPAGE_CACHE_TAG,
-  STOREFRONT_PAGES_CACHE_TAG,
-} from "@/features/cms/cache";
+import { pageCacheTag } from "@/features/cms/cache";
 import {
   ABOUT_PAGE_SLUG,
   CAREER_PAGE_SLUG,
@@ -28,6 +23,7 @@ import {
 } from "@/features/cms/legal-templates";
 import type { ContentPage } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Json, Tables } from "@/types/database";
@@ -50,12 +46,16 @@ function mapPage(row: Tables<"pages">): ContentPage {
   };
 }
 
-function revalidatePages(slug?: string) {
-  revalidateTag(STOREFRONT_PAGES_CACHE_TAG, "max");
-  if (slug === HOMEPAGE_SLUG) {
-    revalidateTag(STOREFRONT_HOMEPAGE_CACHE_TAG, "max");
-  }
-  if (slug) revalidateTag(pageCacheTag(slug), "max");
+async function revalidatePages(storeId: string, slug?: string) {
+  const topics =
+    slug === HOMEPAGE_SLUG
+      ? (["cms.homepage"] as const)
+      : (["cms.pages"] as const);
+  await publishStorefrontSync({
+    storeId,
+    topics,
+    extraTags: slug ? [pageCacheTag(slug)] : undefined,
+  });
 }
 
 export async function getAdminPage(id: string): Promise<ContentPage | null> {
@@ -544,8 +544,10 @@ export async function updateAdminPage(
     });
   }
 
-  revalidatePages(current.slug);
-  if (data.slug !== current.slug) revalidatePages(data.slug);
+  await revalidatePages(storeId, current.slug);
+  if (data.slug !== current.slug) {
+    await revalidatePages(storeId, data.slug);
+  }
 
   return { ok: true, page: mapPage(data), message: "Page saved." };
 }

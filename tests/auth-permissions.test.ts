@@ -170,10 +170,11 @@ describe("authEmailSchema", () => {
 });
 
 describe("registerPhoneSchema", () => {
-  it("requires a 10-digit Indian mobile", () => {
+  it("requires a 10-digit national account number", () => {
     expect(registerPhoneSchema.safeParse("").success).toBe(false);
     expect(registerPhoneSchema.safeParse("12345").success).toBe(false);
-    expect(registerPhoneSchema.safeParse("5123456789").success).toBe(false);
+    expect(registerPhoneSchema.safeParse("512345678").success).toBe(false);
+    expect(registerPhoneSchema.safeParse("5123456789").success).toBe(true);
     expect(registerPhoneSchema.safeParse("9876543210").success).toBe(true);
   });
 });

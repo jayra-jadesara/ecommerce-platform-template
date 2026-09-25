@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -12,7 +11,7 @@ import {
   ensureActiveStore,
   type SettingsUpdateResult,
 } from "@/features/admin/settings/store-context";
-import { STOREFRONT_CONFIG_CACHE_TAG } from "@/features/theme/service";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
 
@@ -105,6 +104,9 @@ export async function updateContactContentSettings(
     });
   }
 
-  revalidateTag(STOREFRONT_CONFIG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId: store.id,
+    topics: ["store.config"],
+  });
   return { ok: true, message: "Contact page saved." };
 }

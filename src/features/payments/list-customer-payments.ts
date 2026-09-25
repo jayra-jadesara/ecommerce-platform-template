@@ -118,7 +118,7 @@ export async function listCustomerPayments(input: {
     }
 
     if (statusFilter && statusFilter !== "ALL") {
-      query = query.eq("status", statusFilter);
+      query = query.eq("status", statusFilter as PaymentStatus);
     }
 
     const { data, error } = await query.limit(500);

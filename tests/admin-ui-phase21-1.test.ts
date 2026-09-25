@@ -102,9 +102,11 @@ describe("phase 21.1 — branding & appearance polish", () => {
     );
     expect(src).toContain("AdminSection");
     expect(src).toContain("Replace");
-    expect(src).toContain("File details");
-    expect(src).toContain("max-h-24");
+    expect(src).toContain("preview");
+    expect(src).toContain("max-h-12 max-w-12 object-contain");
     expect(src).toContain("Explore our collection");
+    // Storage paths stay internal — previews render resolved URLs only.
+    expect(src).not.toContain("Storage path");
   });
 
   it("appearance colors use grouped fields and selected preset affordance", () => {

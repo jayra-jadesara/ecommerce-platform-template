@@ -15,6 +15,7 @@ import {
 } from "@/features/catalog/product-page-settings-parse";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure } from "@/lib/validation";
@@ -128,7 +129,9 @@ export async function updateProductPageSettings(
   }
 
   revalidatePath(SETTINGS_ROUTE);
-  revalidatePath("/products");
-  revalidatePath("/products", "layout");
+  await publishStorefrontSync({
+    storeId,
+    topics: ["catalog.product_page"],
+  });
   return { ok: true, message: "Product page settings saved." };
 }

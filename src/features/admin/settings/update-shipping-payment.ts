@@ -1,6 +1,5 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { getAdminPath } from "@/config/admin-route";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { getCurrentAdmin, hasPermission } from "@/features/auth/session";
@@ -28,8 +27,7 @@ import {
 } from "@/features/shipping/policies";
 import { coerceReplacePhotoMaxMb } from "@/features/media/upload-limits";
 import { syncInheritedOrderItemReturnPolicies } from "@/features/shipping/sync-order-policies";
-import { PRICING_SETTINGS_CACHE_TAG } from "@/features/pricing/config";
-import { CATALOG_CACHE_TAG } from "@/features/catalog/cache";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { zodValidationFailure } from "@/lib/validation";
 
@@ -332,8 +330,10 @@ export async function updateShippingSettings(
     storePolicy: values.returnPolicy,
   });
 
-  revalidateTag(PRICING_SETTINGS_CACHE_TAG, "max");
-  revalidateTag(CATALOG_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId: store.id,
+    topics: ["commerce.pricing"],
+  });
   return { ok: true, message: "Shipping settings saved." };
 }
 
@@ -437,6 +437,9 @@ export async function updatePaymentSettings(
     metadata: { changed },
   });
 
-  revalidateTag(PRICING_SETTINGS_CACHE_TAG, "max");
+  await publishStorefrontSync({
+    storeId: store.id,
+    topics: ["commerce.pricing"],
+  });
   return { ok: true, message: "Payment settings saved." };
 }

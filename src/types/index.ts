@@ -24,6 +24,7 @@ export type {
   SeoStorefrontPathConfig,
   SocialLinksConfig,
   StoreConfig,
+  StoreIdentity,
   StorefrontUiConfig,
   ThemeConfig,
   ThemeMode,

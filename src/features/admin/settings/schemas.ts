@@ -159,7 +159,7 @@ export const footerSettingsSchema = z.object({
   copyrightText: optionalText(240),
   showFeaturedProduct: z.boolean(),
   featuredProductId: z
-    .union([z.string().uuid(), z.literal(""), z.null(), z.undefined()])
+    .union([z.string().uuid(), z.literal(""), z.null()])
     .transform((v) => (v == null || v === "" ? null : v)),
 });
 

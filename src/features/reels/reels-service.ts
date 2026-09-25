@@ -1,10 +1,8 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeContentAudit } from "@/features/cms/audit";
-import { STOREFRONT_REELS_CACHE_TAG } from "@/features/cms/cache";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
 import { listStorefrontProductsByIds } from "@/features/catalog/storefront";
 import {
@@ -24,13 +22,14 @@ import {
   type ReelProductCtaLabel,
 } from "@/features/reels/schemas";
 import type { StoreReel, StorefrontReel } from "@/features/reels/types";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { coerceAdminReelVideoMaxMb } from "@/features/media/upload-limits";
 import { createSupabasePublicClient } from "@/lib/supabase/public";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { STORAGE_BUCKETS } from "@/lib/supabase/storage";
 import { resolvePublicStorageUrl } from "@/lib/supabase/storage-url";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
-import type { Tables } from "@/types/database";
+import type { Tables, TablesUpdate } from "@/types/database";
 
 type ReelRow = Tables<"store_reels">;
 type ReelProductRow = Tables<"store_reel_products">;
@@ -54,8 +53,13 @@ function mapReel(row: ReelRow, productIds: string[] = []): StoreReel {
   };
 }
 
-function revalidateReels() {
-  revalidateTag(STOREFRONT_REELS_CACHE_TAG, "max");
+async function revalidateReels(storeId?: string) {
+  const id = storeId ?? (await resolveActiveStoreId());
+  if (!id) return;
+  await publishStorefrontSync({
+    storeId: id,
+    topics: ["cms.reels"],
+  });
 }
 
 function resolveMediaUrl(path: string | null | undefined): string | undefined {
@@ -189,7 +193,7 @@ export async function createAdminReel(
     entityId: data.id,
     metadata: { kind: "reel" },
   });
-  revalidateReels();
+  await revalidateReels(storeId);
 
   return {
     ok: true,
@@ -251,7 +255,7 @@ export async function updateAdminReel(
     entityId: data.id,
     metadata: { kind: "reel" },
   });
-  revalidateReels();
+  await revalidateReels(storeId);
 
   return {
     ok: true,
@@ -297,7 +301,7 @@ export async function deleteAdminReel(
     entityId: id,
     metadata: { kind: "reel" },
   });
-  revalidateReels();
+  await revalidateReels(storeId);
 
   return { ok: true, message: "Reel deleted." };
 }
@@ -325,7 +329,7 @@ export async function patchAdminReel(
   }
 
   const supabase = await createSupabaseServerClient();
-  const update: Record<string, boolean | number> = {};
+  const update: TablesUpdate<"store_reels"> = {};
   if (patch.isActive !== undefined) update.is_active = patch.isActive;
   if (patch.showOnHome !== undefined) update.show_on_home = patch.showOnHome;
   if (patch.showOnProductPage !== undefined) {
@@ -357,7 +361,7 @@ export async function patchAdminReel(
   }
 
   const productMap = await loadProductIdsByReel(supabase, [data.id]);
-  revalidateReels();
+  await revalidateReels(storeId);
   return {
     ok: true,
     reel: mapReel(data as ReelRow, productMap.get(data.id) ?? []),
@@ -559,7 +563,7 @@ export async function reorderAdminReels(
     }
   }
 
-  revalidateReels();
+  await revalidateReels(storeId);
   const reels = await listAdminReels();
   return { ok: true, reels };
 }
@@ -598,7 +602,7 @@ async function patchReelsStoreSetting(
     if (error) return { ok: false, error: "Unable to save reel settings." };
   }
 
-  revalidateReels();
+  await revalidateReels(storeId);
   return { ok: true };
 }
 

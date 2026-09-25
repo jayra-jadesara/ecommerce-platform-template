@@ -13,9 +13,9 @@ describe("storefront UX polish", () => {
     const src = readSrc("src/components/layout/Header.tsx");
     expect(src).toContain('bg-[var(--color-header-background)]');
     expect(src).not.toContain("bg-[var(--color-header-background)]/90");
-    expect(src).toContain("isolate z-50");
+    expect(src).toContain("relative z-50");
     expect(src).toContain("usePathname");
-    expect(src).toContain("searchOpen");
+    expect(src).toContain("HeaderSearch");
     expect(src).toContain("-translate-x-1/2");
   });
 

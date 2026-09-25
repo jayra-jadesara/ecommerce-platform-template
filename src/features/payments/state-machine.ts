@@ -11,6 +11,7 @@ const ALLOWED: Record<PaymentStatus, ReadonlySet<PaymentStatus>> = {
   CAPTURED: new Set(["REFUNDED"]),
   FAILED: new Set([]),
   REFUNDED: new Set([]),
+  CANCELLED: new Set([]),
 };
 
 export function canTransitionPaymentStatus(

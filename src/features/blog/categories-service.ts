@@ -1,13 +1,9 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeBlogAudit } from "@/features/blog/audit";
-import {
-  blogCategoryCacheTag,
-  STOREFRONT_BLOG_CACHE_TAG,
-} from "@/features/blog/cache";
+import { blogCategoryCacheTag } from "@/features/blog/cache";
 import {
   blogCategoryFormSchema,
   DEFAULT_BLOG_CATEGORY_FORM,
@@ -15,6 +11,7 @@ import {
 } from "@/features/blog/schemas";
 import type { BlogCategory } from "@/features/blog/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { zodValidationFailure, type FieldErrors } from "@/lib/validation";
 import type { Tables } from "@/types/database";
@@ -34,9 +31,12 @@ function mapCategory(row: Tables<"blog_categories">): BlogCategory {
   };
 }
 
-function revalidateBlogCategories(slug?: string) {
-  revalidateTag(STOREFRONT_BLOG_CACHE_TAG, "max");
-  if (slug) revalidateTag(blogCategoryCacheTag(slug), "max");
+async function revalidateBlogCategories(storeId: string, slug?: string) {
+  await publishStorefrontSync({
+    storeId,
+    topics: ["content.blog"],
+    extraTags: slug ? [blogCategoryCacheTag(slug)] : undefined,
+  });
 }
 
 export function toBlogCategoryFormValues(
@@ -171,7 +171,7 @@ export async function createAdminBlogCategory(
     metadata: { slug: values.slug, name: values.name },
   });
 
-  revalidateBlogCategories(values.slug);
+  await revalidateBlogCategories(storeId, values.slug);
   return {
     ok: true,
     category: mapCategory(data),
@@ -251,8 +251,10 @@ export async function updateAdminBlogCategory(
     metadata: { slug: values.slug, is_active: values.isActive },
   });
 
-  revalidateBlogCategories(current.slug);
-  if (data.slug !== current.slug) revalidateBlogCategories(data.slug);
+  await revalidateBlogCategories(storeId, current.slug);
+  if (data.slug !== current.slug) {
+    await revalidateBlogCategories(storeId, data.slug);
+  }
 
   return {
     ok: true,
@@ -303,7 +305,7 @@ export async function deleteAdminBlogCategory(
     metadata: { slug: existing.slug, name: existing.name },
   });
 
-  revalidateBlogCategories(existing.slug);
+  await revalidateBlogCategories(storeId, existing.slug);
   return {
     ok: true,
     category: existing,
@@ -375,7 +377,7 @@ export async function moveAdminBlogCategory(
     metadata: { reorder: direction, swapped_with: b.id },
   });
 
-  revalidateBlogCategories();
+  await revalidateBlogCategories(storeId);
   const updated = await getAdminBlogCategory(id);
   return {
     ok: true,
@@ -442,7 +444,7 @@ export async function reorderAdminBlogCategories(
     metadata: { reorder: "dnd", ordered_ids: orderedIds },
   });
 
-  revalidateBlogCategories();
+  await revalidateBlogCategories(storeId);
   return {
     ok: true,
     category: first,

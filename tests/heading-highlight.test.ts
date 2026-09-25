@@ -70,13 +70,15 @@ describe("premium font catalog", () => {
     expect(SAFE_FONT_OPTIONS.every((f) => f.mood && f.blurb)).toBe(true);
   });
 
-  it("layout loads premium next/font face variables", () => {
+  it("layout loads premium font face variables", () => {
     const layout = read("src/app/layout.tsx");
-    expect(layout).toContain("Playfair_Display");
-    expect(layout).toContain("Plus_Jakarta_Sans");
-    expect(layout).toContain("--font-playfair");
-    expect(layout).toContain("--font-syne");
-    expect(layout).toContain("storefrontFontVariables");
+    const fonts = read("src/features/theme/optional-google-fonts.ts");
+    expect(layout).toContain("FONT_FACE_CSS");
+    expect(layout).toContain("GOOGLE_FONTS_STYLESHEET_HREF");
+    expect(fonts).toContain("Playfair Display");
+    expect(fonts).toContain("Plus Jakarta Sans");
+    expect(fonts).toContain("--font-playfair");
+    expect(fonts).toContain("--font-syne");
   });
 });
 

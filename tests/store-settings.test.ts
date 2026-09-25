@@ -5,6 +5,7 @@ import {
 } from "@/features/auth/permissions";
 import {
   brandingSettingsSchema,
+  DEFAULT_SEO_SETTINGS,
   generalSettingsSchema,
   headerSettingsSchema,
   navigationItemSchema,
@@ -117,6 +118,7 @@ describe("branding validation", () => {
 describe("SEO and general validation", () => {
   it("validates SEO lengths and URLs", () => {
     const ok = seoSettingsSchema.safeParse({
+      ...DEFAULT_SEO_SETTINGS,
       siteTitle: "Acme",
       metaDescription: "A storefront",
       keywords: "shop, goods",
@@ -130,6 +132,7 @@ describe("SEO and general validation", () => {
     expect(ok.success).toBe(true);
 
     const bad = seoSettingsSchema.safeParse({
+      ...DEFAULT_SEO_SETTINGS,
       siteTitle: "Acme",
       metaDescription: "",
       keywords: "",

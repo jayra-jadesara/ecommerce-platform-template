@@ -8,7 +8,7 @@ type BlogPaginationProps = {
   className?: string;
 };
 
-function buildPageItems(
+export function buildPageItems(
   current: number,
   totalPages: number,
 ): Array<number | "ellipsis"> {

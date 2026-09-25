@@ -33,7 +33,8 @@ describe("phase 21.2 — admin shell & IA", () => {
     expect(adminNavSectionLabel()).toContain("tracking");
     expect(adminTopBar()).toContain("h-14");
     expect(adminAppBg()).toContain("color-background");
-    expect(adminSidebarBg()).toContain("color-surface");
+    // Sidebar gradient/motif live in admin.css; the helper is a transparent fallback.
+    expect(adminSidebarBg()).toContain("bg-transparent");
   });
 
   it("flattens primary sidebar destinations with sections", () => {
@@ -123,8 +124,10 @@ describe("phase 21.2 — dashboard & settings hub", () => {
     const dash = read(
       "src/app/(admin)/[adminSlug]/(protected)/dashboard/page.tsx",
     );
-    expect(dash).toContain("Here's what's happening in your store.");
-    expect(dash).toContain("Quick actions");
+    expect(dash).toContain(
+      "Your daily store brief — clear the queue, then skim performance.",
+    );
+    expect(dash).toContain("greeting");
     expect(dash).toContain("AdminSetupChecklist");
     expect(dash).toContain("alwaysShow");
   });
@@ -133,8 +136,8 @@ describe("phase 21.2 — dashboard & settings hub", () => {
     const hub = read(
       "src/app/(admin)/[adminSlug]/(protected)/settings/page.tsx",
     );
-    expect(hub).toContain("Manage how your store looks");
-    expect(hub).toContain("AdminCard");
+    expect(hub).toContain("Identity, checkout, and storefront — in one place.");
+    expect(hub).toContain("adminCard");
     expect(hub).toContain("Appearance");
     expect(hub).toContain("Logo & Branding");
   });

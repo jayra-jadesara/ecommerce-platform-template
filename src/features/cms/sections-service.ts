@@ -1,14 +1,9 @@
 import "server-only";
 
-import { revalidateTag } from "next/cache";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeContentAudit } from "@/features/cms/audit";
-import {
-  pageCacheTag,
-  STOREFRONT_HOMEPAGE_CACHE_TAG,
-  STOREFRONT_PAGES_CACHE_TAG,
-} from "@/features/cms/cache";
+import { pageCacheTag } from "@/features/cms/cache";
 import {
   aboutHomeFlagsToOtherInformationConfig,
   defaultConfigForType,
@@ -20,6 +15,7 @@ import {
 } from "@/features/cms/schemas";
 import type { ContentSection } from "@/features/cms/types";
 import { unexpectedFailure } from "@/features/error-monitoring/unexpected";
+import { publishStorefrontSync } from "@/features/sync/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type { FieldErrors } from "@/lib/validation";
 import type { Json, Tables, TablesUpdate } from "@/types/database";
@@ -42,15 +38,21 @@ async function revalidateForPageId(pageId: string) {
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("pages")
-    .select("slug")
+    .select("slug, store_id")
     .eq("id", pageId)
     .maybeSingle();
   if (!data) return;
-  revalidateTag(STOREFRONT_PAGES_CACHE_TAG, "max");
-  revalidateTag(pageCacheTag(data.slug), "max");
-  if (data.slug === HOMEPAGE_SLUG) {
-    revalidateTag(STOREFRONT_HOMEPAGE_CACHE_TAG, "max");
-  }
+  const storeId = data.store_id ?? (await resolveActiveStoreId());
+  if (!storeId) return;
+  const topics =
+    data.slug === HOMEPAGE_SLUG
+      ? (["cms.homepage"] as const)
+      : (["cms.pages"] as const);
+  await publishStorefrontSync({
+    storeId,
+    topics,
+    extraTags: [pageCacheTag(data.slug)],
+  });
 }
 
 async function assertPageInStore(pageId: string): Promise<{
