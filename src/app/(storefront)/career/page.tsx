@@ -6,7 +6,6 @@ import { CareerPageClient } from "@/features/career/components/CareerPageClient"
 import { listPublishedJobPosts } from "@/features/career/service";
 import { getPublishedStorefrontPage } from "@/features/cms/storefront";
 import type { CareerSectionConfig } from "@/features/cms/schemas";
-import { sfEyebrow } from "@/components/ui/storefront-classes";
 import { metadataForManagedStorePage } from "@/features/seo/managed-page-metadata";
 import { resolveManagedPageSeo } from "@/features/seo/resolve";
 
@@ -56,7 +55,7 @@ export default async function CareerPage() {
   const [{ config, cmsCareer, sectionConfig, heading }, jobs] =
     await Promise.all([loadCareerPayload(), listPublishedJobPosts()]);
 
-  const { brand, contact, store } = config;
+  const { contact, store } = config;
   const published = Boolean(cmsCareer);
 
   const paragraphs = (sectionConfig.introParagraphs ?? []).filter((p) =>
@@ -100,12 +99,11 @@ export default async function CareerPage() {
       ) : null}
 
       <div className="sf-career-hero sf-career-hero--center">
-        <p className={sfEyebrow()}>{brand.name}</p>
         <StorefrontHeading
           title={heading}
           as="h1"
           align="center"
-          className="mt-2 !text-3xl md:!text-4xl"
+          className="!text-3xl md:!text-4xl"
         />
         <p className="sf-career-hero__support">{heroSupport}</p>
         {inviteLine ? (

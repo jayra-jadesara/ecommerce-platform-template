@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { DeveloperCredit } from "@/components/layout/DeveloperCredit";
+import { FloatingWhatsAppButton } from "@/components/layout/FloatingWhatsAppButton";
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 import { ScrollToTop } from "@/components/layout/ScrollToTop";
@@ -27,6 +28,9 @@ export function AppLayout({
   categoryMenu = [],
 }: AppLayoutProps) {
   const showDevCredit = Boolean(developerCredit.enabled);
+  const whatsappHref = config.social.whatsapp?.trim() || "";
+  const showWhatsappFloat =
+    Boolean(config.social.whatsappFloatEnabled) && Boolean(whatsappHref);
 
   return (
     <div
@@ -52,6 +56,9 @@ export function AppLayout({
         featuredProduct={featuredProduct}
       />
       <ScrollToTop />
+      {showWhatsappFloat ? (
+        <FloatingWhatsAppButton href={whatsappHref} />
+      ) : null}
       <DeveloperCredit />
     </div>
   );

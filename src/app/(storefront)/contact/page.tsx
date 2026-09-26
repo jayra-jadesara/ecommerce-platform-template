@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import FacebookOutlinedIcon from "@mui/icons-material/FacebookOutlined";
+import InstagramIcon from "@mui/icons-material/Instagram";
+import LinkedInIcon from "@mui/icons-material/LinkedIn";
+import WhatsAppIcon from "@mui/icons-material/WhatsApp";
+import XIcon from "@mui/icons-material/X";
+import YouTubeIcon from "@mui/icons-material/YouTube";
 import {
   PageShell,
   PageHeroBanner,
@@ -23,6 +30,15 @@ import {
   formatPhoneTelHref,
 } from "@/lib/phone";
 import { cn } from "@/lib/cn";
+
+const SOCIAL_ICON: Record<string, ReactNode> = {
+  Instagram: <InstagramIcon sx={{ fontSize: 20 }} />,
+  Facebook: <FacebookOutlinedIcon sx={{ fontSize: 20 }} />,
+  YouTube: <YouTubeIcon sx={{ fontSize: 20 }} />,
+  LinkedIn: <LinkedInIcon sx={{ fontSize: 20 }} />,
+  X: <XIcon sx={{ fontSize: 18 }} />,
+  WhatsApp: <WhatsAppIcon sx={{ fontSize: 20 }} />,
+};
 
 export const dynamic = "force-dynamic";
 
@@ -244,9 +260,14 @@ export default async function ContactPage() {
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={sfBtn("outline")}
+                      className={cn(
+                        sfBtn("outline"),
+                        "sf-contact-spotlight__social",
+                      )}
+                      aria-label={label}
+                      title={label}
                     >
-                      {label}
+                      {SOCIAL_ICON[label] ?? label}
                     </a>
                   ))}
                 </div>

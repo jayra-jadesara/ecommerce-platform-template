@@ -19,6 +19,7 @@ import {
 } from "@/features/platform-usage/plan-limits";
 import type { SupabaseUsageResult } from "@/features/platform-usage/supabase-usage-service";
 import type { VercelUsageSnapshot } from "@/features/platform-usage/vercel-usage-service";
+import { StorageCleanupPanel } from "@/features/platform-usage/components/StorageCleanupPanel";
 
 function levelTone(level: QuotaLevel): string {
   switch (level) {
@@ -74,9 +75,11 @@ function TipList({ tips }: { tips: string[] }) {
 export function PlatformUsageClient({
   supabase,
   vercel,
+  canCleanup = false,
 }: {
   supabase: SupabaseUsageResult;
   vercel: VercelUsageSnapshot;
+  canCleanup?: boolean;
 }) {
   const [tab, setTab] = useState(0);
 
@@ -101,24 +104,35 @@ export function PlatformUsageClient({
         <Tab label="Vercel" />
       </Tabs>
 
-      {tab === 0 ? <SupabasePanel data={supabase} /> : null}
+      {tab === 0 ? (
+        <SupabasePanel data={supabase} canCleanup={canCleanup} />
+      ) : null}
       {tab === 1 ? <VercelPanel data={vercel} /> : null}
     </div>
   );
 }
 
-function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
+function SupabasePanel({
+  data,
+  canCleanup,
+}: {
+  data: SupabaseUsageResult;
+  canCleanup: boolean;
+}) {
   if (!data.ok) {
     return (
-      <div className={cn(adminCard(), "p-4")}>
-        <p className="text-[14px] font-semibold text-[var(--color-foreground)]">
-          Could not load Supabase usage
-        </p>
-        <p className="mt-1 text-[13px] text-[var(--color-muted)]">{data.error}</p>
-        <p className="mt-3 text-[12px] text-[var(--color-muted)]">
-          Make sure <code className="text-[11px]">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
-          is set and the latest database migration is applied.
-        </p>
+      <div className="space-y-4">
+        <div className={cn(adminCard(), "p-4")}>
+          <p className="text-[14px] font-semibold text-[var(--color-foreground)]">
+            Could not load Supabase usage
+          </p>
+          <p className="mt-1 text-[13px] text-[var(--color-muted)]">{data.error}</p>
+          <p className="mt-3 text-[12px] text-[var(--color-muted)]">
+            Make sure <code className="text-[11px]">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+            is set and the latest database migration is applied.
+          </p>
+        </div>
+        {canCleanup ? <StorageCleanupPanel /> : null}
       </div>
     );
   }
@@ -239,6 +253,8 @@ function SupabasePanel({ data }: { data: SupabaseUsageResult }) {
           </li>
         </ul>
       </AdminChartCard>
+
+      {canCleanup ? <StorageCleanupPanel /> : null}
 
       <div className={cn(adminCard(), "p-4")}>
         <h3 className="text-[13px] font-semibold text-[var(--color-foreground)]">

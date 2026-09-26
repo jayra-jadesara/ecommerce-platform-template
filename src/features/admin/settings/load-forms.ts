@@ -100,7 +100,11 @@ export async function loadGeneralSettingsForm(): Promise<{
       socialYoutube: text(row?.social_youtube),
       socialLinkedin: text(row?.social_linkedin),
       socialX: text(row?.social_x),
-      socialWhatsapp: whatsappDisplayValue(text(row?.social_whatsapp)),
+      socialWhatsapp: whatsappDisplayValue(
+        text(row?.social_whatsapp),
+        normalizePhoneCountryCode(row?.phone_country_code),
+      ),
+      whatsappFloatEnabled: Boolean(row?.whatsapp_float_enabled),
       adminImageMaxMb: coerceAdminImageMaxMb(row?.admin_image_max_mb),
       adminReelVideoMaxMb: coerceAdminReelVideoMaxMb(
         row?.admin_reel_video_max_mb,

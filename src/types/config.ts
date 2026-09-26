@@ -246,7 +246,10 @@ export interface SocialLinksConfig {
   youtube?: string;
   linkedin?: string;
   x?: string;
+  /** Full WhatsApp chat URL (e.g. https://wa.me/91…). */
   whatsapp?: string;
+  /** Fixed floating chat button on storefront (default off). */
+  whatsappFloatEnabled?: boolean;
 }
 
 export type LogoSize = "small" | "medium" | "large" | "xlarge";

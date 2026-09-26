@@ -3,6 +3,7 @@ import "server-only";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeErrorAudit } from "@/features/error-monitoring/audit";
+import { isBenignNextStreamAbort } from "@/features/error-monitoring/benign-next-errors";
 import { persistErrorLog } from "@/features/error-monitoring/persist";
 import type { LogErrorInput, LogErrorResult } from "@/features/error-monitoring/types";
 import {
@@ -14,6 +15,10 @@ import {
  * Central server logger. Never throws. Never recursively logs logger failures.
  */
 export async function logError(input: LogErrorInput): Promise<LogErrorResult> {
+  if (isBenignNextStreamAbort(input.message)) {
+    return { id: null, referenceId: "ignored-next-stream-abort", grouped: false };
+  }
+
   let storeId = input.storeId ?? null;
   let userId = input.userId ?? null;
   let userLogin = input.userLogin ?? null;

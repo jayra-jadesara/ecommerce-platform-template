@@ -82,8 +82,12 @@ export async function updateGeneralStoreSettings(
     social_linkedin: emptyToNull(values.socialLinkedin),
     social_x: emptyToNull(values.socialX),
     social_whatsapp: emptyToNull(
-      normalizeWhatsappForStorage(values.socialWhatsapp ?? ""),
+      normalizeWhatsappForStorage(
+        values.socialWhatsapp ?? "",
+        values.phoneCountryCode,
+      ),
     ),
+    whatsapp_float_enabled: values.whatsappFloatEnabled,
     admin_image_max_mb: values.adminImageMaxMb,
     contact_banner_enabled: values.contactBannerEnabled,
     contact_banner_image_path: values.contactBannerImagePath,

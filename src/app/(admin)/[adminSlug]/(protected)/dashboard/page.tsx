@@ -7,6 +7,7 @@ import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
 import AssignmentReturnOutlinedIcon from "@mui/icons-material/AssignmentReturnOutlined";
 import InventoryOutlinedIcon from "@mui/icons-material/InventoryOutlined";
 import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
+import StorageOutlinedIcon from "@mui/icons-material/StorageOutlined";
 import Link from "next/link";
 import {
   requirePermission,
@@ -42,6 +43,12 @@ import {
   ROLE_UI_CAPABILITIES,
 } from "@/features/admin/team/role-ui-capabilities";
 import type { Permission } from "@/features/auth/permissions";
+import {
+  formatBytes,
+  quotaLevel,
+  quotaPercent,
+} from "@/features/platform-usage/plan-limits";
+import { getSupabaseUsageSnapshot } from "@/features/platform-usage/supabase-usage-service";
 
 function greetingForHour(hour: number) {
   if (hour < 12) return "Good morning";
@@ -100,6 +107,8 @@ export default async function AdminDashboardPage({
   const canReviews = hasPermission(admin, "reviews.view");
   const canCustomers = hasPermission(admin, "customers.view");
   const canSettings = hasPermission(admin, "settings.view");
+  const canPlatform = hasPermission(admin, "platform.view");
+  const canHosting = canPlatform || canSettings;
   const canOverview = canDashboardCard(admin, "dash_overview.view");
   const canAttention = canDashboardCard(admin, "dash_attention.view");
   const canRecent = canDashboardCard(admin, "dash_recent.view");
@@ -117,102 +126,135 @@ export default async function AdminDashboardPage({
   const from = typeof sp.from === "string" ? sp.from : null;
   const to = typeof sp.to === "string" ? sp.to : null;
 
-  const [customerCount, overview, ops, analytics] = await Promise.all([
-    canCustomers && canOverview
-      ? countStoreCustomers(storeId)
-      : Promise.resolve(0),
-    canOverview || canRecent
-      ? getAdminDashboardStats(storeId)
-      : Promise.resolve(null),
-    canAttention
-      ? getAdminDashboardOps(storeId)
-      : Promise.resolve(null),
-    canCharts
-      ? getAdminDashboardAnalytics(storeId, {
-          days:
-            range === "7d"
-              ? 7
-              : range === "30d"
-                ? 30
-                : range === "90d"
-                  ? 90
-                  : 14,
-          from,
-          to,
-        })
-      : Promise.resolve(null),
-  ]);
+  const [customerCount, overview, ops, analytics, storageUsage] =
+    await Promise.all([
+      canCustomers && canOverview
+        ? countStoreCustomers(storeId)
+        : Promise.resolve(0),
+      canOverview || canRecent
+        ? getAdminDashboardStats(storeId)
+        : Promise.resolve(null),
+      canAttention
+        ? getAdminDashboardOps(storeId)
+        : Promise.resolve(null),
+      canCharts
+        ? getAdminDashboardAnalytics(storeId, {
+            days:
+              range === "7d"
+                ? 7
+                : range === "30d"
+                  ? 30
+                  : range === "90d"
+                    ? 90
+                    : 14,
+            from,
+            to,
+          })
+        : Promise.resolve(null),
+      canAttention && canHosting
+        ? getSupabaseUsageSnapshot()
+        : Promise.resolve(null),
+    ]);
 
-  const attentionItems: AdminAttentionItem[] = !ops
-    ? []
-    : ([
-        canOrders
-          ? {
-              id: "confirmed",
-              title: "Orders ready to pack",
-              description: "Confirmed and waiting for processing.",
-              count: ops.confirmedOrders,
-              href: getAdminPath("/orders?status=CONFIRMED"),
-              tone: "warning",
-              icon: <ShoppingBagOutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-        canOrders
-          ? {
-              id: "processing",
-              title: "Orders ready to ship",
-              description: "In processing — mark shipped when packed.",
-              count: ops.processingOrders,
-              href: getAdminPath("/orders?status=PROCESSING"),
-              tone: "info",
-              icon: <LocalShippingOutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-        canOrders
-          ? {
-              id: "replaces",
-              title: "Replace requests",
-              description: "Customers waiting on a decision.",
-              count: ops.openReplaceRequests,
-              href: getAdminPath("/orders"),
-              tone: "warning",
-              icon: <AssignmentReturnOutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-        canReviews
-          ? {
-              id: "reviews",
-              title: "Reviews to moderate",
-              description: "Pending before they go live on the store.",
-              count: ops.pendingReviews,
-              href: getAdminPath("/catalog/reviews?status=pending"),
-              tone: "info",
-              icon: <RateReviewOutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-        canInventory
-          ? {
-              id: "out-of-stock",
-              title: "Out of stock",
-              description: "Variants with zero available quantity.",
-              count: ops.outOfStockVariants,
-              href: getAdminPath("/catalog/inventory?stock=OUT"),
-              tone: "error",
-              icon: <InventoryOutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-        canInventory
-          ? {
-              id: "low-stock",
-              title: "Low stock",
-              description: "At or below the store warn level.",
-              count: ops.lowStockVariants,
-              href: getAdminPath("/catalog/inventory?stock=LOW"),
-              tone: "warning",
-              icon: <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />,
-            }
-          : null,
-      ].filter(Boolean) as AdminAttentionItem[]);
+  const storageAttention: AdminAttentionItem | null = (() => {
+    if (!storageUsage || !storageUsage.ok) return null;
+    const level = quotaLevel(
+      storageUsage.fileBytes,
+      storageUsage.fileLimitBytes,
+    );
+    if (level === "ok") return null;
+    const pct = Math.round(
+      quotaPercent(storageUsage.fileBytes, storageUsage.fileLimitBytes),
+    );
+    return {
+      id: "storage-quota",
+      title:
+        level === "over"
+          ? "File storage over limit"
+          : level === "critical"
+            ? "File storage nearly full"
+            : "File storage getting full",
+      description: `${formatBytes(storageUsage.fileBytes)} of ${formatBytes(storageUsage.fileLimitBytes)} used — clear unused media on Hosting & storage.`,
+      count: pct,
+      href: getAdminPath("/platform-usage"),
+      tone: level === "warn" ? "warning" : "error",
+      icon: <StorageOutlinedIcon sx={{ fontSize: 20 }} />,
+    };
+  })();
+
+  const attentionItems: AdminAttentionItem[] = [
+    ...(storageAttention ? [storageAttention] : []),
+    ...(!ops
+      ? []
+      : ([
+          canOrders
+            ? {
+                id: "confirmed",
+                title: "Orders ready to pack",
+                description: "Confirmed and waiting for processing.",
+                count: ops.confirmedOrders,
+                href: getAdminPath("/orders?status=CONFIRMED"),
+                tone: "warning" as const,
+                icon: <ShoppingBagOutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+          canOrders
+            ? {
+                id: "processing",
+                title: "Orders ready to ship",
+                description: "In processing — mark shipped when packed.",
+                count: ops.processingOrders,
+                href: getAdminPath("/orders?status=PROCESSING"),
+                tone: "info" as const,
+                icon: <LocalShippingOutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+          canOrders
+            ? {
+                id: "replaces",
+                title: "Replace requests",
+                description: "Customers waiting on a decision.",
+                count: ops.openReplaceRequests,
+                href: getAdminPath("/orders"),
+                tone: "warning" as const,
+                icon: <AssignmentReturnOutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+          canReviews
+            ? {
+                id: "reviews",
+                title: "Reviews to moderate",
+                description: "Pending before they go live on the store.",
+                count: ops.pendingReviews,
+                href: getAdminPath("/catalog/reviews?status=pending"),
+                tone: "info" as const,
+                icon: <RateReviewOutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+          canInventory
+            ? {
+                id: "out-of-stock",
+                title: "Out of stock",
+                description: "Variants with zero available quantity.",
+                count: ops.outOfStockVariants,
+                href: getAdminPath("/catalog/inventory?stock=OUT"),
+                tone: "error" as const,
+                icon: <InventoryOutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+          canInventory
+            ? {
+                id: "low-stock",
+                title: "Low stock",
+                description: "At or below the store warn level.",
+                count: ops.lowStockVariants,
+                href: getAdminPath("/catalog/inventory?stock=LOW"),
+                tone: "warning" as const,
+                icon: <Inventory2OutlinedIcon sx={{ fontSize: 20 }} />,
+              }
+            : null,
+        ].filter(Boolean) as AdminAttentionItem[])),
+  ];
 
   const setupIncomplete =
     canSettings && setup.completedCount < setup.items.length;

@@ -4,7 +4,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ImageOutlinedIcon from "@mui/icons-material/ImageOutlined";
 import TextField from "@mui/material/TextField";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import type { Resolver } from "react-hook-form";
 import { saveGeneralSettingsAction } from "@/features/admin/settings/actions";
@@ -38,6 +44,7 @@ import {
   adminFieldsGrid,
 } from "@/features/admin/ui/admin-classes";
 import { FieldError } from "@/features/admin/ui/FieldError";
+import { StorePhoneField } from "@/features/admin/ui/StorePhoneField";
 import { adminImageMaxMbOptions } from "@/features/media/upload-limits";
 import {
   applyServerFieldErrors,
@@ -45,8 +52,11 @@ import {
   resultFieldErrors,
 } from "@/features/admin/validation/form-errors";
 import { whatsappDisplayValue } from "@/features/admin/settings/validation";
-import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";
 import {
+  exampleOrderNumber,
+  suggestOrderNumberPrefixFromStoreName,
+} from "@/features/orders/order-number-prefix";
+import { StorefrontLoaderMark } from "@/components/ui/StorefrontLoaderMark";import {
   STOREFRONT_LOADER_STYLES,
   STOREFRONT_LOADER_STYLE_META,
   type StorefrontLoaderStyle,
@@ -207,7 +217,11 @@ export function GeneralSettingsForm({
       ),
       socialWhatsapp: whatsappDisplayValue(
         initialValues.socialWhatsapp ?? "",
+        initialValues.phoneCountryCode?.trim() ||
+          countryDefaults.phoneCountryCode ||
+          DEFAULT_PHONE_COUNTRY_CODE,
       ),
+      whatsappFloatEnabled: initialValues.whatsappFloatEnabled ?? false,
       adminImageMaxMb: initialValues.adminImageMaxMb ?? 5,
       adminReelVideoMaxMb: initialValues.adminReelVideoMaxMb ?? 25,
     } satisfies GeneralSettingsFormValues;
@@ -218,6 +232,7 @@ export function GeneralSettingsForm({
     handleSubmit,
     reset,
     setValue,
+    getValues,
     setError: setFieldError,
     setFocus,
     formState: { isDirty },
@@ -231,6 +246,7 @@ export function GeneralSettingsForm({
   const country = useWatch({ control, name: "country" }) ?? DEFAULT_STORE_COUNTRY;
   const phoneCountryCode =
     useWatch({ control, name: "phoneCountryCode" }) ?? DEFAULT_PHONE_COUNTRY_CODE;
+  const displayName = useWatch({ control, name: "displayName" }) ?? "";
   const state = useWatch({ control, name: "state" }) ?? "";
   const city = useWatch({ control, name: "city" }) ?? "";
   const adminImageMaxMb = useWatch({ control, name: "adminImageMaxMb" }) ?? 5;
@@ -239,6 +255,29 @@ export function GeneralSettingsForm({
   const cityInList = cityOptions.includes(city);
   const showCityText =
     customCity || (Boolean(city) && !cityInList) || cityOptions.length === 0;
+
+  /** When false, prefix follows store name; true after the admin edits it. */
+  const [orderPrefixManual, setOrderPrefixManual] = useState(() => {
+    const suggested = suggestOrderNumberPrefixFromStoreName(
+      initialValues.displayName,
+    );
+    const loaded = (initialValues.orderNumberPrefix || "ORD")
+      .trim()
+      .toUpperCase();
+    return loaded !== "ORD" && loaded !== suggested;
+  });
+
+  const locked = !canUpdate || pending;
+
+  useEffect(() => {
+    if (orderPrefixManual || locked) return;
+    const suggested = suggestOrderNumberPrefixFromStoreName(displayName);
+    if (getValues("orderNumberPrefix") === suggested) return;
+    setValue("orderNumberPrefix", suggested, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  }, [displayName, orderPrefixManual, locked, getValues, setValue]);
 
   const onSubmit = handleSubmit((values) => {
     setError(null);
@@ -266,8 +305,6 @@ export function GeneralSettingsForm({
     });
   });
 
-  const locked = !canUpdate || pending;
-
   return (
     <form
       onSubmit={(event) => {
@@ -288,9 +325,18 @@ export function GeneralSettingsForm({
           setError(null);
           setSuccess(null);
           setCustomCity(false);
+          const suggested = suggestOrderNumberPrefixFromStoreName(
+            defaults.displayName,
+          );
+          const loaded = (defaults.orderNumberPrefix || "ORD")
+            .trim()
+            .toUpperCase();
+          setOrderPrefixManual(loaded !== "ORD" && loaded !== suggested);
         }}
         onResetDefaults={() => {
           const d = defaultsForCountry(DEFAULT_STORE_COUNTRY);
+          const nextName = DEFAULT_GENERAL_SETTINGS.displayName;
+          const suggested = suggestOrderNumberPrefixFromStoreName(nextName);
           reset({
             ...DEFAULT_GENERAL_SETTINGS,
             country: DEFAULT_STORE_COUNTRY,
@@ -298,7 +344,9 @@ export function GeneralSettingsForm({
             defaultLocale: d.defaultLocale,
             currency: d.currency,
             phoneCountryCode: d.phoneCountryCode,
+            orderNumberPrefix: suggested,
           });
+          setOrderPrefixManual(false);
           setSuccess(null);
           setCustomCity(false);
         }}
@@ -348,27 +396,41 @@ export function GeneralSettingsForm({
             <Controller
               name="socialWhatsapp"
               control={control}
-              render={({ field, fieldState }) => (
-                <div className="sm:col-span-2">
-                  <TextField
-                    {...field}
-                    label="WhatsApp"
-                    fullWidth
-                    size="small"
-                    disabled={locked}
-                    error={Boolean(fieldState.error)}
-                    placeholder={`${phoneCountryCode} 98765 43210`}
-                    helperText={
-                      fieldState.error
-                        ? undefined
-                        : `Include dial code · default ${phoneCountryCode}`
-                    }
+              render={({ fieldState }) => (
+                <div className="sm:col-span-2 space-y-3">
+                  <div>
+                    <StorePhoneField
+                      name="socialWhatsapp"
+                      control={control}
+                      countryCode={phoneCountryCode}
+                      label="WhatsApp"
+                      disabled={locked}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        fieldState.error
+                          ? undefined
+                          : "10-digit number · dial code follows Phone dial code below"
+                      }
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                  </div>
+                  <Controller
+                    name="whatsappFloatEnabled"
+                    control={control}
+                    render={({ field }) => (
+                      <AdminToggle
+                        variant="row"
+                        label="Floating WhatsApp button"
+                        description="Shows a fixed green chat button on the bottom-left of the storefront. Off by default."
+                        checked={Boolean(field.value)}
+                        disabled={locked}
+                        onChange={field.onChange}
+                      />
+                    )}
                   />
-                  <FieldError message={fieldState.error?.message} />
                 </div>
               )}
-            />
-          </div>
+            />          </div>
         </Section>
 
         <Section
@@ -475,27 +537,57 @@ export function GeneralSettingsForm({
             <Controller
               name="orderNumberPrefix"
               control={control}
-              render={({ field, fieldState }) => (
-                <div className="sm:col-span-2">
-                  <TextField
-                    {...field}
-                    label="Order number prefix"
-                    fullWidth
-                    size="small"
-                    disabled={locked}
-                    placeholder="SONET-ORD"
-                    error={Boolean(fieldState.error)}
-                    helperText={
-                      fieldState.error?.message ??
-                      `New orders look like ${(field.value || "ORD").toUpperCase()}-…. Existing orders keep their numbers.`
-                    }
-                    onChange={(event) =>
-                      field.onChange(event.target.value.toUpperCase())
-                    }
-                  />
-                  <FieldError message={fieldState.error?.message} />
-                </div>
-              )}
+              render={({ field, fieldState }) => {
+                const example = exampleOrderNumber(field.value);
+                const suggested =
+                  suggestOrderNumberPrefixFromStoreName(displayName);
+                return (
+                  <div className="sm:col-span-2">
+                    <TextField
+                      {...field}
+                      label="Order number prefix"
+                      fullWidth
+                      size="small"
+                      disabled={locked}
+                      placeholder={suggested}
+                      error={Boolean(fieldState.error)}
+                      helperText={
+                        fieldState.error?.message ??
+                        (orderPrefixManual
+                          ? "Custom prefix — edit freely. Existing orders keep their numbers."
+                          : "Auto-filled from store name. Change it anytime if you prefer.")
+                      }
+                      onChange={(event) => {
+                        setOrderPrefixManual(true);
+                        field.onChange(event.target.value.toUpperCase());
+                      }}
+                    />
+                    <FieldError message={fieldState.error?.message} />
+                    <p className="mt-1.5 text-[12px] text-[var(--color-muted)]">
+                      Example:{" "}
+                      <span className="font-semibold tabular-nums text-[var(--color-foreground)]">
+                        {example}
+                      </span>
+                    </p>
+                    {orderPrefixManual && suggested !== field.value ? (
+                      <button
+                        type="button"
+                        disabled={locked}
+                        className="mt-1.5 text-[12px] font-medium text-[var(--color-primary)] underline-offset-2 hover:underline disabled:opacity-50"
+                        onClick={() => {
+                          setOrderPrefixManual(false);
+                          setValue("orderNumberPrefix", suggested, {
+                            shouldDirty: true,
+                            shouldValidate: true,
+                          });
+                        }}
+                      >
+                        Use store name ({suggested})
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              }}
             />
           </div>
         </Section>

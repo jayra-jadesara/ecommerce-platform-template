@@ -3,6 +3,7 @@ import { z } from "zod";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { getCurrentUser } from "@/features/auth/session";
 import { writeErrorAudit } from "@/features/error-monitoring/audit";
+import { isBenignNextStreamAbort } from "@/features/error-monitoring/benign-next-errors";
 import { persistErrorLog } from "@/features/error-monitoring/persist";
 import {
   ERROR_SOURCES,
@@ -82,6 +83,9 @@ export async function POST(request: Request) {
     }
 
     const data = parsed.data;
+    if (isBenignNextStreamAbort(data.message)) {
+      return new NextResponse(null, { status: 204 });
+    }
     const type = data.type ?? "BROWSER";
     // Clients may only report client-side categories.
     const allowedClientTypes = new Set([

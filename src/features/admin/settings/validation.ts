@@ -1,5 +1,9 @@
 import { z } from "zod";
 import { MAX_MEDIA_IMAGE_BYTES } from "@/features/media/upload-limits";
+import {
+  DEFAULT_PHONE_COUNTRY_CODE,
+  normalizeNationalPhone,
+} from "@/lib/phone";
 
 const UNSAFE_URL_PROTOCOLS = /^(javascript|data|vbscript|file):/i;
 
@@ -100,10 +104,13 @@ export function isWhatsappPhoneInput(value: string): boolean {
 }
 
 /**
- * Normalize for DB / storefront href: phone → https://wa.me/<digits>,
- * existing http(s)/wa.me URLs kept; empty → "".
+ * Normalize for DB / storefront href: national 10-digit (+ dial) → https://wa.me/<cc><national>.
+ * Existing http(s)/wa.me URLs kept; empty → "".
  */
-export function normalizeWhatsappForStorage(value: string): string {
+export function normalizeWhatsappForStorage(
+  value: string,
+  countryCode: string = DEFAULT_PHONE_COUNTRY_CODE,
+): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   if (isSafeHttpUrl(trimmed) && trimmed) {
@@ -118,15 +125,17 @@ export function normalizeWhatsappForStorage(value: string): string {
       return trimmed;
     }
   }
-  if (isWhatsappPhoneInput(trimmed)) {
-    const digits = whatsappDigits(trimmed);
-    return digits ? `https://wa.me/${digits}` : "";
-  }
-  return trimmed;
+  const national = normalizeNationalPhone(trimmed, countryCode);
+  if (!national) return "";
+  const cc = (countryCode || DEFAULT_PHONE_COUNTRY_CODE).replace(/\D/g, "");
+  return `https://wa.me/${cc}${national}`;
 }
 
-/** Form display: wa.me URL → +<digits>, otherwise as stored. */
-export function whatsappDisplayValue(value: string): string {
+/** Form display: wa.me / +digits → 10-digit national number for StorePhoneField. */
+export function whatsappDisplayValue(
+  value: string,
+  countryCode: string = DEFAULT_PHONE_COUNTRY_CODE,
+): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   try {
@@ -135,33 +144,17 @@ export function whatsappDisplayValue(value: string): string {
         trimmed.startsWith("http") ? trimmed : `https://${trimmed}`,
       );
       if (url.hostname.replace(/^www\./, "") === "wa.me") {
-        const digits = whatsappDigits(url.pathname);
-        return digits ? `+${digits}` : trimmed;
+        return normalizeNationalPhone(url.pathname, countryCode);
       }
     }
   } catch {
     /* fall through */
   }
-  return trimmed;
+  return normalizeNationalPhone(trimmed, countryCode);
 }
 
-function isValidWhatsappInput(value: string): boolean {
-  const trimmed = value.trim();
-  if (!trimmed) return true;
-  if (isSafeHttpUrl(trimmed)) return true;
-  return isWhatsappPhoneInput(trimmed);
-}
-
-/** Phone number or chat URL; empty allowed. Storage normalization happens on save. */
-export const optionalWhatsapp = z
-  .string()
-  .trim()
-  .max(2048)
-  .refine((v) => isValidWhatsappInput(v), {
-    message: "Enter a WhatsApp number (with country code) or a wa.me / http(s) link.",
-  })
-  .transform((v) => (v.trim() ? v.trim() : ""));
-
+/** @deprecated Prefer optionalNationalPhone + StorePhoneField for WhatsApp. */
+export const optionalWhatsapp = optionalNationalPhone;
 export const LOGO_SIZE_OPTIONS = ["small", "medium", "large", "xlarge"] as const;
 export type LogoSizeOption = (typeof LOGO_SIZE_OPTIONS)[number];
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { isBenignNextStreamAbort } from "@/features/error-monitoring/benign-next-errors";
 import {
   LIMITS,
   type ErrorSource,
@@ -80,6 +81,7 @@ export async function reportClientErrorAsync(
     if (typeof window === "undefined") return null;
     const message = clip(payload.message, LIMITS.message);
     if (!message) return null;
+    if (isBenignNextStreamAbort(message)) return null;
     if (shouldSkip(payload)) return null;
 
     const body = JSON.stringify({

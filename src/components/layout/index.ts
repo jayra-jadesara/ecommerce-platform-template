@@ -5,6 +5,7 @@ export { Header } from "./Header";
 export { Footer } from "./Footer";
 export { Container } from "./Container";
 export { PageShell } from "./PageShell";
+export { FloatingWhatsAppButton } from "./FloatingWhatsAppButton";
 export {
   StorefrontBreadcrumb,
   type StorefrontBreadcrumbItem,

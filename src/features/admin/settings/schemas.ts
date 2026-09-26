@@ -6,7 +6,7 @@ import {
   optionalPhone,
   optionalSafeHttpUrl,
   optionalSafeNavHref,
-  optionalWhatsapp,
+  optionalNationalPhone,
   requiredSafeNavHref,
 } from "@/features/admin/settings/validation";
 import {
@@ -67,7 +67,9 @@ export const generalSettingsSchema = z.object({
   socialYoutube: optionalSafeHttpUrl,
   socialLinkedin: optionalSafeHttpUrl,
   socialX: optionalSafeHttpUrl,
-  socialWhatsapp: optionalWhatsapp,
+  socialWhatsapp: optionalNationalPhone,
+  /** Storefront fixed floating WhatsApp button (default off). */
+  whatsappFloatEnabled: z.boolean(),
   /** Admin image uploads max size in MB (1–10). */
   adminImageMaxMb: z.coerce.number().int().min(1).max(10),
   /** Admin reel video uploads max size in MB (2–50). */
@@ -514,6 +516,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   socialLinkedin: "",
   socialX: "",
   socialWhatsapp: "",
+  whatsappFloatEnabled: false,
   adminImageMaxMb: 5,
   adminReelVideoMaxMb: 25,
   contactBannerEnabled: false,

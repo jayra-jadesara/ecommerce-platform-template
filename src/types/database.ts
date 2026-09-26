@@ -173,6 +173,7 @@ export type Database = {
           social_linkedin: string | null;
           social_x: string | null;
           social_whatsapp: string | null;
+          whatsapp_float_enabled: boolean;
           header_sticky: boolean;
           header_search_enabled: boolean;
           header_cart_enabled: boolean;
@@ -258,6 +259,7 @@ export type Database = {
           social_linkedin?: string | null;
           social_x?: string | null;
           social_whatsapp?: string | null;
+          whatsapp_float_enabled?: boolean;
           header_sticky?: boolean;
           header_search_enabled?: boolean;
           header_cart_enabled?: boolean;

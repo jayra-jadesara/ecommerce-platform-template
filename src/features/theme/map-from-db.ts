@@ -161,6 +161,7 @@ export type SettingsRow = {
   social_linkedin?: string | null;
   social_x?: string | null;
   social_whatsapp?: string | null;
+  whatsapp_float_enabled?: boolean | null;
   header_sticky?: boolean | null;
   header_search_enabled?: boolean | null;
   header_cart_enabled?: boolean | null;
@@ -561,6 +562,7 @@ export function mapSettingsRowToSocial(
     linkedin: row.social_linkedin?.trim() || undefined,
     x: row.social_x?.trim() || undefined,
     whatsapp: row.social_whatsapp?.trim() || undefined,
+    whatsappFloatEnabled: Boolean(row.whatsapp_float_enabled),
   };
 }
 

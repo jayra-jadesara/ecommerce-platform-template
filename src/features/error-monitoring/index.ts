@@ -20,6 +20,10 @@ export {
   extractErrorMessage,
 } from "@/features/error-monitoring/sanitize";
 export { isBrowserTabError, isPaymentRelated, pageNameFromRoute } from "@/features/error-monitoring/classify";
+export {
+  BENIGN_NEXT_STREAM_ABORT_MESSAGE,
+  isBenignNextStreamAbort,
+} from "@/features/error-monitoring/benign-next-errors";
 export { ERROR_LOG_RETENTION_DAYS } from "@/features/error-monitoring/retention";
 export {
   unexpectedFailure,
