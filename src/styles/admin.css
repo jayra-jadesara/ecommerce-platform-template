@@ -241,9 +241,10 @@
 .MuiMenuItem-root.Mui-selected {
   background-color: color-mix(
     in srgb,
-    var(--color-primary) 18%,
+    var(--color-foreground) 72%,
     transparent
   ) !important;
+  color: var(--color-card) !important;
   font-weight: 600;
 }
 
@@ -251,7 +252,7 @@
 .MuiMenuItem-root.Mui-selected.Mui-focusVisible {
   background-color: color-mix(
     in srgb,
-    var(--color-primary) 26%,
+    var(--color-foreground) 82%,
     transparent
   ) !important;
 }

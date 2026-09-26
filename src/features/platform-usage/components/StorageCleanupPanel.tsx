@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
@@ -24,6 +23,7 @@ import type {
   CleanupResult,
 } from "@/features/platform-usage/cleanup/types";
 import { AdminDialog } from "@/features/admin/ui/AdminDialog";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { adminBtn, adminCard } from "@/features/admin/ui/admin-classes";
 import { cn } from "@/lib/cn";
 
@@ -33,6 +33,11 @@ const ACTIONS: CleanupActionId[] = [
   "clear_orders_payments",
   "format_reset",
 ];
+
+const RETENTION_SELECT_OPTIONS = RETENTION_MONTH_OPTIONS.map((opt) => ({
+  value: String(opt.months),
+  label: opt.label,
+}));
 
 function isCleanupResult(value: unknown): value is CleanupResult {
   return Boolean(
@@ -150,22 +155,15 @@ export function StorageCleanupPanel() {
           January — you still keep a full period of recent history).
         </p>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <TextField
-            select
+          <AdminSelect
             label="Delete data…"
-            size="small"
-            value={retentionMonths}
-            onChange={(e) =>
-              setRetentionMonths(Number(e.target.value) as RetentionMonths)
+            value={String(retentionMonths)}
+            onChange={(value) =>
+              setRetentionMonths(Number(value) as RetentionMonths)
             }
+            options={RETENTION_SELECT_OPTIONS}
             className="min-w-[14rem] flex-1"
-          >
-            {RETENTION_MONTH_OPTIONS.map((opt) => (
-              <MenuItem key={opt.months} value={opt.months}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </TextField>
+          />
           <button
             type="button"
             className={cn(adminBtn("primary"), "shrink-0")}
@@ -265,23 +263,15 @@ export function StorageCleanupPanel() {
             </p>
 
             {active === "purge_older_than" ? (
-              <TextField
-                select
+              <AdminSelect
                 label="Delete data…"
-                size="small"
-                fullWidth
-                value={retentionMonths}
-                onChange={(e) =>
-                  setRetentionMonths(Number(e.target.value) as RetentionMonths)
+                value={String(retentionMonths)}
+                onChange={(value) =>
+                  setRetentionMonths(Number(value) as RetentionMonths)
                 }
+                options={RETENTION_SELECT_OPTIONS}
                 disabled={pending}
-              >
-                {RETENTION_MONTH_OPTIONS.map((opt) => (
-                  <MenuItem key={opt.months} value={opt.months}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </TextField>
+              />
             ) : null}
 
             <div className="max-h-40 overflow-auto rounded-lg border border-[var(--color-border)]">

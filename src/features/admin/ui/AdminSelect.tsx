@@ -40,19 +40,30 @@ const menuProps = {
         color: "var(--color-foreground)",
         backgroundImage: "none",
         "& .MuiMenuItem-root": {
-          fontSize: "0.75rem",
+          fontSize: "0.8125rem",
           fontFamily: "inherit",
-          minHeight: 32,
-          py: 0.75,
+          minHeight: 36,
+          py: 0.85,
+          borderRadius: "6px",
+          mx: 0.5,
+          my: 0.15,
         },
+        /* Selected: solid muted foreground (matches Tracking / premium admin) */
         "& .MuiMenuItem-root.Mui-selected": {
           backgroundColor:
-            "color-mix(in srgb, var(--color-primary) 12%, var(--color-card))",
+            "color-mix(in srgb, var(--color-foreground) 72%, transparent) !important",
+          color: "var(--color-card) !important",
+          fontWeight: 600,
         },
-        "& .MuiMenuItem-root.Mui-focused, & .MuiMenuItem-root:hover": {
+        "& .MuiMenuItem-root.Mui-selected:hover": {
           backgroundColor:
-            "color-mix(in srgb, var(--color-primary) 8%, var(--color-card))",
+            "color-mix(in srgb, var(--color-foreground) 82%, transparent) !important",
         },
+        "& .MuiMenuItem-root:not(.Mui-selected):hover, & .MuiMenuItem-root:not(.Mui-selected).Mui-focused":
+          {
+            backgroundColor:
+              "color-mix(in srgb, var(--color-primary) 10%, var(--color-card))",
+          },
       },
     },
   },
