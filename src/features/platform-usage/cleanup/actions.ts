@@ -2,6 +2,11 @@
 
 import { getAdminPath } from "@/config/admin-route";
 import type { CleanupActionId } from "@/features/platform-usage/cleanup/types";
+import {
+  DEFAULT_RETENTION_MONTHS,
+  isValidRetentionMonths,
+  type RetentionMonths,
+} from "@/features/platform-usage/cleanup/retention";
 import { runLoggedMutation } from "@/features/error-monitoring/unexpected";
 
 const HOSTING_ROUTE = getAdminPath("/platform-usage");
@@ -14,7 +19,10 @@ async function previewService() {
   return import("@/features/platform-usage/cleanup/preview");
 }
 
-export async function previewCleanupAction(action: CleanupActionId) {
+export async function previewCleanupAction(
+  action: CleanupActionId,
+  retentionMonths?: number,
+) {
   const { getCurrentAdmin } = await import("@/features/auth/session");
   const { hasAnyRole } = await import("@/features/auth/permissions");
   const admin = await getCurrentAdmin();
@@ -27,7 +35,13 @@ export async function previewCleanupAction(action: CleanupActionId) {
 
   try {
     const { previewCleanup } = await previewService();
-    const preview = await previewCleanup(action);
+    const months =
+      action === "purge_older_than"
+        ? isValidRetentionMonths(retentionMonths)
+          ? retentionMonths
+          : DEFAULT_RETENTION_MONTHS
+        : undefined;
+    const preview = await previewCleanup(action, months);
     return { ok: true as const, preview };
   } catch (err) {
     return {
@@ -40,6 +54,7 @@ export async function previewCleanupAction(action: CleanupActionId) {
 export async function executeCleanupAction(input: {
   action: CleanupActionId;
   confirmPhrase: string;
+  retentionMonths?: number;
 }) {
   return runLoggedMutation(
     {
@@ -51,7 +66,11 @@ export async function executeCleanupAction(input: {
     },
     async () => {
       const { executeCleanup } = await cleanupService();
-      return executeCleanup(input);
+      return executeCleanup({
+        action: input.action,
+        confirmPhrase: input.confirmPhrase,
+        retentionMonths: input.retentionMonths as RetentionMonths | undefined,
+      });
     },
   );
 }

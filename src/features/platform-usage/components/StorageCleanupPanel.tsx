@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import MenuItem from "@mui/material/MenuItem";
 import TextField from "@mui/material/TextField";
 import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
 import {
@@ -12,6 +13,11 @@ import {
   ACTION_META,
   CONFIRM_PHRASES,
 } from "@/features/platform-usage/cleanup/keep-wipe";
+import {
+  DEFAULT_RETENTION_MONTHS,
+  RETENTION_MONTH_OPTIONS,
+  type RetentionMonths,
+} from "@/features/platform-usage/cleanup/retention";
 import type {
   CleanupActionId,
   CleanupPreview,
@@ -46,6 +52,9 @@ export function StorageCleanupPanel() {
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [retentionMonths, setRetentionMonths] = useState<RetentionMonths>(
+    DEFAULT_RETENTION_MONTHS,
+  );
 
   useEffect(() => {
     if (!active) {
@@ -57,7 +66,10 @@ export function StorageCleanupPanel() {
     let cancelled = false;
     setLoadingPreview(true);
     setError(null);
-    void previewCleanupAction(active).then((res) => {
+    void previewCleanupAction(
+      active,
+      active === "purge_older_than" ? retentionMonths : undefined,
+    ).then((res) => {
       if (cancelled) return;
       setLoadingPreview(false);
       if (!res.ok) {
@@ -70,7 +82,7 @@ export function StorageCleanupPanel() {
     return () => {
       cancelled = true;
     };
-  }, [active]);
+  }, [active, retentionMonths]);
 
   function closeDialog() {
     if (pending) return;
@@ -84,6 +96,8 @@ export function StorageCleanupPanel() {
       const result = await executeCleanupAction({
         action: active,
         confirmPhrase: phrase,
+        retentionMonths:
+          active === "purge_older_than" ? retentionMonths : undefined,
       });
       if (!isCleanupResult(result)) {
         setError("Cleanup failed unexpectedly.");
@@ -101,6 +115,7 @@ export function StorageCleanupPanel() {
 
   const required = active ? CONFIRM_PHRASES[active] : "";
   const phraseOk = phrase.trim().toUpperCase() === required;
+  const retentionMeta = ACTION_META.purge_older_than;
 
   return (
     <div className={cn(adminCard(), "p-4")}>
@@ -125,6 +140,44 @@ export function StorageCleanupPanel() {
           {success}
         </p>
       ) : null}
+
+      <div className="mt-4 rounded-xl border border-[var(--color-border)] bg-[color-mix(in_srgb,var(--color-surface)_40%,var(--color-card))] px-3 py-3">
+        <p className="text-[13px] font-semibold text-[var(--color-foreground)]">
+          {retentionMeta.title}
+        </p>
+        <p className="mt-0.5 text-[12px] leading-snug text-[var(--color-muted)]">
+          {retentionMeta.description} Uses a rolling window from today (safe in
+          January — you still keep a full period of recent history).
+        </p>
+        <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-end">
+          <TextField
+            select
+            label="Delete data…"
+            size="small"
+            value={retentionMonths}
+            onChange={(e) =>
+              setRetentionMonths(Number(e.target.value) as RetentionMonths)
+            }
+            className="min-w-[14rem] flex-1"
+          >
+            {RETENTION_MONTH_OPTIONS.map((opt) => (
+              <MenuItem key={opt.months} value={opt.months}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <button
+            type="button"
+            className={cn(adminBtn("primary"), "shrink-0")}
+            onClick={() => {
+              setSuccess(null);
+              setActive("purge_older_than");
+            }}
+          >
+            Preview & delete…
+          </button>
+        </div>
+      </div>
 
       <ul className="mt-4 space-y-2">
         {ACTIONS.map((action) => {
@@ -210,6 +263,26 @@ export function StorageCleanupPanel() {
             <p className="text-[13px] leading-relaxed text-[var(--color-muted)]">
               {preview.description}
             </p>
+
+            {active === "purge_older_than" ? (
+              <TextField
+                select
+                label="Delete data…"
+                size="small"
+                fullWidth
+                value={retentionMonths}
+                onChange={(e) =>
+                  setRetentionMonths(Number(e.target.value) as RetentionMonths)
+                }
+                disabled={pending}
+              >
+                {RETENTION_MONTH_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.months} value={opt.months}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            ) : null}
 
             <div className="max-h-40 overflow-auto rounded-lg border border-[var(--color-border)]">
               <table className="w-full text-left text-[12px]">

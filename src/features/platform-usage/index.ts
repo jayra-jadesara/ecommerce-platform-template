@@ -14,3 +14,7 @@ export {
   CONFIRM_PHRASES,
   ACTION_META,
 } from "@/features/platform-usage/cleanup/keep-wipe";
+export {
+  RETENTION_MONTH_OPTIONS,
+  DEFAULT_RETENTION_MONTHS,
+} from "@/features/platform-usage/cleanup/retention";

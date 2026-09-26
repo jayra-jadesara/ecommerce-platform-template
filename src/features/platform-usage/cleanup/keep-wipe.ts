@@ -108,6 +108,7 @@ export const CONFIRM_PHRASES: Record<CleanupActionId, string> = {
   clear_orders_payments: "CLEAR",
   clear_activity_logs: "CLEAR",
   clear_replace_photos: "CLEAR",
+  purge_older_than: "CLEAR",
 };
 
 export const ACTION_META: Record<
@@ -133,6 +134,11 @@ export const ACTION_META: Record<
     title: "Clear replace photos",
     description:
       "Deletes customer replace-request photos from storage and clears photo paths. Request rows stay.",
+  },
+  purge_older_than: {
+    title: "Delete older data",
+    description:
+      "Frees space like large sites: removes orders, payments, activity, and replace photos older than the period you choose. Catalog, customers, and settings stay.",
   },
 };
 

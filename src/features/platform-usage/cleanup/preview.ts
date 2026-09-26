@@ -13,6 +13,8 @@ import {
   assertWipeSafe,
 } from "@/features/platform-usage/cleanup/keep-wipe";
 import { countTableRows } from "@/features/platform-usage/cleanup/db";
+import { previewPurgeOlderThan } from "@/features/platform-usage/cleanup/purge-older";
+import type { RetentionMonths } from "@/features/platform-usage/cleanup/retention";
 import type {
   CleanupActionId,
   CleanupPreview,
@@ -39,7 +41,15 @@ async function countsForTables(
 
 export async function previewCleanup(
   action: CleanupActionId,
+  retentionMonths?: RetentionMonths,
 ): Promise<CleanupPreview> {
+  if (action === "purge_older_than") {
+    if (!retentionMonths) {
+      throw new Error("Choose how far back to delete.");
+    }
+    return previewPurgeOlderThan(retentionMonths);
+  }
+
   const meta = ACTION_META[action];
   const confirmPhrase = CONFIRM_PHRASES[action];
 
@@ -100,7 +110,6 @@ export async function previewCleanup(
     };
   }
 
-  // clear_replace_photos
   const supabase = createSupabaseServiceClient();
   const { count } = await supabase
     .from("order_replace_requests")

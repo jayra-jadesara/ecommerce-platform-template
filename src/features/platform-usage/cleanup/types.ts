@@ -2,7 +2,8 @@ export type CleanupActionId =
   | "format_reset"
   | "clear_orders_payments"
   | "clear_activity_logs"
-  | "clear_replace_photos";
+  | "clear_replace_photos"
+  | "purge_older_than";
 
 export type CleanupTableCount = {
   table: string;
@@ -18,6 +19,9 @@ export type CleanupPreview = {
   tables: CleanupTableCount[];
   storageBuckets: Array<{ bucket: string; label: string }>;
   notes: string[];
+  /** Present for purge_older_than */
+  retentionMonths?: number;
+  cutoffIso?: string;
 };
 
 export type CleanupResult = {
@@ -29,4 +33,6 @@ export type CleanupResult = {
   deletedShoppers?: number;
   warnings?: string[];
   message?: string;
+  retentionMonths?: number;
+  cutoffIso?: string;
 };

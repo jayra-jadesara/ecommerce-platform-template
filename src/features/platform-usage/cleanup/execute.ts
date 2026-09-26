@@ -29,6 +29,9 @@ import type {
   CleanupActionId,
   CleanupResult,
 } from "@/features/platform-usage/cleanup/types";
+import type { RetentionMonths } from "@/features/platform-usage/cleanup/retention";
+import { isValidRetentionMonths } from "@/features/platform-usage/cleanup/retention";
+import { executePurgeOlderThan } from "@/features/platform-usage/cleanup/purge-older";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 
 async function requireSuperAdminActor(): Promise<
@@ -337,6 +340,7 @@ async function runClearReplacePhotos(actor: {
 export async function executeCleanup(input: {
   action: CleanupActionId;
   confirmPhrase: string;
+  retentionMonths?: number;
 }): Promise<CleanupResult> {
   const actor = await requireSuperAdminActor();
   if (!actor.ok) return { ok: false, error: actor.error };
@@ -365,6 +369,19 @@ export async function executeCleanup(input: {
         return await runClearActivity(actor);
       case "clear_replace_photos":
         return await runClearReplacePhotos(actor);
+      case "purge_older_than": {
+        if (!isValidRetentionMonths(input.retentionMonths)) {
+          return {
+            ok: false,
+            error: "Choose how far back to delete (6 months to 6 years).",
+          };
+        }
+        return await executePurgeOlderThan({
+          months: input.retentionMonths as RetentionMonths,
+          userId: actor.userId,
+          storeId: actor.storeId,
+        });
+      }
       default:
         return { ok: false, error: "Unknown cleanup action." };
     }
