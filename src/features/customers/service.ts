@@ -27,6 +27,8 @@ export type StoreCustomerListItem = {
   lastOrderNumber: string | null;
   /** Default saved address, else last paid order shipping snapshot. */
   address: StoreCustomerAddressSummary | null;
+  /** True when this login also has Team & roles / admin access. */
+  isStaffAdmin: boolean;
 };
 
 export type StoreCustomerListResult = {
@@ -162,20 +164,25 @@ export async function listStoreCustomers(input: {
     return { items: [], total: 0, page, pageSize };
   }
 
-  const [{ data: profiles }, { data: addresses }] = await Promise.all([
-    supabase
-      .from("user_profiles")
-      .select("id, first_name, last_name, phone")
-      .in("id", userIds),
-    supabase
-      .from("user_addresses")
-      .select(
-        "user_id, full_name, phone, address_line_1, address_line_2, city, state, postal_code, country, is_default, updated_at",
-      )
-      .in("user_id", userIds)
-      .order("updated_at", { ascending: false }),
-  ]);
+  const [{ data: profiles }, { data: addresses }, { data: adminRows }] =
+    await Promise.all([
+      supabase
+        .from("user_profiles")
+        .select("id, first_name, last_name, phone")
+        .in("id", userIds),
+      supabase
+        .from("user_addresses")
+        .select(
+          "user_id, full_name, phone, address_line_1, address_line_2, city, state, postal_code, country, is_default, updated_at",
+        )
+        .in("user_id", userIds)
+        .order("updated_at", { ascending: false }),
+      supabase.from("admin_users").select("user_id").in("user_id", userIds),
+    ]);
 
+  const staffIds = new Set(
+    (adminRows ?? []).map((row) => row.user_id).filter(Boolean),
+  );
   const profileMap = new Map((profiles ?? []).map((row) => [row.id, row]));
 
   // Prefer is_default address; otherwise most recently updated (query order).
@@ -237,6 +244,7 @@ export async function listStoreCustomers(input: {
       lastOrderAt: acc.lastOrderAt,
       lastOrderNumber: acc.lastOrderNumber,
       address,
+      isStaffAdmin: staffIds.has(id),
     };
   });
 

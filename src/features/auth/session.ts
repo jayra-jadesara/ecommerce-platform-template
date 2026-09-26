@@ -3,7 +3,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getAdminPath } from "@/config/admin-route";
+import { getAdminPath, getAdminRouteSegment } from "@/config/admin-route";
 import {
   hasPermission as roleHasPermission,
   mergePermissionSets,
@@ -11,13 +11,18 @@ import {
   type Permission,
 } from "@/features/auth/permissions";
 import { readStaffViewOverlay } from "@/features/auth/impersonation";
+import {
+  AUTH_LAST_SIGN_IN_HEADER,
+  AUTH_USER_EMAIL_HEADER,
+  AUTH_USER_ID_HEADER,
+} from "@/features/auth/proxy-auth-headers";
 import { STAFF_VIEW_HEADER } from "@/features/auth/staff-view-constants";
+import { readSessionStartedAtSec } from "@/features/auth/session-started";
 import { headers } from "next/headers";
 import { measureServerOperation } from "@/lib/perf/measure-server";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import type { AdminRoleCode, Tables } from "@/types/database";
 import type { User } from "@supabase/supabase-js";
-
 export type AuthUser = {
   id: string;
   email: string | null;
@@ -40,8 +45,42 @@ export type AdminContext = {
   impersonation: AdminImpersonationInfo | null;
 };
 
-/** Shared auth.getUser() for the current request (cookie-bound). */
+type ProxyAuthSnapshot = {
+  id: string;
+  email: string | null;
+  lastSignInAt: string | null;
+};
+
+async function readProxyAuthSnapshot(): Promise<ProxyAuthSnapshot | null> {
+  const headerList = await headers();
+  const id = headerList.get(AUTH_USER_ID_HEADER)?.trim();
+  if (!id) return null;
+  return {
+    id,
+    email: headerList.get(AUTH_USER_EMAIL_HEADER),
+    lastSignInAt: headerList.get(AUTH_LAST_SIGN_IN_HEADER),
+  };
+}
+
+/**
+ * Shared auth identity for the current request.
+ * Prefer proxy-validated headers (one getUser per HTTP request); fall back to
+ * supabase.auth.getUser() for actions / unmatched paths.
+ */
 const getAuthSessionUser = cache(async (): Promise<User | null> => {
+  const fromProxy = await readProxyAuthSnapshot();
+  if (fromProxy) {
+    return {
+      id: fromProxy.id,
+      email: fromProxy.email ?? undefined,
+      last_sign_in_at: fromProxy.lastSignInAt ?? undefined,
+      app_metadata: {},
+      user_metadata: {},
+      aud: "authenticated",
+      created_at: "",
+    } as User;
+  }
+
   return measureServerOperation("auth.getUser", async () => {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.getUser();
@@ -55,16 +94,65 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   return user ? toAuthUser(user) : null;
 });
 
+/**
+ * Storefront shopper session TTL from store_settings.customer_session_max_hours.
+ * Admins skip this (role session max applies in admin instead).
+ */
+async function enforceCustomerStorefrontSession(): Promise<boolean> {
+  const startedSec = await readSessionStartedAtSec();
+  if (startedSec == null) return true;
+
+  const { resolveActiveStoreId } = await import(
+    "@/features/admin/settings/store-context"
+  );
+  const storeId = await resolveActiveStoreId();
+  if (!storeId) return true;
+
+  const supabase = await createSupabaseServerClient();
+  const { data } = await supabase
+    .from("store_settings")
+    .select("customer_session_max_hours")
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  const maxHours = data?.customer_session_max_hours;
+  if (maxHours == null || maxHours <= 0) return true;
+
+  const ageSec = Math.floor(Date.now() / 1000) - startedSec;
+  return ageSec <= maxHours * 3600;
+}
+
 export async function requireUser(loginPath = "/login"): Promise<AuthUser> {
   const user = await getCurrentUser();
   if (!user) redirect(loginPath);
+
+  // Storefront session max — skip when the user is also an active admin.
+  const admin = await getActorAdmin();
+  if (!admin) {
+    const withinLimit = await enforceCustomerStorefrontSession();
+    if (!withinLimit) {
+      redirect(`/api/auth/expire-session?next=${encodeURIComponent(loginPath)}`);
+    }
+  }
+
   return user;
 }
+
+type RoleRow = {
+  id: string;
+  code: string | null;
+  session_max_hours: number | null;
+};
 
 async function loadAdminContextForUserId(
   userId: string,
   emailHint?: string | null,
-): Promise<Omit<AdminContext, "impersonation"> | null> {
+): Promise<
+  | (Omit<AdminContext, "impersonation"> & {
+      roleSessionMaxHours: number | null;
+    })
+  | null
+> {
   const supabase = await createSupabaseServerClient();
 
   const { data: admin, error: adminError } = await supabase
@@ -85,16 +173,23 @@ async function loadAdminContextForUserId(
   const roleIds = roleLinks.map((row) => row.role_id);
   const { data: roleRows, error: rolesError } = await supabase
     .from("roles")
-    .select("id, code")
+    .select("id, code, session_max_hours")
     .in("id", roleIds);
 
   if (rolesError || !roleRows?.length) return null;
 
-  const roles = roleRows
+  const typedRoles = roleRows as RoleRow[];
+
+  const roles = typedRoles
     .map((row) => row.code)
     .filter((code): code is AdminRoleCode => Boolean(code));
 
   if (roles.length === 0) return null;
+
+  const hours = typedRoles
+    .map((row) => row.session_max_hours)
+    .filter((h): h is number => typeof h === "number" && h > 0);
+  const roleSessionMaxHours = hours.length ? Math.min(...hours) : null;
 
   const { data: permRows } = await supabase
     .from("role_permissions")
@@ -112,7 +207,7 @@ async function loadAdminContextForUserId(
   // Prefer DB grants per role (so Super Admin edits stick). Fall back to the
   // TS system map only when a role has no role_permissions rows yet.
   const permissionBags: Array<Iterable<string>> = [];
-  for (const row of roleRows) {
+  for (const row of typedRoles) {
     const dbList = (permsByRoleId.get(row.id) ?? []).filter(Boolean);
     if (dbList.length > 0) {
       permissionBags.push(dbList);
@@ -134,7 +229,41 @@ async function loadAdminContextForUserId(
     admin,
     roles,
     permissions,
+    roleSessionMaxHours,
   };
+}
+
+async function isAdminAreaRequest(): Promise<boolean> {
+  const headerList = await headers();
+  const pathname = headerList.get("x-admin-pathname") ?? "";
+  try {
+    const base = `/${getAdminRouteSegment()}`;
+    return pathname === base || pathname.startsWith(`${base}/`);
+  } catch {
+    return false;
+  }
+}
+
+async function enforceRoleSessionMax(
+  _authUser: User,
+  maxHours: number | null,
+): Promise<boolean> {
+  if (maxHours == null || maxHours <= 0) return true;
+
+  // Only the login-start cookie is authoritative. Falling back to last_sign_in_at
+  // falsely expires long-lived sessions after deploy; proxy seeds the cookie.
+  const startedSec = await readSessionStartedAtSec();
+  if (startedSec == null) return true;
+
+  const maxAgeSec = maxHours * 3600;
+  const ageSec = Math.floor(Date.now() / 1000) - startedSec;
+  if (ageSec <= maxAgeSec) return true;
+
+  // Cookie mutation is illegal during RSC — route handler clears the session.
+  if (await isAdminAreaRequest()) {
+    redirect("/api/auth/expire-session");
+  }
+  return false;
 }
 
 /**
@@ -150,7 +279,13 @@ export const getActorAdmin = cache(async (): Promise<AdminContext | null> => {
       authUser.email ?? null,
     );
     if (!loaded) return null;
-    return { ...loaded, impersonation: null };
+    const ok = await enforceRoleSessionMax(
+      authUser,
+      loaded.roleSessionMaxHours,
+    );
+    if (!ok) return null;
+    const { roleSessionMaxHours: _h, ...rest } = loaded;
+    return { ...rest, impersonation: null };
   });
 });
 
@@ -165,38 +300,49 @@ export const getCurrentAdmin = cache(async (): Promise<AdminContext | null> => {
     );
     if (!actor) return null;
 
+    const ok = await enforceRoleSessionMax(
+      authUser,
+      actor.roleSessionMaxHours,
+    );
+    if (!ok) return null;
+
+    const { roleSessionMaxHours: _h, ...actorRest } = actor;
+
     const overlay = await readStaffViewOverlay();
     if (
       overlay &&
       overlay.actorUserId === authUser.id &&
-      actor.roles.includes("SUPER_ADMIN") &&
+      actorRest.roles.includes("SUPER_ADMIN") &&
       overlay.targetUserId !== authUser.id
     ) {
       const target = await loadAdminContextForUserId(overlay.targetUserId);
       if (target) {
-        let targetEmail = target.user.email;
+        const { roleSessionMaxHours: _th, ...targetRest } = target;
+        let targetEmail = targetRest.user.email;
         try {
           const service = createSupabaseServiceClient();
-          const { data } = await service.auth.admin.getUserById(target.user.id);
+          const { data } = await service.auth.admin.getUserById(
+            targetRest.user.id,
+          );
           targetEmail = data.user?.email ?? targetEmail;
         } catch {
           // Banner can fall back to role label.
         }
         return {
-          ...target,
-          user: { ...target.user, email: targetEmail },
+          ...targetRest,
+          user: { ...targetRest.user, email: targetEmail },
           impersonation: {
-            actorUserId: actor.user.id,
-            actorEmail: actor.user.email,
-            targetUserId: target.user.id,
+            actorUserId: actorRest.user.id,
+            actorEmail: actorRest.user.email,
+            targetUserId: targetRest.user.id,
             targetEmail,
-            targetRoles: target.roles,
+            targetRoles: targetRest.roles,
           },
         };
       }
     }
 
-    return { ...actor, impersonation: null };
+    return { ...actorRest, impersonation: null };
   });
 });
 

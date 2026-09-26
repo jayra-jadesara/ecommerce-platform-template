@@ -657,6 +657,7 @@ export function AdminShell({
                   <Link
                     key={link.id}
                     href={adminHref(link.href)}
+                    prefetch={false}
                     className={navLinkClass(active)}
                     onClick={() => setOpen(false)}
                     aria-current={active ? "page" : undefined}

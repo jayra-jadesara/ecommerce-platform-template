@@ -31,6 +31,7 @@ const MUTATE_ACTIONS = new Set([
   "publish",
   "moderate",
   "manage",
+  "password",
 ]);
 
 /** Friendly labels for permission verbs shown in the role editor. */
@@ -43,6 +44,7 @@ export const PERMISSION_ACTION_LABEL: Record<string, string> = {
   publish: "Publish",
   moderate: "Moderate",
   manage: "Manage",
+  password: "Password",
 };
 
 /** Preferred verb order in the UI. */
@@ -51,6 +53,7 @@ const ACTION_ORDER = [
   "create",
   "update",
   "delete",
+  "password",
   "upload",
   "publish",
   "moderate",

@@ -149,6 +149,7 @@ export async function createCustomRoleAction(input: {
   name: string;
   description?: string | null;
   permissions: string[];
+  sessionMaxHours?: number | null | "never";
 }) {
   return runLoggedMutation(
     {
@@ -170,6 +171,7 @@ export async function updateCustomRoleAction(input: {
   name: string;
   description?: string | null;
   permissions: string[];
+  sessionMaxHours?: number | null | "never";
 }) {
   return runLoggedMutation(
     {

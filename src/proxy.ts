@@ -1,8 +1,16 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminRouteSegment } from "@/config/admin-route";
+import {
+  AUTH_LAST_SIGN_IN_HEADER,
+  AUTH_USER_EMAIL_HEADER,
+  AUTH_USER_ID_HEADER,
+  SESSION_STARTED_COOKIE,
+  SESSION_STARTED_COOKIE_MAX_AGE_SEC,
+} from "@/features/auth/proxy-auth-headers";
 import { STAFF_VIEW_HEADER } from "@/features/auth/staff-view-constants";
 import { updateSession } from "@/lib/supabase/middleware";
 import { safeInternalPath } from "@/features/auth/redirect";
+import type { User } from "@supabase/supabase-js";
 
 function copySessionCookies(
   from: NextResponse,
@@ -14,14 +22,56 @@ function copySessionCookies(
   return to;
 }
 
+/** Start the login-duration clock when missing (proxy can set cookies). */
+function ensureSessionStartedCookie(
+  request: NextRequest,
+  response: NextResponse,
+  user: User | null,
+): void {
+  if (!user) return;
+  if (request.cookies.get(SESSION_STARTED_COOKIE)?.value) return;
+  const nowSec = Math.floor(Date.now() / 1000);
+  response.cookies.set(SESSION_STARTED_COOKIE, String(nowSec), {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_STARTED_COOKIE_MAX_AGE_SEC,
+  });
+}
+
+/**
+ * Forward proxy-validated auth identity into the RSC request so session.ts
+ * can skip a second auth.getUser() on the same HTTP request.
+ * Always strip client-supplied copies first.
+ */
+function applyTrustedAuthHeaders(
+  requestHeaders: Headers,
+  user: User | null,
+): void {
+  requestHeaders.delete(AUTH_USER_ID_HEADER);
+  requestHeaders.delete(AUTH_USER_EMAIL_HEADER);
+  requestHeaders.delete(AUTH_LAST_SIGN_IN_HEADER);
+  if (!user) return;
+  requestHeaders.set(AUTH_USER_ID_HEADER, user.id);
+  if (user.email) {
+    requestHeaders.set(AUTH_USER_EMAIL_HEADER, user.email);
+  }
+  if (user.last_sign_in_at) {
+    requestHeaders.set(AUTH_LAST_SIGN_IN_HEADER, user.last_sign_in_at);
+  }
+}
+
 function withAdminHeaders(
   request: NextRequest,
   sessionResponse: NextResponse,
   pathname: string,
+  user: User | null,
   staffViewToken?: string | null,
 ): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-admin-pathname", pathname);
+  applyTrustedAuthHeaders(requestHeaders, user);
   if (staffViewToken) {
     requestHeaders.set(STAFF_VIEW_HEADER, staffViewToken);
   } else {
@@ -30,7 +80,9 @@ function withAdminHeaders(
   const next = NextResponse.next({
     request: { headers: requestHeaders },
   });
-  return copySessionCookies(sessionResponse, next);
+  copySessionCookies(sessionResponse, next);
+  ensureSessionStartedCookie(request, next, user);
+  return next;
 }
 
 /**
@@ -48,7 +100,7 @@ export async function proxy(request: NextRequest) {
   try {
     adminSegment = getAdminRouteSegment();
   } catch {
-    return withAdminHeaders(request, response, pathname);
+    return withAdminHeaders(request, response, pathname, user);
   }
 
   const adminBase = `/${adminSegment}`;
@@ -104,13 +156,22 @@ export async function proxy(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-admin-pathname", rewritePath);
     requestHeaders.set(STAFF_VIEW_HEADER, staffViewToken);
+    applyTrustedAuthHeaders(requestHeaders, user);
     const rewritten = NextResponse.rewrite(rewriteUrl, {
       request: { headers: requestHeaders },
     });
-    return copySessionCookies(response, rewritten);
+    copySessionCookies(response, rewritten);
+    ensureSessionStartedCookie(request, rewritten, user);
+    return rewritten;
   }
 
-  return withAdminHeaders(request, response, effectivePath, staffViewToken);
+  return withAdminHeaders(
+    request,
+    response,
+    effectivePath,
+    user,
+    staffViewToken,
+  );
 }
 
 export const config = {

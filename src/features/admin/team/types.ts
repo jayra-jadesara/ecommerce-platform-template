@@ -33,6 +33,8 @@ export type CustomRoleDefinition = {
   permissions: Permission[];
   /** Built-in roles (Editor, Marketing, …). Super Admin is never listed. */
   isSystem?: boolean;
+  /** Max hours since login before session is rejected; null = never (JWT only). */
+  sessionMaxHours: number | null;
 };
 
 export const STAFF_ROLE_OPTIONS: StaffRoleOption[] = [

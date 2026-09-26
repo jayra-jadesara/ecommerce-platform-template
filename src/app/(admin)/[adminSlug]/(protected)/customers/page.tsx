@@ -1,7 +1,8 @@
-import { requirePermission } from "@/features/auth/session";
+import { requirePermission, hasPermission } from "@/features/auth/session";
 import { AdminPageHeader } from "@/features/admin/components/AdminPageHeader";
 import { resolveActiveStoreId } from "@/features/admin/settings/store-context";
 import { AdminCustomerListClient } from "@/features/customers/components/AdminCustomerListClient";
+import { getCustomerSessionMaxHours } from "@/features/customers/admin-mutations";
 import { listStoreCustomers } from "@/features/customers/service";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +24,7 @@ export default async function AdminCustomersPage({
     activity?: string;
   }>;
 }) {
-  await requirePermission("customers.view");
+  const admin = await requirePermission("customers.view");
   const storeId = await resolveActiveStoreId();
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
@@ -31,13 +32,21 @@ export default async function AdminCustomersPage({
   const pageSize = rawPageSize === 25 ? 25 : 10;
   const activity = parseActivity(params.activity);
 
-  const result = await listStoreCustomers({
-    storeId,
-    page,
-    pageSize,
-    search: params.q ?? "",
-    activity,
-  });
+  const [result, customerSessionMaxHours] = await Promise.all([
+    listStoreCustomers({
+      storeId,
+      page,
+      pageSize,
+      search: params.q ?? "",
+      activity,
+    }),
+    getCustomerSessionMaxHours(storeId),
+  ]);
+
+  const canPassword = hasPermission(admin, "customers.password");
+  const canDelete = hasPermission(admin, "customers.delete");
+  const canEditSessionMax =
+    canPassword || hasPermission(admin, "settings.update");
 
   return (
     <div>
@@ -53,6 +62,10 @@ export default async function AdminCustomersPage({
         pageSize={result.pageSize}
         initialSearch={params.q ?? ""}
         initialActivity={activity}
+        canPassword={canPassword}
+        canDelete={canDelete}
+        canEditSessionMax={canEditSessionMax}
+        customerSessionMaxHours={customerSessionMaxHours}
       />
     </div>
   );

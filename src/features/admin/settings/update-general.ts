@@ -91,6 +91,7 @@ export async function updateGeneralStoreSettings(
     contact_page_support: emptyToNull(values.contactPageSupport),
     storefront_loader_style: values.storefrontLoaderStyle,
     storefront_loader_label: values.storefrontLoaderLabel.trim(),
+    order_number_prefix: values.orderNumberPrefix.trim().toUpperCase(),
   };
 
   const { data: existing } = await supabase

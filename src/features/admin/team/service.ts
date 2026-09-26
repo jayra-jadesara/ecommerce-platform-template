@@ -46,6 +46,28 @@ import { isSystemAdminRoleCode } from "@/types/database";
 
 const TEAM_ROUTE = getAdminPath("/team");
 
+/** Preset login-duration options shown in Teams & Roles (hours). */
+export const ROLE_SESSION_MAX_HOUR_PRESETS = [
+  1, 2, 4, 6, 8, 10, 12, 24, 36, 48, 72, 168,
+] as const;
+
+/**
+ * Parse UI/API session max. `null` / `"never"` = no app-layer limit.
+ * Returns `{ ok: false }` for invalid numbers.
+ */
+function parseSessionMaxHours(
+  value: unknown,
+): { ok: true; hours: number | null } | { ok: false } {
+  if (value === null || value === "never" || value === "Never") {
+    return { ok: true, hours: null };
+  }
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return { ok: false };
+  const hours = Math.floor(n);
+  if (hours < 1 || hours > 8760) return { ok: false };
+  return { ok: true, hours };
+}
+
 async function requireTeamManagerActor(): Promise<
   | { ok: true; actor: NonNullable<Awaited<ReturnType<typeof getActorAdmin>>> }
   | { ok: false; error: string }
@@ -1492,18 +1514,17 @@ export async function listCustomRoles(): Promise<CustomRoleDefinition[]> {
   const storeId = await resolveActiveStoreId(supabase);
   if (!storeId) return [];
 
-  // System roles (except Super Admin) + this store’s custom roles.
   const [{ data: systemRoles }, { data: customRoles }] = await Promise.all([
     supabase
       .from("roles")
-      .select("id, code, name, description, is_system, store_id")
+      .select("id, code, name, description, is_system, store_id, session_max_hours")
       .eq("is_system", true)
       .is("store_id", null)
       .neq("code", "SUPER_ADMIN")
       .order("name", { ascending: true }),
     supabase
       .from("roles")
-      .select("id, code, name, description, is_system, store_id")
+      .select("id, code, name, description, is_system, store_id, session_max_hours")
       .eq("is_system", false)
       .eq("store_id", storeId)
       .order("name", { ascending: true }),
@@ -1532,6 +1553,9 @@ export async function listCustomRoles(): Promise<CustomRoleDefinition[]> {
       fromDb.length > 0
         ? [...new Set(fromDb)].sort()
         : [...permissionsForRoles([row.code as AdminRoleCode])].sort();
+    const hoursRaw = row.session_max_hours;
+    const hours =
+      hoursRaw == null ? null : Number(hoursRaw);
     return {
       id: row.id,
       code: row.code as AdminRoleCode,
@@ -1539,6 +1563,12 @@ export async function listCustomRoles(): Promise<CustomRoleDefinition[]> {
       description: row.description,
       permissions,
       isSystem: Boolean(row.is_system),
+      sessionMaxHours:
+        hours == null
+          ? null
+          : Number.isFinite(hours) && hours >= 1
+            ? Math.floor(hours)
+            : 168,
     };
   });
 }
@@ -1547,6 +1577,7 @@ export async function createCustomRole(input: {
   name: string;
   description?: string | null;
   permissions: string[];
+  sessionMaxHours?: number | null | "never";
 }): Promise<TeamResult & { role?: CustomRoleDefinition }> {
   const gate = await requireSuperAdminActor();
   if (!gate.ok) return gate;
@@ -1557,6 +1588,18 @@ export async function createCustomRole(input: {
   if (name.length > 80) {
     return { ok: false, error: "Role name is too long." };
   }
+
+  const parsedMax =
+    input.sessionMaxHours === undefined
+      ? ({ ok: true, hours: 168 } as const)
+      : parseSessionMaxHours(input.sessionMaxHours);
+  if (!parsedMax.ok) {
+    return {
+      ok: false,
+      error: "Choose a valid session duration, or Never.",
+    };
+  }
+  const sessionMaxHours = parsedMax.hours;
 
   const permissions = filterGrantablePermissions(input.permissions);
   if (!permissions.length) {
@@ -1598,8 +1641,9 @@ export async function createCustomRole(input: {
       description,
       is_system: false,
       store_id: storeId,
+      session_max_hours: sessionMaxHours,
     })
-    .select("id, code, name, description")
+    .select("id, code, name, description, session_max_hours")
     .single();
 
   if (insertError || !inserted) {
@@ -1644,7 +1688,7 @@ export async function createCustomRole(input: {
     action: "CUSTOM_ROLE_CREATED",
     entity_type: "roles",
     entity_id: inserted.id,
-    metadata: { code, name, permissions },
+    metadata: { code, name, permissions, sessionMaxHours },
   });
 
   return {
@@ -1657,6 +1701,10 @@ export async function createCustomRole(input: {
       description: inserted.description,
       permissions,
       isSystem: false,
+      sessionMaxHours:
+        inserted.session_max_hours == null
+          ? null
+          : Number(inserted.session_max_hours) || sessionMaxHours,
     },
   };
 }
@@ -1666,6 +1714,7 @@ export async function updateCustomRole(input: {
   name: string;
   description?: string | null;
   permissions: string[];
+  sessionMaxHours?: number | null | "never";
 }): Promise<TeamResult & { role?: CustomRoleDefinition }> {
   const gate = await requireSuperAdminActor();
   if (!gate.ok) return gate;
@@ -1676,6 +1725,17 @@ export async function updateCustomRole(input: {
   if (name.length > 80) {
     return { ok: false, error: "Role name is too long." };
   }
+
+  const parsedMax = parseSessionMaxHours(
+    input.sessionMaxHours === undefined ? 168 : input.sessionMaxHours,
+  );
+  if (!parsedMax.ok) {
+    return {
+      ok: false,
+      error: "Choose a valid session duration, or Never.",
+    };
+  }
+  const sessionMaxHours = parsedMax.hours;
 
   const permissions = filterGrantablePermissions(input.permissions);
   if (!permissions.length) {
@@ -1715,30 +1775,33 @@ export async function updateCustomRole(input: {
   }
 
   const description = input.description?.trim() || null;
-  const nextName = existing.is_system ? undefined : name;
 
-  if (!existing.is_system) {
-    const { error: updateError } = await supabase
-      .from("roles")
-      .update({ name: nextName, description })
-      .eq("id", existing.id);
+  const rolePatch = existing.is_system
+    ? { session_max_hours: sessionMaxHours }
+    : { name, description, session_max_hours: sessionMaxHours };
 
-    if (updateError) {
-      return unexpectedFailure({
-        type: "DATABASE",
-        source: "DATABASE",
-        operation: "TEAM_UPDATE_CUSTOM_ROLE",
-        feature: "USERS",
-        message: "Unable to update custom role",
-        error: updateError,
-        databaseCode: updateError.code,
-        storeId,
-        route: TEAM_ROUTE,
-      });
-    }
-  } else if (description !== undefined) {
-    // Optional: allow description notes on system roles when column is writable.
-    // Name stays locked; skip roles row update when RLS blocks system updates.
+  // System role rows are not writable via RLS; use service client for session TTL only.
+  const rolesClient = existing.is_system
+    ? createSupabaseServiceClient()
+    : supabase;
+
+  const { error: updateError } = await rolesClient
+    .from("roles")
+    .update(rolePatch)
+    .eq("id", existing.id);
+
+  if (updateError) {
+    return unexpectedFailure({
+      type: "DATABASE",
+      source: "DATABASE",
+      operation: "TEAM_UPDATE_CUSTOM_ROLE",
+      feature: "USERS",
+      message: "Unable to update role",
+      error: updateError,
+      databaseCode: updateError.code,
+      storeId,
+      route: TEAM_ROUTE,
+    });
   }
 
   const { error: deletePermsError } = await supabase
@@ -1783,7 +1846,7 @@ export async function updateCustomRole(input: {
 
   const { data: roleRow } = await supabase
     .from("roles")
-    .select("id, code, name, description, is_system")
+    .select("id, code, name, description, is_system, session_max_hours")
     .eq("id", existing.id)
     .maybeSingle();
 
@@ -1797,9 +1860,14 @@ export async function updateCustomRole(input: {
       code: existing.code,
       name: roleRow?.name ?? name,
       permissions,
+      sessionMaxHours,
     },
   });
 
+  const hours =
+    roleRow?.session_max_hours == null
+      ? null
+      : Number(roleRow.session_max_hours);
   return {
     ok: true,
     message: `Role “${roleRow?.name ?? name}” updated.`,
@@ -1810,6 +1878,12 @@ export async function updateCustomRole(input: {
       description: roleRow?.description ?? description,
       permissions,
       isSystem: Boolean(existing.is_system),
+      sessionMaxHours:
+        hours == null
+          ? null
+          : Number.isFinite(hours) && hours >= 1
+            ? Math.floor(hours)
+            : sessionMaxHours,
     },
   };
 }

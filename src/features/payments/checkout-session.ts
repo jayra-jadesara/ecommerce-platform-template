@@ -13,15 +13,10 @@ import type { StartCheckoutPaymentResult } from "@/features/payments/types";
 import { getCheckoutSummary } from "@/features/checkout/service";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { buildStoreOrderNumber } from "@/features/orders/order-number";
 import { resolveReturnPolicy } from "@/features/shipping/policies";
 import type { Json } from "@/types/database";
 import { randomBytes } from "node:crypto";
-
-function buildOrderNumber(): string {
-  const stamp = Date.now().toString(36).toUpperCase();
-  const rand = randomBytes(3).toString("hex").toUpperCase();
-  return `ORD-${stamp}-${rand}`;
-}
 
 function buildReceipt(): string {
   return `rcpt_${randomBytes(8).toString("hex")}`.slice(0, 40);
@@ -119,6 +114,12 @@ export async function createCheckoutPaymentSession(input: {
 
   const supabase = createSupabaseServiceClient();
 
+  const { data: storeSettings } = await supabase
+    .from("store_settings")
+    .select("order_number_prefix")
+    .eq("store_id", summary.storeId)
+    .maybeSingle();
+
   // Fail any other open payment attempts for this user/store (retry safety).
   const { data: openPayments } = await supabase
     .from("payments")
@@ -150,7 +151,7 @@ export async function createCheckoutPaymentSession(input: {
       .eq("status", "PENDING");
   }
 
-  const orderNumber = buildOrderNumber();
+  const orderNumber = buildStoreOrderNumber(storeSettings?.order_number_prefix);
   const receipt = buildReceipt();
   const addressJson = summary.shippingSnapshot as unknown as Json;
 

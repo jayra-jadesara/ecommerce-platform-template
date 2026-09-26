@@ -228,6 +228,8 @@ export type Database = {
           phone_country_code: string;
           storefront_loader_style: string;
           storefront_loader_label: string;
+          customer_session_max_hours: number | null;
+          order_number_prefix: string;
           extra: Json;
         } & Timestamps;
         Insert: {
@@ -311,6 +313,8 @@ export type Database = {
           phone_country_code?: string;
           storefront_loader_style?: string;
           storefront_loader_label?: string;
+          customer_session_max_hours?: number | null;
+          order_number_prefix?: string;
           extra?: Json;
           created_at?: string;
           updated_at?: string;
@@ -746,6 +750,7 @@ export type Database = {
           description: string | null;
           is_system: boolean;
           store_id: string | null;
+          session_max_hours: number | null;
           created_at: string;
         };
         Insert: {
@@ -755,6 +760,7 @@ export type Database = {
           description?: string | null;
           is_system?: boolean;
           store_id?: string | null;
+          session_max_hours?: number | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["roles"]["Insert"]>;

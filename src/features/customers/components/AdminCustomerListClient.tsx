@@ -2,22 +2,37 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import CloseIcon from "@mui/icons-material/Close";
+import ContentCopyOutlinedIcon from "@mui/icons-material/ContentCopyOutlined";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import { getAdminPath } from "@/config/admin-route";
+import {
+  deleteStoreCustomerAction,
+  setCustomerPasswordAction,
+  updateCustomerSessionMaxHoursAction,
+} from "@/features/customers/actions";
+import { CustomerPasswordDialog } from "@/features/customers/components/CustomerPasswordDialog";
 import type { StoreCustomerListItem } from "@/features/customers/service";
 import { formatMoney } from "@/features/catalog/money";
+import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
+import { AdminFormDialog } from "@/features/admin/ui/AdminFormDialog";
 import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { adminBtn, adminCard } from "@/features/admin/ui/admin-classes";
+import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
 import { formatDateTime } from "@/lib/format-date";
 import { cn } from "@/lib/cn";
 
 const PAGE_SIZE_OPTIONS = [
   { value: "10", label: "10" },
   { value: "25", label: "25" },
+] as const;
+
+const SESSION_NEVER = "never";
+const SESSION_HOUR_PRESETS = [
+  1, 2, 4, 6, 8, 10, 12, 24, 36, 48, 72, 168,
 ] as const;
 
 type ActivityFilter = "ALL" | "REPEAT" | "SINGLE";
@@ -27,6 +42,26 @@ const ACTIVITY_CHIPS: Array<{ value: ActivityFilter; label: string }> = [
   { value: "REPEAT", label: "Repeat" },
   { value: "SINGLE", label: "One order" },
 ];
+
+function sessionOptions(current: number | null) {
+  const options = SESSION_HOUR_PRESETS.map((hours) => ({
+    value: String(hours),
+    label: hours === 1 ? "1 hour" : `${hours} hours`,
+  }));
+  if (
+    current != null &&
+    !SESSION_HOUR_PRESETS.includes(
+      current as (typeof SESSION_HOUR_PRESETS)[number],
+    )
+  ) {
+    options.unshift({
+      value: String(current),
+      label: `${current} hours (current)`,
+    });
+  }
+  options.push({ value: SESSION_NEVER, label: "Never (JWT only)" });
+  return options;
+}
 
 function buildPageItems(
   current: number,
@@ -56,6 +91,10 @@ export function AdminCustomerListClient({
   pageSize,
   initialSearch,
   initialActivity,
+  canPassword = false,
+  canDelete = false,
+  canEditSessionMax = false,
+  customerSessionMaxHours = null,
 }: {
   initialItems: StoreCustomerListItem[];
   total: number;
@@ -63,11 +102,78 @@ export function AdminCustomerListClient({
   pageSize: number;
   initialSearch: string;
   initialActivity: ActivityFilter;
+  canPassword?: boolean;
+  canDelete?: boolean;
+  canEditSessionMax?: boolean;
+  customerSessionMaxHours?: number | null;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState(initialSearch);
   const [activity, setActivity] = useState<ActivityFilter>(initialActivity);
   const [pending, startTransition] = useTransition();
+  const [items, setItems] = useState(initialItems);
+  const [revealedPasswords, setRevealedPasswords] = useState<
+    Record<string, string>
+  >({});
+  const [passwordTarget, setPasswordTarget] =
+    useState<StoreCustomerListItem | null>(null);
+  const [deleteTarget, setDeleteTarget] =
+    useState<StoreCustomerListItem | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [sessionOpen, setSessionOpen] = useState(false);
+  const [sessionValue, setSessionValue] = useState(
+    customerSessionMaxHours == null
+      ? SESSION_NEVER
+      : String(customerSessionMaxHours),
+  );
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copyingId, setCopyingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
+
+  useEffect(() => {
+    setSessionValue(
+      customerSessionMaxHours == null
+        ? SESSION_NEVER
+        : String(customerSessionMaxHours),
+    );
+  }, [customerSessionMaxHours]);
+
+  async function copyPasswordFor(customer: StoreCustomerListItem) {
+    setActionError(null);
+    const existing = revealedPasswords[customer.id];
+    if (existing) {
+      try {
+        await navigator.clipboard.writeText(existing);
+        setCopiedId(customer.id);
+      } catch {
+        setActionError("Could not copy to clipboard.");
+      }
+      return;
+    }
+    setCopyingId(customer.id);
+    startTransition(async () => {
+      const result = await setCustomerPasswordAction({
+        userId: customer.id,
+        generate: true,
+      });
+      setCopyingId(null);
+      if (!result.ok || !result.temporaryPassword) {
+        setActionError(result.error ?? "Unable to set password.");
+        return;
+      }
+      const password = result.temporaryPassword;
+      setRevealedPasswords((prev) => ({ ...prev, [customer.id]: password }));
+      try {
+        await navigator.clipboard.writeText(password);
+        setCopiedId(customer.id);
+      } catch {
+        setActionError("Password set, but clipboard copy failed — use Copy again.");
+      }
+    });
+  }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const rangeStart = total === 0 ? 0 : (page - 1) * pageSize + 1;
@@ -118,30 +224,52 @@ export function AdminCustomerListClient({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        {ACTIVITY_CHIPS.map((chip) => {
-          const active = activity === chip.value;
-          return (
-            <button
-              key={chip.value}
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                setActivity(chip.value);
-                applyFilters({ activity: chip.value });
-              }}
-              className={cn(
-                "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
-                active
-                  ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
-                  : "border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
-              )}
-            >
-              {chip.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          {ACTIVITY_CHIPS.map((chip) => {
+            const active = activity === chip.value;
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                disabled={pending}
+                onClick={() => {
+                  setActivity(chip.value);
+                  applyFilters({ activity: chip.value });
+                }}
+                className={cn(
+                  "rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
+                    : "border border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-muted)] hover:text-[var(--color-foreground)]",
+                )}
+              >
+                {chip.label}
+              </button>
+            );
+          })}
+        </div>
+        {canEditSessionMax ? (
+          <button
+            type="button"
+            disabled={pending}
+            className={cn(adminBtn("outline"), "!min-h-9 !gap-1.5")}
+            onClick={() => {
+              setActionError(null);
+              setSessionOpen(true);
+            }}
+          >
+            <SettingsOutlinedIcon sx={{ fontSize: 18 }} />
+            Settings
+          </button>
+        ) : null}
       </div>
+
+      {actionError ? (
+        <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-800">
+          {actionError}
+        </p>
+      ) : null}
 
       <form
         className="grid gap-2 sm:grid-cols-1"
@@ -283,7 +411,7 @@ export function AdminCustomerListClient({
         </div>
       </div>
 
-      {!initialItems.length ? (
+      {!items.length ? (
         <div className="rounded-2xl border border-dashed border-[var(--color-border)] px-4 py-12 text-center">
           <p className="text-sm font-semibold">
             {initialSearch || activity !== "ALL"
@@ -302,6 +430,9 @@ export function AdminCustomerListClient({
             <thead className="border-b border-[var(--color-border)] bg-[var(--color-surface)] text-xs uppercase tracking-wide text-[var(--color-muted)]">
               <tr>
                 <th className="px-4 py-3 font-medium">Customer</th>
+                {canPassword ? (
+                  <th className="px-4 py-3 font-medium">Password</th>
+                ) : null}
                 <th className="px-4 py-3 font-medium">Address / info</th>
                 <th className="px-4 py-3 font-medium">Orders</th>
                 <th className="px-4 py-3 font-medium">Spent</th>
@@ -310,7 +441,7 @@ export function AdminCustomerListClient({
               </tr>
             </thead>
             <tbody>
-              {initialItems.map((customer) => {
+              {items.map((customer) => {
                 const address = customer.address;
                 const location = [address?.city, address?.state]
                   .filter(Boolean)
@@ -318,109 +449,261 @@ export function AdminCustomerListClient({
                 const postalCountry = [address?.postalCode, address?.country]
                   .filter(Boolean)
                   .join(" · ");
+                const revealed = revealedPasswords[customer.id];
                 return (
-                <tr
-                  key={customer.id}
-                  className="border-b border-[var(--color-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--color-surface)_70%,transparent)]"
-                >
-                  <td className="px-4 py-3">
-                    <p className="font-semibold text-[var(--color-foreground)]">
-                      {customer.name || "Customer"}
-                    </p>
-                    {customer.email ? (
-                      <p className="text-xs text-[var(--color-muted)]">
-                        {customer.email}
+                  <tr
+                    key={customer.id}
+                    className="border-b border-[var(--color-border)] last:border-0 hover:bg-[color-mix(in_srgb,var(--color-surface)_70%,transparent)]"
+                  >
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-[var(--color-foreground)]">
+                        {customer.name || "Customer"}
                       </p>
+                      {customer.email ? (
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {customer.email}
+                        </p>
+                      ) : null}
+                      {customer.phone ? (
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {customer.phone}
+                        </p>
+                      ) : null}
+                      {customer.isStaffAdmin ? (
+                        <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                          Admin staff
+                        </p>
+                      ) : null}
+                    </td>
+                    {canPassword ? (
+                      <td className="px-4 py-3">
+                        <div className="flex max-w-[14rem] flex-col gap-1">
+                          {revealed ? (
+                            <code className="truncate rounded-md bg-[var(--color-surface)] px-1.5 py-1 text-[11px] font-semibold tracking-wide">
+                              {revealed}
+                            </code>
+                          ) : null}
+                          <button
+                            type="button"
+                            disabled={pending || copyingId === customer.id}
+                            title="Copy password (creates a new one if needed)"
+                            className={cn(
+                              adminBtn("outline"),
+                              "!min-h-8 !gap-1 !px-2 !text-[11px]",
+                            )}
+                            onClick={() => copyPasswordFor(customer)}
+                          >
+                            <ContentCopyOutlinedIcon sx={{ fontSize: 14 }} />
+                            {copyingId === customer.id
+                              ? "Copying…"
+                              : copiedId === customer.id
+                                ? "Copied"
+                                : "Copy password"}
+                          </button>
+                        </div>
+                      </td>
                     ) : null}
-                    {customer.phone ? (
-                      <p className="text-xs text-[var(--color-muted)]">
-                        {customer.phone}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    {address ? (
-                      <div className="max-w-[16rem]">
-                        {address.fullName &&
-                        address.fullName !== customer.name ? (
-                          <p className="text-xs font-medium text-[var(--color-foreground)]">
-                            {address.fullName}
-                          </p>
+                    <td className="px-4 py-3">
+                      {address ? (
+                        <div className="max-w-[16rem]">
+                          {address.fullName &&
+                          address.fullName !== customer.name ? (
+                            <p className="text-xs font-medium text-[var(--color-foreground)]">
+                              {address.fullName}
+                            </p>
+                          ) : null}
+                          {address.line1 ? (
+                            <p className="text-xs leading-snug text-[var(--color-foreground)]">
+                              {address.line1}
+                            </p>
+                          ) : null}
+                          {address.line2 ? (
+                            <p className="text-xs leading-snug text-[var(--color-muted)]">
+                              {address.line2}
+                            </p>
+                          ) : null}
+                          {location ? (
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {location}
+                            </p>
+                          ) : null}
+                          {postalCountry ? (
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {postalCountry}
+                            </p>
+                          ) : null}
+                          {address.phone && address.phone !== customer.phone ? (
+                            <p className="text-xs text-[var(--color-muted)]">
+                              {address.phone}
+                            </p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-[var(--color-muted)]">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{customer.orderCount}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums">
+                      {formatMoney(customer.totalSpent, customer.currency)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {customer.lastOrderNumber ? (
+                        <Link
+                          href={getAdminPath(
+                            `/orders?q=${encodeURIComponent(customer.lastOrderNumber)}`,
+                          )}
+                          className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
+                        >
+                          {customer.lastOrderNumber}
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                      {customer.lastOrderAt ? (
+                        <p className="text-xs text-[var(--color-muted)]">
+                          {formatDateTime(customer.lastOrderAt)}
+                        </p>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {customer.lastOrderNumber ? (
+                          <Link
+                            href={getAdminPath(
+                              `/orders?q=${encodeURIComponent(customer.lastOrderNumber)}`,
+                            )}
+                            className={cn(
+                              adminBtn("outline"),
+                              "!min-h-8 !px-2.5 !text-[11px]",
+                            )}
+                          >
+                            View order
+                          </Link>
                         ) : null}
-                        {address.line1 ? (
-                          <p className="text-xs leading-snug text-[var(--color-foreground)]">
-                            {address.line1}
-                          </p>
+                        {canPassword ? (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            className={cn(
+                              adminBtn("outline"),
+                              "!min-h-8 !px-2.5 !text-[11px]",
+                            )}
+                            onClick={() => {
+                              setActionError(null);
+                              setPasswordTarget(customer);
+                            }}
+                          >
+                            Change password
+                          </button>
                         ) : null}
-                        {address.line2 ? (
-                          <p className="text-xs leading-snug text-[var(--color-muted)]">
-                            {address.line2}
-                          </p>
-                        ) : null}
-                        {location ? (
-                          <p className="text-xs text-[var(--color-muted)]">
-                            {location}
-                          </p>
-                        ) : null}
-                        {postalCountry ? (
-                          <p className="text-xs text-[var(--color-muted)]">
-                            {postalCountry}
-                          </p>
-                        ) : null}
-                        {address.phone && address.phone !== customer.phone ? (
-                          <p className="text-xs text-[var(--color-muted)]">
-                            {address.phone}
-                          </p>
+                        {canDelete ? (
+                          <button
+                            type="button"
+                            disabled={pending || customer.isStaffAdmin}
+                            title={
+                              customer.isStaffAdmin
+                                ? "Used in admin — remove staff access first"
+                                : "Delete customer account"
+                            }
+                            className={cn(
+                              adminBtn("ghost"),
+                              "!min-h-8 !px-2.5 !text-[11px] text-red-700 hover:bg-red-50 disabled:opacity-40",
+                            )}
+                            onClick={() => {
+                              setActionError(null);
+                              setDeleteTarget(customer);
+                            }}
+                          >
+                            Delete
+                          </button>
                         ) : null}
                       </div>
-                    ) : (
-                      <span className="text-[var(--color-muted)]">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">{customer.orderCount}</td>
-                  <td className="whitespace-nowrap px-4 py-3 font-medium tabular-nums">
-                    {formatMoney(customer.totalSpent, customer.currency)}
-                  </td>
-                  <td className="px-4 py-3">
-                    {customer.lastOrderNumber ? (
-                      <Link
-                        href={getAdminPath(
-                          `/orders?q=${encodeURIComponent(customer.lastOrderNumber)}`,
-                        )}
-                        className="font-semibold text-[var(--color-primary)] underline-offset-2 hover:underline"
-                      >
-                        {customer.lastOrderNumber}
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                    {customer.lastOrderAt ? (
-                      <p className="text-xs text-[var(--color-muted)]">
-                        {formatDateTime(customer.lastOrderAt)}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="px-4 py-3">
-                    {customer.lastOrderNumber ? (
-                      <Link
-                        href={getAdminPath(
-                          `/orders?q=${encodeURIComponent(customer.lastOrderNumber)}`,
-                        )}
-                        className={cn(adminBtn("outline"), "!min-h-9 !px-3 !text-xs")}
-                      >
-                        View order
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
       )}
+
+      <AdminFormDialog
+        open={sessionOpen}
+        title="Customer login settings"
+        description="How long storefront shoppers stay signed in before they must log in again."
+        maxWidth="sm"
+        dense
+        pending={pending}
+        error={actionError}
+        confirmLabel="Save"
+        pendingLabel="Saving…"
+        onClose={() => setSessionOpen(false)}
+        onConfirm={() => {
+          setActionError(null);
+          startTransition(async () => {
+            const hours =
+              sessionValue === SESSION_NEVER ? "never" : Number(sessionValue);
+            const result = await updateCustomerSessionMaxHoursAction(hours);
+            if (!result.ok) {
+              setActionError(result.error ?? "Unable to save.");
+              return;
+            }
+            setSessionOpen(false);
+            router.refresh();
+          });
+        }}
+      >
+        <AdminSelect
+          label="Customer login duration"
+          value={sessionValue}
+          disabled={pending}
+          options={sessionOptions(customerSessionMaxHours)}
+          helperText="Never uses only the Supabase JWT lifetime."
+          onChange={setSessionValue}
+        />
+      </AdminFormDialog>
+
+      <CustomerPasswordDialog
+        open={Boolean(passwordTarget)}
+        userId={passwordTarget?.id ?? ""}
+        customerName={passwordTarget?.name || passwordTarget?.email || "Customer"}
+        onClose={() => setPasswordTarget(null)}
+        onPasswordSet={(userId, password) => {
+          setRevealedPasswords((prev) => ({ ...prev, [userId]: password }));
+          setCopiedId(userId);
+        }}
+      />
+
+      <ConfirmDeleteDialog
+        open={Boolean(deleteTarget)}
+        title="Delete customer?"
+        message={
+          deleteTarget?.isStaffAdmin
+            ? "This login is used in Team & roles (admin). Remove their staff access first."
+            : `Delete ${deleteTarget?.name || deleteTarget?.email || "this customer"}? Orders stay in history with the customer unlinked. This cannot be undone.`
+        }
+        blocked={Boolean(deleteTarget?.isStaffAdmin)}
+        confirmLabel="Delete customer"
+        safeActionLabel="Close"
+        pending={pending}
+        onClose={() => setDeleteTarget(null)}
+        onSafeAction={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget || deleteTarget.isStaffAdmin) return;
+          setActionError(null);
+          startTransition(async () => {
+            const result = await deleteStoreCustomerAction(deleteTarget.id);
+            if (!result.ok) {
+              setActionError(result.error ?? "Unable to delete.");
+              setDeleteTarget(null);
+              return;
+            }
+            setItems((prev) => prev.filter((row) => row.id !== deleteTarget.id));
+            setDeleteTarget(null);
+            router.refresh();
+          });
+        }}
+      />
     </div>
   );
 }

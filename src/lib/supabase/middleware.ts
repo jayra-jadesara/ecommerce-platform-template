@@ -2,12 +2,18 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database";
 import { getSupabasePublicEnvOptional } from "@/lib/supabase/env";
+import type { User } from "@supabase/supabase-js";
 
 /**
  * Refreshes the auth session cookie on each matched request.
+ * Returns the validated user so proxy can forward trusted identity headers
+ * (x-wl-auth-*) and RSC can skip a second auth.getUser() on the same request.
  * Coarse route guards only — fine-grained RBAC stays in server layouts.
  */
-export async function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest): Promise<{
+  response: NextResponse;
+  user: User | null;
+}> {
   let supabaseResponse = NextResponse.next({ request });
 
   const env = getSupabasePublicEnvOptional();

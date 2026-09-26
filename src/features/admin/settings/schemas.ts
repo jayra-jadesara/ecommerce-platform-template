@@ -114,6 +114,16 @@ export const generalSettingsSchema = z.object({
     .trim()
     .min(1, "Enter a loading label.")
     .max(40),
+  /** Prefix for new orders, e.g. SONET-ORD → SONET-ORD-…. */
+  orderNumberPrefix: z
+    .string()
+    .trim()
+    .min(1, "Enter an order number prefix.")
+    .max(24, "Prefix is too long (max 24).")
+    .regex(
+      /^[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*$/,
+      "Use letters, numbers, and hyphens only (e.g. SONET-ORD).",
+    ),
 });
 
 export type GeneralSettingsFormValues = z.infer<typeof generalSettingsSchema>;
@@ -516,6 +526,7 @@ export const DEFAULT_GENERAL_SETTINGS: GeneralSettingsFormValues = {
   contactMapEmbedUrl: null,
   storefrontLoaderStyle: "spinner",
   storefrontLoaderLabel: "Loading…",
+  orderNumberPrefix: "ORD",
 };
 
 export const DEFAULT_BRANDING_SETTINGS: BrandingSettingsFormValues = {

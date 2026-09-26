@@ -11,15 +11,9 @@ import { getCheckoutSummary } from "@/features/checkout/service";
 import { finalizeCodOrder } from "@/features/orders/finalize";
 import { createSupabaseServiceClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { buildStoreOrderNumber } from "@/features/orders/order-number";
 import { resolveReturnPolicy } from "@/features/shipping/policies";
 import type { Json } from "@/types/database";
-import { randomBytes } from "node:crypto";
-
-function buildOrderNumber(): string {
-  const stamp = Date.now().toString(36).toUpperCase();
-  const rand = randomBytes(3).toString("hex").toUpperCase();
-  return `ORD-${stamp}-${rand}`;
-}
 
 /**
  * Place a Cash on Delivery order: confirm stock, no online payment, fee off.
@@ -107,6 +101,12 @@ export async function createCodCheckoutOrder(input: {
 
   const supabase = createSupabaseServiceClient();
 
+  const { data: storeSettings } = await supabase
+    .from("store_settings")
+    .select("order_number_prefix")
+    .eq("store_id", summary.storeId)
+    .maybeSingle();
+
   const { data: openPayments } = await supabase
     .from("payments")
     .select("id, order_id, status, orders!inner(store_id, user_id, status)")
@@ -137,7 +137,7 @@ export async function createCodCheckoutOrder(input: {
       .eq("status", "PENDING");
   }
 
-  const orderNumber = buildOrderNumber();
+  const orderNumber = buildStoreOrderNumber(storeSettings?.order_number_prefix);
   const addressJson = summary.shippingSnapshot as unknown as Json;
 
   const { data: order, error: orderError } = await supabase

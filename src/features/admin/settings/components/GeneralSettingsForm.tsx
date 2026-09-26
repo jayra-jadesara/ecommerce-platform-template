@@ -373,7 +373,7 @@ export function GeneralSettingsForm({
 
         <Section
           title="Locale & dial code"
-          hint="Currency, language, timezone, and phone country code for the whole store."
+          hint="Currency, language, timezone, phone dial code, and order number prefix."
         >
           <div className={adminFieldsGrid(2)}>
             <Controller
@@ -469,6 +469,31 @@ export function GeneralSettingsForm({
                     onChange={field.onChange}
                     allowCustom
                   />
+                </div>
+              )}
+            />
+            <Controller
+              name="orderNumberPrefix"
+              control={control}
+              render={({ field, fieldState }) => (
+                <div className="sm:col-span-2">
+                  <TextField
+                    {...field}
+                    label="Order number prefix"
+                    fullWidth
+                    size="small"
+                    disabled={locked}
+                    placeholder="SONET-ORD"
+                    error={Boolean(fieldState.error)}
+                    helperText={
+                      fieldState.error?.message ??
+                      `New orders look like ${(field.value || "ORD").toUpperCase()}-…. Existing orders keep their numbers.`
+                    }
+                    onChange={(event) =>
+                      field.onChange(event.target.value.toUpperCase())
+                    }
+                  />
+                  <FieldError message={fieldState.error?.message} />
                 </div>
               )}
             />

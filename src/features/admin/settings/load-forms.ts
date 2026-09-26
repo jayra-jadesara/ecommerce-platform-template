@@ -124,6 +124,9 @@ export async function loadGeneralSettingsForm(): Promise<{
       storefrontLoaderLabel: coerceStorefrontLoaderLabel(
         row?.storefront_loader_label,
       ),
+      orderNumberPrefix:
+        row?.order_number_prefix?.trim() ||
+        DEFAULT_GENERAL_SETTINGS.orderNumberPrefix,
     },
   };
 }

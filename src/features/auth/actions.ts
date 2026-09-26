@@ -16,6 +16,10 @@ import {
   changePasswordSchema,
 } from "@/features/auth/validations";
 import { requireUser } from "@/features/auth/session";
+import {
+  clearSessionStarted,
+  markSessionStarted,
+} from "@/features/auth/session-started";
 import { getAdminPath } from "@/config/admin-route";
 import {
   unexpectedFailure,
@@ -282,6 +286,8 @@ export async function loginAction(
   const fullName = `${first} ${last}`.trim();
   const email = user?.email ?? parsed.data.email;
 
+  await markSessionStarted();
+
   // Client navigates after applying header auth (faster navbar update).
   return {
     ok: true,
@@ -490,6 +496,11 @@ export async function logoutAction(redirectTo = "/"): Promise<void> {
       "@/features/auth/impersonation"
     );
     await clearImpersonationCookie();
+  } catch {
+    // Still sign out below.
+  }
+  try {
+    await clearSessionStarted();
   } catch {
     // Still sign out below.
   }
@@ -865,6 +876,8 @@ export async function adminLoginAction(
       error: "You do not have admin access for this store.",
     };
   }
+
+  await markSessionStarted();
 
   const dest = safeAdminNextPath(
     nextPath,

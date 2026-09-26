@@ -22,11 +22,53 @@ import {
 } from "@/features/admin/team/role-menu-access";
 import type { CustomRoleDefinition } from "@/features/admin/team/types";
 import { AdminFormDialog } from "@/features/admin/ui/AdminFormDialog";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
 import { AdminStatusBadge } from "@/features/admin/ui/AdminStatusBadge";
 import { adminBtn } from "@/features/admin/ui/admin-classes";
 import type { Permission } from "@/features/auth/permissions";
 import { cn } from "@/lib/cn";
 
+const SESSION_NEVER = "never";
+const SESSION_HOUR_PRESETS = [
+  1, 2, 4, 6, 8, 10, 12, 24, 36, 48, 72, 168,
+] as const;
+
+function sessionMaxSelectOptions(current: number | null): {
+  value: string;
+  label: string;
+}[] {
+  const options = SESSION_HOUR_PRESETS.map((hours) => ({
+    value: String(hours),
+    label: hours === 1 ? "1 hour" : `${hours} hours`,
+  }));
+  if (
+    current != null &&
+    !SESSION_HOUR_PRESETS.includes(
+      current as (typeof SESSION_HOUR_PRESETS)[number],
+    )
+  ) {
+    options.unshift({
+      value: String(current),
+      label: `${current} hours (current)`,
+    });
+  }
+  options.push({
+    value: SESSION_NEVER,
+    label: "Never (JWT expiry only)",
+  });
+  return options;
+}
+
+function sessionMaxToSelectValue(hours: number | null | undefined): string {
+  if (hours == null) return SESSION_NEVER;
+  return String(hours);
+}
+
+function parseSessionMaxSelect(value: string): number | null | "never" {
+  if (value === SESSION_NEVER) return "never";
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.floor(n) : "never";
+}
 type DialogTab = "list" | "form";
 
 type AdminCreateRoleDialogProps = {
@@ -144,6 +186,9 @@ export function AdminCreateRoleDialog({
   const [tab, setTab] = useState<DialogTab>(initialTab);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [sessionMaxHours, setSessionMaxHours] = useState(
+    sessionMaxToSelectValue(168),
+  );
   const [selected, setSelected] = useState<Set<Permission>>(
     () => emptyPermissionSelection(),
   );
@@ -179,12 +224,14 @@ export function AdminCreateRoleDialog({
       setTab("form");
       setName(editing.name);
       setDescription(editing.description ?? "");
+      setSessionMaxHours(sessionMaxToSelectValue(editing.sessionMaxHours));
       setSelected(selectionFromPermissions(editing.permissions));
     } else {
       setActiveEdit(null);
       setTab(initialTab);
       setName("");
       setDescription("");
+      setSessionMaxHours(sessionMaxToSelectValue(168));
       setSelected(emptyPermissionSelection());
     }
   }, [open, editing, initialTab]);
@@ -193,6 +240,7 @@ export function AdminCreateRoleDialog({
     setActiveEdit(null);
     setName("");
     setDescription("");
+    setSessionMaxHours(sessionMaxToSelectValue(168));
     setSelected(emptyPermissionSelection());
     setConfirmDelete(false);
     setError(null);
@@ -203,6 +251,7 @@ export function AdminCreateRoleDialog({
     setActiveEdit(role);
     setName(role.name);
     setDescription(role.description ?? "");
+    setSessionMaxHours(sessionMaxToSelectValue(role.sessionMaxHours));
     setSelected(selectionFromPermissions(role.permissions));
     setConfirmDelete(false);
     setError(null);
@@ -235,6 +284,7 @@ export function AdminCreateRoleDialog({
       setError("Turn on at least one page action (e.g. View).");
       return;
     }
+    const hours = parseSessionMaxSelect(sessionMaxHours);
 
     startTransition(async () => {
       const result = activeEdit
@@ -243,11 +293,13 @@ export function AdminCreateRoleDialog({
             name: trimmed,
             description,
             permissions,
+            sessionMaxHours: hours,
           })
         : await createCustomRoleAction({
             name: trimmed,
             description,
             permissions,
+            sessionMaxHours: hours,
           });
 
       if (!result.ok) {
@@ -261,6 +313,7 @@ export function AdminCreateRoleDialog({
       setActiveEdit(null);
       setName("");
       setDescription("");
+      setSessionMaxHours(sessionMaxToSelectValue(168));
       setSelected(emptyPermissionSelection());
       setTab("list");
     });
@@ -408,6 +461,12 @@ export function AdminCreateRoleDialog({
                                   {role.description}
                                 </p>
                               ) : null}
+                              <p className="mt-0.5 text-[10px] tabular-nums text-[var(--color-muted)]">
+                                Max login{" "}
+                                {role.sessionMaxHours == null
+                                  ? "never"
+                                  : `${role.sessionMaxHours}h`}
+                              </p>
                             </td>
                             <td className="hidden px-3 py-2.5 align-middle text-[12px] tabular-nums text-[var(--color-muted)] sm:table-cell">
                               {visible} open
@@ -502,6 +561,17 @@ export function AdminCreateRoleDialog({
                   placeholder="Optional — shown when assigning"
                 />
               </div>
+
+              <AdminSelect
+                label="Maximum login duration"
+                value={sessionMaxHours}
+                onChange={setSessionMaxHours}
+                disabled={pending}
+                options={sessionMaxSelectOptions(
+                  activeEdit?.sessionMaxHours ?? null,
+                )}
+                helperText="Staff with this role are signed out after this long. With multiple roles, the shortest limit applies. Never uses only the Supabase JWT lifetime."
+              />
 
               <RoleMenuAccessEditor
                 value={selected}
