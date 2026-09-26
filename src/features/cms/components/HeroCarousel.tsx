@@ -132,7 +132,10 @@ function HeroCampaignSlideView({
               {slide.ctaLabel ? (
                 <Link
                   href={slide.ctaHref}
-                  className={cn(sfBtn("primary"), "sf-hero-campaign__cta")}
+                  className={cn(
+                    sfBtn("primary"),
+                    "sf-hero-campaign__cta !min-h-0 !px-[1.15rem] !py-[0.55rem] !text-[0.8125rem] w-fit",
+                  )}
                 >
                   {slide.ctaLabel}
                 </Link>
@@ -142,7 +145,7 @@ function HeroCampaignSlideView({
                   href={slide.secondaryHref}
                   className={cn(
                     sfBtn("outline"),
-                    "sf-hero-campaign__cta sf-hero-campaign__cta--secondary",
+                    "sf-hero-campaign__cta sf-hero-campaign__cta--secondary !min-h-0 !px-[1.15rem] !py-[0.55rem] !text-[0.8125rem] w-fit",
                   )}
                 >
                   {slide.secondaryLabel}
@@ -220,7 +223,7 @@ export function HeroCarousel({
           modules={[EffectFade, Autoplay, Navigation, Pagination, A11y]}
           effect="fade"
           fadeEffect={{ crossFade: true }}
-          speed={reducedMotion ? 0 : 700}
+          speed={reducedMotion ? 0 : 900}
           /* loop + fade stacks duplicate slides and causes overlapping copy */
           loop={false}
           watchOverflow
@@ -234,7 +237,11 @@ export function HeroCarousel({
               : false
           }
           navigation={count > 1 && showArrows}
-          pagination={count > 1 ? { clickable: true } : false}
+          pagination={
+            count > 1
+              ? { clickable: true, dynamicBullets: false }
+              : false
+          }
           a11y={{
             enabled: true,
             prevSlideMessage: "Previous slide",

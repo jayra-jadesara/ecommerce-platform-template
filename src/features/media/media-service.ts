@@ -23,7 +23,7 @@ import { mapDatabaseConstraintError } from "@/lib/validation/db-errors";
 
 export type MediaResult =
   | { ok: true; message: string; id?: string; path?: string; url?: string }
-  | { ok: false; error: string; referenceId?: string };
+  | { ok: false; error: string; referenceId?: string; kind?: "dependency" };
 
 const MEDIA_ROUTE = getAdminPath("/media");
 

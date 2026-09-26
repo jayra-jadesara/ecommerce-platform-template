@@ -4,6 +4,8 @@ import TextField from "@mui/material/TextField";
 import AddOutlinedIcon from "@mui/icons-material/AddOutlined";
 import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import { adminFieldGroup } from "@/features/admin/ui/admin-classes";
+import { AdminSelect } from "@/features/admin/ui/AdminSelect";
+import { patchItemAt } from "@/features/admin/ui/list-patch";
 import {
   AdminDragHandle,
   AdminSortableItem,
@@ -11,31 +13,58 @@ import {
   adminSortableIds,
   reorderBySortableIds,
 } from "@/features/admin/ui/AdminSortable";
-import { patchItemAt } from "@/features/admin/ui/list-patch";
+import type { SectionConfigMap } from "@/features/cms/schemas";
 import { cn } from "@/lib/cn";
 
-export type StatisticEditableItem = {
-  value: string;
-  label: string;
+export type TestimonialEditableItem = {
+  customerName: string;
+  companyOrTitle: string;
+  quote: string;
+  rating: number | null;
+  imagePath: string | null;
 };
 
 type Props = {
   title: string;
-  items: StatisticEditableItem[];
+  items: TestimonialEditableItem[];
   onTitleChange: (title: string) => void;
-  onChange: (items: StatisticEditableItem[]) => void;
+  onChange: (items: TestimonialEditableItem[]) => void;
 };
 
-const MAX_ITEMS = 8;
-const SORT_PREFIX = "stat";
+const MAX_ITEMS = 12;
+const SORT_PREFIX = "quote";
 
-export function StatisticsSectionFields({
+const RATING_OPTIONS = [5, 4, 3, 2, 1].map((n) => ({
+  value: String(n),
+  label: `${n} ★`,
+}));
+
+export function mapTestimonialsConfigItems(
+  items: SectionConfigMap["testimonials"]["items"] | undefined,
+): TestimonialEditableItem[] {
+  if (!Array.isArray(items)) return [];
+  return items.map((i) => ({
+    customerName: String(i.customerName ?? ""),
+    companyOrTitle: String(i.companyOrTitle ?? ""),
+    quote: String(i.quote ?? ""),
+    rating:
+      typeof i.rating === "number" && i.rating >= 1 && i.rating <= 5
+        ? i.rating
+        : null,
+    imagePath:
+      typeof i.imagePath === "string" && i.imagePath.trim()
+        ? i.imagePath
+        : null,
+  }));
+}
+
+export function TestimonialsSectionFields({
   title,
   items,
   onTitleChange,
   onChange,
 }: Props) {
-  function updateAt(index: number, patch: Partial<StatisticEditableItem>) {
+  function updateAt(index: number, patch: Partial<TestimonialEditableItem>) {
     const next = patchItemAt(items, index, patch);
     if (next) onChange(next);
   }
@@ -46,7 +75,16 @@ export function StatisticsSectionFields({
 
   function addItem() {
     if (items.length >= MAX_ITEMS) return;
-    onChange([...items, { value: "", label: "" }]);
+    onChange([
+      ...items,
+      {
+        customerName: "",
+        companyOrTitle: "",
+        quote: "",
+        rating: 5,
+        imagePath: null,
+      },
+    ]);
   }
 
   return (
@@ -54,7 +92,7 @@ export function StatisticsSectionFields({
       <div className={adminFieldGroup(true)}>
         <p className="admin-field-group__title">1. Heading</p>
         <p className="admin-field-group__hint">
-          Shown above the numbers on the storefront.
+          Shown above the quotes on the storefront. Watch the live preview.
         </p>
         <TextField
           label="Heading"
@@ -62,20 +100,19 @@ export function StatisticsSectionFields({
           size="small"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
-          placeholder="e.g. Delivering values since 1999"
+          placeholder="e.g. What customers say"
         />
       </div>
 
       <div className={adminFieldGroup(true)}>
-        <p className="admin-field-group__title">2. Numbers</p>
+        <p className="admin-field-group__title">2. Quotes</p>
         <p className="admin-field-group__hint">
-          Each row is one stat — big number + short label. Up to {MAX_ITEMS}.
-          Drag the handle to reorder.
+          One card per customer. Up to {MAX_ITEMS}. Drag to reorder.
         </p>
 
         {items.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-4 text-center text-xs text-[var(--color-muted)]">
-            No stats yet — add your first number below.
+            No quotes yet — add your first below.
           </p>
         ) : (
           <AdminSortableList
@@ -118,36 +155,60 @@ export function StatisticsSectionFields({
                       </div>
                       <button
                         type="button"
-                        aria-label="Remove statistic"
-                        title="Remove"
+                        aria-label={`Remove quote ${index + 1}`}
                         className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-red-200 text-red-700 hover:bg-red-50"
                         onClick={() => removeAt(index)}
                       >
                         <DeleteOutlineOutlinedIcon sx={{ fontSize: 15 }} />
                       </button>
                     </div>
-                    <div className="grid gap-1.5 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
+                    <div className="grid gap-1.5 sm:grid-cols-2">
                       <TextField
-                        label="Number"
+                        label="Name"
                         fullWidth
                         size="small"
-                        value={item.value}
+                        value={item.customerName}
                         onChange={(e) =>
-                          updateAt(index, { value: e.target.value })
+                          updateAt(index, { customerName: e.target.value })
                         }
-                        placeholder="24+"
-                        helperText="Shown big"
+                        placeholder="Priya S."
                       />
                       <TextField
-                        label="Label"
+                        label="Role / company"
                         fullWidth
                         size="small"
-                        value={item.label}
+                        value={item.companyOrTitle}
                         onChange={(e) =>
-                          updateAt(index, { label: e.target.value })
+                          updateAt(index, { companyOrTitle: e.target.value })
                         }
-                        placeholder="Years of experience"
-                        helperText="Shown under the number"
+                        placeholder="Home cook"
+                      />
+                    </div>
+                    <div className="mt-1.5 grid gap-1.5 sm:grid-cols-[minmax(0,1fr)_6.5rem]">
+                      <TextField
+                        label="Quote"
+                        fullWidth
+                        size="small"
+                        multiline
+                        minRows={2}
+                        maxRows={4}
+                        value={item.quote}
+                        onChange={(e) =>
+                          updateAt(index, { quote: e.target.value })
+                        }
+                        placeholder="What they said about your store…"
+                      />
+                      <AdminSelect
+                        label="Rating"
+                        value={item.rating == null ? "" : String(item.rating)}
+                        allowEmpty
+                        emptyLabel="None"
+                        options={RATING_OPTIONS}
+                        onChange={(value) =>
+                          updateAt(index, {
+                            rating: value ? Number(value) : null,
+                          })
+                        }
                       />
                     </div>
                   </li>
@@ -164,7 +225,7 @@ export function StatisticsSectionFields({
           onClick={addItem}
         >
           <AddOutlinedIcon sx={{ fontSize: 17 }} />
-          Add number
+          Add quote
         </button>
       </div>
     </div>

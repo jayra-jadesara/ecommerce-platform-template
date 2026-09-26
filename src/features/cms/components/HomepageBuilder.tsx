@@ -46,16 +46,21 @@ import {
   SECTION_TYPE_DESCRIPTIONS,
   SECTION_TYPE_LABELS,
   SUPPORTED_SECTION_TYPES,
+  IMAGE_FRAME_STYLES,
+  sectionAllowsDuplicate,
+  type ImageFrameStyle,
   type SectionConfigMap,
   type SupportedSectionType,
 } from "@/features/cms/schemas";
 import type { ContentPage, ContentSection } from "@/features/cms/types";
 import { MediaPicker } from "@/features/media";
 import { HomepagePreview } from "@/features/cms/components/HomepagePreview";
-import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import { SectionEditorPreview } from "@/features/cms/components/SectionEditorPreview";
 import { AboutSectionFields } from "@/features/cms/components/AboutSectionFields";
 import { CtaSectionFields } from "@/features/cms/components/CtaSectionFields";
+import { TextImageSectionFields } from "@/features/cms/components/TextImageSectionFields";
+import { BannerSectionFields } from "@/features/cms/components/BannerSectionFields";
+import { ImageField } from "@/features/cms/components/ImageField";
 import { FaqSectionFields } from "@/features/cms/components/FaqSectionFields";
 import {
   FeaturesSectionFields,
@@ -72,10 +77,7 @@ import {
   mapHeroSlides,
 } from "@/features/cms/components/HeroSectionFields";
 import { StatisticsSectionFields } from "@/features/cms/components/StatisticsSectionFields";
-import {
-  pageOptionLabel,
-  StorePageLinkField,
-} from "@/features/admin/ui/StorePageLinkField";
+import { TestimonialsSectionFields, mapTestimonialsConfigItems } from "@/features/cms/components/TestimonialsSectionFields";
 import { AdminDialog } from "@/features/admin/ui/AdminDialog";
 import { ConfirmDeleteDialog } from "@/features/admin/ui/ConfirmDeleteDialog";
 import { FieldError } from "@/features/admin/ui/FieldError";
@@ -91,6 +93,11 @@ import {
 import type { FieldErrors } from "@/lib/validation";
 import { getAdminPath } from "@/config/admin-route";
 
+function coerceImageFrameStyle(value: unknown): ImageFrameStyle {
+  return (IMAGE_FRAME_STYLES as readonly string[]).includes(String(value))
+    ? (value as ImageFrameStyle)
+    : "elevated";
+}
 const SECTION_TYPE_ICONS: Record<SupportedSectionType, ReactNode> = {
   hero: <ViewCarouselOutlinedIcon fontSize="small" />,
   categories: <CategoryOutlinedIcon fontSize="small" />,
@@ -215,8 +222,10 @@ export function HomepageBuilder({
     const ordered = base.includes("about")
       ? (["about" as const, ...base.filter((t) => t !== "about")] as SupportedSectionType[])
       : [...base];
-    // Hide types already on this page (one of each).
-    return ordered.filter((type) => !usedSectionTypes.has(type));
+    // Singletons: hide when already on the page. Multi-instance types stay addable.
+    return ordered.filter(
+      (type) => sectionAllowsDuplicate(type) || !usedSectionTypes.has(type),
+    );
   }, [allowedSectionTypes, usedSectionTypes]);
 
   const editing = useMemo(
@@ -241,7 +250,8 @@ export function HomepageBuilder({
     editingType === "features" ||
     editingType === "products" ||
     editingType === "categories" ||
-    editingType === "hero";
+    editingType === "hero" ||
+    editingType === "testimonials";
 
   function refresh() {
     router.refresh();
@@ -452,13 +462,16 @@ export function HomepageBuilder({
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {sections.map((section) => {
+          {sections.map((section, sectionIndex) => {
             const typeKey = displaySectionType(section, isHomepage);
             const label =
               SECTION_TYPE_LABELS[typeKey as SupportedSectionType] ??
               section.sectionType;
             const description =
               SECTION_TYPE_DESCRIPTIONS[typeKey as SupportedSectionType] ?? "";
+            const canDuplicate =
+              canCreate && sectionAllowsDuplicate(typeKey);
+            const orderNumber = sectionIndex + 1;
             const iconBtn =
               "inline-flex h-8 w-8 items-center justify-center rounded-md border border-[var(--color-border)] text-[var(--color-foreground)] disabled:opacity-40 hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]";
             return (
@@ -498,14 +511,25 @@ export function HomepageBuilder({
                       <DragIndicatorIcon sx={{ fontSize: 18 }} />
                     </span>
                   ) : null}
-                  <div
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
-                    aria-hidden
-                  >
-                    {sectionIcon(typeKey)}
+                  <div className="relative shrink-0">
+                    <div
+                      className="flex h-10 w-10 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--color-primary)_12%,transparent)] text-[var(--color-primary)]"
+                      aria-hidden
+                    >
+                      {sectionIcon(typeKey)}
+                    </div>
+                    <span
+                      className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[var(--color-primary)] px-1 text-[0.6rem] font-bold tabular-nums text-[var(--color-button-foreground)] shadow-[0_2px_6px_color-mix(in_srgb,var(--color-primary)_35%,transparent)]"
+                      title={`Section ${orderNumber} on the homepage`}
+                    >
+                      {orderNumber}
+                    </span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
+                      <span className="mr-1.5 text-[0.7rem] font-bold tabular-nums text-[var(--color-primary)]">
+                        #{orderNumber}
+                      </span>
                       {section.title?.trim() || label}
                     </p>
                     <p className="mt-0.5 line-clamp-2 text-xs text-[var(--color-muted)]">
@@ -578,12 +602,12 @@ export function HomepageBuilder({
                         </button>
                       </>
                     ) : null}
-                    {canCreate ? (
+                    {canDuplicate ? (
                       <button
                         type="button"
                         disabled={actionsLocked}
                         aria-label="Duplicate section"
-                        title="Duplicate"
+                        title="Duplicate this section"
                         className={iconBtn}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -971,7 +995,9 @@ function SectionConfigFields({
   config: EditableConfig;
   title: string;
   onTitleChange: (value: string) => void;
-  onChange: (value: EditableConfig) => void;
+  onChange: (
+    value: EditableConfig | ((prev: EditableConfig) => EditableConfig),
+  ) => void;
   onPickMedia: (field: string) => void;
   fieldErrors?: FieldErrors;
   categoryOptions?: CatalogPickerOption[];
@@ -979,7 +1005,10 @@ function SectionConfigFields({
 }) {
   void _onTitleChange;
   function setField(key: string, value: unknown) {
-    onChange({ ...config, [key]: value });
+    onChange((prev) => {
+      if (Object.is(prev[key], value)) return prev;
+      return { ...prev, [key]: value };
+    });
   }
   function err(key: string) {
     return fieldErrors[key];
@@ -1046,13 +1075,13 @@ function SectionConfigFields({
     sectionType !== "about" &&
     sectionType !== "cta" &&
     sectionType !== "text_image" &&
+    sectionType !== "banner" &&
     sectionType !== "statistics" &&
     sectionType !== "features" &&
     sectionType !== "products" &&
     sectionType !== "categories" &&
-    (sectionType === "banner" ||
-      sectionType === "testimonials" ||
-      sectionType === "faq" ||
+    sectionType !== "testimonials" &&
+    (sectionType === "faq" ||
       sectionType === "newsletter" ||
       sectionType === "text");
 
@@ -1065,7 +1094,10 @@ function SectionConfigFields({
           sectionType === "features" ||
           sectionType === "products" ||
           sectionType === "categories" ||
-          sectionType === "hero",
+          sectionType === "hero" ||
+          sectionType === "text_image" ||
+          sectionType === "banner" ||
+          sectionType === "testimonials",
       )}
       style={adminStackStyle}
     >
@@ -1082,7 +1114,10 @@ function SectionConfigFields({
       sectionType !== "features" &&
       sectionType !== "products" &&
       sectionType !== "categories" &&
-      sectionType !== "hero" ? (
+      sectionType !== "hero" &&
+      sectionType !== "text_image" &&
+      sectionType !== "banner" &&
+      sectionType !== "testimonials" ? (
         <TextField
           label="Section name (in admin list)"
           fullWidth
@@ -1176,78 +1211,24 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "text_image" ? (
-        <>
-          <div className={adminFieldGroup(true)}>
-            <p className="admin-field-group__title">1. Content</p>
-            <p className="admin-field-group__hint">
-              Heading, story, and image — preview updates as you type.
-            </p>
-            <TextField
-              label="Heading"
-              fullWidth
-              size="small"
-              value={String(config.heading ?? "")}
-              onChange={(e) => setField("heading", e.target.value)}
-            />
-            <TextField
-              label="Description"
-              fullWidth
-              size="small"
-              multiline
-              minRows={2}
-              maxRows={4}
-              value={String(config.description ?? "")}
-              onChange={(e) => setField("description", e.target.value)}
-            />
-            <ImageField
-              label="Image"
-              value={config.imagePath as string | null}
-              onPick={() => onPickMedia("imagePath")}
-              onClear={() => setField("imagePath", null)}
-            />
-            <TextField
-              select
-              label="Image position"
-              fullWidth
-              size="small"
-              value={String(config.imagePosition ?? "right")}
-              onChange={(e) => setField("imagePosition", e.target.value)}
-            >
-              <MenuItem value="left">Left</MenuItem>
-              <MenuItem value="right">Right</MenuItem>
-            </TextField>
-          </div>
-
-          <div className={adminFieldGroup(true)}>
-            <p className="admin-field-group__title">2. Button</p>
-            <p className="admin-field-group__hint">
-              Optional CTA under the story.
-            </p>
-            <div
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] p-2.5"
-              style={{ display: "flex", flexDirection: "column", gap: "0.55rem" }}
-            >
-              <TextField
-                label="Button text"
-                fullWidth
-                size="small"
-                value={String(config.buttonText ?? "")}
-                onChange={(e) => setField("buttonText", e.target.value)}
-                helperText="Leave blank to hide the button"
-              />
-              <StorePageLinkField
-                value={config.buttonLink as string | null}
-                fallback="/products"
-                onChange={(v) => setField("buttonLink", v)}
-                helperText={
-                  config.buttonText
-                    ? `Opens ${pageOptionLabel(String(config.buttonLink ?? "/products"))}`
-                    : "Pick where the button should send shoppers"
-                }
-              />
-            </div>
-          </div>
-        </>
+        <TextImageSectionFields
+          heading={String(config.heading ?? "")}
+          description={String(config.description ?? "")}
+          imagePath={(config.imagePath as string | null) ?? null}
+          imagePosition={
+            config.imagePosition === "left" ? "left" : "right"
+          }
+          imageFrameStyle={coerceImageFrameStyle(config.imageFrameStyle)}
+          showButton={
+            config.showButton === true ||
+            (config.showButton !== false &&
+              Boolean(String(config.buttonText ?? "").trim()))
+          }
+          buttonText={String(config.buttonText ?? "")}
+          buttonLink={(config.buttonLink as string | null) ?? null}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+          onPickMedia={() => onPickMedia("imagePath")}
+        />
       ) : null}
 
       {sectionType === "about" ? (
@@ -1258,7 +1239,7 @@ function SectionConfigFields({
         />
       ) : null}
 
-      {sectionType === "banner" || sectionType === "newsletter" ? (
+      {sectionType === "newsletter" ? (
         <TextField
           label="Description"
           fullWidth
@@ -1309,40 +1290,31 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "banner" ? (
-        <div className={adminFieldGroup()} style={adminStackStyle}>
-          <p className="admin-field-group__title">Banner &amp; button</p>
-          <p className="admin-field-group__hint">
-            Image plus optional CTA — pick a store page from the list.
-          </p>
-          <ImageField
-            label="Banner image"
-            value={config.imagePath as string | null}
-            onPick={() => onPickMedia("imagePath")}
-            onClear={() => setField("imagePath", null)}
-          />
-          <div
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-            style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-          >
-            <TextField
-              label="Button text shoppers see"
-              fullWidth
-              value={String(config.buttonText ?? "")}
-              onChange={(e) => setField("buttonText", e.target.value)}
-              helperText="Leave blank to hide the button"
-            />
-            <StorePageLinkField
-              value={config.link as string | null}
-              fallback="/products"
-              onChange={(v) => setField("link", v)}
-              helperText={
-                config.buttonText
-                  ? `“${String(config.buttonText)}” opens ${pageOptionLabel(String(config.link ?? "/products"))}`
-                  : "Pick where the button should send shoppers"
-              }
-            />
-          </div>
-        </div>
+        <BannerSectionFields
+          title={String(config.title ?? "")}
+          description={String(config.description ?? "")}
+          imagePath={(config.imagePath as string | null) ?? null}
+          imageFrameStyle={coerceImageFrameStyle(config.imageFrameStyle)}
+          alignment={
+            config.alignment === "left" || config.alignment === "right"
+              ? config.alignment
+              : "center"
+          }
+          overlayStyle={
+            config.overlayStyle === "none" || config.overlayStyle === "strong"
+              ? config.overlayStyle
+              : "soft"
+          }
+          showButton={
+            config.showButton === true ||
+            (config.showButton !== false &&
+              Boolean(String(config.buttonText ?? "").trim()))
+          }
+          buttonText={String(config.buttonText ?? "")}
+          link={(config.link as string | null) ?? null}
+          onChange={(patch) => onChange({ ...config, ...patch })}
+          onPickMedia={() => onPickMedia("imagePath")}
+        />
       ) : null}
 
       {sectionType === "features" ? (
@@ -1377,31 +1349,13 @@ function SectionConfigFields({
       ) : null}
 
       {sectionType === "testimonials" ? (
-        <JsonListEditor
-          label="Testimonials (one per line: name|title|quote|rating)"
-          value={(config.items as SectionConfigMap["testimonials"]["items"] | undefined)
-            ?.map((i) =>
-              [i.customerName, i.companyOrTitle, i.quote, i.rating ?? ""].join("|"),
-            )
-            .join("\n") ?? ""}
-          onChange={(text) => {
-            const items = text
-              .split("\n")
-              .map((line) => line.trim())
-              .filter(Boolean)
-              .map((line) => {
-                const [customerName, companyOrTitle, quote, rating] = line.split("|");
-                const r = rating ? Number(rating) : null;
-                return {
-                  customerName: (customerName || "").trim(),
-                  companyOrTitle: (companyOrTitle || "").trim(),
-                  quote: (quote || "").trim(),
-                  imagePath: null,
-                  rating: r && r >= 1 && r <= 5 ? r : null,
-                };
-              });
-            setField("items", items);
-          }}
+        <TestimonialsSectionFields
+          title={String(config.title ?? "")}
+          items={mapTestimonialsConfigItems(
+            config.items as SectionConfigMap["testimonials"]["items"] | undefined,
+          )}
+          onTitleChange={(title) => setField("title", title)}
+          onChange={(next) => setField("items", next)}
         />
       ) : null}
 
@@ -1494,86 +1448,4 @@ function SectionConfigFields({
     </div>
   );
 }
-function ImageField({
-  label,
-  value,
-  onPick,
-  onClear,
-}: {
-  label: string;
-  value: string | null | undefined;
-  onPick: () => void;
-  onClear: () => void;
-}) {
-  const previewUrl = resolveCmsImageUrl(value);
 
-  return (
-    <div
-      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
-      style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}
-    >
-      <p className="text-sm font-semibold text-[var(--color-foreground)]">{label}</p>
-      {value ? (
-        <div className="flex items-center gap-3">
-          <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
-            {previewUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={previewUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-[10px] text-[var(--color-muted)]">
-                Set
-              </div>
-            )}
-          </div>
-          <p className="min-w-0 flex-1 truncate text-xs text-[var(--color-muted)]">
-            {value}
-          </p>
-        </div>
-      ) : (
-        <p className="text-xs text-[var(--color-muted)]">No image selected yet</p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onPick}
-          className="rounded-md border border-[var(--color-primary)] px-3 py-1.5 text-sm font-medium text-[var(--color-primary)]"
-        >
-          {value ? "Change image" : "Choose image"}
-        </button>
-        {value ? (
-          <button
-            type="button"
-            onClick={onClear}
-            className="rounded-md px-3 py-1.5 text-sm text-[var(--color-muted)]"
-          >
-            Remove
-          </button>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-function JsonListEditor({
-  label,
-  value,
-  onChange,
-  hint,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  hint?: string;
-}) {
-  return (
-    <TextField
-      label={label}
-      fullWidth
-      multiline
-      minRows={4}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      helperText={hint}
-    />
-  );
-}

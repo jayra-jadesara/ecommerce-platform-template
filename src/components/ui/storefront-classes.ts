@@ -25,6 +25,11 @@ export function sfSectionInner(): string {
   return "mx-auto w-full max-w-[var(--layout-content-max,1520px)] px-[max(var(--layout-container-padding),var(--sf-dev-edge-clearance,0px))]";
 }
 
+/** Homepage showcase sections — modest side margin (tighter than default rail). */
+export function sfSectionInnerTight(): string {
+  return "mx-auto w-full max-w-[var(--layout-content-max,1520px)] px-[max(1rem,var(--sf-dev-edge-clearance,0px))] sm:px-[max(1.25rem,var(--sf-dev-edge-clearance,0px))] md:px-[max(1.5rem,var(--sf-dev-edge-clearance,0px))] lg:px-[max(1.75rem,var(--sf-dev-edge-clearance,0px))]";
+}
+
 export function sfCard(): string {
   return "rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_5%,transparent)]";
 }

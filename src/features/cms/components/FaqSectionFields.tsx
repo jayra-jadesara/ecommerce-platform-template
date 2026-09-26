@@ -14,6 +14,7 @@ import {
   adminSortableIds,
   reorderBySortableIds,
 } from "@/features/admin/ui/AdminSortable";
+import { patchItemAt } from "@/features/admin/ui/list-patch";
 import { cn } from "@/lib/cn";
 
 export type FaqEditableItem = {
@@ -54,9 +55,8 @@ export function FaqSectionFields({ items, onChange }: Props) {
   );
 
   function updateAt(index: number, patch: Partial<FaqEditableItem>) {
-    onChange(
-      items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    );
+    const next = patchItemAt(items, index, patch);
+    if (next) onChange(next);
   }
 
   function removeAt(index: number) {

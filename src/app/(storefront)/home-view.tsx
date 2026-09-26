@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { Motion } from "@/features/animation";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
 import type {
@@ -162,7 +163,10 @@ export function HomeView({
       </section>
 
       {collection.length > 0 ? (
-        <section className="border-b border-[var(--color-border)] bg-[var(--color-surface)] py-12 md:py-16">
+        <section
+          className="sf-section-shell sf-section-shell--tint border-b border-[var(--color-border)] py-12 md:py-16"
+          style={{ ["--sf-section-fill"]: "var(--color-surface)" } as CSSProperties}
+        >
           <div className={sfSectionInner()}>
             <div className="mx-auto mb-8 max-w-3xl text-center">
               <SectionAccentHeading

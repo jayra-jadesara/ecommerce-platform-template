@@ -25,7 +25,7 @@ export function StorefrontPromoBanners({ banners }: { banners: BannerRow[] }) {
 
   return (
     <section aria-label="Promotions" className="bg-[var(--color-background)]">
-      <div className="px-1.5 py-2.5 sm:px-2.5 md:px-3 md:py-3">
+      <div className="px-1 py-2 sm:px-1.5 md:px-2 md:py-2.5">
         <PromoStripSlider banners={visible} />
       </div>
     </section>

@@ -3,7 +3,8 @@
  * Never cache private / personalized / payment responses.
  */
 
-export const PWA_CACHE_VERSION = "v1";
+/** Bump when SW caching rules change — must match public/sw.js CACHE_VERSION. */
+export const PWA_CACHE_VERSION = "v3";
 
 export const PWA_STATIC_CACHE = `storefront-static-${PWA_CACHE_VERSION}`;
 export const PWA_OFFLINE_CACHE = `storefront-offline-${PWA_CACHE_VERSION}`;

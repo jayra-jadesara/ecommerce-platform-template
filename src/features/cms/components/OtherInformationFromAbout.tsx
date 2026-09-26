@@ -9,7 +9,10 @@ import type {
 } from "@/features/cms/schemas";
 import type { HeadingHighlightStyle } from "@/features/theme/heading-highlight";
 import { Container } from "@/components/layout";
-import { sectionShellClassName } from "@/features/cms/section-styles";
+import {
+  sectionShellClassName,
+  sectionShellStyle,
+} from "@/features/cms/section-styles";
 
 /**
  * Homepage “Other information” — renders selected blocks from published Content → About.
@@ -46,10 +49,14 @@ export async function OtherInformationFromAbout({
     backgroundStyle: flags.backgroundStyle,
     spacingPreset: flags.spacingPreset,
   });
+  const shellStyle = sectionShellStyle({
+    backgroundStyle: flags.backgroundStyle,
+  });
 
   return (
     <section
       className={`sf-about-home-highlights ${shell}`}
+      style={shellStyle}
       aria-label="Other information"
     >
       <Container>

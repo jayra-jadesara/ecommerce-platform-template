@@ -19,6 +19,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useHasHydrated } from "@/lib/use-has-hydrated";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { StorefrontPagination } from "@/components/ui/StorefrontPagination";
 import { sfEyebrow } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
 import type { StorefrontProductCard } from "@/features/catalog/storefront";
@@ -513,38 +514,13 @@ export function ProductsCatalog({
           )}
 
           {totalPages > 1 ? (
-            <nav
-              className="mt-6 flex items-center justify-between text-xs"
-              aria-label="Pagination"
-            >
-              <Link
-                href={buildHref(current, {
-                  page: String(Math.max(1, page - 1)),
-                })}
-                aria-disabled={page <= 1}
-                className={
-                  page <= 1 ? "pointer-events-none opacity-40" : "underline"
-                }
-              >
-                Previous
-              </Link>
-              <span className="text-[var(--color-muted)]">
-                Page {page} of {totalPages}
-              </span>
-              <Link
-                href={buildHref(current, {
-                  page: String(Math.min(totalPages, page + 1)),
-                })}
-                aria-disabled={page >= totalPages}
-                className={
-                  page >= totalPages
-                    ? "pointer-events-none opacity-40"
-                    : "underline"
-                }
-              >
-                Next
-              </Link>
-            </nav>
+            <StorefrontPagination
+              page={page}
+              totalPages={totalPages}
+              hrefForPage={(p) =>
+                buildHref(current, { page: String(p) })
+              }
+            />
           ) : null}
       </div>
     </div>

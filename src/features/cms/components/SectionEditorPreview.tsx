@@ -2,8 +2,13 @@
 
 import { resolveCmsImageUrl } from "@/features/cms/section-styles";
 import type { SupportedSectionType } from "@/features/cms/schemas";
-import { SECTION_TYPE_LABELS } from "@/features/cms/schemas";
+import {
+  SECTION_TYPE_LABELS,
+  sectionCtaHref,
+  sectionCtaVisible,
+} from "@/features/cms/schemas";
 import { sfBtn, sfDisplay } from "@/components/ui/storefront-classes";
+import { cn } from "@/lib/cn";
 
 function pageLabel(href: string | null | undefined): string {
   if (!href) return "";
@@ -777,50 +782,190 @@ export function SectionEditorPreview({
   }
 
   if (sectionType === "text_image") {
+    const img = resolveCmsImageUrl(config.imagePath as string | null);
+    const imageLeft = config.imagePosition === "left";
+    const frame = String(config.imageFrameStyle ?? "elevated");
+    const showBtn = sectionCtaVisible({
+      showButton: config.showButton as boolean | undefined,
+      buttonText: config.buttonText as string | undefined,
+      buttonLink: config.buttonLink as string | undefined,
+    });
+    const btnLabel = text(config.buttonText);
+    const href = sectionCtaHref(
+      { buttonLink: config.buttonLink as string | null },
+      "/products",
+    );
+
     return (
-      <SimpleBlockPreview
-        eyebrow={SECTION_TYPE_LABELS[sectionType]}
-        heading={text(config.heading, "Heading")}
-        body={text(config.description)}
-        buttonText={text(config.buttonText) || undefined}
-        buttonLink={(config.buttonLink as string) || null}
-        imagePath={config.imagePath as string | null}
-      />
+      <PreviewShell
+        footer={
+          showBtn ? (
+            <p className="text-xs text-[var(--color-muted)]">
+              Button{" "}
+              <span className="font-semibold text-[var(--color-foreground)]">
+                {btnLabel}
+              </span>{" "}
+              → {pageLabel(href)}
+            </p>
+          ) : (
+            <p className="text-xs text-[var(--color-muted)]">No button</p>
+          )
+        }
+      >
+        <div
+          className={cn(
+            "grid gap-3 p-4 sm:items-center",
+            img
+              ? "sm:grid-cols-[minmax(0,1fr)_7rem]"
+              : "sm:grid-cols-1",
+            img && imageLeft && "sm:[&>div:first-child]:order-2",
+          )}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--color-primary)]">
+              {SECTION_TYPE_LABELS[sectionType]}
+            </p>
+            <h3 className={`${sfDisplay()} text-lg text-[var(--color-foreground)]`}>
+              {text(config.heading, "Heading")}
+            </h3>
+            {text(config.description) ? (
+              <p className="text-xs leading-relaxed text-[var(--color-muted)]">
+                {text(config.description)}
+              </p>
+            ) : null}
+            {showBtn ? (
+              <span
+                className={`${sfBtn("primary")} pointer-events-none !min-h-9 !w-fit !px-3 !text-xs`}
+              >
+                {btnLabel}
+              </span>
+            ) : null}
+          </div>
+          {img ? (
+            <div
+              className={cn(
+                "relative h-24 w-full overflow-hidden sm:w-28",
+                frame === "plain" && "rounded-md bg-transparent",
+                frame === "border" &&
+                  "rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]",
+                frame === "shadow" &&
+                  "rounded-lg bg-transparent shadow-[0_10px_24px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)]",
+                frame === "elevated" &&
+                  "rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_10px_24px_color-mix(in_srgb,var(--color-foreground)_10%,transparent)]",
+              )}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={img}
+                alt=""
+                className={cn(
+                  "h-full w-full",
+                  frame === "plain" ? "object-contain" : "object-cover",
+                )}
+              />
+            </div>
+          ) : null}
+        </div>
+      </PreviewShell>
     );
   }
 
   if (sectionType === "banner") {
     const img = resolveCmsImageUrl(config.imagePath as string | null);
+    const frame = String(config.imageFrameStyle ?? "plain");
+    const overlay = String(config.overlayStyle ?? "soft");
+    const align = String(config.alignment ?? "center");
+    const showBtn = sectionCtaVisible({
+      showButton: config.showButton as boolean | undefined,
+      buttonText: config.buttonText as string | undefined,
+      link: config.link as string | undefined,
+    });
+    const btnLabel = text(config.buttonText);
+    const href = sectionCtaHref({ link: config.link as string | null }, "/products");
+    const hasCopy =
+      Boolean(text(config.title)) ||
+      Boolean(text(config.description)) ||
+      showBtn;
+
     return (
       <PreviewShell
         footer={
-          text(config.buttonText) && config.link ? (
+          showBtn ? (
             <p className="text-xs text-[var(--color-muted)]">
-              Button → {pageLabel(String(config.link))}
+              Button → {pageLabel(href)}
             </p>
-          ) : null
+          ) : (
+            <p className="text-xs text-[var(--color-muted)]">No button</p>
+          )
         }
       >
-        <div className="relative min-h-[9rem] overflow-hidden bg-[var(--color-surface)]">
+        <div
+          className={cn(
+            "relative min-h-[10rem] overflow-hidden",
+            frame === "plain" && "bg-transparent",
+            frame === "border" &&
+              "rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]",
+            frame === "shadow" &&
+              "rounded-lg bg-transparent shadow-[0_12px_28px_color-mix(in_srgb,var(--color-foreground)_12%,transparent)]",
+            (frame === "elevated" || !frame) &&
+              "rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] shadow-sm",
+          )}
+        >
           {img ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover opacity-50" />
-          ) : null}
-          <div className="relative z-[1] flex min-h-[9rem] flex-col items-center justify-center gap-2 p-4 text-center">
-            <h3 className={`${sfDisplay()} text-lg`}>
-              {text(config.title, "Banner title")}
-            </h3>
-            {text(config.description) ? (
-              <p className="max-w-sm text-xs text-[var(--color-muted)]">
-                {text(config.description)}
-              </p>
-            ) : null}
-            {text(config.buttonText) ? (
-              <span className={`${sfBtn("primary")} pointer-events-none !min-h-9 !px-3 !text-xs`}>
-                {text(config.buttonText)}
-              </span>
-            ) : null}
-          </div>
+            <img
+              src={img}
+              alt=""
+              className={cn(
+                "absolute inset-0 h-full w-full",
+                frame === "plain" ? "object-contain opacity-90" : "object-cover",
+              )}
+            />
+          ) : (
+            <div className="absolute inset-0 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--color-primary)_25%,var(--color-surface)),var(--color-card))]" />
+          )}
+          {hasCopy ? (
+            <div
+              className={cn(
+                "relative z-[1] flex min-h-[10rem] flex-col justify-end gap-1.5 p-4",
+                align === "center" && "items-center text-center",
+                align === "right" && "items-end text-right",
+                align === "left" && "items-start text-left",
+                overlay === "strong" &&
+                  "bg-[linear-gradient(to_top,rgba(0,0,0,0.65),transparent_70%)] text-white",
+                overlay === "soft" &&
+                  "bg-[linear-gradient(to_top,rgba(0,0,0,0.45),transparent_72%)] text-white",
+                overlay === "none" && "text-[var(--color-foreground)]",
+              )}
+            >
+              <h3 className={`${sfDisplay()} text-lg`}>
+                {text(config.title, "Banner title")}
+              </h3>
+              {text(config.description) ? (
+                <p
+                  className={cn(
+                    "max-w-sm text-xs",
+                    overlay === "none"
+                      ? "text-[var(--color-muted)]"
+                      : "text-white/85",
+                  )}
+                >
+                  {text(config.description)}
+                </p>
+              ) : null}
+              {showBtn ? (
+                <span
+                  className={`${sfBtn("primary")} pointer-events-none !min-h-9 !px-3 !text-xs`}
+                >
+                  {btnLabel}
+                </span>
+              ) : null}
+            </div>
+          ) : (
+            <div className="relative z-[1] flex min-h-[10rem] items-center justify-center p-4 text-xs text-[var(--color-muted)]">
+              {img ? "Image only — add title or button" : "Add a banner image"}
+            </div>
+          )}
         </div>
       </PreviewShell>
     );
@@ -918,17 +1063,68 @@ export function SectionEditorPreview({
 
   if (sectionType === "testimonials") {
     const items = Array.isArray(config.items)
-      ? (config.items as Array<{ customerName?: string; quote?: string }>).map((i) => ({
-          title: text(i.customerName, "Customer"),
-          detail: text(i.quote),
-        }))
+      ? (
+          config.items as Array<{
+            customerName?: string;
+            companyOrTitle?: string;
+            quote?: string;
+            rating?: number | null;
+          }>
+        ).filter(
+          (i) =>
+            String(i.customerName ?? "").trim() ||
+            String(i.quote ?? "").trim(),
+        )
       : [];
     return (
-      <ListPreview
-        title={text(config.title, "What customers say")}
-        items={items}
-        emptyHint="Add quotes as: name|role|quote|rating"
-      />
+      <PreviewShell>
+        <div className="space-y-2.5 p-3">
+          <p className={`${sfDisplay()} text-center text-sm`}>
+            {text(config.title, "What customers say")}
+          </p>
+          {items.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-[var(--color-border)] px-3 py-5 text-center text-xs text-[var(--color-muted)]">
+              Add a quote on the left — preview updates live
+            </p>
+          ) : (
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {items.slice(0, 4).map((item, index) => (
+                <li
+                  key={`${item.customerName}-${index}`}
+                  className="relative overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-2.5 py-2"
+                >
+                  <span
+                    className="pointer-events-none absolute right-1.5 top-0 text-2xl leading-none text-[color-mix(in_srgb,var(--color-primary)_16%,transparent)]"
+                    aria-hidden
+                  >
+                    “
+                  </span>
+                  <p className="relative text-[0.7rem] font-medium leading-snug line-clamp-3">
+                    {text(item.quote, "Customer quote")}
+                  </p>
+                  <div className="relative mt-2 flex items-end justify-between gap-1 border-t border-[var(--color-border)] pt-1.5">
+                    <div className="min-w-0">
+                      <p className="truncate text-[0.65rem] font-semibold">
+                        {text(item.customerName, "Customer")}
+                      </p>
+                      {text(item.companyOrTitle) ? (
+                        <p className="truncate text-[0.55rem] text-[var(--color-muted)]">
+                          {text(item.companyOrTitle)}
+                        </p>
+                      ) : null}
+                    </div>
+                    {typeof item.rating === "number" && item.rating >= 1 ? (
+                      <span className="shrink-0 text-[0.55rem] text-[var(--color-accent)]">
+                        {"★".repeat(item.rating)}
+                      </span>
+                    ) : null}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </PreviewShell>
     );
   }
 

@@ -1,13 +1,8 @@
-import Link from "next/link";
-import { cn } from "@/lib/cn";
+export {
+  StorefrontPagination as BlogPagination,
+} from "@/components/ui/StorefrontPagination";
 
-type BlogPaginationProps = {
-  page: number;
-  totalPages: number;
-  hrefForPage: (page: number) => string;
-  className?: string;
-};
-
+/** Shared helper — kept for admin-style page-number lists and unit tests. */
 export function buildPageItems(
   current: number,
   totalPages: number,
@@ -27,85 +22,4 @@ export function buildPageItems(
   if (end < totalPages - 1) items.push("ellipsis");
   items.push(totalPages);
   return items;
-}
-
-/**
- * Product-style pagination inside the listing column — Prev / numbers / Next.
- */
-export function BlogPagination({
-  page,
-  totalPages,
-  hrefForPage,
-  className,
-}: BlogPaginationProps) {
-  const pages = Math.max(1, totalPages);
-  const current = Math.min(Math.max(1, page), pages);
-  const prevDisabled = current <= 1;
-  const nextDisabled = current >= pages;
-  const pageItems = buildPageItems(current, pages);
-
-  return (
-    <nav
-      className={cn(
-        "mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-border)] pt-4 text-sm",
-        className,
-      )}
-      aria-label="Pagination"
-    >
-      <Link
-        href={hrefForPage(Math.max(1, current - 1))}
-        aria-disabled={prevDisabled}
-        tabIndex={prevDisabled ? -1 : undefined}
-        className={cn(
-          "inline-flex h-9 items-center rounded-xl border px-3 text-sm font-medium transition-colors",
-          prevDisabled
-            ? "pointer-events-none border-[var(--color-border)] text-[var(--color-muted)] opacity-40"
-            : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]",
-        )}
-      >
-        Previous
-      </Link>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        {pageItems.map((item, index) =>
-          item === "ellipsis" ? (
-            <span
-              key={`ellipsis-${index}`}
-              className="px-1.5 text-sm text-[var(--color-muted)]"
-            >
-              …
-            </span>
-          ) : (
-            <Link
-              key={item}
-              href={hrefForPage(item)}
-              aria-current={item === current ? "page" : undefined}
-              className={cn(
-                "inline-flex h-9 min-w-9 items-center justify-center rounded-xl border px-2.5 text-sm font-medium transition-colors",
-                item === current
-                  ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-button-foreground)]"
-                  : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]",
-              )}
-            >
-              {item}
-            </Link>
-          ),
-        )}
-      </div>
-
-      <Link
-        href={hrefForPage(Math.min(pages, current + 1))}
-        aria-disabled={nextDisabled}
-        tabIndex={nextDisabled ? -1 : undefined}
-        className={cn(
-          "inline-flex h-9 items-center rounded-xl border px-3 text-sm font-medium transition-colors",
-          nextDisabled
-            ? "pointer-events-none border-[var(--color-border)] text-[var(--color-muted)] opacity-40"
-            : "border-[var(--color-border)] bg-[var(--color-card)] text-[var(--color-foreground)] hover:bg-[color-mix(in_srgb,var(--color-foreground)_4%,transparent)]",
-        )}
-      >
-        Next
-      </Link>
-    </nav>
-  );
 }

@@ -62,6 +62,22 @@ export const SUPPORTED_SECTION_TYPES = [
 
 export type SupportedSectionType = (typeof SUPPORTED_SECTION_TYPES)[number];
 
+/**
+ * Types that may appear more than once on a page (Add stays available + Duplicate).
+ * Singletons (hero, products, newsletter, …) stay one-of-each with no Duplicate.
+ */
+export const MULTI_INSTANCE_SECTION_TYPES = [
+  "banner",
+  "text_image",
+  "text",
+  "image",
+  "cta",
+] as const satisfies readonly SupportedSectionType[];
+
+export function sectionAllowsDuplicate(type: string): boolean {
+  return (MULTI_INSTANCE_SECTION_TYPES as readonly string[]).includes(type);
+}
+
 export const SECTION_TYPE_LABELS: Record<SupportedSectionType, string> = {
   hero: "Hero Banner",
   categories: "Categories",
@@ -245,24 +261,83 @@ export const productsSectionConfigSchema = sectionCommonSettingsSchema.extend({
   limit: z.number().int().min(1).max(24).default(8),
 });
 
-export const bannerSectionConfigSchema = sectionCommonSettingsSchema.extend({
-  title: shortTextSchema.default(""),
-  description: z.string().max(1000).optional().default(""),
-  imagePath: z.string().max(500).nullable().optional().default(null),
-  buttonText: z.string().max(80).optional().default(""),
-  link: optionalSafeUrlSchema.optional().default(null),
-  alignment: z.enum(["left", "center", "right"]).default("center"),
-  overlayStyle: z.enum(["none", "soft", "strong"]).default("soft"),
-});
+export const IMAGE_FRAME_STYLES = [
+  "plain",
+  "border",
+  "shadow",
+  "elevated",
+] as const;
 
-export const textImageSectionConfigSchema = sectionCommonSettingsSchema.extend({
-  heading: shortTextSchema.default(""),
-  description: z.string().max(4000).optional().default(""),
-  imagePath: z.string().max(500).nullable().optional().default(null),
-  imagePosition: z.enum(["left", "right"]).default("right"),
-  buttonText: z.string().max(80).optional().default(""),
-  buttonLink: optionalSafeUrlSchema.optional().default(null),
-});
+export type ImageFrameStyle = (typeof IMAGE_FRAME_STYLES)[number];
+
+export const bannerSectionConfigSchema = sectionCommonSettingsSchema
+  .extend({
+    title: shortTextSchema.default(""),
+    description: z.string().max(1000).optional().default(""),
+    imagePath: z.string().max(500).nullable().optional().default(null),
+    /** When false, CTA is hidden even if text/link remain stored. */
+    showButton: z.boolean().optional(),
+    buttonText: z.string().max(80).optional().default(""),
+    link: optionalSafeUrlSchema.optional().default(null),
+    alignment: z.enum(["left", "center", "right"]).default("center"),
+    overlayStyle: z.enum(["none", "soft", "strong"]).default("soft"),
+    /** Frame around the banner image — plain keeps it a section plane, not a floating card. */
+    imageFrameStyle: z.enum(IMAGE_FRAME_STYLES).default("plain"),
+  })
+  .transform((data) => ({
+    ...data,
+    showButton:
+      typeof data.showButton === "boolean"
+        ? data.showButton
+        : Boolean(String(data.buttonText ?? "").trim()),
+  }));
+
+export const textImageSectionConfigSchema = sectionCommonSettingsSchema
+  .extend({
+    heading: shortTextSchema.default(""),
+    description: z.string().max(4000).optional().default(""),
+    imagePath: z.string().max(500).nullable().optional().default(null),
+    imagePosition: z.enum(["left", "right"]).default("right"),
+    /** When false, CTA is hidden even if text/link remain stored. */
+    showButton: z.boolean().optional(),
+    buttonText: z.string().max(80).optional().default(""),
+    buttonLink: optionalSafeUrlSchema.optional().default(null),
+    /** Frame around the story image — plain suits transparent PNGs. */
+    imageFrameStyle: z.enum(IMAGE_FRAME_STYLES).default("elevated"),
+  })
+  .transform((data) => ({
+    ...data,
+    showButton:
+      typeof data.showButton === "boolean"
+        ? data.showButton
+        : Boolean(String(data.buttonText ?? "").trim()),
+  }));
+
+/** Whether a section CTA should render (supports legacy configs without showButton). */
+export function sectionCtaVisible(config: {
+  showButton?: boolean | null;
+  buttonText?: string | null;
+  buttonLink?: string | null;
+  link?: string | null;
+}): boolean {
+  const text = String(config.buttonText ?? "").trim();
+  if (!text) return false;
+  if (config.showButton === false) return false;
+  if (config.showButton === true) return true;
+  const href = String(config.buttonLink ?? config.link ?? "").trim();
+  return Boolean(href);
+}
+
+export function sectionCtaHref(
+  config: {
+    buttonLink?: string | null;
+    link?: string | null;
+  },
+  fallback = "/products",
+): string {
+  const href = String(config.buttonLink ?? config.link ?? "").trim();
+  return href || fallback;
+}
 
 /** Timeline row for About heritage train milestones. */
 export const aboutTimelineItemSchema = z.object({

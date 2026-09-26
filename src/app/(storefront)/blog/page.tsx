@@ -115,15 +115,15 @@ export default async function BlogListingPage({
           { label: categoryLabel?.trim() || "All" },
         ]}
       />
-      <header className="mb-6 max-w-2xl md:mb-8">
+      <header className="mb-6 text-center md:mb-8">
         <StorefrontHeading
           title={settings.pageTitle || "Blog"}
           as="h1"
-          align="left"
+          align="center"
           className="!text-3xl md:!text-[2.35rem] md:!leading-tight"
         />
         {settings.pageDescription?.trim() ? (
-          <p className="mt-2.5 max-w-xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
+          <p className="mx-auto mt-2.5 max-w-xl text-sm leading-relaxed text-[var(--color-muted)] md:text-[0.95rem]">
             {settings.pageDescription.trim()}
           </p>
         ) : null}

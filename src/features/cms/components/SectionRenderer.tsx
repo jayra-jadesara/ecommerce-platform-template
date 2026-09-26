@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Motion } from "@/features/animation";
@@ -9,14 +9,21 @@ import type { StorefrontSection } from "@/features/cms/storefront";
 import type {
   SectionConfigMap,
   SupportedSectionType,
+  ImageFrameStyle,
+} from "@/features/cms/schemas";
+import {
+  sectionCtaHref,
+  sectionCtaVisible,
 } from "@/features/cms/schemas";
 import {
   resolveCmsImageUrl,
   sectionShellClassName,
+  sectionShellStyle,
 } from "@/features/cms/section-styles";
 import { NewsletterSignup } from "@/features/cms/components/NewsletterSignup";
 import { HeroCarousel } from "@/features/cms/components/HeroCarousel";
 import { FaqAccordion } from "@/features/cms/components/FaqAccordion";
+import { FeatureIcon } from "@/features/cms/components/FeatureIcon";
 import { ReelsShowcase } from "@/features/reels/components/ReelsShowcase";
 import type { StorefrontReel } from "@/features/reels/types";
 import {
@@ -27,8 +34,6 @@ import { OtherInformationFromAbout } from "@/features/cms/components/OtherInform
 import { defaultPlatformConfig } from "@/config/defaults";
 import {
   sfBtn,
-  sfDisplay,
-  sfEyebrow,
   sfSectionInner,
 } from "@/components/ui/storefront-classes";
 import { ProductCard } from "@/features/catalog/components/ProductCard";
@@ -54,11 +59,13 @@ function SectionMotion({
   animation,
   children,
   className,
+  style,
 }: {
   section: StorefrontSection;
   animation: AnimationConfig;
   children: ReactNode;
   className?: string;
+  style?: CSSProperties;
 }) {
   const cfg = section.config as SectionConfigMap[SupportedSectionType];
   const common = cfg as SectionConfigMap["hero"];
@@ -70,7 +77,11 @@ function SectionMotion({
   });
 
   if (!effective.shouldAnimate) {
-    return <section className={className}>{children}</section>;
+    return (
+      <section className={className} style={style}>
+        {children}
+      </section>
+    );
   }
 
   return (
@@ -79,10 +90,25 @@ function SectionMotion({
       animation={animation}
       sectionOverride={override}
       className={className}
+      style={style}
     >
       {children}
     </Motion>
   );
+}
+
+function mediaFrameClass(
+  base: "sf-media-banner__frame" | "sf-text-image__frame",
+  style: ImageFrameStyle | string | null | undefined,
+): string {
+  const frame: ImageFrameStyle =
+    style === "plain" ||
+    style === "border" ||
+    style === "shadow" ||
+    style === "elevated"
+      ? style
+      : "elevated";
+  return `${base} ${base}--${frame}`;
 }
 
 function SafeLink({
@@ -125,6 +151,7 @@ export function SectionRenderer({
 }: Props) {
   const cfg = section.config;
   const shell = sectionShellClassName(cfg as SectionConfigMap["hero"]);
+  const shellStyle = sectionShellStyle(cfg as SectionConfigMap["hero"]);
   const highlightStyle = coerceHeadingHighlightStyle(
     highlightStyleProp ??
       defaultPlatformConfig.typography.headingHighlightStyle,
@@ -202,7 +229,7 @@ export function SectionRenderer({
       if (cats.length === 0) return null;
       const heading = c.title?.trim() || "Explore our Collections";
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
             <div className="mx-auto max-w-3xl text-center">
               <SectionAccentHeading
@@ -269,7 +296,7 @@ export function SectionRenderer({
       const products = section.resolved?.products ?? [];
       if (products.length === 0) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
             {c.title ? (
               <div className="mx-auto max-w-3xl text-center">
@@ -304,66 +331,100 @@ export function SectionRenderer({
     case "banner":
     case "image": {
       const c = cfg as SectionConfigMap["banner"] | SectionConfigMap["image"];
-      const imagePath =
+      const rawPath =
         "imagePath" in c ? c.imagePath : (c as SectionConfigMap["image"]).imagePath;
-      const url = resolveCmsImageUrl(imagePath);
-      if (!url && section.sectionType === "image") return null;
+      const url = resolveCmsImageUrl(
+        typeof rawPath === "string" ? rawPath.trim() || null : null,
+      );
       const banner = c as SectionConfigMap["banner"];
+      const isBanner = section.sectionType === "banner";
+      const showBannerButton = isBanner && sectionCtaVisible(banner);
+      const hasBannerCopy = Boolean(
+        banner.title?.trim() ||
+          banner.description?.trim() ||
+          showBannerButton,
+      );
+      // Old default was "elevated" (floating card). Treat that as plain so
+      // banners align with newsletter / other section planes.
+      const bannerFrame =
+        !isBanner
+          ? "elevated"
+          : banner.imageFrameStyle === "border" ||
+              banner.imageFrameStyle === "shadow"
+            ? banner.imageFrameStyle
+            : "plain";
+
+      // Image section: require a real image. Banner: require image or copy.
+      if (!url) {
+        if (!isBanner) return null;
+        if (!hasBannerCopy) return null;
+      }
+
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
-            <div className="relative min-h-[14rem] overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] md:min-h-[18rem]">
-              {url ? (
-                <Image
-                  src={url}
-                  alt={"altText" in c ? c.altText || "" : ""}
-                  fill
-                  className="object-cover"
-                  sizes="100vw"
-                />
-              ) : (
+            <div className="sf-home-rail">
+              <div
+                className={
+                  isBanner
+                    ? "sf-media-banner"
+                    : "sf-media-banner sf-media-banner--image"
+                }
+              >
                 <div
-                  className="absolute inset-0"
-                  aria-hidden
-                  style={{
-                    background:
-                      "linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 35%, var(--color-surface)), color-mix(in srgb, var(--color-accent) 25%, var(--color-card)))",
-                  }}
-                />
-              )}
-              {section.sectionType === "banner" ? (
-                <div
-                  className={`relative z-10 flex min-h-[14rem] flex-col justify-end gap-3 p-6 md:min-h-[18rem] md:p-10 ${
-                    banner.overlayStyle === "strong"
-                      ? "bg-gradient-to-t from-black/65 via-black/35 to-transparent text-white"
-                      : banner.overlayStyle === "soft"
-                        ? "bg-gradient-to-t from-black/45 via-black/20 to-transparent text-white"
-                        : ""
-                  } ${
-                    banner.alignment === "center"
-                      ? "items-center text-center"
-                      : banner.alignment === "right"
-                        ? "items-end text-right"
-                        : "items-start"
-                  }`}
+                  className={mediaFrameClass(
+                    "sf-media-banner__frame",
+                    bannerFrame,
+                  )}
                 >
-                  {banner.title ? (
-                    <h2 className={`${sfDisplay()} text-2xl md:text-3xl`}>
-                      {banner.title}
-                    </h2>
-                  ) : null}
-                  {banner.description ? (
-                    <p className="max-w-xl text-sm opacity-90 md:text-base">
-                      {banner.description}
-                    </p>
-                  ) : null}
-                  {banner.buttonText && banner.link ? (
-                    <SafeLink href={banner.link} className={buttonClass("primary")}>
-                      {banner.buttonText}
-                    </SafeLink>
+                  {url ? (
+                    <Image
+                      src={url}
+                      alt={"altText" in c ? c.altText || "" : ""}
+                      fill
+                      className="object-cover"
+                      sizes="100vw"
+                      unoptimized
+                    />
+                  ) : (
+                    <div className="sf-media-banner__fallback" aria-hidden />
+                  )}
+                  {isBanner && hasBannerCopy ? (
+                    <div
+                      className={[
+                        "sf-media-banner__overlay",
+                        banner.overlayStyle === "strong"
+                          ? "sf-media-banner__overlay--strong"
+                          : banner.overlayStyle === "soft"
+                            ? "sf-media-banner__overlay--soft"
+                            : "sf-media-banner__overlay--none",
+                        banner.alignment === "center"
+                          ? "sf-media-banner__overlay--center"
+                          : banner.alignment === "right"
+                            ? "sf-media-banner__overlay--right"
+                            : "sf-media-banner__overlay--left",
+                      ].join(" ")}
+                    >
+                      {banner.title ? (
+                        <h2 className="sf-media-banner__title">{banner.title}</h2>
+                      ) : null}
+                      {banner.description ? (
+                        <p className="sf-media-banner__lede">
+                          {banner.description}
+                        </p>
+                      ) : null}
+                      {showBannerButton ? (
+                        <SafeLink
+                          href={sectionCtaHref(banner, "/products")}
+                          className={buttonClass("primary")}
+                        >
+                          {banner.buttonText}
+                        </SafeLink>
+                      ) : null}
+                    </div>
                   ) : null}
                 </div>
-              ) : null}
+              </div>
             </div>
           </div>
         </SectionMotion>
@@ -372,44 +433,68 @@ export function SectionRenderer({
 
     case "text_image": {
       const c = cfg as SectionConfigMap["text_image"];
-      const heading = c.heading ?? "";
-      const description = c.description ?? "";
-      const url = resolveCmsImageUrl(c.imagePath);
+      const heading = (c.heading ?? "").trim();
+      const description = (c.description ?? "").trim();
+      const url = resolveCmsImageUrl(
+        typeof c.imagePath === "string" ? c.imagePath.trim() || null : null,
+      );
       const imageLeft = c.imagePosition === "left";
+      const hasButton = sectionCtaVisible(c);
+      if (!heading && !description && !url && !hasButton) return null;
+
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 md:grid-cols-2">
-            <div className={imageLeft ? "md:order-2" : ""}>
-              {heading ? (
-                <SectionAccentHeading title={heading} {...accentFromConfig()} />
-              ) : null}
-              {description ? (
-                <p className="mt-3 whitespace-pre-wrap text-[var(--color-muted)]">
-                  {description}
-                </p>
-              ) : null}
-              {c.buttonText && c.buttonLink ? (
-                <div className="mt-5">
-                  <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
+          <div className={sfSectionInner()}>
+            <div className="sf-home-rail">
+            <div
+              className={[
+                "sf-text-image",
+                url ? "sf-text-image__grid" : "sf-text-image__solo",
+                url && imageLeft ? "sf-text-image__grid--image-left" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
+              <div className="sf-text-image__copy">
+                {heading ? (
+                  <SectionAccentHeading
+                    title={heading}
+                    {...accentFromConfig()}
+                  />
+                ) : null}
+                {description ? (
+                  <p className="sf-text-image__body">{description}</p>
+                ) : null}
+                {hasButton ? (
+                  <SafeLink
+                    href={sectionCtaHref(c, "/products")}
+                    className={buttonClass("primary")}
+                  >
                     {c.buttonText}
                   </SafeLink>
+                ) : null}
+              </div>
+              {url ? (
+                <div className="sf-text-image__media">
+                  <div
+                    className={mediaFrameClass(
+                      "sf-text-image__frame",
+                      c.imageFrameStyle,
+                    )}
+                  >
+                    <Image
+                      src={url}
+                      alt=""
+                      fill
+                      unoptimized
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 60vw"
+                    />
+                  </div>
                 </div>
               ) : null}
             </div>
-            {url ? (
-              <div
-                className={`relative aspect-[4/3] overflow-hidden rounded-xl border border-[var(--color-border)] ${imageLeft ? "md:order-1" : ""}`}
-              >
-                <Image
-                  src={url}
-                  alt=""
-                  fill
-                  unoptimized
-                  className="object-cover"
-                  sizes="480px"
-                />
-              </div>
-            ) : null}
+            </div>
           </div>
         </SectionMotion>
       );
@@ -418,7 +503,7 @@ export function SectionRenderer({
     case "about": {
       const c = cfg as SectionConfigMap["about"];
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <AboutBlocks
             config={c}
             blocks={aboutBlocksForFullPage()}
@@ -453,7 +538,7 @@ export function SectionRenderer({
         Boolean(p?.trim()),
       );
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className="mx-auto max-w-3xl px-4 text-center">
             {c.heading ? (
               <SectionAccentHeading title={c.heading} {...accentFromConfig()} />
@@ -487,42 +572,47 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["features"];
       if (c.items.length === 0) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
-            {c.title ? (
-              <div className="mx-auto max-w-3xl text-center">
-                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
-                {c.description ? (
-                  <p className="mt-3 text-sm text-[var(--color-muted)] sm:text-base">
-                    {c.description}
-                  </p>
-                ) : null}
-              </div>
-            ) : c.description ? (
-              <p className="mx-auto max-w-2xl text-center text-sm text-[var(--color-muted)]">
-                {c.description}
-              </p>
-            ) : null}
-            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {c.items.map((item, index) => (
-                <li
-                  key={`${item.title}-${index}`}
-                  className="rounded-[var(--radius-default,0.75rem)] border border-[var(--color-border)] bg-[var(--color-card)] p-5 shadow-[0_1px_2px_color-mix(in_srgb,var(--color-foreground)_6%,transparent)]"
-                >
-                  {item.icon ? (
-                    <p className={sfEyebrow()}>{item.icon}</p>
+            <div className="sf-home-rail sf-features">
+              {c.title || c.description ? (
+                <div className="sf-features__intro">
+                  {c.title ? (
+                    <SectionAccentHeading
+                      title={c.title}
+                      {...accentFromConfig()}
+                    />
                   ) : null}
-                  <h3 className="mt-2 font-semibold text-[var(--color-foreground)]">
-                    {item.title}
-                  </h3>
-                  {item.description ? (
-                    <p className="mt-2 text-sm leading-relaxed text-[var(--color-muted)]">
-                      {item.description}
-                    </p>
+                  {c.description ? (
+                    <p className="sf-features__lede">{c.description}</p>
                   ) : null}
-                </li>
-              ))}
-            </ul>
+                </div>
+              ) : null}
+              <ul
+                className={
+                  c.items.length === 4
+                    ? "sf-features__grid sf-features__grid--quad"
+                    : "sf-features__grid"
+                }
+              >
+                {c.items.map((item, index) => (
+                  <li
+                    key={`${item.title}-${index}`}
+                    className="sf-features__card"
+                  >
+                    {item.icon ? (
+                      <span className="sf-features__icon">
+                        <FeatureIcon id={item.icon} />
+                      </span>
+                    ) : null}
+                    <h3 className="sf-features__title">{item.title}</h3>
+                    {item.description ? (
+                      <p className="sf-features__body">{item.description}</p>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </SectionMotion>
       );
@@ -535,23 +625,23 @@ export function SectionRenderer({
       );
       if (items.length === 0) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
+            <div className="sf-home-rail sf-stats">
             {c.title ? (
-              <div className="mb-6 text-center">
+              <div className="sf-stats__intro">
                 <SectionAccentHeading title={c.title} {...accentFromConfig()} />
               </div>
             ) : null}
-            <ul className="mx-auto grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <ul className="sf-stats__grid">
               {items.map((item, index) => (
-                <li key={`${item.label}-${index}`} className="text-center">
-                  <p className="font-[family-name:var(--font-display)] text-3xl font-semibold">
-                    {item.value}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--color-muted)]">{item.label}</p>
+                <li key={`${item.label}-${index}`} className="sf-stats__item">
+                  <p className="sf-stats__value">{item.value}</p>
+                  <p className="sf-stats__label">{item.label}</p>
                 </li>
               ))}
             </ul>
+            </div>
           </div>
         </SectionMotion>
       );
@@ -561,37 +651,44 @@ export function SectionRenderer({
       const c = cfg as SectionConfigMap["testimonials"];
       if (c.items.length === 0) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-6xl px-4">
-            {c.title ? (
-              <div className="text-center">
-                <SectionAccentHeading title={c.title} {...accentFromConfig()} />
-              </div>
-            ) : null}
-            <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {c.items.map((item, index) => (
-                <li
-                  key={`${item.customerName}-${index}`}
-                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
-                >
-                  <p className="text-sm leading-relaxed">&ldquo;{item.quote}&rdquo;</p>
-                  <p className="mt-4 font-medium">{item.customerName}</p>
-                  {item.companyOrTitle ? (
-                    <p className="text-sm text-[var(--color-muted)]">
-                      {item.companyOrTitle}
-                    </p>
-                  ) : null}
-                  {item.rating ? (
-                    <StarRating
-                      value={item.rating}
-                      size="sm"
-                      className="mt-1"
-                      aria-label={`Rating ${item.rating} of 5`}
-                    />
-                  ) : null}
-                </li>
-              ))}
-            </ul>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
+          <div className={sfSectionInner()}>
+            <div className="sf-home-rail sf-quotes">
+              {c.title ? (
+                <div className="sf-quotes__intro">
+                  <SectionAccentHeading title={c.title} {...accentFromConfig()} />
+                </div>
+              ) : null}
+              <ul className="sf-quotes__grid">
+                {c.items.map((item, index) => (
+                  <li
+                    key={`${item.customerName}-${index}`}
+                    className="sf-quotes__card"
+                  >
+                    <p className="sf-quotes__text">{item.quote}</p>
+                    <div className="sf-quotes__meta">
+                      <div className="sf-quotes__who">
+                        <p className="sf-quotes__name">
+                          {item.customerName.trim() || "Customer"}
+                        </p>
+                        {item.companyOrTitle ? (
+                          <p className="sf-quotes__role">
+                            {item.companyOrTitle}
+                          </p>
+                        ) : null}
+                      </div>
+                      {item.rating ? (
+                        <StarRating
+                          value={item.rating}
+                          size="sm"
+                          aria-label={`Rating ${item.rating} of 5`}
+                        />
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </SectionMotion>
       );
@@ -604,9 +701,9 @@ export function SectionRenderer({
         .map((i) => ({ question: i.question, answer: i.answer }));
       if (items.length === 0) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
-            <div className="mx-auto w-full max-w-5xl">
+            <div className="sf-home-rail mx-auto w-full">
               {c.title ? (
                 <div className="text-center">
                   <SectionAccentHeading title={c.title} {...accentFromConfig()} />
@@ -624,18 +721,13 @@ export function SectionRenderer({
     case "cta": {
       const c = cfg as SectionConfigMap["cta"];
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
-            <div className="relative overflow-hidden rounded-[var(--radius-default,1rem)] border border-[var(--color-border)] bg-[var(--color-card)] px-6 py-12 text-center md:px-10 md:py-14">
-              <div
-                className="pointer-events-none absolute inset-0 opacity-90"
-                aria-hidden
-                style={{
-                  background:
-                    "radial-gradient(ellipse 70% 60% at 50% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 70%)",
-                }}
-              />
-              <div className="relative">
+            <div className="sf-home-rail">
+            <div className="sf-cta-band">
+              <div className="sf-cta-band__glow" aria-hidden />
+              <div className="sf-cta-band__frame" aria-hidden />
+              <div className="sf-cta-band__inner">
                 {c.heading ? (
                   <SectionAccentHeading
                     title={c.heading}
@@ -643,18 +735,20 @@ export function SectionRenderer({
                   />
                 ) : null}
                 {c.description ? (
-                  <p className="mx-auto mt-3 max-w-xl text-[var(--color-muted)]">
-                    {c.description}
-                  </p>
+                  <p className="sf-cta-band__lede">{c.description}</p>
                 ) : null}
                 {c.buttonText && c.buttonLink ? (
-                  <div className="mt-6">
-                    <SafeLink href={c.buttonLink} className={buttonClass("primary")}>
+                  <div className="sf-cta-band__action">
+                    <SafeLink
+                      href={c.buttonLink}
+                      className={buttonClass("primary")}
+                    >
                       {c.buttonText}
                     </SafeLink>
                   </div>
                 ) : null}
               </div>
+            </div>
             </div>
           </div>
         </SectionMotion>
@@ -664,20 +758,29 @@ export function SectionRenderer({
     case "newsletter": {
       const c = cfg as SectionConfigMap["newsletter"];
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto w-full max-w-5xl px-4 text-center">
-            {c.heading ? (
-              <SectionAccentHeading title={c.heading} {...accentFromConfig()} />
-            ) : null}
-            {c.description ? (
-              <p className="mx-auto mt-2 max-w-2xl text-sm text-[var(--color-muted)] sm:text-[15px]">
-                {c.description}
-              </p>
-            ) : null}
-            <NewsletterSignup
-              buttonText={c.buttonText || "Subscribe"}
-              successMessage={c.successMessage || "Thanks — you're on the list."}
-            />
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
+          <div className={sfSectionInner()}>
+            <div className="sf-home-rail">
+              <div className="sf-newsletter-band">
+                <div className="sf-newsletter-band__inner">
+                  {c.heading ? (
+                    <SectionAccentHeading
+                      title={c.heading}
+                      {...accentFromConfig()}
+                    />
+                  ) : null}
+                  {c.description ? (
+                    <p className="sf-newsletter-band__lede">{c.description}</p>
+                  ) : null}
+                  <NewsletterSignup
+                    buttonText={c.buttonText || "Subscribe"}
+                    successMessage={
+                      c.successMessage || "Thanks — you're on the list."
+                    }
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </SectionMotion>
       );
@@ -685,20 +788,23 @@ export function SectionRenderer({
 
     case "text": {
       const c = cfg as SectionConfigMap["text"];
+      const heading = (c.heading ?? "").trim();
+      const body = (c.body ?? "").trim();
+      if (!heading && !body) return null;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
-          <div className="mx-auto max-w-3xl px-4">
-            {c.heading ? (
-              <div className="text-center">
-                <SectionAccentHeading
-                  title={c.heading}
-                  {...accentFromConfig()}
-                />
-              </div>
-            ) : null}
-            {c.body ? (
-              <p className="mt-3 whitespace-pre-wrap text-center text-[var(--color-muted)]">{c.body}</p>
-            ) : null}
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
+          <div className={sfSectionInner()}>
+            <div className="sf-rich-text">
+              {heading ? (
+                <div className="sf-rich-text__intro">
+                  <SectionAccentHeading
+                    title={heading}
+                    {...accentFromConfig()}
+                  />
+                </div>
+              ) : null}
+              {body ? <p className="sf-rich-text__body">{body}</p> : null}
+            </div>
           </div>
         </SectionMotion>
       );
@@ -717,7 +823,7 @@ export function SectionRenderer({
           ? section.resolved.visibleSlides
           : 3;
       return (
-        <SectionMotion section={section} animation={animation} className={shell}>
+        <SectionMotion section={section} animation={animation} className={shell} style={shellStyle}>
           <div className={sfSectionInner()}>
             <ReelsShowcase
               reels={reels}
@@ -756,7 +862,7 @@ export function HomepageSections({
   headingHighlightStyle?: HeadingHighlightStyle;
 }) {
   return (
-    <div className="space-y-0">
+    <div className="sf-home-stack">
       {sections.map((section) => (
         <SectionRenderer
           key={section.id}

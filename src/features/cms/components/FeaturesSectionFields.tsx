@@ -13,6 +13,7 @@ import {
   adminSortableIds,
   reorderBySortableIds,
 } from "@/features/admin/ui/AdminSortable";
+import { patchItemAt } from "@/features/admin/ui/list-patch";
 import {
   FEATURE_ICON_IDS,
   type SectionConfigMap,
@@ -90,9 +91,8 @@ export function FeaturesSectionFields({
   );
 
   function updateAt(index: number, patch: Partial<FeatureEditableItem>) {
-    onChange(
-      items.map((item, i) => (i === index ? { ...item, ...patch } : item)),
-    );
+    const next = patchItemAt(items, index, patch);
+    if (next) onChange(next);
   }
 
   function removeAt(index: number) {

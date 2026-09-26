@@ -1,7 +1,7 @@
 "use client";
 
 import { motion, type HTMLMotionProps } from "framer-motion";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { getAnimationVariants } from "@/features/animation/presets";
 import {
   resolveMotionConfig,
@@ -32,6 +32,7 @@ export function Motion({
   sectionOverride,
   as = "div",
   className,
+  style,
   ...rest
 }: MotionProps) {
   const hydrated = useHasHydrated();
@@ -58,9 +59,14 @@ export function Motion({
   });
 
   const Tag = as;
+  const staticStyle = style as CSSProperties | undefined;
 
   if (!hydrated || !effective.shouldAnimate) {
-    return <Tag className={className}>{children}</Tag>;
+    return (
+      <Tag className={className} style={staticStyle}>
+        {children}
+      </Tag>
+    );
   }
 
   const variants = getAnimationVariants(
@@ -72,6 +78,7 @@ export function Motion({
   return (
     <Component
       className={className}
+      style={style}
       initial="hidden"
       animate="visible"
       variants={variants}

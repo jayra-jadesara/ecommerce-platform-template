@@ -439,12 +439,16 @@ export function CategoryManager({
                     label="Parent"
                     fullWidth
                     disabled={!canEditForm}
-                    value={field.value ?? ""}
+                    value={field.value ?? "__none__"}
                     onChange={(event) =>
-                      field.onChange(event.target.value || null)
+                      field.onChange(
+                        event.target.value === "__none__"
+                          ? null
+                          : event.target.value,
+                      )
                     }
                   >
-                    <MenuItem value="">None (top level)</MenuItem>
+                    <MenuItem value="__none__">None (top level)</MenuItem>
                     {parentOptions.map((category) => (
                       <MenuItem key={category.id} value={category.id}>
                         {category.name}

@@ -58,8 +58,11 @@ const menuProps = {
   },
 };
 
+const EMPTY_VALUE = "__admin_select_empty__";
+
 /**
  * Admin single-select — same height/font as TextField via admin.css.
+ * Never uses MenuItem value="" (MUI Select can infinite-loop with empty values).
  */
 export function AdminSelect({
   label,
@@ -77,6 +80,9 @@ export function AdminSelect({
   id,
   className,
 }: AdminSelectProps) {
+  const selectValue =
+    allowEmpty && (value === "" || value == null) ? EMPTY_VALUE : value;
+
   return (
     <TextField
       select
@@ -87,12 +93,13 @@ export function AdminSelect({
       disabled={disabled}
       error={error}
       helperText={helperText}
-      value={value}
+      value={selectValue}
       name={name}
       id={id}
       className={className}
       onChange={(event: ChangeEvent<HTMLInputElement>) => {
-        onChange(event.target.value);
+        const next = event.target.value;
+        onChange(next === EMPTY_VALUE ? "" : next);
       }}
       slotProps={{
         select: {
@@ -110,7 +117,9 @@ export function AdminSelect({
         },
       }}
     >
-      {allowEmpty ? <MenuItem value="">{emptyLabel}</MenuItem> : null}
+      {allowEmpty ? (
+        <MenuItem value={EMPTY_VALUE}>{emptyLabel}</MenuItem>
+      ) : null}
       {options.map((opt) => (
         <MenuItem key={opt.value} value={opt.value}>
           {opt.label}

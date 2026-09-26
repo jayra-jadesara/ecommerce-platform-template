@@ -128,6 +128,13 @@ describe("public/sw.js cache rules", () => {
     expect(swSource.toLowerCase()).not.toContain("offline checkout");
     expect(swSource.toLowerCase()).not.toContain("pay offline");
   });
+
+  it("bypasses App Router RSC / Flight so soft-nav cannot use a stale client", () => {
+    expect(swSource).toMatch(/isNextRuntimeRequest/);
+    expect(swSource).toContain("text/x-component");
+    expect(swSource).toContain('_rsc');
+    expect(swSource).toMatch(/do not intercept RSC/);
+  });
 });
 
 describe("offline fallback route", () => {

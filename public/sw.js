@@ -1,14 +1,15 @@
 /**
  * Minimal service worker for storefront PWA.
  * - Precaches offline fallback
- * - Cache-first for /_next/static
+ * - Cache-first for immutable /_next/static hashed assets only
+ * - Never intercepts App Router RSC / Flight / HMR (avoids stale client → Failed to fetch)
  * - Network-only for private/admin/payment/API
  * - HTML navigations: network-first, offline page on failure
  *
  * This file is served from /public and must stay dependency-free.
  */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `storefront-static-${CACHE_VERSION}`;
 const OFFLINE_CACHE = `storefront-offline-${CACHE_VERSION}`;
 const OFFLINE_URL = "/offline";
@@ -48,6 +49,32 @@ function isPrivate(pathname) {
   });
 }
 
+/**
+ * App Router soft-nav / prefetch / HMR must hit the network unbuffered.
+ * Intercepting these (or serving a stale cached shell) causes:
+ *   TypeError: Failed to fetch → fetchMissingDynamicData
+ * and the error overlay shows an old Next version as "(stale)".
+ */
+function isNextRuntimeRequest(request, url) {
+  const accept = request.headers.get("accept") || "";
+  if (accept.includes("text/x-component")) return true;
+  if (request.headers.get("rsc") === "1") return true;
+  if (request.headers.get("next-router-state-tree")) return true;
+  if (request.headers.get("next-router-prefetch")) return true;
+  if (request.headers.get("next-url")) return true;
+  if (url.searchParams.has("_rsc")) return true;
+
+  const { pathname } = url;
+  if (pathname.startsWith("/_next/webpack-hmr")) return true;
+  if (pathname.startsWith("/_next/data/")) return true;
+  if (pathname.startsWith("/_next/image")) return true;
+  // Turbopack / dev flight helpers — never cache or wrap
+  if (pathname.startsWith("/_next/static/chunks/") && pathname.includes("turbopack")) {
+    return true;
+  }
+  return false;
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     (async () => {
@@ -68,18 +95,24 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter(
-            (key) =>
-              (key.startsWith("storefront-static-") ||
-                key.startsWith("storefront-offline-")) &&
-              key !== STATIC_CACHE &&
-              key !== OFFLINE_CACHE,
-          )
+          .filter((key) => {
+            const ours =
+              key.startsWith("storefront-static-") ||
+              key.startsWith("storefront-offline-");
+            if (!ours) return false;
+            return key !== STATIC_CACHE && key !== OFFLINE_CACHE;
+          })
           .map((key) => caches.delete(key)),
       );
-      self.clients.claim();
+      await self.clients.claim();
     })(),
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -96,21 +129,33 @@ self.addEventListener("fetch", (event) => {
   // Same-origin only
   if (url.origin !== self.location.origin) return;
 
+  // Critical: do not intercept RSC / Flight / HMR — let the browser talk to Next.
+  if (isNextRuntimeRequest(request, url)) return;
+
   const { pathname } = url;
 
   if (isPrivate(pathname)) {
     // Network only — never put private responses in Cache Storage
-    event.respondWith(fetch(request));
+    // Pass through without respondWith so redirects/cookies stay intact.
     return;
   }
 
-  // Next.js build assets: cache-first
+  // Immutable hashed build assets only (production). Cache-first is safe
+  // because filenames change per deploy; v3+ also evicts older version caches.
   if (pathname.startsWith("/_next/static/")) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(STATIC_CACHE);
         const cached = await cache.match(request);
-        if (cached) return cached;
+        if (cached) {
+          // Background revalidate — drop stale hashed shells after upgrades
+          void fetch(request)
+            .then((response) => {
+              if (response.ok) return cache.put(request, response.clone());
+            })
+            .catch(() => {});
+          return cached;
+        }
         const response = await fetch(request);
         if (response.ok) {
           cache.put(request, response.clone());
@@ -121,7 +166,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigations: network-first, offline fallback
+  // Navigations: network-first, offline fallback — do not cache HTML
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {

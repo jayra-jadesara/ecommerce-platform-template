@@ -189,9 +189,10 @@ export function AddressForm({
               errors.state?.message ??
               (geoLoading ? "Loading states…" : "Select state first")
             }
-            value={field.value ?? ""}
+            value={field.value ? field.value : "__none__"}
             onChange={(e) => {
-              const name = e.target.value;
+              const name =
+                e.target.value === "__none__" ? "" : e.target.value;
               field.onChange(name);
               const match = states.find((s) => s.name === name);
               setSelectedStateId(match?.id ?? "");
@@ -199,7 +200,7 @@ export function AddressForm({
               setValue("city", "");
             }}
           >
-            <MenuItem value="">
+            <MenuItem value="__none__">
               <em>Select state</em>
             </MenuItem>
             {states.map((state) => (
@@ -228,9 +229,14 @@ export function AddressForm({
                 ? "Select a state to see cities"
                 : "Select city / district")
             }
-            value={field.value ?? ""}
+            value={field.value ? field.value : "__none__"}
+            onChange={(e) => {
+              const next =
+                e.target.value === "__none__" ? "" : e.target.value;
+              field.onChange(next);
+            }}
           >
-            <MenuItem value="">
+            <MenuItem value="__none__">
               <em>Select city</em>
             </MenuItem>
             {cities.map((city) => (
